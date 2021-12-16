@@ -1,0 +1,125 @@
+---
+name: operators - numeric
+
+constants:
+  IS_MATCH:
+    value: true
+    variationIndex: 0
+    reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "ruleid" }
+  IS_NOT_MATCH:
+    value: false
+    variationIndex: 1
+    reason: { kind: "FALLTHROUGH" }
+  base_flag: &base_flag
+    on: true
+    fallthrough: { variation: 1 }
+    variations: [ true, false ]
+  base_rule: &base_rule
+    id: ruleid
+    variation: 0
+
+parameters:
+  - OP: lessThan
+    USER_VALUE: 99
+    CLAUSE_VALUE: 100
+    EXPECT: <IS_MATCH>
+  - OP: lessThan
+    USER_VALUE: 100
+    CLAUSE_VALUE: 100
+    EXPECT: <IS_NOT_MATCH>
+  - OP: lessThan
+    USER_VALUE: 100.1
+    CLAUSE_VALUE: 100
+    EXPECT: <IS_NOT_MATCH>
+  - OP: lessThan
+    USER_VALUE: 101
+    CLAUSE_VALUE: 100
+    EXPECT: <IS_NOT_MATCH>
+
+  - OP: lessThanOrEqual
+    USER_VALUE: 99
+    CLAUSE_VALUE: 100
+    EXPECT: <IS_MATCH>
+  - OP: lessThanOrEqual
+    USER_VALUE: 100
+    CLAUSE_VALUE: 100
+    EXPECT: <IS_MATCH>
+  - OP: lessThanOrEqual
+    USER_VALUE: 100.1
+    CLAUSE_VALUE: 100
+    EXPECT: <IS_NOT_MATCH>
+  - OP: lessThanOrEqual
+    USER_VALUE: 101
+    CLAUSE_VALUE: 100
+    EXPECT: <IS_NOT_MATCH>
+
+  - OP: greaterThan
+    USER_VALUE: 99
+    CLAUSE_VALUE: 100
+    EXPECT: <IS_NOT_MATCH>
+  - OP: greaterThan
+    USER_VALUE: 100
+    CLAUSE_VALUE: 100
+    EXPECT: <IS_NOT_MATCH>
+  - OP: greaterThan
+    USER_VALUE: 100.1
+    CLAUSE_VALUE: 100
+    EXPECT: <IS_MATCH>
+  - OP: greaterThan
+    USER_VALUE: 101
+    CLAUSE_VALUE: 100
+    EXPECT: <IS_MATCH>
+
+  - OP: greaterThanOrEqual
+    USER_VALUE: 99
+    CLAUSE_VALUE: 100
+    EXPECT: <IS_NOT_MATCH>
+  - OP: greaterThanOrEqual
+    USER_VALUE: 100
+    CLAUSE_VALUE: 100
+    EXPECT: <IS_MATCH>
+  - OP: greaterThanOrEqual
+    USER_VALUE: 100.1
+    CLAUSE_VALUE: 100
+    EXPECT: <IS_MATCH>
+  - OP: greaterThanOrEqual
+    USER_VALUE: 101
+    CLAUSE_VALUE: 100
+    EXPECT: <IS_MATCH>
+
+  # wrong types:
+  - OP: lessThan
+    USER_VALUE: "99"
+    CLAUSE_VALUE: 100
+    EXPECT: <IS_NOT_MATCH>
+  - OP: lessThanOrEqual
+    USER_VALUE: "100"
+    CLAUSE_VALUE: 100
+    EXPECT: <IS_NOT_MATCH>
+  - OP: greaterThan
+    USER_VALUE: "101"
+    CLAUSE_VALUE: 100
+    EXPECT: <IS_NOT_MATCH>
+  - OP: greaterThanOrEqual
+    USER_VALUE: "100"
+    CLAUSE_VALUE: 100
+    EXPECT: <IS_NOT_MATCH>
+
+sdkData:
+  flags:
+    test-numeric:
+      on: true
+      fallthrough: { variation: 1 }
+      variations: [ true, false ]
+      rules:
+        - id: ruleid
+          variation: 0
+          clauses:
+            - { attribute: attrname, op: <OP>, values: [ "<CLAUSE_VALUE>" ] }
+
+evaluations:
+  - name: "<USER_VALUE> <OP> <CLAUSE_VALUE>"
+    flagKey: test-numeric
+    user: { key: "user-key", custom: { attrname: "<USER_VALUE>" } }
+    default: false
+    expect: <EXPECT>
