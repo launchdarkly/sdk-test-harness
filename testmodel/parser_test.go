@@ -82,7 +82,7 @@ values:
 		},
 	} {
 		t.Run(params.desc, func(t *testing.T) {
-			expanded, err := ExpandSubstitutions([]byte(params.input))
+			expanded, err := expandSubstitutions([]byte(params.input))
 			require.NoError(t, err)
 			valuesList := ldvalue.ArrayBuild()
 			for _, source := range expanded {
@@ -121,7 +121,7 @@ values:
 		"10,22,31", "11,22,31",
 	}
 
-	expanded, err := ExpandSubstitutions([]byte(input))
+	expanded, err := expandSubstitutions([]byte(input))
 	require.NoError(t, err)
 	var actualValues []string
 	for _, source := range expanded {

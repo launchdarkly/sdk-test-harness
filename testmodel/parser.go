@@ -14,12 +14,16 @@ import (
 	yaml "gopkg.in/yaml.v3"
 )
 
-type SubstitutionSet map[string]ldvalue.Value
+type substitutionSet map[string]ldvalue.Value
 
+// SourceInfo represents JSON or YAML data that was read from a file, after post-processing to expand
+// constants and parameters. For non-parameterized tests, you will get one SourceInfo per file. For
+// parameterized tests, there can be many instances per file, each with its own version of Data.
+// See ReadFile and docs/data_files.md.
 type SourceInfo struct {
 	FilePath string
 	BaseName string
-	Params   SubstitutionSet
+	Params   map[string]ldvalue.Value
 	Data     []byte
 }
 
@@ -44,6 +48,8 @@ func (s SourceInfo) ParamsString() string {
 	return "(" + ps + ")"
 }
 
+// ParseJSONOrYAML is used in the same way as json.Unmarshal, but if the data is YAML and not
+// JSON, it will convert the YAML to JSON and then parse it as JSON.
 func ParseJSONOrYAML(data []byte, target interface{}) error {
 	if err := json.Unmarshal(data, target); err == nil {
 		return nil
@@ -107,9 +113,9 @@ func normalizeParsedYAMLForJSON(data interface{}) (interface{}, error) {
 	}
 }
 
-func ExpandSubstitutions(originalData []byte) ([]SourceInfo, error) {
+func expandSubstitutions(originalData []byte) ([]SourceInfo, error) {
 	var substs struct {
-		Constants  SubstitutionSet   `json:"constants"`
+		Constants  substitutionSet   `json:"constants"`
 		Parameters []json.RawMessage `json:"parameters"`
 	}
 	if err := ParseJSONOrYAML(originalData, &substs); err != nil {
@@ -139,13 +145,13 @@ func ExpandSubstitutions(originalData []byte) ([]SourceInfo, error) {
 	return ret, nil
 }
 
-func makeParameterPermutations(paramsData []json.RawMessage) ([]SubstitutionSet, error) {
+func makeParameterPermutations(paramsData []json.RawMessage) ([]substitutionSet, error) {
 	if len(paramsData) == 0 {
 		return nil, nil
 	}
 	allData, _ := json.Marshal(paramsData)
 	if ldvalue.Parse(paramsData[0]).Type() == ldvalue.ObjectType {
-		var list []SubstitutionSet
+		var list []substitutionSet
 		if err := json.Unmarshal(allData, &list); err != nil {
 			return nil, err
 		}
@@ -154,14 +160,14 @@ func makeParameterPermutations(paramsData []json.RawMessage) ([]SubstitutionSet,
 	if ldvalue.Parse(paramsData[0]).Type() != ldvalue.ArrayType {
 		return nil, errors.New("unable to parse parameters - must be an array of objects or an array of arrays")
 	}
-	var lists [][]SubstitutionSet
+	var lists [][]substitutionSet
 	if err := json.Unmarshal(allData, &lists); err != nil {
 		return nil, err
 	}
 	indices := make([]int, len(lists))
-	var result []SubstitutionSet
+	var result []substitutionSet
 	for {
-		mergedSet := make(SubstitutionSet)
+		mergedSet := make(substitutionSet)
 		for i := 0; i < len(lists); i++ {
 			thisSet := lists[i][indices[i]]
 			for k, v := range thisSet {
@@ -184,7 +190,7 @@ func makeParameterPermutations(paramsData []json.RawMessage) ([]SubstitutionSet,
 	}
 }
 
-func replaceVariables(originalData []byte, substs SubstitutionSet) []byte {
+func replaceVariables(originalData []byte, substs substitutionSet) []byte {
 	str := string(originalData)
 	str = strings.ReplaceAll(str, `\u003c`, "<")
 	str = strings.ReplaceAll(str, `\u003e`, ">")
@@ -200,6 +206,8 @@ func replaceVariables(originalData []byte, substs SubstitutionSet) []byte {
 	return []byte(str)
 }
 
+// ReadFile reads a data file and performs any necessary constant/parameter substitutions. It can
+// return more than one SourceInfo because any file can be a parameterized test. See docs/data_files.md.
 func ReadFile(path string) ([]SourceInfo, error) {
 	ret := make([]SourceInfo, 0, 10)
 	data, err := os.ReadFile(path) //nolint:gosec // yes, we know the file path is a variable
@@ -207,7 +215,7 @@ func ReadFile(path string) ([]SourceInfo, error) {
 		return nil, fmt.Errorf("failed to read %q: %w", path, err)
 	}
 	baseName := filepath.Base(path)
-	sources, err := ExpandSubstitutions(data)
+	sources, err := expandSubstitutions(data)
 	if err != nil {
 		return nil, fmt.Errorf("error reading %q: %s", path, err)
 	}
@@ -219,17 +227,9 @@ func ReadFile(path string) ([]SourceInfo, error) {
 	return ret, nil
 }
 
-func ReadFileSingle(path string) (SourceInfo, error) {
-	sources, err := ReadFile(path)
-	if err != nil {
-		return SourceInfo{}, err
-	}
-	if len(sources) != 1 {
-		return SourceInfo{}, fmt.Errorf("expected a single set of data in %q", path)
-	}
-	return sources[0], nil
-}
-
+// ReadAllFiles reads all data files in a directory and performs any necessary constant/parameter
+// substitutions. It can return more than one SourceInfo per file, because any file can be a parameterized
+// test. See docs/data_files.md.
 func ReadAllFiles(path string) ([]SourceInfo, error) {
 	files, err := ioutil.ReadDir(path)
 	if err != nil {

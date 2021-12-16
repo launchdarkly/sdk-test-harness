@@ -5,3 +5,4 @@
 * [Running the tests](./running.md) (command line parameters)
 * [Test service specification](./service_spec.md) (service endpoints, JSON schema)
 * [Writing tests](./writing_tests.md)
+* [Test data files](./data_files.md)

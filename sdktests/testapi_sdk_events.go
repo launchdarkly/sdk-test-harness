@@ -74,7 +74,7 @@ func (e *SDKEventSink) ExpectAnalyticsEvents(
 	}
 	ok := true
 	for i, m := range eventMatchers {
-		if !m.For(t, events[i]) {
+		if !m.Check(t, events[i]) {
 			ok = false
 		}
 	}
