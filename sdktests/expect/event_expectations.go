@@ -12,6 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Event is the entry point for constructing assertions about mockld.Event values.
+//
+//     var actualValue mockld.Event
+//     Event.Matches(expectedValue).Check(t, actualValue)
 var Event EventExpectationFactory //nolint:gochecknoglobals
 
 type EventExpectationFactory struct{}
@@ -20,8 +24,8 @@ type EventExpectation struct {
 	base helpers.Expectation
 }
 
-func (x EventExpectation) For(t assert.TestingT, ev mockld.Event) bool {
-	return x.base.For(t, ev)
+func (x EventExpectation) Check(t assert.TestingT, ev mockld.Event) bool {
+	return x.base.Check(t, ev)
 }
 
 func (x EventExpectation) And(other EventExpectation) EventExpectation {

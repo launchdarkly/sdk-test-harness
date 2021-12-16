@@ -29,8 +29,8 @@ func NewExpectation(
 	return Expectation{fn: fn, description: description, describeValue: describeValue}
 }
 
-// For executes the expectation for a specific value.
-func (ex Expectation) For(t assert.TestingT, value interface{}) bool {
+// Check executes the expectation for a specific value.
+func (ex Expectation) Check(t assert.TestingT, value interface{}) bool {
 	if ex.fn != nil {
 		if !ex.fn(t, value) {
 			valueDesc := ""

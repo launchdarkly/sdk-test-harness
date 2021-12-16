@@ -25,7 +25,7 @@ type SDKData interface {
 	Serialize() []byte
 }
 
-// ServerSDKData contains simulated LaunchDarkly environment data for a server-side SDKs.
+// ServerSDKData contains simulated LaunchDarkly environment data for a server-side SDK.
 //
 // This includes the full JSON configuration of every flag and segment, in the same format that is used in
 // streaming and polling responses.

@@ -12,6 +12,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Eval is the entry point for constructing assertions about EvaluateFlagResponse values.
+//
+//     var actualValue servicedef.EvaluateFlagResponse
+//     Eval.ValueEquals(ldvalue.Bool(true)).
+//         And(Eval.ReasonEquals(ldreason.NewEvalReasonFallthrough())).
+//         Check(t, actualValue)
 var Eval EvalExpectationFactory //nolint:gochecknoglobals
 
 type EvalExpectationFactory struct{}
@@ -20,8 +26,8 @@ type EvalExpectation struct {
 	base helpers.Expectation
 }
 
-func (x EvalExpectation) For(t assert.TestingT, er servicedef.EvaluateFlagResponse) bool {
-	return x.base.For(t, er)
+func (x EvalExpectation) Check(t assert.TestingT, er servicedef.EvaluateFlagResponse) bool {
+	return x.base.Check(t, er)
 }
 
 func (x EvalExpectation) And(other EvalExpectation) EvalExpectation {

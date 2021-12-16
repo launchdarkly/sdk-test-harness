@@ -10,6 +10,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Value is the entry point for constructing assertions about ldvalue.Value values. While it is
+// possible to use methods like assert.Equal with the ldvalue.Value type, the failure messages
+// you get that way are very hard to read because assert does not respect ldvalue.Value's
+// String() behavior.
+//
+//     var actualValue ldvalue.Value
+//     Value.Equals(ldvalue.Bool(true)).Check(t, actualValue)
 var Value ValueExpectationFactory //nolint:gochecknoglobals
 
 type ValueExpectationFactory struct{}
@@ -18,8 +25,8 @@ type ValueExpectation struct {
 	base helpers.Expectation
 }
 
-func (x ValueExpectation) For(t assert.TestingT, v ldvalue.Value) bool {
-	return x.base.For(t, v)
+func (x ValueExpectation) Check(t assert.TestingT, v ldvalue.Value) bool {
+	return x.base.Check(t, v)
 }
 
 func (x ValueExpectation) And(other ValueExpectation) ValueExpectation {
