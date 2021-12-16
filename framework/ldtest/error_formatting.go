@@ -23,8 +23,8 @@ func reformatError(err error) error {
 	out := append([]string(nil), messages...)
 	out = append(out, "  Error trace:")
 	for _, line := range traces {
-		if strings.Contains(line, "context.go") {
-			// This is a hack based on the fact that context.go contains the T.Run method that
+		if strings.Contains(line, "test_scope.go") {
+			// This is a hack based on the fact that test_scope.go contains the T.Run method that
 			// all test stacktraces should start at.
 			break
 		}
