@@ -61,6 +61,10 @@ func (e Event) AsValue() ldvalue.Value { return ldvalue.Value(e) }
 func (e Event) JSONString() string     { return helpers.CanonicalizedJSONString(e.AsValue()) }
 func (e Event) String() string         { return e.JSONString() }
 
+func (e Event) MarshalJSON() ([]byte, error) {
+	return json.Marshal(ldvalue.Value(e))
+}
+
 func (e *Event) UnmarshalJSON(data []byte) error {
 	var v ldvalue.Value
 	err := json.Unmarshal(data, &v)

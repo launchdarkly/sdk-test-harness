@@ -1,0 +1,39 @@
+---
+parameters:
+  -
+    - DATA: null
+      OMIT_DATA: false
+    - DATA: null
+      OMIT_DATA: true  # this is a hint to SDKs that may have a different API for "no data" than "optional data which is null"
+    - DATA: true
+      OMIT_DATA: false
+    - DATA: false
+      OMIT_DATA: false
+    - DATA: 0
+      OMIT_DATA: false
+    - DATA: 1000
+      OMIT_DATA: false
+    - DATA: 1000.5
+      OMIT_DATA: false
+    - DATA: ""
+      OMIT_DATA: false
+    - DATA: "abc"
+      OMIT_DATA: false
+    - DATA: [1, 2]
+      OMIT_DATA: false
+    - DATA: {property: true}
+      OMIT_DATA: false
+  -
+    - METRIC_VALUE: null
+    - METRIC_VALUE: 0
+    - METRIC_VALUE: -1.5
+    - METRIC_VALUE: 1.5
+
+events:
+  - eventKey: event-key
+    user:
+      key: user-key
+      name: user-name
+    data: <DATA>
+    omitNullData: <OMIT_DATA>
+    metricValue: <METRIC_VALUE>
