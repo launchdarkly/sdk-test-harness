@@ -11,10 +11,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
+
+// TestingT is an interface for any test scope type that has an Errorf method for reporting
+// failures. This is compatible with Go's testing.T, and with assert.TestingT. See
+// AssertThat.
+type TestingT interface {
+	Errorf(format string, args ...interface{})
+}
+
+// FailNowT is an interface for any test scope type that has an Errorf method for reporting
+// failures and also a FailNow method for stopping the test immediately. This is compatible
+// with Go's testing.T, and with require.TestingT. See RequireThat.
+type FailNowT interface {
+	TestingT
+	FailNow()
+}
 
 // TestFunc is a function used in defining a new Matcher. It returns true if the value passes
 // the test or false for failure.
@@ -80,22 +92,26 @@ func (m Matcher) describeValue(value interface{}) string {
 	return DefaultDescription(value)
 }
 
-// Assert is for use with the testify/assert package (or any API with a compatible interface). It
-// tests a value and, on failure, calls assert.Fail with the appropriate message.
-func (m Matcher) Assert(t assert.TestingT, value interface{}) bool {
-	if pass, desc := m.Test(value); !pass {
-		assert.Fail(t, desc)
+// AssertThat is for use with any test framework that has a test scope type with the same Errorf
+// method as Go's testing.T. It tests a value against a matcher and, on failure, calls the test
+// scope's Errorf method. This logs a failure but does not stop the test.
+func AssertThat(t TestingT, value interface{}, matcher Matcher) bool {
+	if pass, desc := matcher.Test(value); !pass {
+		t.Errorf("%s", desc)
 		return false
 	}
 	return true
 }
 
-// Require is for use with the testify/require package (or any API with a compatible interface). It
-// tests a value and, on failure, calls require.Fail with the appropriate message.
-func (m Matcher) Require(t require.TestingT, value interface{}) bool {
-	if pass, desc := m.Test(value); !pass {
-		require.Fail(t, desc)
-		return false
+// RequireThat is for use with any test framework that has a test scope type with the same Errorf
+// and FailNow methods as Go's testing.T. It tests a value against a matcher and, on failure, calls
+// the test scope's Errorf method and then FailNow. This logs a failure and immediately terminates
+// the test.
+func RequireThat(t FailNowT, value interface{}, matcher Matcher) bool {
+	if pass, desc := matcher.Test(value); !pass {
+		t.Errorf("%s", desc)
+		t.FailNow()
+		return false // does not return since FailNow() will force an early exit
 	}
 	return true
 }

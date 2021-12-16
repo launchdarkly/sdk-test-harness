@@ -39,18 +39,18 @@ func RunParameterizedServerSideEvalTests(t *ldtest.T) {
 					t.Run("evaluate flag without detail", func(t *ldtest.T) {
 						params := makeEvalFlagParams(test, suite.SDKData)
 						result := client.EvaluateFlag(t, params)
-						EvalResponseValue().Should(m.Equal(test.Expect.Value)).Assert(t, result)
+						m.AssertThat(t, result, EvalResponseValue().Should(m.Equal(test.Expect.Value)))
 					})
 
 					t.Run("evaluate flag with detail", func(t *ldtest.T) {
 						params := makeEvalFlagParams(test, suite.SDKData)
 						params.Detail = true
 						result := client.EvaluateFlag(t, params)
-						m.AllOf(
+						m.AssertThat(t, result, m.AllOf(
 							EvalResponseValue().Should(m.Equal(test.Expect.Value)),
-							EvalResponseValue().Should(m.Equal(test.Expect.VariationIndex)),
-							EvalResponseValue().Should(m.Equal(test.Expect.Reason)),
-						).Assert(t, result)
+							EvalResponseVariation().Should(m.Equal(test.Expect.VariationIndex)),
+							EvalResponseReason().Should(m.Equal(test.Expect.Reason)),
+						))
 					})
 
 					if !suite.SkipEvaluateAllFlags {
@@ -65,7 +65,7 @@ func RunParameterizedServerSideEvalTests(t *ldtest.T) {
 							if !test.Expect.VariationIndex.IsDefined() {
 								expectedValue = ldvalue.Null()
 							}
-							m.Equal(expectedValue).Assert(t, result.Values[test.FlagKey])
+							m.AssertThat(t, result.Values[test.FlagKey], m.Equal(expectedValue))
 						})
 					}
 				})

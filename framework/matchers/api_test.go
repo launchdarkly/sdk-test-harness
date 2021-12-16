@@ -46,15 +46,15 @@ func TestMatcherValueDescriptionUsesStringer(t *testing.T) {
 		fmt.Sprintf("expected: should be good\nactual value was: %s", decorate("bad")))
 }
 
-func TestMatcherAssert(t *testing.T) {
+func TestAssertThat(t *testing.T) {
 	result1 := ldtest.Run(ldtest.TestConfiguration{}, func(ldt *ldtest.T) {
-		Equal(2).Assert(ldt, 2)
+		AssertThat(ldt, 2, Equal(2))
 	})
 	assert.True(t, result1.OK())
 
 	result2 := ldtest.Run(ldtest.TestConfiguration{}, func(ldt *ldtest.T) {
-		Equal(2).Assert(ldt, 3)
-		Equal(2).Assert(ldt, 4)
+		AssertThat(ldt, 3, Equal(2))
+		AssertThat(ldt, 4, Equal(2))
 	})
 	assert.False(t, result2.OK())
 	require.Len(t, result2.Failures[0].Errors, 2)
@@ -64,10 +64,10 @@ func TestMatcherAssert(t *testing.T) {
 	assert.Contains(t, result2.Failures[0].Errors[1].Error(), "actual value was: 4")
 }
 
-func TestMatcherRequire(t *testing.T) {
+func TestRequireThat(t *testing.T) {
 	result := ldtest.Run(ldtest.TestConfiguration{}, func(ldt *ldtest.T) {
-		Equal(2).Require(ldt, 3)
-		Equal(2).Require(ldt, 4)
+		RequireThat(ldt, 3, Equal(2))
+		RequireThat(ldt, 4, Equal(2))
 	})
 	assert.False(t, result.OK())
 	require.Len(t, result.Failures[0].Errors, 1)
