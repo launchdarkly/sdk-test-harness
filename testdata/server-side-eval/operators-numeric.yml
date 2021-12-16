@@ -10,13 +10,6 @@ constants:
     value: false
     variationIndex: 1
     reason: { kind: "FALLTHROUGH" }
-  base_flag: &base_flag
-    on: true
-    fallthrough: { variation: 1 }
-    variations: [ true, false ]
-  base_rule: &base_rule
-    id: ruleid
-    variation: 0
 
 parameters:
   - OP: lessThan
