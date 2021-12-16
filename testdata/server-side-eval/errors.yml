@@ -16,7 +16,7 @@ parameters:
     TYPE_VALUE: 1
     TYPE_DEFAULT: -1
 
-  - TYPE_NAME: float
+  - TYPE_NAME: double
     TYPE_VALUE: 1.5
     TYPE_DEFAULT: 0.5
 

@@ -34,7 +34,7 @@ parameters:
     TYPE_VALUE_2: 2
     TYPE_DEFAULT: -1
 
-  - TYPE_NAME: float
+  - TYPE_NAME: double
     TYPE_VALUE_OFF: -100
     TYPE_VALUE_FALLTHROUGH: -101
     TYPE_VALUE_1: 1.5
