@@ -77,7 +77,7 @@ func getAllServerSideEvalTestSuites(t *ldtest.T) []testmodel.EvalTestSuite {
 	sources, err := testmodel.ReadAllFiles("testdata/server-side-eval")
 	require.NoError(t, err)
 
-	var ret []testmodel.EvalTestSuite
+	ret := make([]testmodel.EvalTestSuite, 0, len(sources))
 	for _, source := range sources {
 		suite := parseServerSideEvalTestSuite(t, source)
 		ret = append(ret, suite)
