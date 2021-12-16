@@ -6,10 +6,8 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/sdktests/expect"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -55,38 +53,4 @@ func (e *SDKEventSink) AwaitAnalyticsEventPayload(t require.TestingT, timeout ti
 		require.Fail(t, "timed out waiting for events")
 	}
 	return events
-}
-
-// ExpectAnalyticsEvents waits for event data to be posted to the endpoint, and then verifies the
-// specified expectations. If no new events arrive before the timeout, the test immediately fails
-// and terminates.
-//
-// The number of events posted must be the same as the number of expectations.
-func (e *SDKEventSink) ExpectAnalyticsEvents(
-	t require.TestingT,
-	timeout time.Duration,
-	eventMatchers ...expect.EventExpectation,
-) {
-	events := e.AwaitAnalyticsEventPayload(t, timeout)
-	if len(events) != len(eventMatchers) {
-		require.Fail(t, "received wrong number of events", "expected %d events, got: %s",
-			len(eventMatchers), events.JSONString())
-	}
-	ok := true
-	for i, m := range eventMatchers {
-		if !m.Check(t, events[i]) {
-			ok = false
-		}
-	}
-	if !ok {
-		assert.Fail(t, "at least one event expectation failed")
-	}
-}
-
-// ExpectNoAnalyticsEvents waits for the specified timeout and fails if any events are posted before then.
-func (e *SDKEventSink) ExpectNoAnalyticsEvents(t require.TestingT, timeout time.Duration) {
-	events, ok := e.eventsService.AwaitAnalyticsEventPayload(timeout)
-	if ok {
-		require.Fail(t, "received events when none were expected", "events: %s", events.JSONString())
-	}
 }

@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
+	m "github.com/launchdarkly/sdk-test-harness/framework/matchers"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/sdktests/expect"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 	"github.com/launchdarkly/sdk-test-harness/testmodel"
 
@@ -39,17 +39,18 @@ func RunParameterizedServerSideEvalTests(t *ldtest.T) {
 					t.Run("evaluate flag without detail", func(t *ldtest.T) {
 						params := makeEvalFlagParams(test, suite.SDKData)
 						result := client.EvaluateFlag(t, params)
-						expect.Eval.ValueEquals(test.Expect.Value).Check(t, result)
+						EvalResponseValue().Should(m.Equal(test.Expect.Value)).Assert(t, result)
 					})
 
 					t.Run("evaluate flag with detail", func(t *ldtest.T) {
 						params := makeEvalFlagParams(test, suite.SDKData)
 						params.Detail = true
 						result := client.EvaluateFlag(t, params)
-						expect.Eval.ValueEquals(test.Expect.Value).
-							And(expect.Eval.VariationEquals(test.Expect.VariationIndex)).
-							And(expect.Eval.ReasonEquals(test.Expect.Reason)).
-							Check(t, result)
+						m.AllOf(
+							EvalResponseValue().Should(m.Equal(test.Expect.Value)),
+							EvalResponseValue().Should(m.Equal(test.Expect.VariationIndex)),
+							EvalResponseValue().Should(m.Equal(test.Expect.Reason)),
+						).Assert(t, result)
 					})
 
 					if !suite.SkipEvaluateAllFlags {
@@ -64,7 +65,7 @@ func RunParameterizedServerSideEvalTests(t *ldtest.T) {
 							if !test.Expect.VariationIndex.IsDefined() {
 								expectedValue = ldvalue.Null()
 							}
-							expect.Value.Equals(expectedValue).Check(t, result.Values[test.FlagKey])
+							m.Equal(expectedValue).Assert(t, result.Values[test.FlagKey])
 						})
 					}
 				})
