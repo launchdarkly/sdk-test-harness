@@ -1,0 +1,7 @@
+version: 2
+
+jobs:
+  - docker:
+      image: cimg/go:1.17
+    template:
+      name: go

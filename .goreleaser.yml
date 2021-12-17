@@ -1,0 +1,54 @@
+project_name: sdk-test-harness
+
+builds:
+- env:
+  - CGO_ENABLED=0
+  main: .
+  binary: sdk-test-harness
+  ldflags:
+  - -s -w -X internal.version.Version={{.Version}}
+
+  goos:
+    - darwin
+    - linux
+    - windows
+  ignore: # Go 1.15+ doesn't support 32-bit Darwin
+    - goos: darwin
+      goarch: 386
+
+release:
+  disable: true # this disables releasing *to GitHub*; it will still push to Docker
+  # (we want Releaser to be responsible for doing all the GitHub release manipulations)
+
+snapshot:
+  # Allows you to change the name of the generated snapshot
+  #
+  # Note that some pipes require this to be semantic version compliant (nfpm,
+  # for example).
+  #
+  # Default is `{{ .Version }}-SNAPSHOT-{{.ShortCommit}}`.
+  name_template: '{{ if index .Env "LD_RELEASE_VERSION"  }}{{ .Env.LD_RELEASE_VERSION }}{{ else }}0.0.0-SNAPSHOT{{ end }}'
+
+archives:
+  -
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+
+    # Configure the archive names so they'll be easy for an install script to get from GitHub.
+    # For Linux & MacOS, we'll use the same OS and architecture strings that are returned by
+    # "uname -s" and "uname -m". So, for instance, the amd64 Linux build will be called
+    # "sdk-test-harness_Linux_x86_64.tar.gz".
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    replacements:
+      darwin: Darwin
+      linux: Linux
+      windows: Windows
+      386: i386
+      amd64: x86_64
+
+    files:
+      - LICENSE.txt
+      - README.md
+      - CHANGELOG.md
