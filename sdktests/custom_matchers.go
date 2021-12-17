@@ -7,8 +7,8 @@ import (
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
 
-// The functions in this file are for convenient use of the framework/matchers API with
-// complex types. For more information, see matchers.MatcherTransform.
+// The functions in this file are for convenient use of the matchers API with complex
+// types. For more information, see matchers.Transform.
 
 func EvalResponseValue() m.MatcherTransform {
 	return m.Transform(
