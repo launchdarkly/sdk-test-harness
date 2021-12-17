@@ -51,7 +51,7 @@ Whenever there is a `user` property, the JSON object for the user follows the st
 
 If `command` is `"evaluate"`, the test service should perform a single feature flag evaluation. The SDK methods for this normally have names ending in `Variation` or `VariationDetail`.
 
-The `evaluate` property in the request body will be a JSON object with the following properties:
+The `evaluate` property in the request body will be a JSON object with these properties:
 
 * `flagKey` (string): The flag key.
 * `user` (object): The user properties.
@@ -69,7 +69,7 @@ The response should be a JSON object with the following properties:
 
 If `command` is `"evaluateAll"`, the test service should call the SDK method that evaluates all flags at once, which is normally called `AllFlags` or `AllFlagsState`.
 
-The `evaluateAll` property in the request body will be a JSON object with the following properties:
+The `evaluateAll` property in the request body will be a JSON object with these properties:
 
 * `user` (object): The user properties.
 
@@ -79,7 +79,7 @@ The response should be a JSON object in which each property name is a flag key, 
 
 If `command` is `"identifyEvent"`, the test service should call the SDK's `Identify` method.
 
-The `identifyEvent` property in the request body will be a JSON object with the following properties:
+The `identifyEvent` property in the request body will be a JSON object with these properties:
 
 * `user` (object): The user properties.
 
@@ -89,7 +89,7 @@ The response should be an empty 2xx response.
 
 If `command` is `"customEvent"`, the test service should tell the SDK to send a custom event. The methods for this normally have names starting with `Track`.
 
-The `customEvent` property in the request body will be a JSON object with the following properties:
+The `customEvent` property in the request body will be a JSON object with these properties:
 
 * `eventKey` (string): The event key.
 * `user` (object): The user properties.
@@ -102,6 +102,17 @@ Some SDKs have multiple variants or overloads of `Track`: one that takes both `d
 * A `Track` variant with only `eventKey` and `user` should be called if `data` and `metricValue` are both null _and_ `omitNullData` is true.
 * Otherwise, a variant with only `eventKey`, `user`, and `data` should be called if `metricValue` is null.
 * Otherwise, call the variant that takes `eventKey`, `user`, `data`, and `metricValue`.
+
+The response should be an empty 2xx response.
+
+#### Send alias eent
+
+If `command` is `"aliasEvent"`, the test service should tell the SDK to send an alias event.
+
+The `aliasEvent` property in the request body will be a JSON object with these properties:
+
+* `user` (object): The user properties of the new user.
+* `previousUser` (object): The user properties of the previous user.
 
 The response should be an empty 2xx response.
 

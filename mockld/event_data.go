@@ -21,6 +21,10 @@ type Events []Event
 // in events is slightly different than users as SDK inputs.
 type EventUser ldvalue.Value
 
+func EventFromMap(m map[string]interface{}) Event {
+	return Event(ldvalue.CopyArbitraryValue(m))
+}
+
 func (e Event) Kind() string {
 	return ldvalue.Value(e).GetByKey("kind").StringValue()
 }
