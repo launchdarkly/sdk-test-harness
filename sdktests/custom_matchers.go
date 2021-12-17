@@ -84,6 +84,19 @@ func EventIsCustomEvent(
 	return CanonicalizedEventJSON().Should(m.JSONEqual(o.Build()))
 }
 
+func EventIsCustomEventForParams(
+	params servicedef.CustomEventParams,
+	eventConfig servicedef.SDKConfigEventParams,
+) m.Matcher {
+	return EventIsCustomEvent(
+		params.EventKey,
+		mockld.ExpectedEventUserFromUser(*params.User, eventConfig),
+		eventConfig.InlineUsers,
+		params.Data,
+		params.MetricValue,
+	)
+}
+
 func EventIsFeatureEvent(
 	flagKey string,
 	eventUser mockld.EventUser,
