@@ -9,7 +9,7 @@ import (
 
 	"github.com/launchdarkly/eventsource"
 	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
-	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldlog"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldlogtest"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
@@ -40,7 +40,7 @@ func TestStreamingServiceServerSide(t *testing.T) {
 
 		initialEvent := requireEvent(t, stream)
 		assert.Equal(t, "put", initialEvent.Event())
-		helpers.AssertJSONEqual(t, expectedPutData(initialData), initialEvent.Data())
+		m.AssertThat(t, initialEvent.Data(), m.JSONStrEqual(expectedPutData(initialData)))
 
 		newData := NewServerSDKDataBuilder().RawFlag("flag1", json.RawMessage(`{"key": "flag1"}`)).Build()
 		go func() {
@@ -50,7 +50,7 @@ func TestStreamingServiceServerSide(t *testing.T) {
 
 		newPutEvent := requireEvent(t, stream)
 		assert.Equal(t, "put", newPutEvent.Event())
-		helpers.AssertJSONEqual(t, expectedPutData(newData), newPutEvent.Data())
+		m.AssertThat(t, newPutEvent.Data(), m.JSONStrEqual(expectedPutData(newData)))
 	})
 }
 

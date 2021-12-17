@@ -1,51 +1,44 @@
 package sdktests
 
 import (
-	"github.com/launchdarkly/sdk-test-harness/framework/matchers"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
+
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
 
-// The functions in this file are for convenient use of the framework/matchers API with
-// complex types. For more information, see matchers.MatcherTransform.
+// The functions in this file are for convenient use of the matchers API with complex
+// types. For more information, see matchers.Transform.
 
-func EvalResponseValue() matchers.MatcherTransform {
-	return matchers.Transform(
+func EvalResponseValue() m.MatcherTransform {
+	return m.Transform(
 		"result value",
-		func(value interface{}) interface{} {
+		func(value interface{}) (interface{}, error) {
 			r := value.(servicedef.EvaluateFlagResponse)
-			return r.Value
+			return r.Value, nil
 		}).
-		EnsureInputValueType(servicedef.EvaluateFlagResponse{}).
-		// default String() formatting of EvaluateFlagResponse isn't desirable
-		WithInputValueDescription(matchers.JSONDescription)
+		EnsureInputValueType(servicedef.EvaluateFlagResponse{})
 }
 
-func EvalResponseVariation() matchers.MatcherTransform {
-	return matchers.Transform(
+func EvalResponseVariation() m.MatcherTransform {
+	return m.Transform(
 		"result variation index",
-		func(value interface{}) interface{} {
+		func(value interface{}) (interface{}, error) {
 			r := value.(servicedef.EvaluateFlagResponse)
-			return ldvalue.NewOptionalIntFromPointer(r.VariationIndex)
+			return ldvalue.NewOptionalIntFromPointer(r.VariationIndex), nil
 		}).
-		EnsureInputValueType(servicedef.EvaluateFlagResponse{}).
-		// default String() formatting of EvaluateFlagResponse isn't desirable
-		WithInputValueDescription(matchers.JSONDescription)
+		EnsureInputValueType(servicedef.EvaluateFlagResponse{})
 }
 
-func EvalResponseReason() matchers.MatcherTransform {
-	return matchers.Transform(
+func EvalResponseReason() m.MatcherTransform {
+	return m.Transform(
 		"result reason",
-		func(value interface{}) interface{} {
+		func(value interface{}) (interface{}, error) {
 			r := value.(servicedef.EvaluateFlagResponse)
 			if r.Reason == nil {
-				return nil
+				return nil, nil
 			}
-			return *r.Reason
+			return *r.Reason, nil
 		}).
-		EnsureInputValueType(servicedef.EvaluateFlagResponse{}).
-		// default String() formatting of EvaluateFlagResponse isn't desirable
-		WithInputValueDescription(matchers.JSONDescription).
-		// defaultString() formatting of EvaluationReason isn't desirable
-		WithOutputValueDescription(matchers.JSONDescription)
+		EnsureInputValueType(servicedef.EvaluateFlagResponse{})
 }

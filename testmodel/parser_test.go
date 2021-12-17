@@ -3,7 +3,7 @@ package testmodel
 import (
 	"testing"
 
-	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
+	"github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
@@ -90,7 +90,7 @@ values:
 				require.NoError(t, ParseJSONOrYAML(source.Data, &s))
 				valuesList.Add(s.Values)
 			}
-			helpers.AssertJSONEqual(t, expectedValues, valuesList.Build().JSONString())
+			matchers.AssertThat(t, valuesList.Build().JSONString(), matchers.JSONStrEqual(expectedValues))
 		})
 	}
 }
@@ -154,5 +154,5 @@ values:
 
 	var s testExpandStruct
 	require.NoError(t, ParseJSONOrYAML([]byte(input), &s))
-	helpers.AssertJSONEqual(t, expectedValues, s.Values.JSONString())
+	matchers.AssertThat(t, s.Values.JSONString(), matchers.JSONStrEqual(expectedValues))
 }
