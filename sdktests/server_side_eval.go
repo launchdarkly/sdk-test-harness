@@ -7,7 +7,8 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
-	"github.com/launchdarkly/sdk-test-harness/testmodel"
+	"github.com/launchdarkly/sdk-test-harness/testdata"
+	"github.com/launchdarkly/sdk-test-harness/testdata/testmodel"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
@@ -75,7 +76,7 @@ func RunParameterizedServerSideEvalTests(t *ldtest.T) {
 }
 
 func getAllServerSideEvalTestSuites(t *ldtest.T) []testmodel.EvalTestSuite {
-	sources, err := testmodel.ReadAllFiles("testdata/server-side-eval")
+	sources, err := testdata.LoadAllDataFiles("server-side-eval")
 	require.NoError(t, err)
 
 	ret := make([]testmodel.EvalTestSuite, 0, len(sources))
@@ -86,9 +87,9 @@ func getAllServerSideEvalTestSuites(t *ldtest.T) []testmodel.EvalTestSuite {
 	return ret
 }
 
-func parseServerSideEvalTestSuite(t *ldtest.T, source testmodel.SourceInfo) testmodel.EvalTestSuite {
+func parseServerSideEvalTestSuite(t *ldtest.T, source testdata.SourceInfo) testmodel.EvalTestSuite {
 	var suite testmodel.EvalTestSuite
-	if err := testmodel.ParseJSONOrYAML(source.Data, &suite); err != nil {
+	if err := testdata.ParseJSONOrYAML(source.Data, &suite); err != nil {
 		require.NoError(t, fmt.Errorf("error parsing %q %s: %w", source.BaseName, source.ParamsString(), err))
 	}
 	return suite

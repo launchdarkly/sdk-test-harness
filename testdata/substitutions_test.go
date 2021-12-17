@@ -1,4 +1,4 @@
-package testmodel
+package testdata
 
 import (
 	"testing"
@@ -9,38 +9,8 @@ import (
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
 
-type testJSONOrYAMLStruct struct {
-	Name string `json:"name"`
-	On   bool   `json:"on"`
-	Ints []int  `json:"ints"`
-}
-
 type testExpandStruct struct {
 	Values ldvalue.Value `json:"values"`
-}
-
-func TestParseJSONOrYAML(t *testing.T) {
-	for _, params := range []struct {
-		desc  string
-		input string
-	}{
-		{"JSON", `{"name":"x","on":true,"ints":[1,2]}`},
-		{"YAML", `---
-name: x
-on: true
-ints:
-  - 1
-  - 2
-`},
-	} {
-		t.Run(params.desc, func(t *testing.T) {
-			var out testJSONOrYAMLStruct
-			require.NoError(t, ParseJSONOrYAML([]byte(params.input), &out))
-			assert.Equal(t, "x", out.Name)
-			assert.True(t, out.On)
-			assert.Equal(t, []int{1, 2}, out.Ints)
-		})
-	}
 }
 
 func TestExpandSubstitutions(t *testing.T) {
@@ -130,29 +100,4 @@ values:
 		actualValues = append(actualValues, s.Values.GetByKey("abc").StringValue())
 	}
 	assert.Equal(t, expectedValues, actualValues)
-}
-
-func TestCanUseYAMLAnchorReferences(t *testing.T) {
-	input := `---
-constants:
-  reusable: &reusable_thing
-    foo: 1
-    bar: 2
-
-values:
-  extending_thing:
-    <<: *reusable_thing
-    baz: 3
-`
-	expectedValues := `{
-  "extending_thing": {
-    "foo": 1,
-	"bar": 2,
-	"baz": 3
-  }
-}`
-
-	var s testExpandStruct
-	require.NoError(t, ParseJSONOrYAML([]byte(input), &s))
-	matchers.AssertThat(t, s.Values.JSONString(), matchers.JSONStrEqual(expectedValues))
 }

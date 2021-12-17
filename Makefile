@@ -8,12 +8,14 @@ LINTER=./bin/golangci-lint
 LINTER_VERSION_FILE=./bin/.golangci-lint-version-$(GOLANGCI_LINT_VERSION)
 EXECUTABLE=./sdk-test-harness
 
-.PHONY: build clean test lint build-release publish-release
+.PHONY: build pack-files clean test lint build-release publish-release
 
 build: $(EXECUTABLE)
 
 $(EXECUTABLE): *.go $(wildcard */*.go)
 	go build
+
+pack-files:
 
 clean:
 	go clean
