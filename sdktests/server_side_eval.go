@@ -5,11 +5,11 @@ import (
 	"fmt"
 
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	m "github.com/launchdarkly/sdk-test-harness/framework/matchers"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 	"github.com/launchdarkly/sdk-test-harness/testmodel"
 
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldmodel"
 
