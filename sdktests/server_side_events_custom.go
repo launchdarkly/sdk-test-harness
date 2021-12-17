@@ -3,9 +3,10 @@ package sdktests
 import (
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/sdktests/expect"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 	"github.com/launchdarkly/sdk-test-harness/testmodel"
+
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 
 	"github.com/stretchr/testify/require"
 )
@@ -37,9 +38,10 @@ func doServerSideCustomEventTests(t *ldtest.T) {
 					MetricValue:  test.MetricValue,
 				})
 				client.FlushEvents(t)
-				events.ExpectAnalyticsEvents(t, defaultEventTimeout,
-					expect.Event.IsCustomEvent(test.EventKey, mockld.SimpleEventUser(test.User), true, test.Data, test.MetricValue),
-				)
+				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+				m.AssertThat(t, payload, m.ItemsInAnyOrder(
+					EventIsCustomEvent(test.EventKey, mockld.SimpleEventUser(test.User), true, test.Data, test.MetricValue),
+				))
 			}
 		})
 	}

@@ -5,9 +5,9 @@ import (
 
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/sdktests/expect"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
@@ -27,9 +27,10 @@ func doServerSideIdentifyEventTests(t *ldtest.T) {
 		user := users.NextUniqueUser()
 		client.SendIdentifyEvent(t, user)
 		client.FlushEvents(t)
-		events.ExpectAnalyticsEvents(t, defaultEventTimeout,
-			expect.Event.IsIdentifyEvent(mockld.SimpleEventUser(user)),
-		)
+		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+		m.AssertThat(t, payload, m.Items(
+			EventIsIdentifyEvent(mockld.SimpleEventUser(user)),
+		))
 	})
 
 	t.Run("user with empty key generates no event", func(t *ldtest.T) {
@@ -49,9 +50,10 @@ func doServerSideIdentifyEventTests(t *ldtest.T) {
 		// Sending a custom event would also generate an index event for the user,
 		// if we hadn't already seen that user
 		client.FlushEvents(t)
-		events.ExpectAnalyticsEvents(t, defaultEventTimeout,
-			expect.Event.IsIdentifyEvent(mockld.SimpleEventUser(user)),
-			expect.Event.IsCustomEvent("event-key", mockld.SimpleEventUser(user), false, ldvalue.Null(), nil),
-		)
+		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+		m.AssertThat(t, payload, m.ItemsInAnyOrder(
+			EventIsIdentifyEvent(mockld.SimpleEventUser(user)),
+			EventIsCustomEvent("event-key", mockld.SimpleEventUser(user), false, ldvalue.Null(), nil),
+		))
 	})
 }

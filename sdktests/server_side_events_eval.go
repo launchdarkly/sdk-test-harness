@@ -3,9 +3,9 @@ package sdktests
 import (
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/sdktests/expect"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
@@ -87,15 +87,16 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 				eventUser := mockld.ExpectedEventUserFromUser(user, eventsConfig)
 				resp := client.EvaluateFlag(t, makeEvalParams(flag, user, valueType, false))
 				// If the evaluation didn't return the expected value, then the rest of the test is moot
-				if !expect.Value.Equals(flag.Variations[0]).Check(t, resp.Value) {
+				if !m.AssertThat(t, flag.Variations[0], m.JSONEqual(resp.Value)) {
 					require.Fail(t, "evaluation unexpectedly returned wrong value")
 				}
 
 				client.FlushEvents(t)
-				events.ExpectAnalyticsEvents(t, defaultEventTimeout,
-					expect.Event.IsIndexEvent(eventUser),
-					expect.Event.HasKind("summary"),
-				)
+				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+				m.AssertThat(t, payload, m.ItemsInAnyOrder(
+					EventIsIndexEvent(eventUser),
+					EventHasKind("summary"),
+				))
 			})
 		}
 	})
@@ -108,13 +109,13 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 				eventUser := mockld.ExpectedEventUserFromUser(user, eventsConfig)
 				resp := client.EvaluateFlag(t, makeEvalParams(flag, user, valueType, false))
 				// If the evaluation didn't return the expected value, then the rest of the test is moot
-				if !expect.Value.Equals(flagValues(valueType)).Check(t, resp.Value) {
+				if !m.AssertThat(t, flagValues(valueType), m.JSONEqual(resp.Value)) {
 					require.Fail(t, "evaluation unexpectedly returned wrong value")
 				}
 
 				client.FlushEvents(t)
 
-				expectFeatureEvent := expect.Event.IsFeatureEvent(
+				matchFeatureEvent := EventIsFeatureEvent(
 					flag.Key,
 					eventUser,
 					false,
@@ -125,11 +126,12 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 					defaultValues(valueType),
 				)
 
-				events.ExpectAnalyticsEvents(t, defaultEventTimeout,
-					expect.Event.IsIndexEvent(eventUser),
-					expectFeatureEvent,
-					expect.Event.HasKind("summary"),
-				)
+				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+				m.AssertThat(t, payload, m.ItemsInAnyOrder(
+					EventIsIndexEvent(eventUser),
+					matchFeatureEvent,
+					EventHasKind("summary"),
+				))
 			})
 		}
 	})
@@ -142,13 +144,13 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 				eventUser := mockld.ExpectedEventUserFromUser(user, eventsConfig)
 				resp := client.EvaluateFlag(t, makeEvalParams(flag, user, valueType, true))
 				// If the evaluation didn't return the expected value, then the rest of the test is moot
-				if !expect.Value.Equals(flagValues(valueType)).Check(t, resp.Value) {
+				if !m.AssertThat(t, flagValues(valueType), m.JSONEqual(resp.Value)) {
 					require.Fail(t, "evaluation unexpectedly returned wrong value")
 				}
 
 				client.FlushEvents(t)
 
-				expectFeatureEvent := expect.Event.IsFeatureEvent(
+				matchFeatureEvent := EventIsFeatureEvent(
 					flag.Key,
 					eventUser,
 					false,
@@ -159,11 +161,12 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 					defaultValues(valueType),
 				)
 
-				events.ExpectAnalyticsEvents(t, defaultEventTimeout,
-					expect.Event.IsIndexEvent(eventUser),
-					expectFeatureEvent,
-					expect.Event.HasKind("summary"),
-				)
+				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+				m.AssertThat(t, payload, m.ItemsInAnyOrder(
+					EventIsIndexEvent(eventUser),
+					matchFeatureEvent,
+					EventHasKind("summary"),
+				))
 			})
 		}
 	})

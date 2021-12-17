@@ -6,9 +6,9 @@ import (
 
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/sdktests/expect"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
@@ -96,7 +96,7 @@ func doServerSideEventUserTests(t *ldtest.T) {
 				client.FlushEvents(t)
 
 				eventUser := mockld.ExpectedEventUserFromUser(user, scenario.config)
-				expectFeatureEvent := expect.Event.IsFeatureEvent(
+				matchFeatureEvent := EventIsFeatureEvent(
 					flag.Key,
 					eventUser,
 					scenario.config.InlineUsers,
@@ -107,12 +107,18 @@ func doServerSideEventUserTests(t *ldtest.T) {
 					defaultValue,
 				)
 
+				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 				if scenario.config.InlineUsers {
-					events.ExpectAnalyticsEvents(t, defaultEventTimeout,
-						expectFeatureEvent, expect.Event.HasKind("summary"))
+					m.AssertThat(t, payload, m.ItemsInAnyOrder(
+						matchFeatureEvent,
+						EventHasKind("summary"),
+					))
 				} else {
-					events.ExpectAnalyticsEvents(t, defaultEventTimeout,
-						expect.Event.IsIndexEvent(eventUser), expectFeatureEvent, expect.Event.HasKind("summary"))
+					m.AssertThat(t, payload, m.ItemsInAnyOrder(
+						EventIsIndexEvent(eventUser),
+						matchFeatureEvent,
+						EventHasKind("summary"),
+					))
 				}
 			})
 
@@ -122,8 +128,9 @@ func doServerSideEventUserTests(t *ldtest.T) {
 				client.FlushEvents(t)
 
 				eventUser := mockld.ExpectedEventUserFromUser(user, scenario.config)
-				events.ExpectAnalyticsEvents(t, defaultEventTimeout,
-					expect.Event.IsIdentifyEvent(eventUser))
+				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+				m.AssertThat(t, payload, m.Items(
+					EventIsIdentifyEvent(eventUser)))
 			})
 
 			t.Run("custom event", func(t *ldtest.T) {
@@ -139,7 +146,7 @@ func doServerSideEventUserTests(t *ldtest.T) {
 				client.FlushEvents(t)
 
 				eventUser := mockld.ExpectedEventUserFromUser(user, scenario.config)
-				expectCustomEvent := expect.Event.IsCustomEvent(
+				matchCustomEvent := EventIsCustomEvent(
 					"event-key",
 					eventUser,
 					scenario.config.InlineUsers,
@@ -147,12 +154,14 @@ func doServerSideEventUserTests(t *ldtest.T) {
 					&metricValue,
 				)
 
+				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 				if scenario.config.InlineUsers {
-					events.ExpectAnalyticsEvents(t, defaultEventTimeout,
-						expectCustomEvent)
+					m.AssertThat(t, payload, m.Items(matchCustomEvent))
 				} else {
-					events.ExpectAnalyticsEvents(t, defaultEventTimeout,
-						expect.Event.IsIndexEvent(eventUser), expectCustomEvent)
+					m.AssertThat(t, payload, m.ItemsInAnyOrder(
+						EventIsIndexEvent(eventUser),
+						matchCustomEvent,
+					))
 				}
 			})
 		})

@@ -8,6 +8,8 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
+	"github.com/launchdarkly/go-test-helpers/v2/matchers"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,12 +47,25 @@ func (e *SDKEventSink) ApplyConfiguration(config *servicedef.SDKConfigParams) {
 	config.Events.BaseURI = e.eventsEndpoint.BaseURL()
 }
 
-// AwaitAnalyticsEventPayload waits for event data to be posted to the endpoint. If no new events
-// arrive before the timeout, the test immediately fails and terminates.
-func (e *SDKEventSink) AwaitAnalyticsEventPayload(t require.TestingT, timeout time.Duration) mockld.Events {
+// ExpectAnalyticsEvents waits for event data to be posted to the endpoint, and then calls
+// matchers.ItemsInAnyOrder with the specified eventMatchers, verifying that the payload contains
+// one event matching each of the matchers regardless of ordering.
+//
+// If no new events arrive before the timeout, the test immediately fails and terminates.
+//
+// The number of events posted must be the same as the number of matchers.
+func (e *SDKEventSink) ExpectAnalyticsEvents(t matchers.RequireT, timeout time.Duration) mockld.Events {
 	events, ok := e.eventsService.AwaitAnalyticsEventPayload(timeout)
 	if !ok {
 		require.Fail(t, "timed out waiting for events")
 	}
 	return events
+}
+
+// ExpectNoAnalyticsEvents waits for the specified timeout and fails if any events are posted before then.
+func (e *SDKEventSink) ExpectNoAnalyticsEvents(t require.TestingT, timeout time.Duration) {
+	events, ok := e.eventsService.AwaitAnalyticsEventPayload(timeout)
+	if ok {
+		require.Fail(t, "received events when none were expected", "events: %s", events.JSONString())
+	}
 }
