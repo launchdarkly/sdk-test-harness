@@ -78,7 +78,7 @@ func queryTestServiceInfo(url string, timeout time.Duration, output io.Writer) (
 func (h *TestHarness) StopService() error {
 	req, _ := http.NewRequest("DELETE", h.testServiceBaseURL, nil)
 	resp, err := http.DefaultClient.Do(req)
-	if resp.Body != nil {
+	if resp != nil && resp.Body != nil {
 		_ = resp.Body.Close()
 	}
 	if err == nil && resp.StatusCode >= 300 {
