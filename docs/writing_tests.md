@@ -41,6 +41,6 @@ Depending on what the tests are doing, you may want to use a completely fresh an
 
 See documentation comments for a full description of the available API. Here is a summary:
 
-* `sdktests.SDKDataSource`: Currently this only supports providing an initial set of server-side SDK flag/segment data via a streaming endpoint. It will provide the same data every time an SDK connects to the test harness endpoint. In the future, it will also support sending `patch` updates, simulating a polilng endpoint, and verifying the HTTP request/connection behavior of the SDK.
+* `sdktests.SDKDataSource`: Currently this only supports providing an initial set of server-side SDK flag/segment data via a streaming endpoint. It will provide the same data every time an SDK connects to the test harness endpoint. In the future, it will also support sending `patch` updates, simulating a polling endpoint, and verifying the HTTP request/connection behavior of the SDK.
 * `sdktests.SDKEventSink`: Currently this only supports inspecting received lists of analytics events. In the future, it will also support inspecting diagnostic events, and verifying the HTTP request/retry behavior of the SDK.
 * `sdktests.SDKClient`: The methods of this type correspond to SDK methods that the test harness is telling the test service to call. They include evaluating flags, sending events, and flushing events.
