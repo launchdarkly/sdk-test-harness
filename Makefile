@@ -21,7 +21,7 @@ test:
 
 $(LINTER_VERSION_FILE):
 	rm -f $(LINTER)
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b ./bin v1.43.0
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b ./bin $(GOLANGCI_LINT_VERSION)
 
 lint: $(LINTER_VERSION_FILE)
 	$(LINTER) run ./...
