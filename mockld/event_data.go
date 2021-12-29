@@ -82,16 +82,32 @@ func SimpleEventUser(user lduser.User) EventUser {
 
 func ExpectedEventUserFromUser(user lduser.User, eventsConfig servicedef.SDKConfigEventParams) EventUser {
 	// This simulates the expected behavior of SDK event processors with regard to redacting
-	// private attributes.
+	// private attributes. For more details about how this works, please see the SDK
+	// documentation, and/or the implementations of the equivalent logic in the SDKs
+	// (such as https://github.com/launchdarkly/go-sdk-events).
+
+	// First, get the regular JSON representation of the user, since it's simplest to treat
+	// this as a transformation of one JSON object to another.
 	allJSON := ldvalue.Parse(jsonhelpers.ToJSON(user))
 	o := ldvalue.ObjectBuild()
 	var custom ldvalue.ObjectBuilder
 	var private []ldvalue.Value
 	allAttributes := append(allJSON.Keys(), allJSON.GetByKey("custom").Keys()...)
+
+	// allAttributes is now a list of all of the user's top-level properties plus all of
+	// its custom attribute names. It's simplest to loop through all of those at once since
+	// the logic for determining whether an attribute should be private is always the same.
 	for _, attr := range allAttributes {
 		if attr == "custom" || attr == "privateAttributeNames" {
+			// "custom" and "privateAttributeNames" aren't considered user attributes, they
+			// are just details of the JSON schema
 			continue
 		}
+		// An attribute is private if 1. it was marked private for that particular user (as
+		// reported by user.IsPrivateAttribute), 2. the SDK configuration (represented here
+		// as eventsConfig) says that that particular one should always be private, or 3.
+		// the SDK configuration says *all* of them should be private. Note that "key" can
+		// never be private.
 		isPrivate := attr != "key" && (eventsConfig.AllAttributesPrivate ||
 			user.IsPrivateAttribute(lduser.UserAttribute(attr)))
 		for _, pa := range eventsConfig.GlobalPrivateAttributes {
