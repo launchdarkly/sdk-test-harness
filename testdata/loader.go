@@ -51,7 +51,7 @@ func (s SourceInfo) ParamsString() string {
 //
 // The path parameter is relative to testdata/data-files.
 func LoadDataFile(path string) ([]SourceInfo, error) {
-	ret := make([]SourceInfo, 0, 10)
+	ret := make([]SourceInfo, 0, 10) // preallocate a little because it's likely there will be multiple results
 	data, err := dataFilesRoot.ReadFile(filepath.Join(dataBasePath, path))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read %q: %w", path, err)
