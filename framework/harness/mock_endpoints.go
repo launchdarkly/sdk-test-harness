@@ -16,6 +16,11 @@ import (
 
 const endpointPathPrefix = "/endpoints/"
 
+// Somewhat arbitrary buffer size for the channel that we use as a queue for incoming connection
+// information. If the channel is full, the HTTP request handler will *not* block; it will just
+// discard the information.
+const incomingConnectionChannelBufferSize = 10
+
 type mockEndpointsManager struct {
 	endpoints       map[string]*MockEndpoint
 	lastEndpointID  int
@@ -69,7 +74,7 @@ func (m *mockEndpointsManager) newMockEndpoint(
 		owner:     m,
 		handler:   handler,
 		contextFn: contextFn,
-		newConns:  make(chan IncomingRequestInfo, 100),
+		newConns:  make(chan IncomingRequestInfo, incomingConnectionChannelBufferSize),
 		logger:    logger,
 	}
 	m.lock.Lock()

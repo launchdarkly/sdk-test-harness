@@ -133,6 +133,10 @@ func (s *StreamingService) PushDelete(namespace, key string, version int) {
 }
 
 func (s *StreamingService) Replay(channel, id string) chan eventsource.Event {
+	// The use of a channel here is just part of how the eventsource server API works-- the Replay
+	// method is expected to return a channel, which could be either pre-populated or pushed to
+	// by another goroutine. In this case we're just pre-populating it with the same initial data
+	// that we provide to every incoming connection.
 	eventsCh := make(chan eventsource.Event, 1)
 	e := s.makePutEvent()
 	s.logEvent(e)
