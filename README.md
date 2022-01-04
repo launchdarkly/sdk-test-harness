@@ -1,5 +1,9 @@
 # SDK test harness
 
+[![CircleCI](https://circleci.com/gh/launchdarkly/sdk-test-harness.svg?style=shield)](https://circleci.com/gh/launchdarkly/sdk-test-harness)
+
+**This project is under development and will not be supported until the 1.0.0 release.**
+
 This tool runs standardized test suites for LaunchDarkly SDKs.
 
 To use the test harness for any given SDK, we must implement a small web service that exercises the features of the SDK. The behavior of the service endpoints is described below. After starting the service, run the test harness and give it the base URL of the test service. The test harness will start its own HTTP server to provide simulations of LaunchDarkly endpoints; it will tell the test service to create SDK client instances that connect to those endpoints.
