@@ -21,6 +21,10 @@ type Events []Event
 // in events is slightly different than users as SDK inputs.
 type EventUser ldvalue.Value
 
+func EventFromMap(m map[string]interface{}) Event {
+	return Event(ldvalue.CopyArbitraryValue(m))
+}
+
 func (e Event) Kind() string {
 	return ldvalue.Value(e).GetByKey("kind").StringValue()
 }
@@ -62,6 +66,10 @@ func (e Event) JSONString() string {
 	return string(jsonhelpers.CanonicalizeJSON([]byte(e.AsValue().JSONString())))
 }
 func (e Event) String() string { return e.JSONString() }
+
+func (e Event) MarshalJSON() ([]byte, error) {
+	return json.Marshal(ldvalue.Value(e))
+}
 
 func (e *Event) UnmarshalJSON(data []byte) error {
 	var v ldvalue.Value

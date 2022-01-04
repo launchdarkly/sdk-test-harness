@@ -44,3 +44,19 @@ See documentation comments for a full description of the available API. Here is 
 * `sdktests.SDKDataSource`: Currently this only supports providing an initial set of server-side SDK flag/segment data via a streaming endpoint. It will provide the same data every time an SDK connects to the test harness endpoint. In the future, it will also support sending `patch` updates, simulating a polling endpoint, and verifying the HTTP request/connection behavior of the SDK.
 * `sdktests.SDKEventSink`: Currently this only supports inspecting received lists of analytics events. In the future, it will also support inspecting diagnostic events, and verifying the HTTP request/retry behavior of the SDK.
 * `sdktests.SDKClient`: The methods of this type correspond to SDK methods that the test harness is telling the test service to call. They include evaluating flags, sending events, and flushing events.
+
+## Test assertions
+
+Since the `ldtest.T` type implements the same basic interface as `testing.T` in terms of reporting failures, you can use any assertion framework that acts on an equivalent interface rather than specifically on `testing.T`.
+
+For instance, the `testify/assert` and `testify/require` packages will work with `ldtest.T` because they are written against an equivalent interface (`assert.TestingT` or `require.TestingT`). So, many of these tests use `assert` and `require` methods for convenience.
+
+If an assertion fails, you may wish to either continue and allow more failures to accumulate, or immediately stop the test. That is up to you based on whether the failure is significant enough that it would make the rest of the test moot. The `ldtest.T` method `Errorf` records a failure without stopping, and `FailNow` makes it immediately terminate. When using the `testify` packages, the `assert` functions will call only `Errorf` whereas the `require` functions will call both `Errorf` and `FailNow`, so `require` always implies "stop here on failure".
+
+There is also a somewhat richer assertion API from `github.com/launchdarkly/go-test-helpers/v2/matchers`. This is similar in design to Java's Hamcrest package, providing self-describing assertions and combinators, which in some cases will provide clearer failure messages.
+
+## Making test failures clear
+
+If an SDK test fails, someone will have to interpret the test output and find the problem. They should not need to dig through the test harness code to understand the failure message (although the output does include a stacktrace to make that possible). So, if for instance the assertion is that the `variationIndex` property in some event data should have value X, ideally a failed assertion would not just print "expected value X but was Y", but should include some context to clarify that this is a `variationIndex`.
+
+There are several ways to do this. When using `testify/assert` or `testify/require`, the assertion functions have optional parameters for an additional message to be printed on failure. 

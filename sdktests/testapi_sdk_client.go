@@ -163,6 +163,20 @@ func (c *SDKClient) SendCustomEvent(t *ldtest.T, params servicedef.CustomEventPa
 	))
 }
 
+// SendAliasEvent tells the SDK client to send an alias event.
+//
+// Any error from the test service causes the test to terminate immediately.
+func (c *SDKClient) SendAliasEvent(t *ldtest.T, params servicedef.AliasEventParams) {
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:    servicedef.CommandAliasEvent,
+			AliasEvent: &params,
+		},
+		t.DebugLogger(),
+		nil,
+	))
+}
+
 // FlushEvents tells the SDK client to initiate an event flush.
 //
 // Any error from the test service causes the test to terminate immediately.
