@@ -9,6 +9,11 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/framework"
 )
 
+// Somewhat arbitrary buffer size for the channel that we use as a queue for received events. We
+// don't want the HTTP handler to block if the test logic doesn't happen to be consuming events
+// immediately.
+const eventsChannelBufferSize = 100
+
 // EventsService is a simulation of the LaunchDarkly event-recorder service, allowing tests to
 // receive event data from an SDK.
 type EventsService struct {
@@ -20,7 +25,7 @@ type EventsService struct {
 
 func NewEventsService(sdkKind SDKKind, credential string, logger framework.Logger) *EventsService {
 	return &EventsService{
-		AnalyticsEventPayloads: make(chan Events, 100),
+		AnalyticsEventPayloads: make(chan Events, eventsChannelBufferSize),
 		sdkKind:                sdkKind,
 		credential:             credential,
 		logger:                 logger,
