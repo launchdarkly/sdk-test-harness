@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
-
+	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	"gopkg.in/launchdarkly/go-jsonstream.v1/jreader"
 	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldmodel"
 )
@@ -138,7 +137,7 @@ func (b *ServerSDKDataBuilder) RawFlag(key string, data json.RawMessage) *Server
 }
 
 func (b *ServerSDKDataBuilder) Flag(flag ldmodel.FeatureFlag) *ServerSDKDataBuilder {
-	return b.RawFlag(flag.Key, helpers.AsJSON(flag))
+	return b.RawFlag(flag.Key, jsonhelpers.ToJSON(flag))
 }
 
 func (b *ServerSDKDataBuilder) RawSegment(key string, data json.RawMessage) *ServerSDKDataBuilder {

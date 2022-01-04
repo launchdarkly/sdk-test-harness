@@ -1,0 +1,84 @@
+---
+name: wrong type errors
+
+# These test are only relevant for SDKs that have variation methods for specific types
+requireCapability: strongly-typed
+
+# There is no value type expectation when evaluating all flags
+skipEvaluateAllFlags: true
+
+constants:
+  USER: { key: "user-key" }
+  EXPECTED_ERROR_REASON: { "kind": "ERROR", "errorKind": "WRONG_TYPE" }
+
+sdkData:
+  flags:
+    flag-with-bool-value:
+      on: false
+      offVariation: 0
+      variations: [ true ]
+
+    flag-with-number-value:
+      on: false
+      offVariation: 0
+      variations: [ 1 ]
+
+    flag-with-string-value:
+      on: false
+      offVariation: 0
+      variations: [ "a" ]
+
+evaluations:
+  - name: want bool, got number
+    flagKey: flag-with-number-value
+    user: <USER>
+    valueType: bool
+    default: true
+    expect:
+      value: true
+      reason: <EXPECTED_ERROR_REASON>
+
+  - name: want bool, got string
+    flagKey: flag-with-string-value
+    user: <USER>
+    valueType: bool
+    default: true
+    expect:
+      value: true
+      reason: <EXPECTED_ERROR_REASON>
+
+  - name: want int, got bool
+    flagKey: flag-with-bool-value
+    user: <USER>
+    valueType: int
+    default: 1
+    expect:
+      value: 1
+      reason: <EXPECTED_ERROR_REASON>
+
+  - name: want int, got string
+    flagKey: flag-with-string-value
+    user: <USER>
+    valueType: int
+    default: 1
+    expect:
+      value: 1
+      reason: <EXPECTED_ERROR_REASON>
+
+  - name: want string, got bool
+    flagKey: flag-with-bool-value
+    user: <USER>
+    valueType: string
+    default: "default"
+    expect:
+      value: "default"
+      reason: <EXPECTED_ERROR_REASON>
+
+  - name: want string, got number
+    flagKey: flag-with-number-value
+    user: <USER>
+    valueType: string
+    default: "default"
+    expect:
+      value: "default"
+      reason: <EXPECTED_ERROR_REASON>

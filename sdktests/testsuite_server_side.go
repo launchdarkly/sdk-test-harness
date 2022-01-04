@@ -22,10 +22,7 @@ func RunServerSideTestSuite(
 	}
 
 	return ldtest.Run(config, func(t *ldtest.T) {
-		//nolint:godox
-		// TODO
-		// t.Run("evaluation", DoServerSideEvalTests)
-		// t.Run("events", doServerSideEventTests)
+		t.Run("evaluation", DoServerSideEvalTests)
 	})
 }
 

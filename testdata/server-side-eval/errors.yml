@@ -1,0 +1,115 @@
+---
+name: evaluation failures (<TYPE_NAME>)
+
+constants:
+  USER: { key: "user-key" }
+  MALFORMED_FLAG_RESULT:
+    value: <TYPE_DEFAULT>
+    reason: { "kind": "ERROR", "errorKind": "MALFORMED_FLAG" }
+
+parameters:
+  - TYPE_NAME: bool
+    TYPE_VALUE: true
+    TYPE_DEFAULT: false
+
+  - TYPE_NAME: int
+    TYPE_VALUE: 1
+    TYPE_DEFAULT: -1
+
+  - TYPE_NAME: double
+    TYPE_VALUE: 1.5
+    TYPE_DEFAULT: 0.5
+
+  - TYPE_NAME: string
+    TYPE_VALUE: "a"
+    TYPE_DEFAULT: "x"
+
+  - TYPE_NAME: any
+    TYPE_VALUE: 3
+    TYPE_DEFAULT: false
+
+sdkData:
+  flags:
+    off-variation-too-low-<TYPE_NAME>:
+      on: false
+      offVariation: 1
+      variations: [ "<TYPE_VALUE>" ]
+
+    off-variation-too-high-<TYPE_NAME>:
+      on: false
+      offVariation: 1
+      variations: [ "<TYPE_VALUE>" ]
+
+    fallthrough-variation-too-low-<TYPE_NAME>:
+      on: true
+      fallthrough: { "variation": -1 }
+      variations: [ "<TYPE_VALUE>" ]
+
+    fallthrough-variation-too-high-<TYPE_NAME>:
+      on: true
+      fallthrough: { "variation": 1 }
+      variations: [ "<TYPE_VALUE>" ]
+
+    target-match-variation-too-low-<TYPE_NAME>:
+      on: true
+      targets:
+        - { "variation": -1, "values": [ "user-key" ] } 
+      variations: [ "<TYPE_VALUE>" ]
+
+    target-match-variation-too-high-<TYPE_NAME>:
+      on: true
+      targets:
+        - { "variation": 1, "values": [ "user-key" ] } 
+      variations: [ "<TYPE_VALUE>" ]
+
+evaluations:
+  - name: flag not found
+    flagKey: no-such-flag
+    user: <USER>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect:
+      value: <TYPE_DEFAULT>
+      reason: { "kind": "ERROR", "errorKind": "FLAG_NOT_FOUND" }
+
+  - name: off variation too low
+    flagKey: off-variation-too-low-<TYPE_NAME>
+    user: <USER>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect: <MALFORMED_FLAG_RESULT>
+
+  - name: off variation too high
+    flagKey: off-variation-too-high-<TYPE_NAME>
+    user: <USER>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect: <MALFORMED_FLAG_RESULT>
+
+  - name: fallthrough variation too low
+    flagKey: fallthrough-variation-too-low-<TYPE_NAME>
+    user: <USER>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect: <MALFORMED_FLAG_RESULT>
+
+  - name: fallthrough variation too high
+    flagKey: fallthrough-variation-too-high-<TYPE_NAME>
+    user: <USER>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect: <MALFORMED_FLAG_RESULT>
+
+  - name: target variation too low
+    flagKey: target-match-variation-too-low-<TYPE_NAME>
+    user: <USER>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect: <MALFORMED_FLAG_RESULT>
+
+  - name: target variation too high
+    flagKey: target-match-variation-too-high-<TYPE_NAME>
+    user: <USER>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect: <MALFORMED_FLAG_RESULT>

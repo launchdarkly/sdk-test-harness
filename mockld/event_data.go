@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"sort"
 
-	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
+	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
@@ -58,8 +58,10 @@ func (e Event) CanonicalizedJSONString() string {
 }
 
 func (e Event) AsValue() ldvalue.Value { return ldvalue.Value(e) }
-func (e Event) JSONString() string     { return helpers.CanonicalizedJSONString(e.AsValue()) }
-func (e Event) String() string         { return e.JSONString() }
+func (e Event) JSONString() string {
+	return string(jsonhelpers.CanonicalizeJSON([]byte(e.AsValue().JSONString())))
+}
+func (e Event) String() string { return e.JSONString() }
 
 func (e *Event) UnmarshalJSON(data []byte) error {
 	var v ldvalue.Value
@@ -86,7 +88,7 @@ func ExpectedEventUserFromUser(user lduser.User, eventsConfig servicedef.SDKConf
 
 	// First, get the regular JSON representation of the user, since it's simplest to treat
 	// this as a transformation of one JSON object to another.
-	allJSON := helpers.AsJSONValue(user)
+	allJSON := ldvalue.Parse(jsonhelpers.ToJSON(user))
 	o := ldvalue.ObjectBuild()
 	var custom ldvalue.ObjectBuilder
 	var private []ldvalue.Value
