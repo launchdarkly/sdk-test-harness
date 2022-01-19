@@ -19,6 +19,7 @@ import (
 
 func DoServerSideEvalTests(t *ldtest.T) {
 	RunParameterizedServerSideEvalTests(t)
+	t.Run("all flags state", RunServerSideEvalAllFlagsTests)
 }
 
 func RunParameterizedServerSideEvalTests(t *ldtest.T) {
@@ -60,13 +61,13 @@ func RunParameterizedServerSideEvalTests(t *ldtest.T) {
 								User: &test.User,
 							})
 							if test.Expect.VariationIndex.IsDefined() {
-								require.Contains(t, result.Values, test.FlagKey)
+								require.Contains(t, result.State, test.FlagKey)
 							}
 							expectedValue := test.Expect.Value
 							if !test.Expect.VariationIndex.IsDefined() {
 								expectedValue = ldvalue.Null()
 							}
-							m.AssertThat(t, result.Values[test.FlagKey], m.Equal(expectedValue))
+							m.AssertThat(t, result.State[test.FlagKey], m.Equal(expectedValue))
 						})
 					}
 				})

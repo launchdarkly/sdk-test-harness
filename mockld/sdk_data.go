@@ -136,8 +136,11 @@ func (b *ServerSDKDataBuilder) RawFlag(key string, data json.RawMessage) *Server
 	return b
 }
 
-func (b *ServerSDKDataBuilder) Flag(flag ldmodel.FeatureFlag) *ServerSDKDataBuilder {
-	return b.RawFlag(flag.Key, jsonhelpers.ToJSON(flag))
+func (b *ServerSDKDataBuilder) Flag(flags ...ldmodel.FeatureFlag) *ServerSDKDataBuilder {
+	for _, flag := range flags {
+		b = b.RawFlag(flag.Key, jsonhelpers.ToJSON(flag))
+	}
+	return b
 }
 
 func (b *ServerSDKDataBuilder) RawSegment(key string, data json.RawMessage) *ServerSDKDataBuilder {
