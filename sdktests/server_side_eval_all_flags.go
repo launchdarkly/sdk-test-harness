@@ -28,7 +28,6 @@ func RunServerSideEvalAllFlagsTests(t *ldtest.T) {
 	t.Run("with reasons", doServerSideAllFlagsWithReasonsTest)
 	t.Run("client-side filter", doServerSideAllFlagsClientSideOnlyTest)
 	t.Run("details only for tracked flags", doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest)
-	t.Run("experimentation", doServerSideAllFlagsExperimentationTest)
 }
 
 func doServerSideAllFlagsBasicTest(t *ldtest.T) {
@@ -213,14 +212,8 @@ func doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest(t *ldtest.T) {
 		DebugEventsUntilDate(flag3DebugTime).
 		Build()
 
-	// flag4 involves an experiment, and has a reason of FALLTHROUGH
-	flag4 := ldbuilders.NewFlagBuilder("flag4").Version(400).
-		Variations(dummyValue0, dummyValue1, dummyValue2, dummyValue3, ldvalue.String("value4")).
-		On(true).FallthroughVariation(4).TrackEventsFallthrough(true).
-		Build()
-
 	dataBuilder := mockld.NewServerSDKDataBuilder()
-	dataBuilder.Flag(flag1, flag2, flag3, flag4)
+	dataBuilder.Flag(flag1, flag2, flag3)
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	client := NewSDKClient(t, dataSource)
@@ -236,7 +229,6 @@ func doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest(t *ldtest.T) {
 		"flag1": "value1",
 		"flag2": "value2",
 		"flag3": "value3",
-		"flag4": "value4",
 		"$flagsState": {
 			"flag1": {
 				"variation": 1, "version": 100
@@ -247,84 +239,9 @@ func doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest(t *ldtest.T) {
 			"flag3": {
 				"variation": 3, "version": 300, "reason": { "kind": "OFF" },
 				"debugEventsUntilDate": ` + fmt.Sprintf("%d", flag3DebugTime) + `
-			},
-			"flag4": {
-				"variation": 4, "version": 400, "reason": { "kind": "FALLTHROUGH" }, "trackEvents": true, "trackReason": true
 			}
 		},
 		"$valid": true
 	}`
 	assert.JSONEq(t, expectedJSON, string(resultJSON))
 }
-
-func doServerSideAllFlagsExperimentationTest(t *ldtest.T) {
-	// flag1 has experiment behavior because it's a fallthrough and has trackEventsFallthrough=true
-	flag1 := ldbuilders.NewFlagBuilder("flag1").Version(100).
-		Variations(dummyValue0, ldvalue.String("value1")).
-		On(true).FallthroughVariation(1).
-		TrackEventsFallthrough(true).
-		Build()
-
-	// flag2 has experiment behavior because it's a rule match and has trackEvents=true on that rule
-	flag2 := ldbuilders.NewFlagBuilder("flag2").Version(200).
-		Variations(dummyValue0, dummyValue1, ldvalue.String("value2")).
-		On(true).FallthroughVariation(0).
-		AddRule(ldbuilders.NewRuleBuilder().ID("rule0").Variation(2).TrackEvents(true)).
-		Build()
-
-	dataBuilder := mockld.NewServerSDKDataBuilder()
-	dataBuilder.Flag(flag1, flag2)
-
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
-	client := NewSDKClient(t, dataSource)
-	user := lduser.NewUser("user-key")
-
-	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
-		User: &user,
-	})
-	resultJSON, _ := json.Marshal(result.State)
-	expectedJSON := `{
-		"flag1": "value1",
-		"flag2": "value2",
-		"$flagsState": {
-			"flag1": {
-				"variation": 1, "version": 100, "reason": { "kind": "FALLTHROUGH" },
-				"trackEvents": true, "trackReason": true
-			},
-			"flag2": {
-				"variation": 2, "version": 200, "reason": { "kind": "RULE_MATCH", "ruleIndex": 0, "ruleId": "rule0" },
-				"trackEvents": true, "trackReason": true
-			}
-		},
-		"$valid": true
-	}`
-	assert.JSONEq(t, expectedJSON, string(resultJSON))
-}
-
-// func canonicalizeAllFlagsData(originalData map[string]ldvalue.Value) map[string]ldvalue.Value {
-// 	ret := make(map[string]ldvalue.Value, len(originalData))
-// 	for k, v := range originalData {
-// 		if k != "$flagsState" {
-// 			ret[k] = v
-// 			continue
-// 		}
-// 		buildMeta := ldvalue.ObjectBuild()
-// 		for flagKey, flagMetaValue := range v.AsValueMap().AsMap() {
-// 			flagMetaMap := flagMetaValue.AsValueMap().AsArbitraryValueMap()
-// 			setDefaultValue(flagMetaMap, "variation", nil)
-// 			setDefaultValue(flagMetaMap, "reason", nil)
-// 			setDefaultValue(flagMetaMap, "trackEvents", false)
-// 			setDefaultValue(flagMetaMap, "trackReason", false)
-// 			setDefaultValue(flagMetaMap, "debugEventsUntilDate", nil)
-// 			buildMeta.Set(flagKey, ldvalue.CopyArbitraryValue(flagMetaMap))
-// 		}
-// 		ret[k] = buildMeta.Build()
-// 	}
-// 	return ret
-// }
-
-// func setDefaultValue(m map[string]interface{}, key string, defaultValue interface{}) {
-// 	if _, ok := m[key]; !ok {
-// 		m[key] = defaultValue
-// 	}
-// }
