@@ -26,6 +26,7 @@ var dummyValue0, dummyValue1, dummyValue2, dummyValue3 ldvalue.Value = ldvalue.S
 func RunServerSideEvalAllFlagsTests(t *ldtest.T) {
 	t.Run("default behavior", doServerSideAllFlagsBasicTest)
 	t.Run("with reasons", doServerSideAllFlagsWithReasonsTest)
+	t.Run("error in flag", doServerSideAllFlagsErrorInFlagTest)
 	t.Run("client-side filter", doServerSideAllFlagsClientSideOnlyTest)
 	t.Run("details only for tracked flags", doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest)
 }
@@ -59,14 +60,8 @@ func doServerSideAllFlagsBasicTest(t *ldtest.T) {
 		DebugEventsUntilDate(flag4DebugTime).
 		Build()
 
-	// flag5 returns a MALFORMED_FLAG error due to an invalid offVariation
-	flag5 := ldbuilders.NewFlagBuilder("flag5").Version(500).
-		Variations(dummyValue0, dummyValue1).
-		On(false).OffVariation(-1).
-		Build()
-
 	dataBuilder := mockld.NewServerSDKDataBuilder()
-	dataBuilder.Flag(flag1, flag2, flag3, flag4, flag5)
+	dataBuilder.Flag(flag1, flag2, flag3, flag4)
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	client := NewSDKClient(t, dataSource)
@@ -81,7 +76,6 @@ func doServerSideAllFlagsBasicTest(t *ldtest.T) {
 		"flag2": "value2",
 		"flag3": "value3",
 		"flag4": "value4",
-		"flag5": null,
 		"$flagsState": {
 			"flag1": {
 				"variation": 1, "version": 100
@@ -94,9 +88,6 @@ func doServerSideAllFlagsBasicTest(t *ldtest.T) {
 			},
 			"flag4": {
 				"variation": 4, "version": 400, "debugEventsUntilDate": ` + fmt.Sprintf("%d", flag4DebugTime) + `
-			},
-			"flag5": {
-				"version": 500
 			}
 		},
 		"$valid": true
@@ -119,14 +110,8 @@ func doServerSideAllFlagsWithReasonsTest(t *ldtest.T) {
 		On(true).FallthroughVariation(2).
 		Build()
 
-	// flag3 returns a MALFORMED_FLAG error due to an invalid offVariation
-	flag3 := ldbuilders.NewFlagBuilder("flag3").Version(300).
-		Variations(dummyValue0, dummyValue1).
-		On(false).OffVariation(-1).
-		Build()
-
 	dataBuilder := mockld.NewServerSDKDataBuilder()
-	dataBuilder.Flag(flag1, flag2, flag3)
+	dataBuilder.Flag(flag1, flag2)
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	client := NewSDKClient(t, dataSource)
@@ -140,21 +125,88 @@ func doServerSideAllFlagsWithReasonsTest(t *ldtest.T) {
 	expectedJSON := `{
 		"flag1": "value1",
 		"flag2": "value2",
-		"flag3": null,
 		"$flagsState": {
 			"flag1": {
 				"variation": 1, "version": 100, "reason": { "kind": "OFF" }
 			},
 			"flag2": {
 				"variation": 2, "version": 200, "reason": { "kind": "FALLTHROUGH" }
-			},
-			"flag3": {
-				"version": 300, "reason": { "kind": "ERROR", "errorKind": "MALFORMED_FLAG" }
 			}
 		},
 		"$valid": true
 	}`
 	assert.JSONEq(t, expectedJSON, string(resultJSON))
+}
+
+func doServerSideAllFlagsErrorInFlagTest(t *ldtest.T) {
+	// This test verifies that 1. an error in evaluation of one flag does not prevent evaluation
+	// of the rest of the flags, and 2. the failed flag is still included in the results, with a
+	// value of null (and, if reasons are present, a reason that explains the error)
+
+	// flag1 returns a MALFORMED_FLAG error due to an invalid offVariation
+	flag1 := ldbuilders.NewFlagBuilder("flag1").Version(100).
+		Variations(dummyValue0, dummyValue1).
+		On(false).OffVariation(-1).
+		Build()
+
+	// flag2 does not have an error
+	flag2 := ldbuilders.NewFlagBuilder("flag2").Version(200).
+		Variations(dummyValue0, dummyValue1, ldvalue.String("value2")).
+		On(false).OffVariation(1).
+		Build()
+
+	dataBuilder := mockld.NewServerSDKDataBuilder()
+	dataBuilder.Flag(flag1, flag2)
+
+	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	client := NewSDKClient(t, dataSource)
+	user := lduser.NewUser("user-key")
+
+	t.Run("without reasons", func(t *ldtest.T) {
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
+			User: &user,
+		})
+
+		resultJSON, _ := json.Marshal(canonicalizeAllFlagsData(result.State))
+		expectedJSON := `{
+			"flag1": null,
+			"flag2": "value2",
+			"$flagsState": {
+				"flag1": {
+					"version": 100
+				}
+				"flag2": {
+					"variation": 2, "version": 200
+				},
+			},
+			"$valid": true
+		}`
+		assert.JSONEq(t, expectedJSON, string(resultJSON))
+	})
+
+	t.Run("with reasons", func(t *ldtest.T) {
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
+			User:        &user,
+			WithReasons: true,
+		})
+
+		resultJSON, _ := json.Marshal(canonicalizeAllFlagsData(result.State))
+		expectedJSON := `{
+			"flag1": null,
+			"flag2": "value2",
+			"$flagsState": {
+				"flag1": {
+					"version": 100, "reason": { "kind": "ERROR", "errorKind": "MALFORMED_FLAG" }
+				}
+				"flag2": {
+					"variation": 2, "version": 200, "reason": { "kind": "OFF" }
+				},
+			},
+			"$valid": true
+		}`
+		assert.JSONEq(t, expectedJSON, string(resultJSON))
+	})
+
 }
 
 func doServerSideAllFlagsClientSideOnlyTest(t *ldtest.T) {
