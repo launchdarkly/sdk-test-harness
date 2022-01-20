@@ -44,6 +44,7 @@ A `POST` request indicates that the test harness wants to start an instance of t
 * `configuration` (object, required): SDK configuration. Properties are:
   * `credential` (string, required): The SDK key.
   * `startWaitTimeMs` (number, optional): The initialization timeout in milliseconds. If omitted or zero, the default is 5000 (5 seconds).
+  * `timeoutOk` (boolean, optional): If true, the test service should _not_ return an error for client initialization timing out (that is, a timeout is an expected condition in this test and we still want to be able to use the client). The default behavior is that a timeout should return a `500` error.
   * `streaming` (object, optional): Enables streaming mode and provides streaming configuration. Currently the test harness only supports streaming mode, so this will be inferred if it is omitted. Properties are
     * `baseUri` (string, optional): The base URI for the streaming service. For contract testing, this will be the URI of a simulated streaming endpoint that the test harness provides. If it is null or an empty string, the SDK should connect to the real LaunchDarkly streaming service.
   * `events` (object, optional): Enables events and provides events configuration, or disables events if it is omitted or null. Properties are:
@@ -57,6 +58,8 @@ A `POST` request indicates that the test harness wants to start an instance of t
 The response to a valid request is any HTTP `2xx` status, with a `Location` header whose value is the URL of the test service resource representing this SDK client instance (that is, the one that would be used for "Close client" or "Send command" as described below).
 
 If any parameters are invalid, return HTTP `400`.
+
+If client initialization throws an exception, or it times out and `timeoutOk` was _not_ set to true, return HTTP `500`.
 
 ### Send command: `POST <URL of SDK client instance>`
 
