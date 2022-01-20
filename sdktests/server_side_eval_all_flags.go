@@ -206,7 +206,6 @@ func doServerSideAllFlagsErrorInFlagTest(t *ldtest.T) {
 		}`
 		assert.JSONEq(t, expectedJSON, string(resultJSON))
 	})
-
 }
 
 func doServerSideAllFlagsClientSideOnlyTest(t *ldtest.T) {
