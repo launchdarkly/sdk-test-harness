@@ -90,8 +90,10 @@ func (s *StreamingService) SetInitialData(data SDKData) {
 
 func (s *StreamingService) RefreshAll() {
 	event := s.makePutEvent()
-	s.logEvent(event)
-	s.streams.Publish([]string{allDataChannel}, event)
+	if event != nil {
+		s.logEvent(event)
+		s.streams.Publish([]string{allDataChannel}, event)
+	}
 }
 
 func (s *StreamingService) makePutEvent() eventsource.Event {
@@ -104,6 +106,9 @@ func (s *StreamingService) makePutEvent() eventsource.Event {
 	}
 	s.lock.RUnlock()
 
+	if data == nil {
+		return nil
+	}
 	return eventImpl{
 		name: "put",
 		data: map[string]interface{}{
@@ -133,14 +138,17 @@ func (s *StreamingService) PushDelete(namespace, key string, version int) {
 }
 
 func (s *StreamingService) Replay(channel, id string) chan eventsource.Event {
+	e := s.makePutEvent()
+
 	// The use of a channel here is just part of how the eventsource server API works-- the Replay
 	// method is expected to return a channel, which could be either pre-populated or pushed to
 	// by another goroutine. In this case we're just pre-populating it with the same initial data
 	// that we provide to every incoming connection.
 	eventsCh := make(chan eventsource.Event, 1)
-	e := s.makePutEvent()
-	s.logEvent(e)
-	eventsCh <- e
+	if e != nil {
+		s.logEvent(e)
+		eventsCh <- e
+	}
 	close(eventsCh)
 	return eventsCh
 }

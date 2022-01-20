@@ -29,6 +29,7 @@ func RunServerSideEvalAllFlagsTests(t *ldtest.T) {
 	t.Run("error in flag", doServerSideAllFlagsErrorInFlagTest)
 	t.Run("client-side filter", doServerSideAllFlagsClientSideOnlyTest)
 	t.Run("details only for tracked flags", doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest)
+	t.Run("client not ready", doServerSideAllFlagsClientNotReadyTest)
 }
 
 func doServerSideAllFlagsBasicTest(t *ldtest.T) {
@@ -293,6 +294,24 @@ func doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest(t *ldtest.T) {
 			}
 		},
 		"$valid": true
+	}`
+	assert.JSONEq(t, expectedJSON, string(resultJSON))
+}
+
+func doServerSideAllFlagsClientNotReadyTest(t *ldtest.T) {
+	dataSource := NewSDKDataSource(t, mockld.BlockingUnavailableSDKData(mockld.ServerSideSDK))
+	client := NewSDKClient(t,
+		WithConfig(servicedef.SDKConfigParams{StartWaitTimeMS: 1, TimeoutOK: true}),
+		dataSource)
+	user := lduser.NewUser("user-key")
+
+	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
+		User: &user,
+	})
+	resultJSON, _ := json.Marshal(result.State)
+	expectedJSON := `{
+		"$valid": false,
+		"$flagsState": {}
 	}`
 	assert.JSONEq(t, expectedJSON, string(resultJSON))
 }
