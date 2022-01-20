@@ -49,11 +49,14 @@ type EvaluateFlagResponse struct {
 }
 
 type EvaluateAllFlagsParams struct {
-	User *lduser.User `json:"user,omitempty"`
+	User                       *lduser.User `json:"user,omitempty"`
+	WithReasons                bool         `json:"withReasons"`
+	ClientSideOnly             bool         `json:"clientSideOnly"`
+	DetailsOnlyForTrackedFlags bool         `json:"detailsOnlyForTrackedFlags"`
 }
 
 type EvaluateAllFlagsResponse struct {
-	Values map[string]ldvalue.Value `json:"values"`
+	State map[string]ldvalue.Value `json:"state"`
 }
 
 type CustomEventParams struct {

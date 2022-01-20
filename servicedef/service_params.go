@@ -6,6 +6,10 @@ const (
 	CapabilityClientSide    = "client-side"
 	CapabilityServerSide    = "server-side"
 	CapabilityStronglyTyped = "strongly-typed"
+
+	CapabilityAllFlagsWithReasons                = "all-flags-with-reasons"
+	CapabilityAllFlagsClientSideOnly             = "all-flags-client-side-only"
+	CapabilityAllFlagsDetailsOnlyForTrackedFlags = "all-flags-details-only-for-tracked-flags"
 )
 
 type StatusRep struct {

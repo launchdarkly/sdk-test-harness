@@ -8,11 +8,29 @@ This resource should return a 200 status to indicate that the service has starte
 
 * `name`: Identifies the SDK being tested by the service, such as `"go-server-sdk"`.
 * `clientVersion`: The version string of the SDK.
-* `capabilities`: An array of strings describing optional features that this SDK supports:
-  * `"server-side"`: This is a server-side SDK. (The test harness will support client-side SDKs in the future.)
-  * `"strongly-typed"`: This SDK has separate APIs for evaluating flags of specific variation types, such as boolean or string.
+* `capabilities`: An array of strings describing optional features that this SDK supports (see below).
 
 The test harness will use the `capabilities` information to decide whether to run optional parts of the test suite that relate to those capabilities.
+
+#### Capability `"server-side"`
+
+This means that the SDK a server-side SDK. The test harness will also support client-side SDKs in the future.
+
+#### Capability `"strongly-typed"`
+
+This means that the SDK has separate APIs for evaluating flags of specific variation types, such as boolean or string.
+
+#### Capability `"all-flags-with-reasons"`
+
+This means that the SDK's method for evaluating all flags at once has an option for including evaluation reasons.
+
+#### Capability `"all-flags-client-side-only"`
+
+This means that the SDK's method for evaluating all flags at once has an option for filtering the result to only include flags that are enabled for client-side use.
+
+#### Capability `"all-flags-details-only-for-tracked-flags"`
+
+This means that the SDK's method for evaluating all flags at once has an option for filtering the result to only include evaluation reason data if the SDK will need it for events (due to event tracking or debugging or an experiment).
 
 ### Stop test service: `DELETE /`
 
@@ -72,8 +90,25 @@ If `command` is `"evaluateAll"`, the test service should call the SDK method tha
 The `evaluateAll` property in the request body will be a JSON object with these properties:
 
 * `user` (object): The user properties.
+* `withReasons` (boolean, optional): If true, enables the SDK option for including evaluation reasons in the result. The test harness will only set this option if the test service has the capability `"all-flags-with-reasons"`.
+* `clientSideOnly` (boolean, optional): If true, enables the SDK option for filtering the result to only include flags that are enabled for client-side use. The test harness will only set this option if the test service has the capability `"all-flags-client-side-only"`.
+* `detailsOnlyForTrackedFlags` (boolean, optional): If true, enables the SDK option for filtering the result to only include evaluation reason data if the SDK will need it for events (due to event tracking or debugging or an experiment). The test harness will only set this option if the test service has the capability `"all-flags-details-only-for-tracked-flags"`.
 
-The response should be a JSON object in which each property name is a flag key, and each property value is that flag's value.
+The response should be a JSON object with a single property, `state`. The value of `state` is the JSON representation that the SDK provides for the result of the `AllFlagsState` call into JSON, in the format that is expected by the JS browser SDK: a JSON object where there is a key-value pair for each flag key and flag value, plus a `$flagMetadata` key containing additional metadata. Example:
+
+```json
+{
+  "state": {
+    "flagkey1": "value1",
+    "flagkey2": "value2",
+    "$flagsState": {
+      "flagKey1": { "variation": 0, "version": 100 }
+      "flagKey2": { "variation": 1, "version": 200 }
+    },
+    "$valid": true
+  }
+}
+```
 
 #### Send identify event
 
