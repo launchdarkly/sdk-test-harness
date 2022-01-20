@@ -75,7 +75,7 @@ func doServerSideAllFlagsBasicTest(t *ldtest.T) {
 	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
 		User: &user,
 	})
-	resultJSON, _ := json.Marshal(result.State)
+	resultJSON, _ := json.Marshal(canonicalizeAllFlagsData(result.State))
 	expectedJSON := `{
 		"flag1": "value1",
 		"flag2": "value2",
@@ -136,7 +136,7 @@ func doServerSideAllFlagsWithReasonsTest(t *ldtest.T) {
 		User:        &user,
 		WithReasons: true,
 	})
-	resultJSON, _ := json.Marshal(result.State)
+	resultJSON, _ := json.Marshal(canonicalizeAllFlagsData(result.State))
 	expectedJSON := `{
 		"flag1": "value1",
 		"flag2": "value2",
@@ -224,7 +224,7 @@ func doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest(t *ldtest.T) {
 		WithReasons:                true,
 		DetailsOnlyForTrackedFlags: true,
 	})
-	resultJSON, _ := json.Marshal(result.State)
+	resultJSON, _ := json.Marshal(canonicalizeAllFlagsData(result.State))
 	expectedJSON := `{
 		"flag1": "value1",
 		"flag2": "value2",
@@ -244,4 +244,15 @@ func doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest(t *ldtest.T) {
 		"$valid": true
 	}`
 	assert.JSONEq(t, expectedJSON, string(resultJSON))
+}
+
+func canonicalizeAllFlagsData(originalData map[string]ldvalue.Value) map[string]ldvalue.Value {
+	ret := make(map[string]ldvalue.Value, len(originalData))
+	for k, v := range originalData {
+		ret[k] = v
+	}
+	if _, found := ret["$valid"]; !found {
+		ret["$valid"] = ldvalue.Bool(true)
+	}
+	return ret
 }
