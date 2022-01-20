@@ -6,9 +6,11 @@ import (
 )
 
 type SDKConfigParams struct {
-	Credential string                    `json:"credential"`
-	Streaming  *SDKConfigStreamingParams `json:"streaming,omitempty"`
-	Events     *SDKConfigEventParams     `json:"events,omitempty"`
+	Credential      string                     `json:"credential"`
+	StartWaitTimeMS ldtime.UnixMillisecondTime `json:"startWaitTimeMs,omitempty"`
+	TimeoutOK       bool                       `json:"timeoutOk,omitempty"`
+	Streaming       *SDKConfigStreamingParams  `json:"streaming,omitempty"`
+	Events          *SDKConfigEventParams      `json:"events,omitempty"`
 }
 
 type SDKConfigStreamingParams struct {

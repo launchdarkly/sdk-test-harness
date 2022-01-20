@@ -24,6 +24,20 @@ type SDKData interface {
 	Serialize() []byte
 }
 
+type blockingUnavailableSDKData struct {
+	kind SDKKind
+}
+
+// BlockingUnavailableSDKData returns an object that will cause the mock streaming service *not* to provide
+// any data. It will accept connections, but then hang. This allows us to simulate a state where the SDK
+// client times out without initializing, because it has not received any "put" event.
+func BlockingUnavailableSDKData(sdkKind SDKKind) SDKData {
+	return blockingUnavailableSDKData{kind: sdkKind}
+}
+
+func (b blockingUnavailableSDKData) SDKKind() SDKKind  { return b.kind }
+func (b blockingUnavailableSDKData) Serialize() []byte { return nil }
+
 // ServerSDKData contains simulated LaunchDarkly environment data for a server-side SDK.
 //
 // This includes the full JSON configuration of every flag and segment, in the same format that is used in

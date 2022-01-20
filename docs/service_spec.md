@@ -43,15 +43,16 @@ A `POST` request indicates that the test harness wants to start an instance of t
 * `tag` (string, required): A string describing the current test, if desired for logging.
 * `configuration` (object, required): SDK configuration. Properties are:
   * `credential` (string, required): The SDK key.
+  * `startWaitTimeMs` (number, optional): The initialization timeout in milliseconds. If omitted or zero, the default is 5000 (5 seconds).
   * `streaming` (object, optional): Enables streaming mode and provides streaming configuration. Currently the test harness only supports streaming mode, so this will be inferred if it is omitted. Properties are
     * `baseUri` (string, optional): The base URI for the streaming service. For contract testing, this will be the URI of a simulated streaming endpoint that the test harness provides. If it is null or an empty string, the SDK should connect to the real LaunchDarkly streaming service.
   * `events` (object, optional): Enables events and provides events configuration, or disables events if it is omitted or null. Properties are:
-    * `baseUri`: The base URI for the events service. For contract testing, this will be the URI of a simulated event-recorder endpoint that the test harness provides. If it is null or an empty string, the SDK should connect to the real LaunchDarkly events service.
-    * `enableDiagnostics`: If true, diagnostic events should be enabled. Otherwise they should be disabled.
-    * `allAttributesPrivate`: Corresponds to the SDK configuration property of the same name.
-    * `globalPrivateAttributes`: Corresponds to the `privateAttributes` property in the SDK configuration (rather than in an individual user).
-    * `flushIntervalMs`: The event flush interval in milliseconds. If omitted or zero, use the SDK's default value.
-    * `inlineUsers`: Corresponds to the SDK configuration property of the same name.
+    * `baseUri` (string, optional): The base URI for the events service. For contract testing, this will be the URI of a simulated event-recorder endpoint that the test harness provides. If it is null or an empty string, the SDK should connect to the real LaunchDarkly events service.
+    * `enableDiagnostics` (boolean, optional): If true, diagnostic events should be enabled. Otherwise they should be disabled.
+    * `allAttributesPrivate` (boolean, optional): Corresponds to the SDK configuration property of the same name.
+    * `globalPrivateAttributes` (array, optional): Corresponds to the `privateAttributes` property in the SDK configuration (rather than in an individual user).
+    * `flushIntervalMs` (number, optional): The event flush interval in milliseconds. If omitted or zero, use the SDK's default value.
+    * `inlineUsers` (boolean, optional): Corresponds to the SDK configuration property of the same name.
 
 The response to a valid request is any HTTP `2xx` status, with a `Location` header whose value is the URL of the test service resource representing this SDK client instance (that is, the one that would be used for "Close client" or "Send command" as described below).
 

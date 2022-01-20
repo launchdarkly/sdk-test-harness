@@ -18,12 +18,13 @@ import (
 )
 
 func DoServerSideEvalTests(t *ldtest.T) {
-	RunParameterizedServerSideEvalTests(t)
+	t.Run("parameterized", RunParameterizedServerSideEvalTests)
 	t.Run("all flags state", RunServerSideEvalAllFlagsTests)
+	t.Run("client not ready", RunParameterizedServerSideClientNotReadyEvalTests)
 }
 
 func RunParameterizedServerSideEvalTests(t *ldtest.T) {
-	for _, suite := range getAllServerSideEvalTestSuites(t) {
+	for _, suite := range getAllServerSideEvalTestSuites(t, "server-side-eval") {
 		t.Run(suite.Name, func(t *ldtest.T) {
 			if suite.RequireCapability != "" {
 				t.RequireCapability(suite.RequireCapability)
@@ -76,8 +77,38 @@ func RunParameterizedServerSideEvalTests(t *ldtest.T) {
 	}
 }
 
-func getAllServerSideEvalTestSuites(t *ldtest.T) []testmodel.EvalTestSuite {
-	sources, err := testdata.LoadAllDataFiles("server-side-eval")
+func RunParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
+	dataSource := NewSDKDataSource(t, mockld.BlockingUnavailableSDKData(mockld.ServerSideSDK))
+	client := NewSDKClient(t,
+		WithConfig(servicedef.SDKConfigParams{StartWaitTimeMS: 1, TimeoutOK: true}),
+		dataSource)
+
+	for _, suite := range getAllServerSideEvalTestSuites(t, "server-side-eval-client-not-ready") {
+		t.Run(suite.Name, func(t *ldtest.T) {
+			for _, test := range suite.Evaluations {
+				t.Run("evaluate flag without detail", func(t *ldtest.T) {
+					params := makeEvalFlagParams(test, suite.SDKData)
+					result := client.EvaluateFlag(t, params)
+					m.AssertThat(t, result, EvalResponseValue().Should(m.Equal(test.Expect.Value)))
+				})
+
+				t.Run("evaluate flag with detail", func(t *ldtest.T) {
+					params := makeEvalFlagParams(test, suite.SDKData)
+					params.Detail = true
+					result := client.EvaluateFlag(t, params)
+					m.AssertThat(t, result, m.AllOf(
+						EvalResponseValue().Should(m.Equal(test.Expect.Value)),
+						EvalResponseVariation().Should(m.Equal(test.Expect.VariationIndex)),
+						EvalResponseReason().Should(m.Equal(test.Expect.Reason)),
+					))
+				})
+			}
+		})
+	}
+}
+
+func getAllServerSideEvalTestSuites(t *ldtest.T, dirName string) []testmodel.EvalTestSuite {
+	sources, err := testdata.LoadAllDataFiles(dirName)
 	require.NoError(t, err)
 
 	ret := make([]testmodel.EvalTestSuite, 0, len(sources))
