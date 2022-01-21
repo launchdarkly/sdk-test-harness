@@ -18,8 +18,8 @@ github.com/launchdarkly/eventsource v1.6.2/go.mod h1:LHxSeb4OnqznNZxCSXbFghxS/Cj
 github.com/launchdarkly/go-semver v1.0.2 h1:sYVRnuKyvxlmQCnCUyDkAhtmzSFRoX6rG2Xa21Mhg+w=
 github.com/launchdarkly/go-semver v1.0.2/go.mod h1:xFmMwXba5Mb+3h72Z+VeSs9ahCvKo2QFUTHRNHVqR28=
 github.com/launchdarkly/go-test-helpers/v2 v2.2.0/go.mod h1:L7+th5govYp5oKU9iN7To5PgznBuIjBPn+ejqKR0avw=
-github.com/launchdarkly/go-test-helpers/v2 v2.2.1-0.20220121013419-024701f8f361 h1:jJ+h6wGtDPkpbeOdQVJaR7jDC6H7bpfU3qz1fEmraYM=
-github.com/launchdarkly/go-test-helpers/v2 v2.2.1-0.20220121013419-024701f8f361/go.mod h1:L7+th5govYp5oKU9iN7To5PgznBuIjBPn+ejqKR0avw=
+github.com/launchdarkly/go-test-helpers/v2 v2.3.0 h1:hcSolUtKJHs3qSgZrnyHdQTFQdis5STQDwpme3fG3jQ=
+github.com/launchdarkly/go-test-helpers/v2 v2.3.0/go.mod h1:L7+th5govYp5oKU9iN7To5PgznBuIjBPn+ejqKR0avw=
 github.com/mailru/easyjson v0.7.6 h1:8yTIVnZgCoiM1TgqoeTl+LfU5Jg6/xL3QhGQnimLYnA=
 github.com/mailru/easyjson v0.7.6/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJJLY9Nlc=
 github.com/mattn/go-colorable v0.1.9 h1:sqDoxXbdeALODt0DAeJCVp38ps9ZogZEAXjus69YV3U=
