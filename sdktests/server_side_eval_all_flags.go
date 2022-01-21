@@ -153,7 +153,7 @@ func doServerSideAllFlagsErrorInFlagTest(t *ldtest.T) {
 	// flag2 does not have an error
 	flag2 := ldbuilders.NewFlagBuilder("flag2").Version(200).
 		Variations(dummyValue0, dummyValue1, ldvalue.String("value2")).
-		On(false).OffVariation(1).
+		On(false).OffVariation(2).
 		Build()
 
 	dataBuilder := mockld.NewServerSDKDataBuilder()
@@ -175,10 +175,10 @@ func doServerSideAllFlagsErrorInFlagTest(t *ldtest.T) {
 			"$flagsState": {
 				"flag1": {
 					"version": 100
-				}
+				},
 				"flag2": {
 					"variation": 2, "version": 200
-				},
+				}
 			},
 			"$valid": true
 		}`
@@ -198,10 +198,10 @@ func doServerSideAllFlagsErrorInFlagTest(t *ldtest.T) {
 			"$flagsState": {
 				"flag1": {
 					"version": 100, "reason": { "kind": "ERROR", "errorKind": "MALFORMED_FLAG" }
-				}
+				},
 				"flag2": {
 					"variation": 2, "version": 200, "reason": { "kind": "OFF" }
-				},
+				}
 			},
 			"$valid": true
 		}`
