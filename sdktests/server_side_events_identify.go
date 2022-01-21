@@ -15,13 +15,12 @@ import (
 func doServerSideIdentifyEventTests(t *ldtest.T) {
 	// These do not include detailed tests of the encoding of user attributes in identify events,
 	// which are in server_side_events_users.go.
-	eventsConfig := baseEventsConfig()
 	users := NewUserFactory("doServerSideIdentifyEventTests",
 		func(b lduser.UserBuilder) { b.Name("my favorite user") })
 
 	dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
 	events := NewSDKEventSink(t)
-	client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{Events: &eventsConfig}), dataSource, events)
+	client := NewSDKClient(t, dataSource, events)
 
 	t.Run("normal user", func(t *ldtest.T) {
 		user := users.NextUniqueUser()

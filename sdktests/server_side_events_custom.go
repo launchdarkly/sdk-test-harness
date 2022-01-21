@@ -23,7 +23,7 @@ func doServerSideCustomEventTests(t *ldtest.T) {
 
 		dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
 		events := NewSDKEventSink(t)
-		client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{Events: &eventsConfig}), dataSource, events)
+		client := NewSDKClient(t, dataSource, events)
 
 		user1 := lduser.NewUserBuilder("user1").Name("Ann").Build()
 		user2 := lduser.NewUserBuilder("user2").Name("Bob").Build()
