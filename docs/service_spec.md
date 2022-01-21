@@ -49,6 +49,7 @@ A `POST` request indicates that the test harness wants to start an instance of t
     * `baseUri` (string, optional): The base URI for the streaming service. For contract testing, this will be the URI of a simulated streaming endpoint that the test harness provides. If it is null or an empty string, the SDK should connect to the real LaunchDarkly streaming service.
   * `events` (object, optional): Enables events and provides events configuration, or disables events if it is omitted or null. Properties are:
     * `baseUri` (string, optional): The base URI for the events service. For contract testing, this will be the URI of a simulated event-recorder endpoint that the test harness provides. If it is null or an empty string, the SDK should connect to the real LaunchDarkly events service.
+    * `capacity` (number, optional): If specified and greater than zero, the event buffer capacity should be set to this value.
     * `enableDiagnostics` (boolean, optional): If true, diagnostic events should be enabled. Otherwise they should be disabled.
     * `allAttributesPrivate` (boolean, optional): Corresponds to the SDK configuration property of the same name.
     * `globalPrivateAttributes` (array, optional): Corresponds to the `privateAttributes` property in the SDK configuration (rather than in an individual user).
