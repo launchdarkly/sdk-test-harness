@@ -60,8 +60,8 @@ func doServerSideSummaryEventBasicTest(t *ldtest.T) {
 		EventIsIndexEvent(mockld.SimpleEventUser(userB)),
 		m.JSONMap().Should(m.MapOf(
 			m.KV("kind", m.Equal("summary")),
-			m.KV("startDate", m.Not(m.BeNil())),
-			m.KV("endDate", m.Not(m.BeNil())),
+			m.KV("startDate", ValueIsPositiveNonZeroInteger()),
+			m.KV("endDate", ValueIsPositiveNonZeroInteger()),
 			m.KV("features", m.MapOf(
 				m.KV(flag1.Key, m.MapOf(
 					m.KV("default", m.JSONEqual(default1)),
@@ -103,8 +103,8 @@ func doServerSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 		EventIsIndexEvent(mockld.SimpleEventUser(user)),
 		m.JSONMap().Should(m.MapOf(
 			m.KV("kind", m.Equal("summary")),
-			m.KV("startDate", m.Not(m.BeNil())),
-			m.KV("endDate", m.Not(m.BeNil())),
+			m.KV("startDate", ValueIsPositiveNonZeroInteger()),
+			m.KV("endDate", ValueIsPositiveNonZeroInteger()),
 			m.KV("features", m.MapOf(
 				m.KV(unknownKey, m.MapOf(
 					m.KV("default", m.JSONEqual(default1)),
@@ -151,8 +151,8 @@ func doServerSideSummaryEventResetTest(t *ldtest.T) {
 		EventIsIndexEvent(mockld.SimpleEventUser(userB)),
 		m.JSONMap().Should(m.MapOf(
 			m.KV("kind", m.Equal("summary")),
-			m.KV("startDate", m.Not(m.BeNil())),
-			m.KV("endDate", m.Not(m.BeNil())),
+			m.KV("startDate", ValueIsPositiveNonZeroInteger()),
+			m.KV("endDate", ValueIsPositiveNonZeroInteger()),
 			m.KV("features", m.MapOf(
 				m.KV(flag.Key, m.MapOf(
 					m.KV("default", m.JSONEqual(defaultValue)),
@@ -176,8 +176,8 @@ func doServerSideSummaryEventResetTest(t *ldtest.T) {
 	m.In(t).Assert(payload2, m.Items(
 		m.JSONMap().Should(m.MapOf(
 			m.KV("kind", m.Equal("summary")),
-			m.KV("startDate", m.Not(m.BeNil())),
-			m.KV("endDate", m.Not(m.BeNil())),
+			m.KV("startDate", ValueIsPositiveNonZeroInteger()),
+			m.KV("endDate", ValueIsPositiveNonZeroInteger()),
 			m.KV("features", m.MapOf(
 				m.KV(flag.Key, m.MapOf(
 					m.KV("default", m.JSONEqual(defaultValue)),
@@ -234,8 +234,8 @@ func doServerSideSummaryEventPrerequisitesTest(t *ldtest.T) {
 		EventIsIndexEvent(mockld.SimpleEventUser(user)),
 		m.JSONMap().Should(m.MapOf(
 			m.KV("kind", m.Equal("summary")),
-			m.KV("startDate", m.Not(m.BeNil())),
-			m.KV("endDate", m.Not(m.BeNil())),
+			m.KV("startDate", ValueIsPositiveNonZeroInteger()),
+			m.KV("endDate", ValueIsPositiveNonZeroInteger()),
 			m.KV("features", m.MapOf(
 				m.KV(flag1.Key, m.MapOf(
 					m.KV("default", m.JSONEqual(defaultValue)),

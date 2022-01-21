@@ -153,3 +153,18 @@ func EventIsIndexEvent(eventUser mockld.EventUser) m.Matcher {
 func EventIsSummaryEvent() m.Matcher {
 	return EventHasKind("summary")
 }
+
+func ValueIsPositiveNonZeroInteger() m.Matcher {
+	return m.New(
+		func(value interface{}) bool {
+			v := ldvalue.Parse(jsonhelpers.ToJSON(value))
+			return v.IsNumber() && v.IsInt() && v.IntValue() > 0
+		},
+		func() string {
+			return "is an int > 0"
+		},
+		func(value interface{}) string {
+			return "was not an int or was negative"
+		},
+	)
+}
