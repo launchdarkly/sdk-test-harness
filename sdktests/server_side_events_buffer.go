@@ -15,13 +15,14 @@ import (
 
 func doServerSideEventBufferTests(t *ldtest.T) {
 	capacity := 20
+	extraItemsOverCapacity := 3 // arbitrary non-zero value for how many events to try to add past the limit
 	eventsConfig := baseEventsConfig()
 	eventsConfig.Capacity = capacity
 
 	userFactory := NewUserFactory("doServerSideEventCapacityTests",
 		func(b lduser.UserBuilder) { b.Name("my favorite user") })
 	users := make([]lduser.User, 0)
-	for i := 0; i < capacity+3; i++ {
+	for i := 0; i < capacity+extraItemsOverCapacity; i++ {
 		users = append(users, userFactory.NextUniqueUser())
 	}
 
