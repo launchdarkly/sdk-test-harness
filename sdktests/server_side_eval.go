@@ -1,7 +1,6 @@
 package sdktests
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
@@ -11,8 +10,9 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/testdata/testmodel"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
+	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
+	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldmodel"
 
 	"github.com/stretchr/testify/require"
 )
@@ -42,14 +42,14 @@ func RunParameterizedServerSideEvalTests(t *ldtest.T) {
 					t.Run("evaluate flag without detail", func(t *ldtest.T) {
 						params := makeEvalFlagParams(test, suite.SDKData)
 						result := client.EvaluateFlag(t, params)
-						m.AssertThat(t, result, EvalResponseValue().Should(m.Equal(test.Expect.Value)))
+						m.In(t).Assert(result, EvalResponseValue().Should(m.Equal(test.Expect.Value)))
 					})
 
 					t.Run("evaluate flag with detail", func(t *ldtest.T) {
 						params := makeEvalFlagParams(test, suite.SDKData)
 						params.Detail = true
 						result := client.EvaluateFlag(t, params)
-						m.AssertThat(t, result, m.AllOf(
+						m.In(t).Assert(result, m.AllOf(
 							EvalResponseValue().Should(m.Equal(test.Expect.Value)),
 							EvalResponseVariation().Should(m.Equal(test.Expect.VariationIndex)),
 							EvalResponseReason().Should(m.Equal(test.Expect.Reason)),
@@ -68,7 +68,7 @@ func RunParameterizedServerSideEvalTests(t *ldtest.T) {
 							if !test.Expect.VariationIndex.IsDefined() {
 								expectedValue = ldvalue.Null()
 							}
-							m.AssertThat(t, result.State[test.FlagKey], m.Equal(expectedValue))
+							m.In(t).Assert(result.State[test.FlagKey], m.Equal(expectedValue))
 						})
 					}
 				})
@@ -78,31 +78,44 @@ func RunParameterizedServerSideEvalTests(t *ldtest.T) {
 }
 
 func RunParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
+	defaultValues := DefaultValueByTypeFactory()
+	flagKey := "some-flag"
+	user := lduser.NewUser("user-key")
+	expectedReason := ldreason.NewEvalReasonError(ldreason.EvalErrorClientNotReady)
+
 	dataSource := NewSDKDataSource(t, mockld.BlockingUnavailableSDKData(mockld.ServerSideSDK))
 	client := NewSDKClient(t,
 		WithConfig(servicedef.SDKConfigParams{StartWaitTimeMS: 1, TimeoutOK: true}),
 		dataSource)
 
-	for _, suite := range getAllServerSideEvalTestSuites(t, "server-side-eval-client-not-ready") {
-		t.Run(suite.Name, func(t *ldtest.T) {
-			for _, test := range suite.Evaluations {
-				t.Run("evaluate flag without detail", func(t *ldtest.T) {
-					params := makeEvalFlagParams(test, suite.SDKData)
-					result := client.EvaluateFlag(t, params)
-					m.AssertThat(t, result, EvalResponseValue().Should(m.Equal(test.Expect.Value)))
-				})
+	for _, valueType := range getValueTypesToTest(t) {
+		t.Run(testDescFromType(valueType), func(t *ldtest.T) {
+			defaultValue := defaultValues(valueType)
 
-				t.Run("evaluate flag with detail", func(t *ldtest.T) {
-					params := makeEvalFlagParams(test, suite.SDKData)
-					params.Detail = true
-					result := client.EvaluateFlag(t, params)
-					m.AssertThat(t, result, m.AllOf(
-						EvalResponseValue().Should(m.Equal(test.Expect.Value)),
-						EvalResponseVariation().Should(m.Equal(test.Expect.VariationIndex)),
-						EvalResponseReason().Should(m.Equal(test.Expect.Reason)),
-					))
+			t.Run("evaluate flag without detail", func(t *ldtest.T) {
+				result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+					FlagKey:      flagKey,
+					User:         &user,
+					ValueType:    valueType,
+					DefaultValue: defaultValue,
 				})
-			}
+				m.In(t).Assert(result, EvalResponseValue().Should(m.JSONEqual(defaultValue)))
+			})
+
+			t.Run("evaluate flag with detail", func(t *ldtest.T) {
+				result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+					FlagKey:      flagKey,
+					User:         &user,
+					ValueType:    valueType,
+					DefaultValue: defaultValue,
+					Detail:       true,
+				})
+				m.In(t).Assert(result, m.AllOf(
+					EvalResponseValue().Should(m.Equal(defaultValue)),
+					EvalResponseVariation().Should(m.Equal(ldvalue.OptionalInt{})),
+					EvalResponseReason().Should(m.JSONEqual(expectedReason)),
+				))
+			})
 		})
 	}
 }
@@ -154,28 +167,4 @@ func makeEvalFlagParams(test testmodel.EvalTest, sdkData mockld.ServerSDKData) s
 		}
 	}
 	return p
-}
-
-func inferDefaultFromFlag(sdkData mockld.ServerSDKData, flagKey string) ldvalue.Value {
-	flagData := sdkData["flags"][flagKey]
-	if flagData == nil {
-		return ldvalue.Null()
-	}
-	var flag ldmodel.FeatureFlag
-	if err := json.Unmarshal(flagData, &flag); err != nil {
-		return ldvalue.Null() // we should deal with malformed flag data at an earlier point
-	}
-	if len(flag.Variations) == 0 {
-		return ldvalue.Null()
-	}
-	switch flag.Variations[0].Type() {
-	case ldvalue.BoolType:
-		return ldvalue.Bool(false)
-	case ldvalue.NumberType:
-		return ldvalue.Int(0)
-	case ldvalue.StringType:
-		return ldvalue.String("")
-	default:
-		return ldvalue.Null()
-	}
 }

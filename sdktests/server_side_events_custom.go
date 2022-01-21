@@ -23,7 +23,7 @@ func doServerSideCustomEventTests(t *ldtest.T) {
 
 		dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
 		events := NewSDKEventSink(t)
-		client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{Events: &eventsConfig}), dataSource, events)
+		client := NewSDKClient(t, dataSource, events)
 
 		user1 := lduser.NewUserBuilder("user1").Name("Ann").Build()
 		user2 := lduser.NewUserBuilder("user2").Name("Bob").Build()
@@ -49,7 +49,7 @@ func doServerSideCustomEventTests(t *ldtest.T) {
 		for _, user := range []lduser.User{user1, user2, user3} {
 			expected = append(expected, EventIsIndexEvent(mockld.ExpectedEventUserFromUser(user, eventsConfig)))
 		}
-		m.AssertThat(t, payload, m.ItemsInAnyOrder(expected...))
+		m.In(t).Assert(payload, m.ItemsInAnyOrder(expected...))
 	})
 }
 
@@ -120,7 +120,7 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 			client.SendCustomEvent(t, params)
 			client.FlushEvents(t)
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-			m.AssertThat(t, payload, m.Items(
+			m.In(t).Assert(payload, m.Items(
 				EventIsCustomEventForParams(params, eventsConfig),
 			))
 		})

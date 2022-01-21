@@ -20,9 +20,6 @@ import (
 // representation of the flags state, by omitting all boolean properties that are false, and
 // omitting all nullable properties that are null.
 
-var dummyValue0, dummyValue1, dummyValue2, dummyValue3 ldvalue.Value = ldvalue.String("a"), //nolint:gochecknoglobals
-	ldvalue.String("b"), ldvalue.String("c"), ldvalue.String("d")
-
 func RunServerSideEvalAllFlagsTests(t *ldtest.T) {
 	t.Run("default behavior", doServerSideAllFlagsBasicTest)
 	t.Run("with reasons", doServerSideAllFlagsWithReasonsTest)

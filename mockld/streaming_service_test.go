@@ -40,7 +40,7 @@ func TestStreamingServiceServerSide(t *testing.T) {
 
 		initialEvent := requireEvent(t, stream)
 		assert.Equal(t, "put", initialEvent.Event())
-		m.AssertThat(t, initialEvent.Data(), m.JSONStrEqual(expectedPutData(initialData)))
+		m.In(t).Assert(initialEvent.Data(), m.JSONStrEqual(expectedPutData(initialData)))
 
 		newData := NewServerSDKDataBuilder().RawFlag("flag1", json.RawMessage(`{"key": "flag1"}`)).Build()
 		go func() {
@@ -50,7 +50,7 @@ func TestStreamingServiceServerSide(t *testing.T) {
 
 		newPutEvent := requireEvent(t, stream)
 		assert.Equal(t, "put", newPutEvent.Event())
-		m.AssertThat(t, newPutEvent.Data(), m.JSONStrEqual(expectedPutData(newData)))
+		m.In(t).Assert(newPutEvent.Data(), m.JSONStrEqual(expectedPutData(newData)))
 	})
 }
 

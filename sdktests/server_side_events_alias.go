@@ -17,13 +17,11 @@ type aliasEventTestScenario struct {
 }
 
 func doServerSideAliasEventTests(t *ldtest.T) {
-	eventsConfig := baseEventsConfig()
-
 	userFactory := NewUserFactory("doServerSideAliasEventTests")
 
 	dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
 	events := NewSDKEventSink(t)
-	client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{Events: &eventsConfig}), dataSource, events)
+	client := NewSDKClient(t, dataSource, events)
 
 	var scenarios []aliasEventTestScenario
 	for _, user1IsAnon := range []bool{false, true} {
@@ -64,7 +62,7 @@ func doServerSideAliasEventTests(t *ldtest.T) {
 			client.SendAliasEvent(t, scenario.params)
 			client.FlushEvents(t)
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-			m.AssertThat(t, payload, m.Items(
+			m.In(t).Assert(payload, m.Items(
 				CanonicalizedEventJSON().Should(m.JSONEqual(scenario.expectedEvent.AsValue())),
 			))
 		})

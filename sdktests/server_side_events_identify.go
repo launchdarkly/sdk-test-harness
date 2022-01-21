@@ -15,20 +15,19 @@ import (
 func doServerSideIdentifyEventTests(t *ldtest.T) {
 	// These do not include detailed tests of the encoding of user attributes in identify events,
 	// which are in server_side_events_users.go.
-	eventsConfig := baseEventsConfig()
 	users := NewUserFactory("doServerSideIdentifyEventTests",
 		func(b lduser.UserBuilder) { b.Name("my favorite user") })
 
 	dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
 	events := NewSDKEventSink(t)
-	client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{Events: &eventsConfig}), dataSource, events)
+	client := NewSDKClient(t, dataSource, events)
 
 	t.Run("normal user", func(t *ldtest.T) {
 		user := users.NextUniqueUser()
 		client.SendIdentifyEvent(t, user)
 		client.FlushEvents(t)
 		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-		m.AssertThat(t, payload, m.Items(
+		m.In(t).Assert(payload, m.Items(
 			EventIsIdentifyEvent(mockld.SimpleEventUser(user)),
 		))
 	})
@@ -51,7 +50,7 @@ func doServerSideIdentifyEventTests(t *ldtest.T) {
 		// if we hadn't already seen that user
 		client.FlushEvents(t)
 		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-		m.AssertThat(t, payload, m.ItemsInAnyOrder(
+		m.In(t).Assert(payload, m.ItemsInAnyOrder(
 			EventIsIdentifyEvent(mockld.SimpleEventUser(user)),
 			EventIsCustomEvent("event-key", mockld.SimpleEventUser(user), false, ldvalue.Null(), nil),
 		))

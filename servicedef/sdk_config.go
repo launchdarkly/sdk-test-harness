@@ -19,6 +19,7 @@ type SDKConfigStreamingParams struct {
 
 type SDKConfigEventParams struct {
 	BaseURI                 string                     `json:"baseUri,omitempty"`
+	Capacity                int                        `json:"capacity,omitempty"`
 	EnableDiagnostics       bool                       `json:"enableDiagnostics"`
 	AllAttributesPrivate    bool                       `json:"allAttributesPrivate,omitempty"`
 	GlobalPrivateAttributes []lduser.UserAttribute     `json:"globalPrivateAttributes,omitempty"`

@@ -105,16 +105,17 @@ func doServerSideEventUserTests(t *ldtest.T) {
 					ldvalue.NewOptionalInt(0),
 					ldreason.EvaluationReason{},
 					defaultValue,
+					"",
 				)
 
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 				if scenario.config.InlineUsers {
-					m.AssertThat(t, payload, m.ItemsInAnyOrder(
+					m.In(t).Assert(payload, m.ItemsInAnyOrder(
 						matchFeatureEvent,
 						EventHasKind("summary"),
 					))
 				} else {
-					m.AssertThat(t, payload, m.ItemsInAnyOrder(
+					m.In(t).Assert(payload, m.ItemsInAnyOrder(
 						EventIsIndexEvent(eventUser),
 						matchFeatureEvent,
 						EventHasKind("summary"),
@@ -129,7 +130,7 @@ func doServerSideEventUserTests(t *ldtest.T) {
 
 				eventUser := mockld.ExpectedEventUserFromUser(user, scenario.config)
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-				m.AssertThat(t, payload, m.Items(
+				m.In(t).Assert(payload, m.Items(
 					EventIsIdentifyEvent(eventUser)))
 			})
 
@@ -156,9 +157,9 @@ func doServerSideEventUserTests(t *ldtest.T) {
 
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 				if scenario.config.InlineUsers {
-					m.AssertThat(t, payload, m.Items(matchCustomEvent))
+					m.In(t).Assert(payload, m.Items(matchCustomEvent))
 				} else {
-					m.AssertThat(t, payload, m.ItemsInAnyOrder(
+					m.In(t).Assert(payload, m.ItemsInAnyOrder(
 						EventIsIndexEvent(eventUser),
 						matchCustomEvent,
 					))
