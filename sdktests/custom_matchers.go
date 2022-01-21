@@ -106,6 +106,7 @@ func EventIsFeatureEvent(
 	variation ldvalue.OptionalInt,
 	reason ldreason.EvaluationReason,
 	defaultValue ldvalue.Value,
+	prereqOfFlagKey string,
 ) m.Matcher {
 	o := ldvalue.ObjectBuild()
 	o.Set("kind", ldvalue.String("feature"))
@@ -126,6 +127,9 @@ func EventIsFeatureEvent(
 	} else {
 		o.Set("reason", ldvalue.Null())
 	}
+	if prereqOfFlagKey != "" {
+		o.Set("prereqOf", ldvalue.String(prereqOfFlagKey))
+	}
 	return CanonicalizedEventJSON().Should(m.JSONEqual(o.Build()))
 }
 
@@ -144,4 +148,8 @@ func EventIsIndexEvent(eventUser mockld.EventUser) m.Matcher {
 			Set("kind", ldvalue.String("index")).
 			Set("user", eventUser.AsValue()).
 			Build()))
+}
+
+func EventIsSummaryEvent() m.Matcher {
+	return EventHasKind("summary")
 }

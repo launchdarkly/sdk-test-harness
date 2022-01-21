@@ -8,10 +8,15 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
-	"github.com/launchdarkly/go-test-helpers/v2/matchers"
-
 	"github.com/stretchr/testify/require"
 )
+
+func baseEventsConfig() servicedef.SDKConfigEventParams {
+	return servicedef.SDKConfigEventParams{
+		// Set a very long flush interval so event payloads will only be flushed when we force a flush
+		FlushIntervalMS: 1000000,
+	}
+}
 
 // SDKEventSink is a test fixture that provides a callback endpoint for SDK clients to send event data to,
 // simulating the LaunchDarkly event-recorder service.
@@ -40,9 +45,12 @@ func NewSDKEventSink(t *ldtest.T) *SDKEventSink {
 // ApplyConfiguration updates the SDK client configuration for NewSDKClient, causing the SDK
 // to connect to the appropriate base URI for the test fixture.
 func (e *SDKEventSink) ApplyConfiguration(config *servicedef.SDKConfigParams) {
-	if config.Events == nil {
+	if config.Events != nil {
 		ec := *config.Events
 		config.Events = &ec // copy to avoid side effects
+	} else {
+		ec := baseEventsConfig()
+		config.Events = &ec
 	}
 	config.Events.BaseURI = e.eventsEndpoint.BaseURL()
 }
@@ -54,7 +62,7 @@ func (e *SDKEventSink) ApplyConfiguration(config *servicedef.SDKConfigParams) {
 // If no new events arrive before the timeout, the test immediately fails and terminates.
 //
 // The number of events posted must be the same as the number of matchers.
-func (e *SDKEventSink) ExpectAnalyticsEvents(t matchers.RequireT, timeout time.Duration) mockld.Events {
+func (e *SDKEventSink) ExpectAnalyticsEvents(t require.TestingT, timeout time.Duration) mockld.Events {
 	events, ok := e.eventsService.AwaitAnalyticsEventPayload(timeout)
 	if !ok {
 		require.Fail(t, "timed out waiting for events")

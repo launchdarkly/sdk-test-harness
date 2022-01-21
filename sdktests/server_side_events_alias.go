@@ -64,7 +64,7 @@ func doServerSideAliasEventTests(t *ldtest.T) {
 			client.SendAliasEvent(t, scenario.params)
 			client.FlushEvents(t)
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-			m.AssertThat(t, payload, m.Items(
+			m.In(t).Assert(payload, m.Items(
 				CanonicalizedEventJSON().Should(m.JSONEqual(scenario.expectedEvent.AsValue())),
 			))
 		})

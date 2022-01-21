@@ -28,7 +28,7 @@ func doServerSideIdentifyEventTests(t *ldtest.T) {
 		client.SendIdentifyEvent(t, user)
 		client.FlushEvents(t)
 		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-		m.AssertThat(t, payload, m.Items(
+		m.In(t).Assert(payload, m.Items(
 			EventIsIdentifyEvent(mockld.SimpleEventUser(user)),
 		))
 	})
@@ -51,7 +51,7 @@ func doServerSideIdentifyEventTests(t *ldtest.T) {
 		// if we hadn't already seen that user
 		client.FlushEvents(t)
 		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-		m.AssertThat(t, payload, m.ItemsInAnyOrder(
+		m.In(t).Assert(payload, m.ItemsInAnyOrder(
 			EventIsIdentifyEvent(mockld.SimpleEventUser(user)),
 			EventIsCustomEvent("event-key", mockld.SimpleEventUser(user), false, ldvalue.Null(), nil),
 		))
