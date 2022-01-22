@@ -24,9 +24,7 @@ func (l eventSourceDebugLogger) Printf(fmt string, args ...interface{}) {
 }
 
 type StreamingService struct {
-	URL         string
 	sdkKind     SDKKind
-	credential  string
 	initialData SDKData
 	streams     *eventsource.Server
 	debugLogger framework.Logger
@@ -35,7 +33,7 @@ type StreamingService struct {
 
 type eventImpl struct {
 	name string
-	data map[string]interface{}
+	data interface{}
 }
 
 const (
@@ -43,7 +41,6 @@ const (
 )
 
 func NewStreamingService(
-	credential string,
 	initialData SDKData,
 	debugLogger framework.Logger,
 ) *StreamingService {
@@ -53,7 +50,6 @@ func NewStreamingService(
 
 	s := &StreamingService{
 		sdkKind:     initialData.SDKKind(),
-		credential:  credential,
 		initialData: initialData,
 		streams:     streams,
 		debugLogger: debugLogger,
@@ -68,11 +64,6 @@ func (s *StreamingService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/all" && s.sdkKind == ServerSideSDK:
 		if r.Method != "GET" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-		authKey := r.Header.Get("Authorization")
-		if authKey != s.credential {
-			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 		s.streams.Handler(allDataChannel)(w, r)
@@ -117,24 +108,29 @@ func (s *StreamingService) makePutEvent() eventsource.Event {
 	}
 }
 
+func (s *StreamingService) PushEvent(eventName string, eventData interface{}) {
+	event := eventImpl{
+		name: eventName,
+		data: eventData,
+	}
+	s.logEvent(event)
+	s.streams.Publish([]string{allDataChannel}, event)
+}
+
 func (s *StreamingService) PushUpdate(namespace, key string, data json.RawMessage) {
-	s.streams.Publish([]string{allDataChannel}, eventImpl{
-		name: "patch",
-		data: map[string]interface{}{
-			"path": fmt.Sprintf("%s/%s", namespace, key),
+	s.PushEvent("patch",
+		map[string]interface{}{
+			"path": fmt.Sprintf("/%s/%s", namespace, key),
 			"data": data,
-		},
-	})
+		})
 }
 
 func (s *StreamingService) PushDelete(namespace, key string, version int) {
-	s.streams.Publish([]string{allDataChannel}, eventImpl{
-		name: "delete",
-		data: map[string]interface{}{
-			"path":    fmt.Sprintf("%s/%s", namespace, key),
+	s.PushEvent("delete",
+		map[string]interface{}{
+			"path":    fmt.Sprintf("/%s/%s", namespace, key),
 			"version": version,
-		},
-	})
+		})
 }
 
 func (s *StreamingService) Replay(channel, id string) chan eventsource.Event {
@@ -160,6 +156,9 @@ func (s *StreamingService) logEvent(e eventsource.Event) {
 func (e eventImpl) Event() string { return e.name }
 func (e eventImpl) Id() string    { return "" } //nolint:stylecheck
 func (e eventImpl) Data() string {
+	if raw, ok := e.data.(json.RawMessage); ok {
+		return string(raw) // this allows us to pass malformed data that json.Marshal wouldn't allow
+	}
 	bytes, _ := json.Marshal(e.data)
 	return string(bytes)
 }

@@ -26,9 +26,15 @@ func RunServerSideTestSuite(
 	}
 
 	return ldtest.Run(config, func(t *ldtest.T) {
+		t.Run("data store", doServerSideDataStoreTests)
 		t.Run("evaluation", DoServerSideEvalTests)
 		t.Run("events", doServerSideEventTests)
+		t.Run("streaming", doServerSideStreamTests)
 	})
+}
+
+func doServerSideDataStoreTests(t *ldtest.T) {
+	t.Run("updates from stream", doServerSideDataStoreStreamUpdateTests)
 }
 
 func doServerSideEventTests(t *ldtest.T) {
@@ -40,4 +46,10 @@ func doServerSideEventTests(t *ldtest.T) {
 	t.Run("alias events", doServerSideAliasEventTests)
 	t.Run("user properties", doServerSideEventUserTests)
 	t.Run("event capacity", doServerSideEventBufferTests)
+}
+
+func doServerSideStreamTests(t *ldtest.T) {
+	t.Run("requests", doServerSideStreamRequestTests)
+	t.Run("retry behavior", doServerSideStreamRetryTests)
+	t.Run("validation", doServerSideStreamValidationTests)
 }

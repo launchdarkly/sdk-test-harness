@@ -27,7 +27,7 @@ func TestStreamingServiceServerSide(t *testing.T) {
 
 	initialData := EmptyServerSDKData()
 
-	service := NewStreamingService(sdkKey, initialData, testLog.Loggers.ForLevel(ldlog.Debug))
+	service := NewStreamingService(initialData, testLog.Loggers.ForLevel(ldlog.Debug))
 
 	httphelpers.WithServer(service, func(server *httptest.Server) {
 		endpointURL := server.URL + "/all"

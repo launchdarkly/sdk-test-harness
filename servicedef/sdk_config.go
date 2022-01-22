@@ -8,13 +8,14 @@ import (
 type SDKConfigParams struct {
 	Credential      string                     `json:"credential"`
 	StartWaitTimeMS ldtime.UnixMillisecondTime `json:"startWaitTimeMs,omitempty"`
-	TimeoutOK       bool                       `json:"timeoutOk,omitempty"`
+	InitCanFail     bool                       `json:"initCanFail,omitempty"`
 	Streaming       *SDKConfigStreamingParams  `json:"streaming,omitempty"`
 	Events          *SDKConfigEventParams      `json:"events,omitempty"`
 }
 
 type SDKConfigStreamingParams struct {
-	BaseURI string `json:"baseUri,omitempty"`
+	BaseURI             string                      `json:"baseUri,omitempty"`
+	InitialRetryDelayMs *ldtime.UnixMillisecondTime `json:"initialRetryDelayMs,omitempty"`
 }
 
 type SDKConfigEventParams struct {

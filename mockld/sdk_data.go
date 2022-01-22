@@ -161,3 +161,10 @@ func (b *ServerSDKDataBuilder) RawSegment(key string, data json.RawMessage) *Ser
 	b.segments[key] = data
 	return b
 }
+
+func (b *ServerSDKDataBuilder) Segment(segments ...ldmodel.Segment) *ServerSDKDataBuilder {
+	for _, segment := range segments {
+		b = b.RawSegment(segment.Key, jsonhelpers.ToJSON(segment))
+	}
+	return b
+}

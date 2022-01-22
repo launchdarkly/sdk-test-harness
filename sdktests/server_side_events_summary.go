@@ -1,15 +1,20 @@
 package sdktests
 
 import (
+	"time"
+
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
+	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldbuilders"
 	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldmodel"
+
+	"github.com/stretchr/testify/require"
 )
 
 func doServerSideSummaryEventTests(t *ldtest.T) {
@@ -17,6 +22,7 @@ func doServerSideSummaryEventTests(t *ldtest.T) {
 	t.Run("unknown flag", doServerSideSummaryEventUnknownFlagTest)
 	t.Run("reset after each flush", doServerSideSummaryEventResetTest)
 	t.Run("prerequisites", doServerSideSummaryEventPrerequisitesTest)
+	t.Run("flag versions", doServerSideSummaryEventVersionTest)
 }
 
 func doServerSideSummaryEventBasicTest(t *ldtest.T) {
@@ -215,10 +221,8 @@ func doServerSideSummaryEventPrerequisitesTest(t *ldtest.T) {
 		Variations(dummyValue0, dummyValue1, dummyValue2, expectedPrereqValue3).
 		Build()
 
-	dataBuilder := mockld.NewServerSDKDataBuilder()
-	dataBuilder.Flag(flag1, flag2, flag3)
-
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	data := mockld.NewServerSDKDataBuilder().Flag(flag1, flag2, flag3).Build()
+	dataSource := NewSDKDataSource(t, data)
 	events := NewSDKEventSink(t)
 	client := NewSDKClient(t, dataSource, events)
 
@@ -228,9 +232,9 @@ func doServerSideSummaryEventPrerequisitesTest(t *ldtest.T) {
 	}
 
 	client.FlushEvents(t)
-	payload1 := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
-	m.In(t).Assert(payload1, m.Items(
+	m.In(t).Assert(payload, m.Items(
 		EventIsIndexEvent(mockld.SimpleEventUser(user)),
 		m.JSONMap().Should(m.MapOf(
 			m.KV("kind", m.Equal("summary")),
@@ -259,12 +263,75 @@ func doServerSideSummaryEventPrerequisitesTest(t *ldtest.T) {
 	))
 }
 
+func doServerSideSummaryEventVersionTest(t *ldtest.T) {
+	// This test verifies that if the version of a flag changes within the timespan of one event payload,
+	// evaluations for each version are tracked separately. We do this by evaluating the flag in its
+	// original version, then pushing a stream update and polling until the SDK reports the updated
+	// value, and then checking that both versions appear in the summary event. More detailed testing of
+	// update behavior is covered in server_side_data_store_updates.go.
+
+	flagKey := "flagkey"
+	versionBefore, versionAfter := 100, 200
+	valueBefore, valueAfter := ldvalue.String("a"), ldvalue.String("b")
+	flagBefore, flagAfter := makeFlagVersionsWithValues(flagKey, versionBefore, versionAfter, valueBefore, valueAfter)
+	defaultValue := ldvalue.String("default")
+	user := lduser.NewUser("user-key")
+
+	data := mockld.NewServerSDKDataBuilder().Flag(flagBefore).Build()
+	dataSource := NewSDKDataSource(t, data)
+	events := NewSDKEventSink(t)
+	client := NewSDKClient(t, dataSource, events)
+
+	initialValue := basicEvaluateFlag(t, client, flagKey, user, defaultValue)
+	m.In(t).Require(initialValue, m.JSONEqual(valueBefore))
+
+	dataSource.Service().PushUpdate("flags", flagKey, jsonhelpers.ToJSON(flagAfter))
+
+	require.Eventually(
+		t,
+		checkForUpdatedValue(t, client, flagKey, user, valueBefore, valueAfter, defaultValue),
+		time.Second,
+		time.Millisecond*20,
+		"timed out waiting for evaluation to return updated value",
+	)
+
+	client.FlushEvents(t)
+	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+	m.In(t).Assert(payload, m.Items(
+		EventIsIndexEvent(mockld.SimpleEventUser(user)),
+		m.JSONMap().Should(m.MapOf(
+			m.KV("kind", m.Equal("summary")),
+			m.KV("startDate", ValueIsPositiveNonZeroInteger()),
+			m.KV("endDate", ValueIsPositiveNonZeroInteger()),
+			m.KV("features", m.MapOf(
+				m.KV(flagKey, m.MapOf(
+					m.KV("default", m.JSONEqual(defaultValue)),
+					m.KV("counters", m.ItemsInAnyOrder(
+						flagCounterWithAnyCount(valueBefore, 0, versionBefore),
+						flagCounter(valueAfter, 1, versionAfter, 1),
+					)),
+				)),
+			)),
+		)),
+	))
+}
+
 func flagCounter(value interface{}, variation int, version int, count int) m.Matcher {
 	return m.MapOf(
 		m.KV("value", m.JSONEqual(value)),
 		m.KV("variation", m.Equal(variation)),
 		m.KV("version", m.Equal(version)),
 		m.KV("count", m.Equal(count)),
+	)
+}
+
+func flagCounterWithAnyCount(value interface{}, variation int, version int) m.Matcher {
+	return m.MapOf(
+		m.KV("value", m.JSONEqual(value)),
+		m.KV("variation", m.Equal(variation)),
+		m.KV("version", m.Equal(version)),
+		m.KV("count", ValueIsPositiveNonZeroInteger()),
 	)
 }
 

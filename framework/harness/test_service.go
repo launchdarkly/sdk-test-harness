@@ -215,6 +215,7 @@ func (e *TestServiceEntity) SendCommandWithParams(
 		if err = json.Unmarshal(body, responseOut); err != nil {
 			return err
 		}
+		logger.Printf("Response: %s", string(body))
 	}
 	return nil
 }

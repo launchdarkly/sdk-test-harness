@@ -48,6 +48,19 @@ func EvalResponseReason() m.MatcherTransform {
 		EnsureInputValueType(servicedef.EvaluateFlagResponse{})
 }
 
+func EvalAllFlagsStateMap() m.MatcherTransform {
+	return m.Transform(
+		"result reason",
+		func(value interface{}) (interface{}, error) {
+			return value.(servicedef.EvaluateAllFlagsResponse).State, nil
+		}).
+		EnsureInputValueType(servicedef.EvaluateAllFlagsResponse{})
+}
+
+func EvalAllFlagsValueForKeyShouldEqual(key string, value ldvalue.Value) m.Matcher {
+	return EvalAllFlagsStateMap().Should(m.ValueForKey(key).Should(m.JSONEqual(value)))
+}
+
 func CanonicalizedEventJSON() m.MatcherTransform {
 	return m.Transform(
 		"event",

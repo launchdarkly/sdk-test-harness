@@ -85,7 +85,7 @@ func RunParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
 
 	dataSource := NewSDKDataSource(t, mockld.BlockingUnavailableSDKData(mockld.ServerSideSDK))
 	client := NewSDKClient(t,
-		WithConfig(servicedef.SDKConfigParams{StartWaitTimeMS: 1, TimeoutOK: true}),
+		WithConfig(servicedef.SDKConfigParams{StartWaitTimeMS: 1, InitCanFail: true}),
 		dataSource)
 
 	for _, valueType := range getValueTypesToTest(t) {
