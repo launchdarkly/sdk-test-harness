@@ -47,6 +47,7 @@ A `POST` request indicates that the test harness wants to start an instance of t
   * `initCanFail` (boolean, optional): If true, the test service should _not_ return an error for client initialization failing in a way that still makes the client instance available (for instance, due to a timeout or a 401 error). See discussion of error handling below.
   * `streaming` (object, optional): Enables streaming mode and provides streaming configuration. Currently the test harness only supports streaming mode, so this will be inferred if it is omitted. Properties are
     * `baseUri` (string, optional): The base URI for the streaming service. For contract testing, this will be the URI of a simulated streaming endpoint that the test harness provides. If it is null or an empty string, the SDK should connect to the real LaunchDarkly streaming service.
+    * `initialRetryDelayMs` (number, optional): The initial stream retry delay in milliseconds. If omitted, use the SDK's default value.
   * `events` (object, optional): Enables events and provides events configuration, or disables events if it is omitted or null. Properties are:
     * `baseUri` (string, optional): The base URI for the events service. For contract testing, this will be the URI of a simulated event-recorder endpoint that the test harness provides. If it is null or an empty string, the SDK should connect to the real LaunchDarkly events service.
     * `capacity` (number, optional): If specified and greater than zero, the event buffer capacity should be set to this value.
