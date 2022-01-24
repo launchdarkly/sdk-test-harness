@@ -49,7 +49,7 @@ func ParseTestIDPattern(s string) (TestIDPattern, error) {
 	parts := strings.Split(s, "/")
 	ret := make(TestIDPattern, 0, len(parts))
 	for _, part := range parts {
-		rx, err := regexp.Compile(part)
+		rx, err := regexp.Compile(autoEscapeTestRegex(part))
 		if err != nil {
 			return nil, fmt.Errorf("invalid regex: %w", err)
 		}
@@ -134,4 +134,13 @@ func BriefFilterDescription(filters RegexFilters) string {
 		return "none"
 	}
 	return strings.Join(parts, ", ")
+}
+
+func autoEscapeTestRegex(pattern string) string {
+	s := pattern
+	for _, ch := range []string{"(", ")"} {
+		s = strings.ReplaceAll(s, ch, "\\"+ch)
+		s = strings.ReplaceAll(s, "\\\\"+ch, "\\"+ch) // in case they already escaped it
+	}
+	return s
 }

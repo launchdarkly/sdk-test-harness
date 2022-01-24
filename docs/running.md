@@ -21,5 +21,6 @@ For `-run` and `-skip`, the rules for pattern matching are as follows:
 
 * The match is done againt the full path of the test. The full path is the string that appears between brackets in the test output. It may include slash-delimited subtests, such as `parent test name/subtest name/sub-subtest name`.
 * In the pattern, each slash-delimited segment is treated as a separate regular expression. So, for instance, you can write `^evaluation$/a.c` to match `evaluation/abc` and `evaluation/xaxcx` but not match `xevaluationx/abc`.
+* However, `(` and `)` will always be treated as literal characters, not regular expression operators. This is because some tests may have parens in their names. If you want "or" behavior, instead of `-run (a|b)` just use `-run a -run b` (in other words, there is an implied "or" for multiple values).
 * If `-run` specifies a test that has subtests, then all of its subtests are also run.
 * If `-skip` specifies a test that has subtests, then all of its subtests are also skipped.
