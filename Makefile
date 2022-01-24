@@ -12,7 +12,7 @@ EXECUTABLE=./sdk-test-harness
 
 build: $(EXECUTABLE)
 
-$(EXECUTABLE): *.go $(wildcard */*.go)
+$(EXECUTABLE): *.go $(shell find . -name '*.go') $(wildcard testdata/data-files/*)
 	go build
 
 pack-files:

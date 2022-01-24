@@ -3,12 +3,24 @@ package sdktests
 import (
 	"time"
 
+	"github.com/launchdarkly/sdk-test-harness/framework"
 	"github.com/launchdarkly/sdk-test-harness/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
+	"github.com/launchdarkly/sdk-test-harness/servicedef"
 )
 
 const defaultEventTimeout = time.Second * 5
+
+func AllImportantServerSideCapabilities() framework.Capabilities {
+	return framework.Capabilities{
+		servicedef.CapabilityAllFlagsClientSideOnly,
+		servicedef.CapabilityAllFlagsDetailsOnlyForTrackedFlags,
+		servicedef.CapabilityAllFlagsWithReasons,
+	}
+	// We don't include the "strongly-typed" capability here because it's not unusual for an SDK
+	// to not have it - that's just an inherent characteristic of the SDK, not a missing feature
+}
 
 func RunServerSideTestSuite(
 	harness *harness.TestHarness,

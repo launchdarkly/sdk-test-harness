@@ -121,3 +121,17 @@ func PrintFilterDescription(filters RegexFilters, allCapabilities []string, supp
 		}
 	}
 }
+
+func BriefFilterDescription(filters RegexFilters) string {
+	var parts []string
+	if filters.MustMatch.IsDefined() {
+		parts = append(parts, fmt.Sprintf("must match %s", filters.MustMatch))
+	}
+	if filters.MustNotMatch.IsDefined() {
+		parts = append(parts, fmt.Sprintf("must not match %s", filters.MustNotMatch))
+	}
+	if len(parts) == 0 {
+		return "none"
+	}
+	return strings.Join(parts, ", ")
+}
