@@ -44,9 +44,10 @@ A `POST` request indicates that the test harness wants to start an instance of t
 * `configuration` (object, required): SDK configuration. Properties are:
   * `credential` (string, required): The SDK key.
   * `startWaitTimeMs` (number, optional): The initialization timeout in milliseconds. If omitted or zero, the default is 5000 (5 seconds).
-  * `timeoutOk` (boolean, optional): If true, the test service should _not_ return an error for client initialization timing out (that is, a timeout is an expected condition in this test and we still want to be able to use the client). The default behavior is that a timeout should return a `500` error.
+  * `initCanFail` (boolean, optional): If true, the test service should _not_ return an error for client initialization failing in a way that still makes the client instance available (for instance, due to a timeout or a 401 error). See discussion of error handling below.
   * `streaming` (object, optional): Enables streaming mode and provides streaming configuration. Currently the test harness only supports streaming mode, so this will be inferred if it is omitted. Properties are
     * `baseUri` (string, optional): The base URI for the streaming service. For contract testing, this will be the URI of a simulated streaming endpoint that the test harness provides. If it is null or an empty string, the SDK should connect to the real LaunchDarkly streaming service.
+    * `initialRetryDelayMs` (number, optional): The initial stream retry delay in milliseconds. If omitted, use the SDK's default value.
   * `events` (object, optional): Enables events and provides events configuration, or disables events if it is omitted or null. Properties are:
     * `baseUri` (string, optional): The base URI for the events service. For contract testing, this will be the URI of a simulated event-recorder endpoint that the test harness provides. If it is null or an empty string, the SDK should connect to the real LaunchDarkly events service.
     * `capacity` (number, optional): If specified and greater than zero, the event buffer capacity should be set to this value.
@@ -60,7 +61,11 @@ The response to a valid request is any HTTP `2xx` status, with a `Location` head
 
 If any parameters are invalid, return HTTP `400`.
 
-If client initialization throws an exception, or it times out and `timeoutOk` was _not_ set to true, return HTTP `500`.
+If client initialization fails, the desired behavior depends on how it failed and whether `initCanFail` was set:
+
+* If `initCanFail` was set to true, then the test service should tolerate any kind of initialization failure where the client instance is still available. For instance, if initialization times out, or stops immediately due to getting a 401 error from LaunchDarkly, all of our SDKs still allow the application to continue using the client instance even though it may not have valid flag data; that might be an expected condition in a test, in which case `initCanFail` will be true.
+* If `initCanFail` was not set to true, then errors of that kind should be treated as unexpected failures and return an HTTP `500` error, preferably with some descriptive text in the response body that can be logged by the test harness.
+* Any kind of error that does _not_ make the client instance available should always cause a `500`. For instance, in languages that support exceptions, if an exception is thrown from the constructor then there is no client instance.
 
 ### Send command: `POST <URL of SDK client instance>`
 

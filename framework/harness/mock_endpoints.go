@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -50,8 +51,10 @@ type MockEndpoint struct {
 type IncomingRequestInfo struct {
 	Headers http.Header
 	Method  string
+	URL     url.URL
 	Body    []byte
 	Context context.Context
+	Cancel  context.CancelFunc
 }
 
 func newMockEndpointsManager(externalBaseURL string, logger framework.Logger) *mockEndpointsManager {
@@ -140,8 +143,10 @@ func (m *mockEndpointsManager) serveHTTP(w http.ResponseWriter, r *http.Request)
 	incoming := &IncomingRequestInfo{
 		Headers: r.Header,
 		Method:  r.Method,
+		URL:     url,
 		Body:    body,
 		Context: ctx,
+		Cancel:  canceller,
 	}
 
 	e.lock.Lock()

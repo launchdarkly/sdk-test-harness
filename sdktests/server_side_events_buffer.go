@@ -17,7 +17,7 @@ func doServerSideEventBufferTests(t *ldtest.T) {
 	capacity := 20
 	extraItemsOverCapacity := 3 // arbitrary non-zero value for how many events to try to add past the limit
 	eventsConfig := baseEventsConfig()
-	eventsConfig.Capacity = capacity
+	eventsConfig.Capacity = ldvalue.NewOptionalInt(capacity)
 
 	userFactory := NewUserFactory("doServerSideEventCapacityTests",
 		func(b lduser.UserBuilder) { b.Name("my favorite user") })
