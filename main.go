@@ -47,29 +47,41 @@ func main() {
 		os.Exit(1)
 	}
 
-	testLogger := ldtest.ConsoleTestLogger{
+	var testLogger ldtest.TestLogger
+	consoleLogger := ldtest.ConsoleTestLogger{
 		DebugOutputOnFailure: params.debug || params.debugAll,
 		DebugOutputOnSuccess: params.debugAll,
 	}
+	if params.jUnitFile == "" {
+		testLogger = consoleLogger
+	} else {
+		testLogger = &ldtest.MultiTestLogger{Loggers: []ldtest.TestLogger{
+			consoleLogger,
+			ldtest.NewJUnitTestLogger(params.jUnitFile, harness.TestServiceInfo(), params.filters),
+		}}
+	}
 
-	var results ldtest.Results
-	capabilities := harness.TestServiceInfo().Capabilities
+	enabledCapabilities := harness.TestServiceInfo().Capabilities
+	var allCapabilities framework.Capabilities
 	switch {
-	case capabilities.Has(servicedef.CapabilityServerSide):
+	case enabledCapabilities.Has(servicedef.CapabilityServerSide):
 		fmt.Println("Running server-side SDK test suite")
-		results = sdktests.RunServerSideTestSuite(harness, params.filters.Match, testLogger)
-	case capabilities.Has(servicedef.CapabilityClientSide):
+		allCapabilities = sdktests.AllImportantServerSideCapabilities()
+	case enabledCapabilities.Has(servicedef.CapabilityClientSide):
 		fmt.Fprintln(os.Stderr, "Client-side SDK tests are not yet implemented")
 		os.Exit(1)
 	default:
 		fmt.Fprintln(os.Stderr, `Test service has neither "client-side" nor "server-side" capability`)
 		os.Exit(1)
 	}
-	fmt.Println()
-	ldtest.PrintFilterDescription(params.filters, []string{}, harness.TestServiceInfo().Capabilities)
 
 	fmt.Println()
-	ldtest.PrintResults(results)
+	ldtest.PrintFilterDescription(params.filters, allCapabilities, enabledCapabilities)
+
+	results := sdktests.RunServerSideTestSuite(harness, params.filters.Match, testLogger)
+
+	fmt.Println()
+	logErr := testLogger.EndLog(results)
 
 	if params.stopServiceAtEnd {
 		fmt.Println("Stopping test service")
@@ -77,6 +89,12 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Failed to stop test service: %s\n", err)
 		}
 	}
+
+	if logErr != nil {
+		fmt.Fprintf(os.Stderr, "Error writing log: %s\n", logErr)
+		os.Exit(1)
+	}
+
 	if !results.OK() {
 		os.Exit(1)
 	}

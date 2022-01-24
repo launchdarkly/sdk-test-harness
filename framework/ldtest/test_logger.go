@@ -21,6 +21,7 @@ type TestLogger interface {
 	TestError(id TestID, err error)
 	TestFinished(id TestID, failed bool, debugOutput framework.CapturedOutput)
 	TestSkipped(id TestID, reason string)
+	EndLog(results Results) error
 }
 
 type nullTestLogger struct{}
@@ -29,10 +30,15 @@ func (n nullTestLogger) TestStarted(TestID)                                  {}
 func (n nullTestLogger) TestError(TestID, error)                             {}
 func (n nullTestLogger) TestFinished(TestID, bool, framework.CapturedOutput) {}
 func (n nullTestLogger) TestSkipped(TestID, string)                          {}
+func (n nullTestLogger) EndLog(result Results) error                         { return nil }
 
 type ConsoleTestLogger struct {
 	DebugOutputOnFailure bool
 	DebugOutputOnSuccess bool
+}
+
+type MultiTestLogger struct {
+	Loggers []TestLogger
 }
 
 func (c ConsoleTestLogger) TestStarted(id TestID) {
@@ -63,7 +69,7 @@ func (c ConsoleTestLogger) TestSkipped(id TestID, reason string) {
 	}
 }
 
-func PrintResults(results Results) {
+func (c ConsoleTestLogger) EndLog(results Results) error {
 	if results.OK() {
 		_, _ = allTestsPassedColor.Println("All tests passed")
 	} else {
@@ -72,4 +78,39 @@ func PrintResults(results Results) {
 			_, _ = consoleTestFailedColor.Fprintf(os.Stderr, "  * %s\n", f.TestID)
 		}
 	}
+
+	return nil
+}
+
+func (m *MultiTestLogger) TestStarted(id TestID) {
+	for _, l := range m.Loggers {
+		l.TestStarted(id)
+	}
+}
+
+func (m *MultiTestLogger) TestError(id TestID, err error) {
+	for _, l := range m.Loggers {
+		l.TestError(id, err)
+	}
+}
+
+func (m *MultiTestLogger) TestFinished(id TestID, failed bool, debugOutput framework.CapturedOutput) {
+	for _, l := range m.Loggers {
+		l.TestFinished(id, failed, debugOutput)
+	}
+}
+
+func (m *MultiTestLogger) TestSkipped(id TestID, reason string) {
+	for _, l := range m.Loggers {
+		l.TestSkipped(id, reason)
+	}
+}
+
+func (m *MultiTestLogger) EndLog(results Results) error {
+	for _, l := range m.Loggers {
+		if err := l.EndLog(results); err != nil {
+			return err
+		}
+	}
+	return nil
 }

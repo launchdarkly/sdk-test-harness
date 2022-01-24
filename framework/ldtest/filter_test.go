@@ -73,6 +73,9 @@ func TestRegexFilters(t *testing.T) {
 		// --skip overrides --run
 		{[]string{"y"}, []string{"n"}, TestID{"y"}, true},
 		{[]string{"y"}, []string{"n"}, TestID{"yn"}, false},
+
+		// characters that may be in test names are auto-escaped rather than being treated as regex operators
+		{[]string{"1 (yes"}, nil, TestID{"test 1 (yes)"}, true},
 	}
 	for _, params := range allParams {
 		var r RegexFilters
@@ -86,4 +89,9 @@ func TestRegexFilters(t *testing.T) {
 			assert.Equal(t, params.shouldMatch, r.Match(params.testID))
 		})
 	}
+}
+
+func TestAutoEscapeTestRegex(t *testing.T) {
+	assert.Equal(t, "hello \\(yes\\)", autoEscapeTestRegex("hello (yes)"))
+	assert.Equal(t, "hello \\(yes\\)", autoEscapeTestRegex("hello \\(yes\\)"))
 }
