@@ -3,5 +3,6 @@ version: 2
 jobs:
   - docker:
       image: cimg/go:1.17
+      copyGitHistory: true  # required by goreleaser
     template:
       name: go
