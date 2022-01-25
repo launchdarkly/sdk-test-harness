@@ -32,7 +32,7 @@ This means that the SDK's method for evaluating all flags at once has an option 
 
 This means that the SDK's method for evaluating all flags at once has an option for filtering the result to only include evaluation reason data if the SDK will need it for events (due to event tracking or debugging or an experiment).
 
-#### Capability `"big-segment"`
+#### Capability `"big-segments"`
 
 This means that the SDK supports Big Segments and can be configured with a custom Big Segment store.
 
@@ -196,7 +196,7 @@ The service supports the following requests. For simplicity and to ensure that H
 
 The test service should send this request when the SDK calls the method for getting store metadata. The request body is ignored. The response is a JSON object with these properties:
 
-* `lastUpToDate`: The epoch millisecond time that the simulated store was last updated.
+* `lastUpToDate` (number, required): The epoch millisecond time that the simulated store was last updated.
 
 #### Get user membership: `POST /getMembership`
 
