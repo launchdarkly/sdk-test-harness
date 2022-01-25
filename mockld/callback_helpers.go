@@ -11,6 +11,11 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// callbackService provides support infrastructure for callback services that simulate an SDK
+// component with multiple methods. The test service will call one of several predefined subpaths
+// for each component method. For simplicity, and to make it clear that these calls should never
+// be cached, the method is always POST, except for a DELETE method to the base path which means
+// the SDK has stopped using the component. The parameters and responses, if any, are always JSON.
 type callbackService struct {
 	router *mux.Router
 	logger framework.Logger

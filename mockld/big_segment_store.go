@@ -10,6 +10,9 @@ import (
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
 )
 
+// MockBigSegmentStoreService is the low-level component providing the mock endpoints for the
+// Big Segments test fixture. The higher-level component sdktests.BigSegmentStore decorates this
+// to make it more convenient to use in test logic.
 type MockBigSegmentStoreService struct {
 	service             *callbackService
 	getMetadataFn       func() (ldtime.UnixMillisecondTime, error)

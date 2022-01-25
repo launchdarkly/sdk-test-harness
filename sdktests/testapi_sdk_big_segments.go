@@ -18,6 +18,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// BigSegmentStore is a test fixture that provides callback endpoints for SDK clients to connect to,
+// behaving like a Big Segment store for a simulated database.
 type BigSegmentStore struct {
 	service           *mockld.MockBigSegmentStoreService
 	endpoint          *harness.MockEndpoint
@@ -28,6 +30,11 @@ type BigSegmentStore struct {
 	lock              sync.Mutex
 }
 
+// NewBigSegmentStore creates a new BigSegmentStore with the specified initial status.
+//
+// The object's lifecycle is tied to the test scope that created it; it will be automatically closed
+// when this test scope exits. It can be reused by subtests until then. Debug output related to the
+// data source will be attached to this test scope.
 func NewBigSegmentStore(t *ldtest.T, initialStatus ldreason.BigSegmentsStatus) *BigSegmentStore {
 	b := &BigSegmentStore{}
 	b.service = mockld.NewMockBigSegmentStoreService(
@@ -57,12 +64,17 @@ func (b *BigSegmentStore) ApplyConfiguration(config *servicedef.SDKConfigParams)
 	config.BigSegments.CallbackURI = b.endpoint.BaseURL()
 }
 
+// SetupGetMetadata causes the specified function to be called whenever the SDK calls the "get
+// metadata" method on the Big Segment store.
 func (b *BigSegmentStore) SetupGetMetadata(fn func() (ldtime.UnixMillisecondTime, error)) {
 	b.lock.Lock()
 	b.getMetadata = fn
 	b.lock.Unlock()
 }
 
+// SetupMetadataForStatus is a shortcut to call SetupGetMetadata with appropriate logic for
+// making the Big Segment store return a current time ("healthy" status), an old time ("stale"
+// status), or an error ("store error" status).
 func (b *BigSegmentStore) SetupMetadataForStatus(status ldreason.BigSegmentsStatus) {
 	b.SetupGetMetadata(func() (ldtime.UnixMillisecondTime, error) {
 		switch status {
@@ -76,12 +88,17 @@ func (b *BigSegmentStore) SetupMetadataForStatus(status ldreason.BigSegmentsStat
 	})
 }
 
-func (b *BigSegmentStore) SetupGetUserMembership(fn func(string) (map[string]bool, error)) {
+// SetupGetUserMembership causes the specified function to be called whenever the SDK calls the
+// "get user membership" method on the Big Segment store.
+func (b *BigSegmentStore) SetupGetUserMembership(fn func(userHash string) (map[string]bool, error)) {
 	b.lock.Lock()
 	b.getUserMembership = fn
 	b.lock.Unlock()
 }
 
+// SetupMemberships is a shortcut to call SetupGetUserMembership with appropriate logic for
+// providing preconfigured results for each possible user hash. Any user hash whose key does not
+// appear in the map will cause the test to fail.
 func (b *BigSegmentStore) SetupMemberships(t *ldtest.T, memberships map[string]map[string]bool) {
 	b.SetupGetUserMembership(func(userHash string) (map[string]bool, error) {
 		if membership, ok := memberships[userHash]; ok {
@@ -98,6 +115,7 @@ func (b *BigSegmentStore) SetupMemberships(t *ldtest.T, memberships map[string]m
 	})
 }
 
+// ExpectMetadataQuery blocks until the Big Segment store has received a metadata query.
 func (b *BigSegmentStore) ExpectMetadataQuery(t *ldtest.T, timeout time.Duration) {
 	select {
 	case <-b.metadataQueries:
@@ -107,6 +125,8 @@ func (b *BigSegmentStore) ExpectMetadataQuery(t *ldtest.T, timeout time.Duration
 	}
 }
 
+// ExpectNoMoreMetadataQueries causes a test failure if the Big Segment store receives a
+// metadata query.
 func (b *BigSegmentStore) ExpectNoMoreMetadataQueries(t *ldtest.T, timeout time.Duration) {
 	select {
 	case <-b.metadataQueries:
@@ -115,6 +135,8 @@ func (b *BigSegmentStore) ExpectNoMoreMetadataQueries(t *ldtest.T, timeout time.
 	}
 }
 
+// GetMembershipQueries returns the user hashes of all membership queries that have been
+// received so far.
 func (b *BigSegmentStore) GetMembershipQueries() []string {
 	b.lock.Lock()
 	defer b.lock.Unlock()
