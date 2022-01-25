@@ -38,6 +38,22 @@ func basicEvaluateFlag(
 	return result.Value
 }
 
+func evaluateFlagDetail(
+	t *ldtest.T,
+	client *SDKClient,
+	flagKey string,
+	user lduser.User,
+	defaultValue ldvalue.Value,
+) servicedef.EvaluateFlagResponse {
+	return client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+		FlagKey:      flagKey,
+		User:         &user,
+		ValueType:    servicedef.ValueTypeAny,
+		DefaultValue: defaultValue,
+		Detail:       true,
+	})
+}
+
 func expectNoMoreRequests(t *ldtest.T, endpoint *harness.MockEndpoint) {
 	_, err := endpoint.AwaitConnection(time.Millisecond * 100)
 	require.Error(t, err, "did not expect another request, but got one")
@@ -96,7 +112,7 @@ func makeFlagToCheckSegmentMatch(
 ) ldmodel.FeatureFlag {
 	return ldbuilders.NewFlagBuilder(flagKey).Version(1).
 		On(true).FallthroughVariation(0).Variations(valueIfNotIncluded, valueIfIncluded).
-		AddRule(ldbuilders.NewRuleBuilder().Variation(1).Clauses(
+		AddRule(ldbuilders.NewRuleBuilder().ID("ruleid").Variation(1).Clauses(
 			ldbuilders.Clause("", ldmodel.OperatorSegmentMatch, ldvalue.String(segmentKey)),
 		)).
 		Build()

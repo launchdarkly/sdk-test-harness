@@ -81,8 +81,8 @@ func (t *T) run(action func(*T)) {
 		if t.failed {
 			t.env.results.Failures = append(t.env.results.Failures, result)
 		}
-		for _, cleanupFn := range t.cleanups {
-			cleanupFn()
+		for i := len(t.cleanups) - 1; i >= 0; i-- {
+			t.cleanups[i]()
 		}
 	}()
 
