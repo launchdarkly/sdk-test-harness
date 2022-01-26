@@ -48,8 +48,8 @@ func (e Event) CanonicalizedJSONString() string {
 	}
 	var nullableProps []string
 	switch e.Kind() {
-	case "feature":
-		nullableProps = []string{"userKey", "user", "version", "variation", "reason", "default"}
+	case "feature", "debug":
+		nullableProps = []string{"userKey", "user", "version", "variation", "reason", "default", "prereqOf"}
 	case "custom":
 		nullableProps = []string{"userKey", "user", "data", "metricValue"}
 	}
