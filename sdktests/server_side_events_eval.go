@@ -202,20 +202,20 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 	expectedValue1 := ldvalue.String("value1")
 	expectedPrereqValue2 := ldvalue.String("ok2")
 	expectedPrereqValue3 := ldvalue.String("ok3")
-	flag1 := ldbuilders.NewFlagBuilder("flag1").
+	flag1 := ldbuilders.NewFlagBuilder("flag1").Version(100).
 		On(true).OffVariation(0).FallthroughVariation(1).
 		AddPrerequisite("flag2", 2).
 		Variations(dummyValue0, expectedValue1).
 		TrackEvents(true).
 		Build()
-	flag2 := ldbuilders.NewFlagBuilder("flag2").
+	flag2 := ldbuilders.NewFlagBuilder("flag2").Version(200).
 		On(true).OffVariation(0).FallthroughVariation(0).
 		AddPrerequisite("flag3", 3).
 		AddTarget(2, "user-key"). // this 2 matches the 2 in flag1's prerequisites
 		Variations(dummyValue0, dummyValue1, expectedPrereqValue2).
 		TrackEvents(true).
 		Build()
-	flag3 := ldbuilders.NewFlagBuilder("flag3").
+	flag3 := ldbuilders.NewFlagBuilder("flag3").Version(300).
 		On(true).OffVariation(0).FallthroughVariation(0).
 		AddRule(ldbuilders.NewRuleBuilder().ID("rule1").
 			Variation(3). // this 3 matches the 3 in flag2's prerequisites
