@@ -32,6 +32,12 @@ This means that the SDK's method for evaluating all flags at once has an option 
 
 This means that the SDK's method for evaluating all flags at once has an option for filtering the result to only include evaluation reason data if the SDK will need it for events (due to event tracking or debugging or an experiment).
 
+#### Capability `"big-segments"`
+
+This means that the SDK supports Big Segments and can be configured with a custom Big Segment store.
+
+For tests that involve Big Segments, the test harness will provide parameters in the `bigSegments` property of the configuration object, including a `callbackUri` that points to one of the test harness's callback services (see [Callback endpoints](#callback-endpoints)). The test service should configure the SDK with its own implementation of a Big Segment store, where every method of the store delegates to a corresponding endpoint in the callback service.
+
 ### Stop test service: `DELETE /`
 
 The test harness sends this request at the end of a test run if you have specified `--stop-service-at-end` on the [command line](./running.md). The test service should simply quit. This is a convenience so CI scripts can simply start the test service in the background and assume it will be stopped for them.
@@ -56,6 +62,9 @@ A `POST` request indicates that the test harness wants to start an instance of t
     * `globalPrivateAttributes` (array, optional): Corresponds to the `privateAttributes` property in the SDK configuration (rather than in an individual user).
     * `flushIntervalMs` (number, optional): The event flush interval in milliseconds. If omitted or zero, use the SDK's default value.
     * `inlineUsers` (boolean, optional): Corresponds to the SDK configuration property of the same name.
+  * `bigSegments` (object, optional): Enables and configures Big Segments. Properties are:
+    * `callbackUri` (string, required): The base URI for the big segments store callback fixture. See [Callback fixtures](#callback-fixtures).
+    * `userCacheSize`, `userCacheTimeMs`, `statusPollIntervalMS`, `staleAfterMs`: These correspond to the standard optional configuration parameters for every SDK that supports Big Segments.
 
 The response to a valid request is any HTTP `2xx` status, with a `Location` header whose value is the URL of the test service resource representing this SDK client instance (that is, the one that would be used for "Close client" or "Send command" as described below).
 
@@ -166,3 +175,41 @@ The response should be an empty 2xx response.
 If `command` is `"flush"`, the test service should tell the SDK to initiate an event flush.
 
 The response should be an empty 2xx response.
+
+## Callback endpoints
+
+As part of the contract tests, the test harness may need to simulate services that are external to the SDK. This allows it to control all of the data that the SDK sees.
+
+The test harness will tell the service where to find these simulated services by passing `baseUri` or `callbackUri` parameters in the service configuration. All of these URIs will point to some endpoint created by the test harness, which is only valid during the lifetime of the specific tests(s) where it is used. They will all have the same hostname and port, the same one that is controlled by the `-port` command-line parameter; the test harness does not listen on multiple ports (so it is safe to expose just one port if it is deployed in Docker).
+
+### Streaming service
+
+Most of the tests involve injecting some simulated LaunchDarkly environment data into the SDK. The test harness does this with a callback service that mimics the behavior of the LaunchDarkly streaming endpoints.
+
+### Big segments service
+
+SDKs that support Big Segments normally allow the application to configure them with one of several database integrations, using a generic "Big Segment store" interface. The test harness cannot test the integrations for specific databases such as Redis, but it can test whether the SDK sends the expected queries to the database and handles the results correctly. It does this by setting `bigSegments.callbackUri` in the test service configuration to point to a callback service.
+
+The service supports the following requests. For simplicity and to ensure that HTTP clients will not do any caching, they all use the `POST` method.
+
+#### Get metadata: `POST /getMetadata`
+
+The test service should send this request when the SDK calls the method for getting store metadata. The request body is ignored. The response is a JSON object with these properties:
+
+* `lastUpToDate` (number, required): The epoch millisecond time that the simulated store was last updated.
+
+#### Get user membership: `POST /getMembership`
+
+The test service should send this request when the SDK calls the method for getting a user's Big Segment membership.
+
+The request body is a JSON object with these properties:
+
+* `userHash` (string, required): A hash of the user key. There is a standard algorithm for computing this; the test harness will check the hash to ensure that the SDK follows the specification.
+
+The response body is a JSON object with these properties:
+
+* `values` (object, optional): A set of properties where each property key is a segment reference string (in the standard format used by SDK Big Segment data), and each value is either `true`, `false`, or `null`.
+
+The test service's Big Segment store implementation should return a corresponding membership state to the SDK. When the SDK queries the membership for any given segment reference string, it gets either `true`, `false`, or "no value" (any key that does not exist in the object should be considered "no value", same as if it had a null value).
+
+On platforms where the membership object is nullable, so that the query method could return null/nil instead of a membership object with no values, the test service should return null/nil if `values` is omitted or null. This lets the test harness verify that the SDK treats these two scenarios as equivalent and does not throw any kind of null reference error.

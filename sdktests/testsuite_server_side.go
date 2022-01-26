@@ -17,6 +17,7 @@ func AllImportantServerSideCapabilities() framework.Capabilities {
 		servicedef.CapabilityAllFlagsClientSideOnly,
 		servicedef.CapabilityAllFlagsDetailsOnlyForTrackedFlags,
 		servicedef.CapabilityAllFlagsWithReasons,
+		servicedef.CapabilityBigSegments,
 	}
 	// We don't include the "strongly-typed" capability here because it's not unusual for an SDK
 	// to not have it - that's just an inherent characteristic of the SDK, not a missing feature
@@ -42,7 +43,17 @@ func RunServerSideTestSuite(
 		t.Run("evaluation", DoServerSideEvalTests)
 		t.Run("events", doServerSideEventTests)
 		t.Run("streaming", doServerSideStreamTests)
+		t.Run("big segments", doServerSideBigSegmentsTests)
 	})
+}
+
+func doServerSideBigSegmentsTests(t *ldtest.T) {
+	t.RequireCapability(servicedef.CapabilityBigSegments)
+
+	t.Run("evaluation", doBigSegmentsEvaluateSegment)
+	t.Run("membership caching", doBigSegmentsMembershipCachingTests)
+	t.Run("status polling", doBigSegmentsStatusPollingTests)
+	t.Run("error handling", doBigSegmentsErrorHandlingTests)
 }
 
 func doServerSideDataStoreTests(t *ldtest.T) {
