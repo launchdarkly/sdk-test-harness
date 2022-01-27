@@ -100,10 +100,7 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 					expectedValue = defaultValues(valueType)
 					expectedVariation = ldvalue.OptionalInt{}
 				}
-				user := users.NextUniqueUser()
-				if isAnonymousUser {
-					user = lduser.NewUserBuilderFromUser(user).Anonymous(true).Build()
-				}
+				user := users.NextUniqueUserMaybeAnonymous(isAnonymousUser)
 				eventUser := mockld.SimpleEventUser(user)
 				resp := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 					FlagKey:      flag.Key,

@@ -35,6 +35,14 @@ func (f *UserFactory) NextUniqueUser() lduser.User {
 	return builder.Build()
 }
 
+func (f *UserFactory) NextUniqueUserMaybeAnonymous(shouldBeAnonymous bool) lduser.User {
+	user := f.NextUniqueUser()
+	if shouldBeAnonymous {
+		return lduser.NewUserBuilderFromUser(user).Anonymous(true).Build()
+	}
+	return user
+}
+
 type FlagFactory interface {
 	MakeFlag(param interface{}) ldmodel.FeatureFlag
 }

@@ -87,6 +87,7 @@ func EventIsCustomEvent(
 	o.Set("key", ldvalue.String(eventKey))
 	setPropertyConditionally(o, inlineUser, "user", eventUser.AsValue())
 	setPropertyConditionally(o, !inlineUser, "userKey", ldvalue.String(eventUser.GetKey()))
+	setPropertyConditionally(o, eventUser.IsAnonymous(), "contextKind", ldvalue.String("anonymousUser"))
 	setPropertyConditionally(o, !data.IsNull(), "data", data)
 	setPropertyConditionally(o, metricValue != nil, "metricValue", ldvalue.CopyArbitraryValue(metricValue))
 	return CanonicalizedEventJSON().Should(m.JSONEqual(o.Build()))
@@ -173,6 +174,7 @@ func EventIsIdentifyEvent(eventUser mockld.EventUser) m.Matcher {
 			Set("key", ldvalue.String(eventUser.GetKey())).
 			Set("user", eventUser.AsValue()).
 			Build()))
+	// identify events do *not* get a contextKind property for anonymous users
 }
 
 func EventIsIndexEvent(eventUser mockld.EventUser) m.Matcher {
@@ -181,6 +183,7 @@ func EventIsIndexEvent(eventUser mockld.EventUser) m.Matcher {
 			Set("kind", ldvalue.String("index")).
 			Set("user", eventUser.AsValue()).
 			Build()))
+	// index events do *not* get a contextKind property for anonymous users
 }
 
 func EventIsSummaryEvent() m.Matcher {

@@ -22,15 +22,17 @@ func doServerSideIdentifyEventTests(t *ldtest.T) {
 	events := NewSDKEventSink(t)
 	client := NewSDKClient(t, dataSource, events)
 
-	t.Run("normal user", func(t *ldtest.T) {
-		user := users.NextUniqueUser()
-		client.SendIdentifyEvent(t, user)
-		client.FlushEvents(t)
-		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-		m.In(t).Assert(payload, m.Items(
-			EventIsIdentifyEvent(mockld.SimpleEventUser(user)),
-		))
-	})
+	for _, isAnonymousUser := range []bool{false, true} {
+		t.Run(selectString(isAnonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
+			user := users.NextUniqueUserMaybeAnonymous(isAnonymousUser)
+			client.SendIdentifyEvent(t, user)
+			client.FlushEvents(t)
+			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+			m.In(t).Assert(payload, m.Items(
+				EventIsIdentifyEvent(mockld.SimpleEventUser(user)),
+			))
+		})
+	}
 
 	t.Run("user with empty key generates no event", func(t *ldtest.T) {
 		keylessUser := lduser.NewUserBuilder("").Name("has a name but not a key").Build()

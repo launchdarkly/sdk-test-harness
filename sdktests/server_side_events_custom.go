@@ -27,7 +27,7 @@ func doServerSideCustomEventTests(t *ldtest.T) {
 
 		user1 := lduser.NewUserBuilder("user1").Name("Ann").Build()
 		user2 := lduser.NewUserBuilder("user2").Name("Bob").Build()
-		user3 := lduser.NewUserBuilder("user3").Name("Cat").Build()
+		user3 := lduser.NewUserBuilder("user3").Name("Cat").Anonymous(true).Build()
 
 		event1 := servicedef.CustomEventParams{EventKey: "event1", User: &user1} // generates index event for user1
 		event2 := servicedef.CustomEventParams{EventKey: "event2", User: &user1} // no new index, user1 already seen
@@ -50,6 +50,34 @@ func doServerSideCustomEventTests(t *ldtest.T) {
 			expected = append(expected, EventIsIndexEvent(mockld.ExpectedEventUserFromUser(user, eventsConfig)))
 		}
 		m.In(t).Assert(payload, m.ItemsInAnyOrder(expected...))
+	})
+
+	t.Run("properties are correct for inline anonymous user", func(t *ldtest.T) {
+		// Here, the logic in EventIsCustomEventForParams includes an expectation of "contextKind": "anonymousUser"
+		eventsConfig := baseEventsConfig()
+		eventsConfig.InlineUsers = true
+
+		dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+		events := NewSDKEventSink(t)
+		client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{Events: &eventsConfig}), dataSource, events)
+
+		user := lduser.NewAnonymousUser("user-key")
+
+		params := servicedef.CustomEventParams{
+			EventKey:     "event-key",
+			User:         &user,
+			Data:         ldvalue.Null(),
+			OmitNullData: true,
+			MetricValue:  nil,
+		}
+		client.SendCustomEvent(t, params)
+
+		client.FlushEvents(t)
+		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+		m.In(t).Assert(payload, m.Items(
+			EventIsCustomEventForParams(params, eventsConfig),
+		))
 	})
 }
 
