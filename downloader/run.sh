@@ -51,4 +51,4 @@ if [ ! -x "${EXECUTABLE}" ]; then
   tar -xf "${TEMP_DIR}/archive.tar.gz" -C "${TEMP_DIR}"
 fi
 
-"${EXECUTABLE}" $PARAMS
+bash -c "${EXECUTABLE} $PARAMS"
