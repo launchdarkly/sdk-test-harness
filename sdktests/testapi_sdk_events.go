@@ -55,6 +55,9 @@ func (e *SDKEventSink) ApplyConfiguration(config *servicedef.SDKConfigParams) {
 	config.Events.BaseURI = e.eventsEndpoint.BaseURL()
 }
 
+// Service returns the underlying mock events service component, for access to special options.
+func (e *SDKEventSink) Service() *mockld.EventsService { return e.eventsService }
+
 // ExpectAnalyticsEvents waits for event data to be posted to the endpoint, and then calls
 // matchers.ItemsInAnyOrder with the specified eventMatchers, verifying that the payload contains
 // one event matching each of the matchers regardless of ordering.
