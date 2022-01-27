@@ -142,6 +142,8 @@ func EventIsFeatureEvent(
 	}
 	if prereqOfFlagKey != "" {
 		o.Set("prereqOf", ldvalue.String(prereqOfFlagKey))
+	} else {
+		o.Set("prereqOf", ldvalue.Null())
 	}
 	return CanonicalizedEventJSON().Should(m.JSONEqual(o.Build()))
 }
