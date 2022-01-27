@@ -24,6 +24,7 @@ import (
 func RunServerSideEvalAllFlagsTests(t *ldtest.T) {
 	t.Run("default behavior", doServerSideAllFlagsBasicTest)
 	t.Run("with reasons", doServerSideAllFlagsWithReasonsTest)
+	t.Run("experimentation", doServerSideAllFlagsExperimentationTest)
 	t.Run("error in flag", doServerSideAllFlagsErrorInFlagTest)
 	t.Run("client-side filter", doServerSideAllFlagsClientSideOnlyTest)
 	t.Run("details only for tracked flags", doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest)
@@ -136,6 +137,50 @@ func doServerSideAllFlagsWithReasonsTest(t *ldtest.T) {
 		"$valid": true
 	}`
 	m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedJSON))
+}
+
+func doServerSideAllFlagsExperimentationTest(t *ldtest.T) {
+	// flag1 has experiment behavior because it's a fallthrough and has trackEventsFallthrough=true
+	flag1 := ldbuilders.NewFlagBuilder("flag1").Version(100).
+		Variations(dummyValue0, ldvalue.String("value1")).
+		On(true).FallthroughVariation(1).
+		TrackEventsFallthrough(true).
+		Build()
+
+	// flag2 has experiment behavior because it's a rule match and has trackEvents=true on that rule
+	flag2 := ldbuilders.NewFlagBuilder("flag2").Version(200).
+		Variations(dummyValue0, dummyValue1, ldvalue.String("value2")).
+		On(true).FallthroughVariation(0).
+		AddRule(ldbuilders.NewRuleBuilder().ID("rule0").Variation(2).TrackEvents(true)).
+		Build()
+
+	dataBuilder := mockld.NewServerSDKDataBuilder()
+	dataBuilder.Flag(flag1, flag2)
+
+	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	client := NewSDKClient(t, dataSource)
+	user := lduser.NewUser("user-key")
+
+	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
+		User: &user,
+	})
+	resultJSON, _ := json.Marshal(canonicalizeAllFlagsData(result.State))
+	expectedJSON := `{
+		"flag1": "value1",
+		"flag2": "value2",
+		"$flagsState": {
+			"flag1": {
+				"variation": 1, "version": 100, "reason": { "kind": "FALLTHROUGH" },
+				"trackEvents": true, "trackReason": true
+			},
+			"flag2": {
+				"variation": 2, "version": 200, "reason": { "kind": "RULE_MATCH", "ruleIndex": 0, "ruleId": "rule0" },
+				"trackEvents": true, "trackReason": true
+			}
+		},
+		"$valid": true
+	}`
+	assert.JSONEq(t, expectedJSON, string(resultJSON))
 }
 
 func doServerSideAllFlagsErrorInFlagTest(t *ldtest.T) {
