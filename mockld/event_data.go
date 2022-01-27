@@ -32,30 +32,21 @@ func (e Event) Kind() string {
 // CanonicalizedJSONString transforms the JSON formatting of the event to make comparisons
 // reliable, as follows: 1. Drop the creationDate property, since its value is unpredictable.
 // 2. Call EventUser.CanonicalizedJSONString on user properties, if any. 3. Ensure that
-// all expected properties, if nullable, do appear in the object when null instead of being
-// omitted.
+// all nullable properties are omitted if their value is null (so we can write more concise
+// test expectations).
 func (e Event) CanonicalizedJSONString() string {
 	b := ldvalue.ObjectBuild()
 	for key, value := range ldvalue.Value(e).AsValueMap().AsMap() {
-		if key == "creationDate" {
+		if value.IsNull() {
+			continue
+		}
+		switch key {
+		case "creationDate":
 			continue // We won't try to make assertions about the timestamp, just omit it
-		}
-		if key == "user" {
+		case "user":
 			b.Set(key, ldvalue.Raw([]byte(EventUser(value).CanonicalizedJSONString())))
-		} else {
+		default:
 			b.Set(key, value)
-		}
-	}
-	var nullableProps []string
-	switch e.Kind() {
-	case "feature":
-		nullableProps = []string{"userKey", "user", "version", "variation", "reason", "default"}
-	case "custom":
-		nullableProps = []string{"userKey", "user", "data", "metricValue"}
-	}
-	for _, k := range nullableProps {
-		if !ldvalue.Value(e).GetByKey(k).IsDefined() {
-			b.Set(k, ldvalue.Null())
 		}
 	}
 	return b.Build().JSONString()
@@ -172,3 +163,5 @@ func (u EventUser) CanonicalizedJSONString() string {
 func (u EventUser) AsValue() ldvalue.Value { return ldvalue.Value(u) }
 
 func (u EventUser) GetKey() string { return u.AsValue().GetByKey("key").StringValue() }
+
+func (u EventUser) IsAnonymous() bool { return u.AsValue().GetByKey("anonymous").BoolValue() }

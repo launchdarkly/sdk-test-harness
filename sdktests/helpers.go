@@ -166,17 +166,23 @@ func pollUntilFlagValueUpdated(
 		time.Second, time.Millisecond*50, "timed out without seeing updated flag value")
 }
 
+func selectString(boolValue bool, valueIfTrue, valueIfFalse string) string {
+	if boolValue {
+		return valueIfTrue
+	}
+	return valueIfFalse
+}
+
+func setPropertyConditionally(o ldvalue.ObjectBuilder, condition bool, name string, value ldvalue.Value) {
+	if condition {
+		o.Set(name, value)
+	}
+}
+
 func timeValueAsPointer(value ldtime.UnixMillisecondTime) *ldtime.UnixMillisecondTime {
 	return &value
 }
 
 func testDescFromType(valueType servicedef.ValueType) string {
 	return fmt.Sprintf("type: %s", valueType)
-}
-
-func testDescWithOrWithoutReason(withReason bool) string {
-	if withReason {
-		return "with reason"
-	}
-	return "without reason"
 }
