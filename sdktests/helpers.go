@@ -38,6 +38,22 @@ func basicEvaluateFlag(
 	return result.Value
 }
 
+func evaluateFlagDetail(
+	t *ldtest.T,
+	client *SDKClient,
+	flagKey string,
+	user lduser.User,
+	defaultValue ldvalue.Value,
+) servicedef.EvaluateFlagResponse {
+	return client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+		FlagKey:      flagKey,
+		User:         &user,
+		ValueType:    servicedef.ValueTypeAny,
+		DefaultValue: defaultValue,
+		Detail:       true,
+	})
+}
+
 func expectNoMoreRequests(t *ldtest.T, endpoint *harness.MockEndpoint) {
 	_, err := endpoint.AwaitConnection(time.Millisecond * 100)
 	require.Error(t, err, "did not expect another request, but got one")
@@ -96,7 +112,7 @@ func makeFlagToCheckSegmentMatch(
 ) ldmodel.FeatureFlag {
 	return ldbuilders.NewFlagBuilder(flagKey).Version(1).
 		On(true).FallthroughVariation(0).Variations(valueIfNotIncluded, valueIfIncluded).
-		AddRule(ldbuilders.NewRuleBuilder().Variation(1).Clauses(
+		AddRule(ldbuilders.NewRuleBuilder().ID("ruleid").Variation(1).Clauses(
 			ldbuilders.Clause("", ldmodel.OperatorSegmentMatch, ldvalue.String(segmentKey)),
 		)).
 		Build()
@@ -150,17 +166,23 @@ func pollUntilFlagValueUpdated(
 		time.Second, time.Millisecond*50, "timed out without seeing updated flag value")
 }
 
+func selectString(boolValue bool, valueIfTrue, valueIfFalse string) string {
+	if boolValue {
+		return valueIfTrue
+	}
+	return valueIfFalse
+}
+
+func setPropertyConditionally(o ldvalue.ObjectBuilder, condition bool, name string, value ldvalue.Value) {
+	if condition {
+		o.Set(name, value)
+	}
+}
+
 func timeValueAsPointer(value ldtime.UnixMillisecondTime) *ldtime.UnixMillisecondTime {
 	return &value
 }
 
 func testDescFromType(valueType servicedef.ValueType) string {
 	return fmt.Sprintf("type: %s", valueType)
-}
-
-func testDescWithOrWithoutReason(withReason bool) string {
-	if withReason {
-		return "with reason"
-	}
-	return "without reason"
 }

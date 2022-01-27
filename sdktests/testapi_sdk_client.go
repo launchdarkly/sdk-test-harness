@@ -183,3 +183,12 @@ func (c *SDKClient) SendAliasEvent(t *ldtest.T, params servicedef.AliasEventPara
 func (c *SDKClient) FlushEvents(t *ldtest.T) {
 	require.NoError(t, c.sdkClientEntity.SendCommand(servicedef.CommandFlushEvents, t.DebugLogger(), nil))
 }
+
+// GetBigSegmentStoreStatus queries the big segment store status from the SDK client. The test
+// harness will only call this method if the test service has the "big-segments" capability.
+func (c *SDKClient) GetBigSegmentStoreStatus(t *ldtest.T) servicedef.BigSegmentStoreStatusResponse {
+	var resp servicedef.BigSegmentStoreStatusResponse
+	require.NoError(t, c.sdkClientEntity.SendCommand(servicedef.CommandGetBigSegmentStoreStatus,
+		t.DebugLogger(), &resp))
+	return resp
+}

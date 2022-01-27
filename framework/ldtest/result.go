@@ -6,13 +6,16 @@ import (
 )
 
 type Results struct {
-	Tests    []TestResult
-	Failures []TestResult
+	Tests               []TestResult
+	Failures            []TestResult
+	NonCriticalFailures []TestResult
 }
 
 type TestResult struct {
-	TestID TestID
-	Errors []error
+	TestID      TestID
+	Errors      []error
+	NonCritical bool
+	Explanation string
 }
 
 func (r Results) OK() bool {
@@ -36,4 +39,8 @@ type TestFailure struct {
 
 func (f TestFailure) Error() string {
 	return fmt.Sprintf("[%s]: %s", f.ID, f.Err)
+}
+
+func (r TestResult) Failed() bool {
+	return len(r.Errors) != 0
 }

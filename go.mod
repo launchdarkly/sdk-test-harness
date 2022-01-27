@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/fatih/color v1.13.0
+	github.com/gorilla/mux v1.8.0
 	github.com/launchdarkly/eventsource v1.6.2
 	github.com/launchdarkly/go-test-helpers/v2 v2.3.0
 	github.com/stretchr/testify v1.7.0

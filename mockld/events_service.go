@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/framework"
@@ -20,7 +21,9 @@ type EventsService struct {
 	AnalyticsEventPayloads chan Events
 	sdkKind                SDKKind
 	credential             string
+	hostTimeOverride       time.Time
 	logger                 framework.Logger
+	lock                   sync.Mutex
 }
 
 func NewEventsService(sdkKind SDKKind, credential string, logger framework.Logger) *EventsService {
@@ -53,6 +56,12 @@ func (s *EventsService) AwaitAnalyticsEventPayload(timeout time.Duration) (Event
 	}
 }
 
+func (s *EventsService) SetHostTimeOverride(t time.Time) {
+	s.lock.Lock()
+	s.hostTimeOverride = t
+	s.lock.Unlock()
+}
+
 func (s *EventsService) postEvents(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -64,6 +73,14 @@ func (s *EventsService) postEvents(w http.ResponseWriter, r *http.Request) {
 		s.logger.Printf("unable to read request body")
 		return
 	}
+
+	s.lock.Lock()
+	hostTime := s.hostTimeOverride
+	s.lock.Unlock()
+	if !hostTime.IsZero() {
+		w.Header().Set("Date", hostTime.UTC().Format(http.TimeFormat))
+	}
+
 	var events []Event
 	if err := json.Unmarshal(data, &events); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
