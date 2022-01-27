@@ -61,7 +61,7 @@ There are several ways to do this. When using `testify/assert` or `testify/requi
 
 Also, using the `matchers` API sometimes results in more helpful error messages. For instance, if you want to assert that every element in a slice has a certain property, using `matchers.Items` or `matchers.ItemsInAnyOrder` along with a matcher for the desired property is better than doing an equality test on the whole slice against the entire expected data set, because it won't care about any irrelevant properties, and because the property matcher will automatically give you an appropriate failure message. It's also better than doing a `for` loop over the slice and doing an assertion on each element, because you won't have to construct your own message to explain that the failure is for item 0, item 1, etc.
 
-Values in failure output may be formatted differently in `matchers`versus `testify`: for instance, values of types that have a JSON representation are shown as JSON in `matchers`, rather than using the result of `fmt.Sprintf("%v", value)` as `testify` does in most cases. The easiest way to see which kind of output would be most helpful for a particular test is to cause a deliberate failure in the test and see what you get.
+Values in failure output may be formatted differently in `matchers` versus `testify`: for instance, values of types that have a JSON representation are shown as JSON in `matchers`, rather than using the result of `fmt.Sprintf("%v", value)` as `testify` does in most cases. The easiest way to see which kind of output would be most helpful for a particular test is to cause a deliberate failure in the test and see what you get.
 
 ## Non-critical tests
 
