@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/launchdarkly/sdk-test-harness/framework"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -169,4 +170,39 @@ func TestTestScopeFilter(t *testing.T) {
 	assert.Equal(t, TestID{"b", "sub2b"}, result.Tests[1].TestID)
 	assert.Equal(t, TestID{"b"}, result.Tests[2].TestID)
 	assert.Equal(t, TestID(nil), result.Tests[3].TestID)
+}
+
+func TestNonCriticalFailure(t *testing.T) {
+	result := Run(TestConfiguration{}, func(ldt *T) {
+		ldt.Run("a", func(ldt0 *T) {
+			ldt0.NonCritical("would be nice if this worked (and it does)")
+		})
+
+		ldt.Run("b", func(ldt1 *T) {
+			ldt1.NonCritical("would be nice if this worked")
+			ldt1.Errorf("but it doesn't")
+		})
+	})
+
+	assert.True(t, result.OK())
+	assert.Len(t, result.Tests, 3)
+
+	assert.Equal(t, TestID{"a"}, result.Tests[0].TestID)
+	assert.Len(t, result.Tests[0].Errors, 0)
+	assert.Equal(t, "", result.Tests[0].Explanation)
+
+	assert.Equal(t, TestID{"b"}, result.Tests[1].TestID)
+	assert.Len(t, result.Tests[1].Errors, 1)
+	assert.Equal(t, "but it doesn't", result.Tests[1].Errors[0].Error())
+	assert.Equal(t, "would be nice if this worked", result.Tests[1].Explanation)
+
+	assert.Equal(t, TestID(nil), result.Tests[2].TestID)
+
+	assert.Len(t, result.Failures, 0)
+
+	assert.Len(t, result.NonCriticalFailures, 1)
+	assert.Equal(t, TestID{"b"}, result.NonCriticalFailures[0].TestID)
+	assert.Equal(t, "would be nice if this worked", result.NonCriticalFailures[0].Explanation)
+	assert.Len(t, result.NonCriticalFailures[0].Errors, 1)
+	assert.Equal(t, "but it doesn't", result.NonCriticalFailures[0].Errors[0].Error())
 }

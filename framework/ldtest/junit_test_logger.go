@@ -101,7 +101,7 @@ func (j *JUnitTestLogger) TestError(id TestID, err error) {
 	j.tests[id.String()] = status
 }
 
-func (j *JUnitTestLogger) TestFinished(id TestID, failed bool, debugOutput framework.CapturedOutput) {
+func (j *JUnitTestLogger) TestFinished(id TestID, result TestResult, debugOutput framework.CapturedOutput) {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 	status := j.tests[id.String()]

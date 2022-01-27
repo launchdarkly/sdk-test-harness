@@ -18,6 +18,7 @@ type T struct {
 	env         *environment
 	id          TestID
 	debugLogger framework.CapturingLogger
+	nonCritical string
 	failed      bool
 	skipped     bool
 	skipReason  string
@@ -56,7 +57,8 @@ func Run(
 	return env.results
 }
 
-func (t *T) run(action func(*T)) {
+func (t *T) run(action func(*T)) (result TestResult) {
+	result.TestID = t.id
 	defer func() {
 		if r := recover(); r != nil {
 			if t.skipped {
@@ -76,17 +78,24 @@ func (t *T) run(action func(*T)) {
 				t.env.config.TestLogger.TestError(t.id, addError)
 			}
 		}
-		result := TestResult{TestID: t.id, Errors: t.errors}
-		t.env.results.Tests = append(t.env.results.Tests, result)
+		result.Errors = t.errors
 		if t.failed {
-			t.env.results.Failures = append(t.env.results.Failures, result)
+			if t.nonCritical == "" {
+				t.env.results.Failures = append(t.env.results.Failures, result)
+			} else {
+				result.Explanation = t.nonCritical
+				result.NonCritical = true
+				t.env.results.NonCriticalFailures = append(t.env.results.NonCriticalFailures, result)
+			}
 		}
+		t.env.results.Tests = append(t.env.results.Tests, result)
 		for i := len(t.cleanups) - 1; i >= 0; i-- {
 			t.cleanups[i]()
 		}
 	}()
 
 	action(t)
+	return result
 }
 
 // ID returns the full name of the current test.
@@ -109,12 +118,20 @@ func (t *T) Run(name string, action func(*T)) {
 		id:  id,
 		env: t.env,
 	}
-	c1.run(action)
+	result := c1.run(action)
 	if c1.skipped {
 		t.env.config.TestLogger.TestSkipped(id, c1.skipReason)
 	} else {
-		t.env.config.TestLogger.TestFinished(id, c1.failed, c1.debugLogger.Output())
+		t.env.config.TestLogger.TestFinished(id, result, c1.debugLogger.Output())
 	}
+}
+
+// NonCritical indicates that if this test fails, we would like to know about it but we're willing to
+// live with it. It will be shown in the output as a non-critical failure, accompanied by the
+// explanation that is specified here. Non-critical failures do not cause sdk-test-harness to return
+// a non-zero exit code on termination, as regular failures do.
+func (t *T) NonCritical(explanation string) {
+	t.nonCritical = explanation
 }
 
 // Errorf reports a test failure. It is equivalent to Go's testing.T.Errorf. It does not cause the test
