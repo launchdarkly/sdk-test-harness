@@ -8,6 +8,7 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
@@ -27,6 +28,7 @@ func RunServerSideEvalAllFlagsTests(t *ldtest.T) {
 	t.Run("client-side filter", doServerSideAllFlagsClientSideOnlyTest)
 	t.Run("details only for tracked flags", doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest)
 	t.Run("client not ready", doServerSideAllFlagsClientNotReadyTest)
+	t.Run("compact representations", doServerSideAllFlagsCompactRepresentationsTest)
 }
 
 func doServerSideAllFlagsBasicTest(t *ldtest.T) {
@@ -90,7 +92,7 @@ func doServerSideAllFlagsBasicTest(t *ldtest.T) {
 		},
 		"$valid": true
 	}`
-	assert.JSONEq(t, expectedJSON, string(resultJSON))
+	m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedJSON))
 }
 
 func doServerSideAllFlagsWithReasonsTest(t *ldtest.T) {
@@ -133,7 +135,7 @@ func doServerSideAllFlagsWithReasonsTest(t *ldtest.T) {
 		},
 		"$valid": true
 	}`
-	assert.JSONEq(t, expectedJSON, string(resultJSON))
+	m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedJSON))
 }
 
 func doServerSideAllFlagsErrorInFlagTest(t *ldtest.T) {
@@ -179,7 +181,7 @@ func doServerSideAllFlagsErrorInFlagTest(t *ldtest.T) {
 			},
 			"$valid": true
 		}`
-		assert.JSONEq(t, expectedJSON, string(resultJSON))
+		m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedJSON))
 	})
 
 	t.Run("with reasons", func(t *ldtest.T) {
@@ -189,6 +191,7 @@ func doServerSideAllFlagsErrorInFlagTest(t *ldtest.T) {
 		})
 
 		resultJSON, _ := json.Marshal(canonicalizeAllFlagsData(result.State))
+
 		expectedJSON := `{
 			"flag1": null,
 			"flag2": "value2",
@@ -202,7 +205,7 @@ func doServerSideAllFlagsErrorInFlagTest(t *ldtest.T) {
 			},
 			"$valid": true
 		}`
-		assert.JSONEq(t, expectedJSON, string(resultJSON))
+		m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedJSON))
 	})
 }
 
@@ -292,7 +295,7 @@ func doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest(t *ldtest.T) {
 		},
 		"$valid": true
 	}`
-	assert.JSONEq(t, expectedJSON, string(resultJSON))
+	m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedJSON))
 }
 
 func doServerSideAllFlagsClientNotReadyTest(t *ldtest.T) {
@@ -310,13 +313,64 @@ func doServerSideAllFlagsClientNotReadyTest(t *ldtest.T) {
 		"$valid": false,
 		"$flagsState": {}
 	}`
-	assert.JSONEq(t, expectedJSON, string(resultJSON))
+	m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedJSON))
 }
 
+func doServerSideAllFlagsCompactRepresentationsTest(t *ldtest.T) {
+	t.NonCritical(`If this failed but the other 'all flags' tests passed, the SDK is including null-valued` +
+		` properties within the $flagsState part of the representation. To save bandwidth, it's desirable` +
+		` to omit such properties.`)
+
+	flag1 := ldbuilders.NewFlagBuilder("flag1").Version(100).
+		Variations(ldvalue.String("value1")).On(false).OffVariation(0).
+		Build()
+	flag2 := ldbuilders.NewFlagBuilder("flag2").Version(200).
+		Variations(dummyValue0).On(false).OffVariation(-1).
+		Build()
+
+	data := mockld.NewServerSDKDataBuilder().Flag(flag1, flag2).Build()
+	dataSource := NewSDKDataSource(t, data)
+	client := NewSDKClient(t, dataSource)
+
+	user := lduser.NewUser("user-key")
+
+	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
+		User: &user,
+	})
+
+	resultJSON, _ := json.Marshal(result.State["$flagsState"])
+	expectedMetadata := `{
+		"flag1": {
+			"variation": 0, "version": 100
+		},
+		"flag2": {
+			"version": 200
+		}
+	}`
+	m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedMetadata))
+}
+
+// canonicalizeAllFlagsData transforms the JSON flags data to adjust for variable SDK behavior that
+// we don't care about: 1. SDKs may or may not strip null properties in the metadata, so we'll
+// strip them all; 2. SDKs are allowed to omit $valid, in which case it's assumed to be true.
 func canonicalizeAllFlagsData(originalData map[string]ldvalue.Value) map[string]ldvalue.Value {
 	ret := make(map[string]ldvalue.Value, len(originalData))
 	for k, v := range originalData {
-		ret[k] = v
+		if k == "$flagsState" {
+			allMetadata := ldvalue.ObjectBuild()
+			for k1, v1 := range v.AsValueMap().AsMap() {
+				flagMetadata := ldvalue.ObjectBuild()
+				for k2, v2 := range v1.AsValueMap().AsMap() {
+					if !v2.IsNull() {
+						flagMetadata.Set(k2, v2)
+					}
+				}
+				allMetadata.Set(k1, flagMetadata.Build())
+			}
+			ret[k] = allMetadata.Build()
+		} else {
+			ret[k] = v
+		}
 	}
 	if _, found := ret["$valid"]; !found {
 		ret["$valid"] = ldvalue.Bool(true)

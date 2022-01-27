@@ -23,11 +23,12 @@ type JUnitTestLogger struct {
 }
 
 type jUnitTestStatus struct {
-	failures  []error
-	skipped   ldvalue.OptionalString
-	output    string
-	startTime time.Time
-	duration  time.Duration
+	failures    []error
+	skipped     ldvalue.OptionalString
+	nonCritical bool
+	output      string
+	startTime   time.Time
+	duration    time.Duration
 }
 
 // Struct definitions for the JUnit XML schema - see https://github.com/jstemmer/go-junit-report
@@ -101,12 +102,13 @@ func (j *JUnitTestLogger) TestError(id TestID, err error) {
 	j.tests[id.String()] = status
 }
 
-func (j *JUnitTestLogger) TestFinished(id TestID, failed bool, debugOutput framework.CapturedOutput) {
+func (j *JUnitTestLogger) TestFinished(id TestID, result TestResult, debugOutput framework.CapturedOutput) {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 	status := j.tests[id.String()]
 	status.output = debugOutput.ToString("")
 	status.duration = time.Since(status.startTime)
+	status.nonCritical = result.NonCritical
 	j.tests[id.String()] = status
 }
 
@@ -159,6 +161,9 @@ func (j *JUnitTestLogger) EndLog(results Results) error {
 			testCase := jUnitXMLTestCase{
 				Name: testID.String(),
 				Time: jUnitDurationString(status.duration),
+			}
+			if status.nonCritical {
+				testCase.Name += " (non-critical)"
 			}
 			if status.skipped.IsDefined() {
 				testCase.SkipMessage = &jUnitXMLSkipMessage{Message: status.skipped.String()}
