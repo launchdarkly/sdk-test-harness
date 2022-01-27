@@ -8,6 +8,7 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
@@ -234,13 +235,15 @@ func doServerSideAllFlagsClientSideOnlyTest(t *ldtest.T) {
 }
 
 func doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest(t *ldtest.T) {
-	// Note that it's really only the *reason* that is omitted for untracked flags in this mode.
-	// The variation index and flag version always must be included, because they're used in
-	// summary events.
+	// Note that it's only "version" and "reason" that are omitted for untracked flags in this mode.
+	// The variation index always must be included, because it's necessary for summary events. The
+	// point of this option is to save bandwidth for applications that don't care about evaluation
+	// reasons in their front-end code, but still want those to show up in event data when
+	// appropriate.
 
 	t.RequireCapability(servicedef.CapabilityAllFlagsDetailsOnlyForTrackedFlags)
 
-	// flag1 does not get a reason because it's not in any of the other categories below
+	// flag1 will have details removed because it's not in any of the other categories below
 	flag1 := ldbuilders.NewFlagBuilder("flag1").Version(100).
 		Variations(dummyValue0, ldvalue.String("value1")).
 		On(false).OffVariation(1).
@@ -280,7 +283,7 @@ func doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest(t *ldtest.T) {
 		"flag3": "value3",
 		"$flagsState": {
 			"flag1": {
-				"variation": 1, "version": 100
+				"variation": 1
 			},
 			"flag2": {
 				"variation": 2, "version": 200, "reason": { "kind": "OFF" }, "trackEvents": true
@@ -292,7 +295,7 @@ func doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest(t *ldtest.T) {
 		},
 		"$valid": true
 	}`
-	assert.JSONEq(t, expectedJSON, string(resultJSON))
+	m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedJSON))
 }
 
 func doServerSideAllFlagsClientNotReadyTest(t *ldtest.T) {
