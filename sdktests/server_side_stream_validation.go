@@ -33,11 +33,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 		streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, nil, t.DebugLogger())
 		t.Defer(streamEndpoint.Close)
 
-		client := NewSDKClient(t,
-			WithConfig(servicedef.SDKConfigParams{
-				Streaming: baseStreamConfig(streamEndpoint),
-			}),
-		)
+		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
 		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
@@ -84,10 +80,8 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 
 	shouldIgnoreEvent := func(t *ldtest.T, eventName string, eventData json.RawMessage) {
 		dataSource := NewSDKDataSource(t, dataV1)
-		client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
-			Streaming: &servicedef.SDKConfigStreamingParams{
-				InitialRetryDelayMs: timeValueAsPointer(briefDelay), // brief delay so we can easily detect if it reconnects
-			},
+		client := NewSDKClient(t, WithStreamingConfig(servicedef.SDKConfigStreamingParams{
+			InitialRetryDelayMs: timeValueAsPointer(briefDelay), // brief delay so we can easily detect if it reconnects
 		}), dataSource)
 
 		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})

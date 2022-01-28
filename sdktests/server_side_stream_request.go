@@ -28,10 +28,8 @@ func doServerSideStreamRequestTests(t *ldtest.T) {
 
 	t.Run("URL path is correct when base URI has a trailing slash", func(t *ldtest.T) {
 		dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
-		_ = NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
-			Streaming: &servicedef.SDKConfigStreamingParams{
-				BaseURI: strings.TrimSuffix(dataSource.Endpoint().BaseURL(), "/") + "/",
-			},
+		_ = NewSDKClient(t, WithStreamingConfig(servicedef.SDKConfigStreamingParams{
+			BaseURI: strings.TrimSuffix(dataSource.Endpoint().BaseURL(), "/") + "/",
 		}))
 
 		request := expectRequest(t, dataSource.Endpoint(), time.Second)
@@ -40,10 +38,8 @@ func doServerSideStreamRequestTests(t *ldtest.T) {
 
 	t.Run("URL path is correct when base URI has no trailing slash", func(t *ldtest.T) {
 		dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
-		_ = NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
-			Streaming: &servicedef.SDKConfigStreamingParams{
-				BaseURI: strings.TrimSuffix(dataSource.Endpoint().BaseURL(), "/"),
-			},
+		_ = NewSDKClient(t, WithStreamingConfig(servicedef.SDKConfigStreamingParams{
+			BaseURI: strings.TrimSuffix(dataSource.Endpoint().BaseURL(), "/"),
 		}))
 
 		request := expectRequest(t, dataSource.Endpoint(), time.Second)

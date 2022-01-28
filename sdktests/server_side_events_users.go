@@ -86,9 +86,7 @@ func doServerSideEventUserTests(t *ldtest.T) {
 
 	for _, scenario := range scenarios {
 		t.Run(scenario.Description(), func(t *ldtest.T) {
-			client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
-				Events: &scenario.config,
-			}), dataSource, events)
+			client := NewSDKClient(t, WithEventsConfig(scenario.config), dataSource, events)
 
 			t.Run("feature event", func(t *ldtest.T) {
 				user := scenario.MakeUser(users.NextUniqueUser())

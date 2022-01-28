@@ -40,8 +40,7 @@ func doServerSideEventBufferTests(t *ldtest.T) {
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
-	client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{Events: &eventsConfig}),
-		dataSource, events)
+	client := NewSDKClient(t, WithEventsConfig(eventsConfig), dataSource, events)
 
 	t.Run("capacity is enforced", func(t *ldtest.T) {
 		for _, user := range users {

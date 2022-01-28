@@ -19,8 +19,8 @@ import (
 
 const briefDelay ldtime.UnixMillisecondTime = 1
 
-func baseStreamConfig(endpoint *harness.MockEndpoint) *servicedef.SDKConfigStreamingParams {
-	return &servicedef.SDKConfigStreamingParams{
+func baseStreamConfig(endpoint *harness.MockEndpoint) servicedef.SDKConfigStreamingParams {
+	return servicedef.SDKConfigStreamingParams{
 		BaseURI:             endpoint.BaseURL(),
 		InitialRetryDelayMs: timeValueAsPointer(briefDelay),
 	}
@@ -48,11 +48,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, nil, t.DebugLogger())
 		t.Defer(streamEndpoint.Close)
 
-		client := NewSDKClient(t,
-			WithConfig(servicedef.SDKConfigParams{
-				Streaming: baseStreamConfig(streamEndpoint),
-			}),
-		)
+		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
 		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
@@ -77,10 +73,8 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 
 		stream := NewSDKDataSource(t, dataV1)
 		client := NewSDKClient(t,
-			WithConfig(servicedef.SDKConfigParams{
-				Streaming: &servicedef.SDKConfigStreamingParams{
-					InitialRetryDelayMs: timeValueAsPointer(10000),
-				},
+			WithStreamingConfig(servicedef.SDKConfigStreamingParams{
+				InitialRetryDelayMs: timeValueAsPointer(10000),
 			}),
 			stream,
 		)
@@ -117,11 +111,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, nil, t.DebugLogger())
 		t.Defer(streamEndpoint.Close)
 
-		client := NewSDKClient(t,
-			WithConfig(servicedef.SDKConfigParams{
-				Streaming: baseStreamConfig(streamEndpoint),
-			}),
-		)
+		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
 		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
@@ -156,11 +146,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, nil, t.DebugLogger())
 		t.Defer(streamEndpoint.Close)
 
-		client := NewSDKClient(t,
-			WithConfig(servicedef.SDKConfigParams{
-				Streaming: baseStreamConfig(streamEndpoint),
-			}),
-		)
+		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
 		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
@@ -206,12 +192,8 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 				streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, nil, t.DebugLogger())
 				t.Defer(streamEndpoint.Close)
 
-				_ = NewSDKClient(t,
-					WithConfig(servicedef.SDKConfigParams{
-						InitCanFail: true,
-						Streaming:   baseStreamConfig(streamEndpoint),
-					}),
-				)
+				_ = NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{InitCanFail: true}),
+					WithStreamingConfig(baseStreamConfig(streamEndpoint)))
 
 				_ = expectRequest(t, streamEndpoint, time.Second*5)
 
@@ -232,11 +214,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 				streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, nil, t.DebugLogger())
 				t.Defer(streamEndpoint.Close)
 
-				client := NewSDKClient(t,
-					WithConfig(servicedef.SDKConfigParams{
-						Streaming: baseStreamConfig(streamEndpoint),
-					}),
-				)
+				client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
 				result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
 				m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 

@@ -77,7 +77,7 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 
 	dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
 	events := NewSDKEventSink(t)
-	client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{Events: &eventsConfig}), dataSource, events)
+	client := NewSDKClient(t, WithEventsConfig(eventsConfig), dataSource, events)
 
 	users := NewUserFactory("doServerSideParameterizedCustomEventTests")
 
