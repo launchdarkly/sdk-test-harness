@@ -201,6 +201,11 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 			client.SendIdentifyEvent(t, users.NextUniqueUser())
 			client.FlushEvents(t)
 			_ = events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+			// Hacky arbitrary sleep to avoid a race condition where the test code runs fast enough
+			// that the SDK has not had a chance to process the HTTP response yet - the fact that
+			// we've received the event payload from them doesn't mean the SDK has done that work
+			time.Sleep(time.Millisecond * 10)
 		}
 
 		for _, withReasons := range []bool{false, true} {
