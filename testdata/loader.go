@@ -52,7 +52,7 @@ func (s SourceInfo) ParamsString() string {
 // The path parameter is relative to testdata/data-files.
 func LoadDataFile(path string) ([]SourceInfo, error) {
 	ret := make([]SourceInfo, 0, 10) // preallocate a little because it's likely there will be multiple results
-	data, err := dataFilesRoot.ReadFile(filepath.Join(dataBasePath, path))
+	data, err := dataFilesRoot.ReadFile(dataBasePath + "/" + path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read %q: %w", path, err)
 	}
@@ -75,13 +75,13 @@ func LoadDataFile(path string) ([]SourceInfo, error) {
 //
 // The path parameter is relative to testdata/data-files.
 func LoadAllDataFiles(path string) ([]SourceInfo, error) {
-	files, err := dataFilesRoot.ReadDir(filepath.Join(dataBasePath, path))
+	files, err := dataFilesRoot.ReadDir(dataBasePath + "/" + path)
 	if err != nil {
 		return nil, err
 	}
 	var ret []SourceInfo
 	for _, file := range files {
-		filePath := filepath.Join(path, file.Name())
+		filePath := path + "/" + file.Name()
 		sources, err := LoadDataFile(filePath)
 		if err != nil {
 			return nil, err
