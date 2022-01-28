@@ -182,12 +182,6 @@ func selectString(boolValue bool, valueIfTrue, valueIfFalse string) string {
 	return valueIfFalse
 }
 
-func setPropertyConditionally(o ldvalue.ObjectBuilder, condition bool, name string, value ldvalue.Value) {
-	if condition {
-		o.Set(name, value)
-	}
-}
-
 func sortedStrings(ss []string) []string {
 	ret := append([]string(nil), ss...)
 	sort.Strings(ret)

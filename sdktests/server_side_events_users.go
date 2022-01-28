@@ -166,10 +166,6 @@ func doServerSideEventUserTests(t *ldtest.T) {
 	}
 }
 
-func hasExpectedUserObject(user lduser.User, eventsConfig servicedef.SDKConfigEventParams) m.Matcher {
-	return m.JSONProperty("user").Should(eventUserMatcher(user, eventsConfig))
-}
-
 func eventUserMatcher(user lduser.User, eventsConfig servicedef.SDKConfigEventParams) m.Matcher {
 	// This simulates the expected behavior of SDK event processors with regard to redacting
 	// private attributes. For more details about how this works, please see the SDK
