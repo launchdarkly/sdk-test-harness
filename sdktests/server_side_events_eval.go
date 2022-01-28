@@ -232,10 +232,7 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 								m.JSONProperty("version").Should(m.Equal(flag.Version)),
 								m.JSONProperty("value").Should(m.JSONEqual(result.Value)),
 								m.JSONProperty("variation").Should(m.Equal(0)),
-								conditionalMatcher(withReasons,
-									m.JSONProperty("reason").Should(m.JSONEqual(expectedReason)),
-									JSONPropertyNullOrAbsent("reason"),
-								),
+								maybeReason(withReasons, expectedReason),
 								m.JSONProperty("default").Should(m.JSONEqual(defaultValues(valueType))),
 							)
 							m.In(t).Assert(payload, m.ItemsInAnyOrder(
