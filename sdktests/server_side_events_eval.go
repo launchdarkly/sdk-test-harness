@@ -15,7 +15,6 @@ import (
 	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldbuilders"
 	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldmodel"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -57,11 +56,10 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 					t.Run(testDescFromType(valueType), func(t *ldtest.T) {
 						flag := untrackedFlags.ForType(valueType)
 						user := users.NextUniqueUser()
-						eventUser := mockld.SimpleEventUser(user)
 
 						resp := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 							FlagKey:      flag.Key,
-							User:         &user,
+							User:         user,
 							ValueType:    valueType,
 							DefaultValue: defaultValues(valueType),
 							Detail:       withReason,
@@ -80,8 +78,8 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 						client.FlushEvents(t)
 						payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 						m.In(t).Assert(payload, m.ItemsInAnyOrder(
-							EventIsIndexEvent(eventUser),
-							EventHasKind("summary"),
+							IsIndexEventForUserKey(user.GetKey()),
+							IsSummaryEvent(),
 						))
 					})
 				}
@@ -101,10 +99,9 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 					expectedVariation = ldvalue.OptionalInt{}
 				}
 				user := users.NextUniqueUserMaybeAnonymous(isAnonymousUser)
-				eventUser := mockld.SimpleEventUser(user)
 				resp := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 					FlagKey:      flag.Key,
-					User:         &user,
+					User:         user,
 					ValueType:    valueType,
 					DefaultValue: defaultValues(valueType),
 					Detail:       withReason,
@@ -117,28 +114,25 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 
 				client.FlushEvents(t)
 
-				var reason ldreason.EvaluationReason
-				if withReason {
-					reason = expectedReason
-					if isBadFlag {
-						reason = ldreason.NewEvalReasonError(ldreason.EvalErrorMalformedFlag)
-					}
+				reason := expectedReason
+				if isBadFlag {
+					reason = ldreason.NewEvalReasonError(ldreason.EvalErrorMalformedFlag)
 				}
-				matchFeatureEvent := EventIsFeatureEvent(
-					flag.Key,
-					eventUser,
-					false,
-					ldvalue.NewOptionalInt(flag.Version),
-					expectedValue,
-					expectedVariation,
-					reason,
-					defaultValues(valueType),
-					"",
+				matchFeatureEvent := IsValidFeatureEventWithConditions(
+					m.JSONProperty("key").Should(m.Equal(flag.Key)),
+					HasUserKeyProperty(user.GetKey()),
+					HasNoUserObject(),
+					m.JSONProperty("version").Should(m.Equal(flag.Version)),
+					m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),
+					m.JSONOptProperty("variation").Should(m.JSONEqual(expectedVariation)),
+					maybeReason(withReason, reason),
+					m.JSONProperty("default").Should(m.JSONEqual(defaultValues(valueType))),
+					JSONPropertyNullOrAbsent("prereqOf"),
 				)
 
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 				m.In(t).Assert(payload, m.ItemsInAnyOrder(
-					EventIsIndexEvent(eventUser),
+					IsIndexEventForUserKey(user.GetKey()),
 					matchFeatureEvent,
 					EventHasKind("summary"),
 				))
@@ -214,11 +208,10 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 				for _, valueType := range getValueTypesToTest(t) {
 					t.Run(testDescFromType(valueType), func(t *ldtest.T) {
 						user := users.NextUniqueUser()
-						eventUser := mockld.SimpleEventUser(user)
 						flag := flags.ForType(valueType)
 						result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 							FlagKey:      flag.Key,
-							User:         &user,
+							User:         user,
 							ValueType:    valueType,
 							DefaultValue: defaultValues(valueType),
 							Detail:       withReasons,
@@ -229,29 +222,30 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 						payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
 						if shouldSeeDebugEvent {
-							reason := ldreason.EvaluationReason{}
-							if withReasons {
-								reason = expectedReason
-							}
-							matchDebugEvent := EventIsDebugEvent(
-								flag.Key,
-								eventUser,
-								true,
-								ldvalue.NewOptionalInt(flag.Version),
-								result.Value,
-								ldvalue.NewOptionalInt(0),
-								reason,
-								defaultValues(valueType),
-								"",
+							matchDebugEvent := m.AllOf(
+								JSONPropertyKeysCanOnlyBe("kind", "creationDate", "key", "user",
+									"version", "value", "variation", "reason", "default"),
+								IsDebugEvent(),
+								HasAnyCreationDate(),
+								m.JSONProperty("key").Should(m.Equal(flag.Key)),
+								HasUserObjectWithKey(user.GetKey()),
+								m.JSONProperty("version").Should(m.Equal(flag.Version)),
+								m.JSONProperty("value").Should(m.JSONEqual(result.Value)),
+								m.JSONProperty("variation").Should(m.Equal(0)),
+								conditionalMatcher(withReasons,
+									m.JSONProperty("reason").Should(m.JSONEqual(expectedReason)),
+									JSONPropertyNullOrAbsent("reason"),
+								),
+								m.JSONProperty("default").Should(m.JSONEqual(defaultValues(valueType))),
 							)
 							m.In(t).Assert(payload, m.ItemsInAnyOrder(
-								EventIsIndexEvent(eventUser),
+								IsIndexEventForUserKey(user.GetKey()),
 								matchDebugEvent,
 								EventHasKind("summary"),
 							))
 						} else {
 							m.In(t).Assert(payload, m.ItemsInAnyOrder(
-								EventIsIndexEvent(eventUser),
+								IsIndexEventForUserKey(user.GetKey()),
 								EventHasKind("summary"),
 							))
 						}
@@ -303,7 +297,6 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 
 func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 	user := lduser.NewUser("user-key")
-	eventUser := mockld.SimpleEventUser(user)
 
 	expectedValue1 := ldvalue.String("value1")
 	expectedPrereqValue2 := ldvalue.String("ok2")
@@ -339,66 +332,60 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 			events := NewSDKEventSink(t)
 			client := NewSDKClient(t, dataSource, events)
 
-			var expectedReason1, expectedReason2, expectedReason3 ldreason.EvaluationReason
-			if withReason {
-				expectedReason1 = ldreason.NewEvalReasonFallthrough()
-				expectedReason2 = ldreason.NewEvalReasonTargetMatch()
-				expectedReason3 = ldreason.NewEvalReasonRuleMatch(0, "rule1")
-			}
-
 			result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 				FlagKey:      flag1.Key,
-				User:         &user,
+				User:         user,
 				ValueType:    servicedef.ValueTypeString,
 				DefaultValue: ldvalue.String("default"),
 				Detail:       withReason,
 			})
 			m.In(t).Assert(result.Value, m.JSONEqual(expectedValue1))
-			if withReason {
-				assert.Equal(t, ldvalue.NewOptionalInt(1), ldvalue.NewOptionalIntFromPointer(result.VariationIndex))
-				m.In(t).Assert(result.Reason, m.JSONEqual(expectedReason1))
-			}
 
 			client.FlushEvents(t)
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
 			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				EventIsIndexEvent(eventUser),
-				EventIsFeatureEvent(
-					flag1.Key,
-					eventUser,
-					false,
-					ldvalue.NewOptionalInt(flag1.Version),
-					ldvalue.String("value1"),
-					ldvalue.NewOptionalInt(1),
-					expectedReason1,
-					ldvalue.String("default"),
-					"",
+				IsIndexEventForUserKey(user.GetKey()),
+				IsValidFeatureEventWithConditions(
+					m.JSONProperty("key").Should(m.Equal(flag1.Key)),
+					HasUserKeyProperty(user.GetKey()),
+					HasNoUserObject(),
+					m.JSONProperty("version").Should(m.Equal(flag1.Version)),
+					m.JSONProperty("value").Should(m.Equal("value1")),
+					m.JSONProperty("variation").Should(m.Equal(1)),
+					maybeReason(withReason, ldreason.NewEvalReasonFallthrough()),
+					JSONPropertyNullOrAbsent("prereqOf"),
 				),
-				EventIsFeatureEvent(
-					flag2.Key,
-					eventUser,
-					false,
-					ldvalue.NewOptionalInt(flag2.Version),
-					ldvalue.String("ok2"),
-					ldvalue.NewOptionalInt(2),
-					expectedReason2,
-					ldvalue.Null(),
-					"flag1",
+				IsValidFeatureEventWithConditions(
+					m.JSONProperty("key").Should(m.Equal(flag2.Key)),
+					HasUserKeyProperty(user.GetKey()),
+					HasNoUserObject(),
+					m.JSONProperty("version").Should(m.Equal(flag2.Version)),
+					m.JSONProperty("value").Should(m.Equal("ok2")),
+					m.JSONProperty("variation").Should(m.Equal(2)),
+					maybeReason(withReason, ldreason.NewEvalReasonTargetMatch()),
+					JSONPropertyNullOrAbsent("default"),
+					m.JSONOptProperty("prereqOf").Should(m.Equal("flag1")),
 				),
-				EventIsFeatureEvent(
-					flag3.Key,
-					eventUser,
-					false,
-					ldvalue.NewOptionalInt(flag3.Version),
-					ldvalue.String("ok3"),
-					ldvalue.NewOptionalInt(3),
-					expectedReason3,
-					ldvalue.Null(),
-					"flag2",
+				IsValidFeatureEventWithConditions(
+					m.JSONProperty("key").Should(m.Equal(flag3.Key)),
+					HasUserKeyProperty(user.GetKey()),
+					HasNoUserObject(),
+					m.JSONProperty("version").Should(m.Equal(flag3.Version)),
+					m.JSONProperty("value").Should(m.Equal("ok3")),
+					m.JSONProperty("variation").Should(m.Equal(3)),
+					maybeReason(withReason, ldreason.NewEvalReasonRuleMatch(0, "rule1")),
+					JSONPropertyNullOrAbsent("default"),
+					m.JSONOptProperty("prereqOf").Should(m.Equal("flag2")),
 				),
-				EventIsSummaryEvent(),
+				IsSummaryEvent(),
 			))
 		})
 	}
+}
+
+func maybeReason(withReason bool, reason ldreason.EvaluationReason) m.Matcher {
+	return conditionalMatcher(withReason,
+		m.JSONProperty("reason").Should(m.JSONEqual(reason)),
+		JSONPropertyNullOrAbsent("reason"))
 }

@@ -3,8 +3,10 @@ package sdktests
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/launchdarkly/sdk-test-harness/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
@@ -31,11 +33,18 @@ func basicEvaluateFlag(
 ) ldvalue.Value {
 	result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 		FlagKey:      flagKey,
-		User:         &user,
+		User:         user,
 		ValueType:    servicedef.ValueTypeAny,
 		DefaultValue: defaultValue,
 	})
 	return result.Value
+}
+
+func conditionalMatcher(isTrue bool, matcherIfTrue, matcherIfFalse m.Matcher) m.Matcher {
+	if isTrue {
+		return matcherIfTrue
+	}
+	return matcherIfFalse
 }
 
 func evaluateFlagDetail(
@@ -47,7 +56,7 @@ func evaluateFlagDetail(
 ) servicedef.EvaluateFlagResponse {
 	return client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 		FlagKey:      flagKey,
-		User:         &user,
+		User:         user,
 		ValueType:    servicedef.ValueTypeAny,
 		DefaultValue: defaultValue,
 		Detail:       true,
@@ -177,6 +186,21 @@ func setPropertyConditionally(o ldvalue.ObjectBuilder, condition bool, name stri
 	if condition {
 		o.Set(name, value)
 	}
+}
+
+func sortedStrings(ss []string) []string {
+	ret := append([]string(nil), ss...)
+	sort.Strings(ret)
+	return ret
+}
+
+func stringInSlice(value string, slice []string) bool {
+	for _, s := range slice {
+		if s == value {
+			return true
+		}
+	}
+	return false
 }
 
 func timeValueAsPointer(value ldtime.UnixMillisecondTime) *ldtime.UnixMillisecondTime {

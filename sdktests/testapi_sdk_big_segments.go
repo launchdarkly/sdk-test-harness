@@ -2,7 +2,6 @@ package sdktests
 
 import (
 	"errors"
-	"sort"
 	"sync"
 	"time"
 
@@ -108,9 +107,8 @@ func (b *BigSegmentStore) SetupMemberships(t *ldtest.T, memberships map[string]m
 		for k := range memberships {
 			expectedKeys = append(expectedKeys, k)
 		}
-		sort.Strings(expectedKeys)
 		assert.Fail(t, "got membership query with unexpected user hash value",
-			"actual: %s, expected: %v", userHash, expectedKeys)
+			"actual: %s, expected: %v", userHash, sortedStrings(expectedKeys))
 		return nil, nil
 	})
 }

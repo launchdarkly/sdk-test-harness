@@ -74,20 +74,22 @@ func doServerSideExperimentationEventTests(t *ldtest.T) {
 			client.FlushEvents(t)
 			payload := eventSink.ExpectAnalyticsEvents(t, time.Second)
 
+			matchFeatureEvent := IsValidFeatureEventWithConditions(
+				m.JSONProperty("key").Should(m.Equal(flag.Key)),
+				HasUserKeyProperty(user.GetKey()),
+				HasNoUserObject(),
+				m.JSONProperty("version").Should(m.Equal(flag.Version)),
+				m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),
+				m.JSONProperty("variation").Should(m.Equal(expectedVariation)),
+				m.JSONProperty("reason").Should(m.JSONEqual(scenario.expectedReason)),
+				m.JSONProperty("default").Should(m.JSONEqual(defaultValue)),
+				JSONPropertyNullOrAbsent("prereqOf"),
+			)
+
 			m.In(t).Assert(payload, m.Items(
-				EventIsIndexEvent(mockld.SimpleEventUser(user)),
-				EventIsFeatureEvent(
-					flag.Key,
-					mockld.SimpleEventUser(user),
-					false,
-					ldvalue.NewOptionalInt(flag.Version),
-					expectedValue,
-					ldvalue.NewOptionalInt(expectedVariation),
-					scenario.expectedReason,
-					defaultValue,
-					"",
-				),
-				EventIsSummaryEvent(),
+				IsIndexEventForUserKey(user.GetKey()),
+				matchFeatureEvent,
+				IsSummaryEvent(),
 			))
 		})
 	}

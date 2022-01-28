@@ -8,7 +8,6 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
 
@@ -18,66 +17,57 @@ func doServerSideCustomEventTests(t *ldtest.T) {
 
 	t.Run("data and metricValue parameters", doServerSideParameterizedCustomEventTests)
 
-	t.Run("index events are created for new users if not inlined", func(t *ldtest.T) {
-		eventsConfig := baseEventsConfig()
+	t.Run("basic properties", func(t *ldtest.T) {
+		users := NewUserFactory("doServerSideCustomEventTests-")
+		metricValue := 1.0
 
-		dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
-		events := NewSDKEventSink(t)
-		client := NewSDKClient(t, dataSource, events)
+		for _, inlineUser := range []bool{false, true} {
+			t.Run(selectString(inlineUser, "inline user", "non-inline user"), func(t *ldtest.T) {
+				for _, anonymousUser := range []bool{false, true} {
+					t.Run(selectString(anonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
+						eventsConfig := servicedef.SDKConfigEventParams{InlineUsers: inlineUser}
+						user := users.NextUniqueUserMaybeAnonymous(anonymousUser)
 
-		user1 := lduser.NewUserBuilder("user1").Name("Ann").Build()
-		user2 := lduser.NewUserBuilder("user2").Name("Bob").Build()
-		user3 := lduser.NewUserBuilder("user3").Name("Cat").Anonymous(true).Build()
+						dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+						events := NewSDKEventSink(t)
+						client := NewSDKClient(t, WithEventsConfig(eventsConfig), dataSource, events)
 
-		event1 := servicedef.CustomEventParams{EventKey: "event1", User: &user1} // generates index event for user1
-		event2 := servicedef.CustomEventParams{EventKey: "event2", User: &user1} // no new index, user1 already seen
-		event3 := servicedef.CustomEventParams{EventKey: "event3", User: &user2} // generates index event for user2
-		event4 := servicedef.CustomEventParams{EventKey: "event4", User: &user1} // no new index, user1 already seen
-		event5 := servicedef.CustomEventParams{EventKey: "event5", User: &user2} // no new index, user2 already seen
-		event6 := servicedef.CustomEventParams{EventKey: "event6", User: &user3} // generates index event for user3
+						client.SendCustomEvent(t, servicedef.CustomEventParams{
+							EventKey:    "event-key",
+							User:        user,
+							Data:        ldvalue.Bool(true),
+							MetricValue: &metricValue,
+						})
 
-		for _, params := range []servicedef.CustomEventParams{event1, event2, event3, event4, event5, event6} {
-			client.SendCustomEvent(t, params)
+						client.FlushEvents(t)
+						payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+						if inlineUser {
+							m.In(t).Assert(payload, m.Items(
+								m.AllOf(
+									JSONPropertyKeysCanOnlyBe("kind", "creationDate", "key", "user", "contextKind",
+										"data", "metricValue"),
+									IsCustomEvent(),
+									HasUserObjectWithKey(user.GetKey()),
+									HasContextKind(user),
+								),
+							))
+						} else {
+							m.In(t).Assert(payload, m.ItemsInAnyOrder(
+								IsIndexEvent(),
+								m.AllOf(
+									JSONPropertyKeysCanOnlyBe("kind", "creationDate", "key", "userKey", "contextKind",
+										"data", "metricValue"),
+									IsCustomEvent(),
+									HasUserKeyProperty(user.GetKey()),
+									HasContextKind(user),
+								),
+							))
+						}
+					})
+				}
+			})
 		}
-		client.FlushEvents(t)
-		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-
-		expected := make([]m.Matcher, 0)
-		for _, params := range []servicedef.CustomEventParams{event1, event2, event3, event4, event5, event6} {
-			expected = append(expected, EventIsCustomEventForParams(params, eventsConfig))
-		}
-		for _, user := range []lduser.User{user1, user2, user3} {
-			expected = append(expected, EventIsIndexEvent(mockld.ExpectedEventUserFromUser(user, eventsConfig)))
-		}
-		m.In(t).Assert(payload, m.ItemsInAnyOrder(expected...))
-	})
-
-	t.Run("properties are correct for inline anonymous user", func(t *ldtest.T) {
-		// Here, the logic in EventIsCustomEventForParams includes an expectation of "contextKind": "anonymousUser"
-		eventsConfig := baseEventsConfig()
-		eventsConfig.InlineUsers = true
-
-		dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
-		events := NewSDKEventSink(t)
-		client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{Events: &eventsConfig}), dataSource, events)
-
-		user := lduser.NewAnonymousUser("user-key")
-
-		params := servicedef.CustomEventParams{
-			EventKey:     "event-key",
-			User:         &user,
-			Data:         ldvalue.Null(),
-			OmitNullData: true,
-			MetricValue:  nil,
-		}
-		client.SendCustomEvent(t, params)
-
-		client.FlushEvents(t)
-		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-
-		m.In(t).Assert(payload, m.Items(
-			EventIsCustomEventForParams(params, eventsConfig),
-		))
 	})
 }
 
@@ -89,7 +79,7 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 	events := NewSDKEventSink(t)
 	client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{Events: &eventsConfig}), dataSource, events)
 
-	user := lduser.NewUser("user-key")
+	users := NewUserFactory("doServerSideParameterizedCustomEventTests")
 
 	// Generate many permutations of 1. data types that can be used for the data parameter, if any, and
 	// 2. metric value parameter, if any.
@@ -103,7 +93,6 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 	} {
 		baseParams := servicedef.CustomEventParams{
 			EventKey: "event-key",
-			User:     &user,
 		}
 		if metricValue != omitMetricValue {
 			m := metricValue
@@ -124,6 +113,7 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 		} {
 			params := baseParams
 			params.Data = dataValue
+			params.User = users.NextUniqueUser()
 			allParams = append(allParams, params)
 		}
 
@@ -132,6 +122,7 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 		// data which may be null", to make sure we're covering both methods.
 		params := baseParams
 		params.OmitNullData = true
+		params.User = users.NextUniqueUser()
 		allParams = append(allParams, params)
 	}
 
@@ -149,7 +140,18 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 			client.FlushEvents(t)
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 			m.In(t).Assert(payload, m.Items(
-				EventIsCustomEventForParams(params, eventsConfig),
+				m.AllOf(
+					IsCustomEventForEventKey(params.EventKey),
+					conditionalMatcher(params.OmitNullData && params.Data.IsNull(),
+						JSONPropertyNullOrAbsent("data"),
+						m.JSONOptProperty("data").Should(m.JSONEqual(params.Data)),
+						// we use JSONOptProperty for "data" here because the SDK is allowed to omit a null value
+					),
+					conditionalMatcher(params.MetricValue == nil,
+						JSONPropertyNullOrAbsent("metricValue"),
+						m.JSONProperty("metricValue").Should(m.JSONEqual(params.MetricValue)),
+					),
+				),
 			))
 		})
 	}

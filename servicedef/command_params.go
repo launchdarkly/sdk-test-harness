@@ -37,7 +37,7 @@ type CommandParams struct {
 
 type EvaluateFlagParams struct {
 	FlagKey      string        `json:"flagKey"`
-	User         *lduser.User  `json:"user,omitempty"`
+	User         lduser.User   `json:"user"`
 	ValueType    ValueType     `json:"valueType"`
 	DefaultValue ldvalue.Value `json:"defaultValue"`
 	Detail       bool          `json:"detail"`
@@ -62,7 +62,7 @@ type EvaluateAllFlagsResponse struct {
 
 type CustomEventParams struct {
 	EventKey     string        `json:"eventKey"`
-	User         *lduser.User  `json:"user,omitempty"`
+	User         lduser.User   `json:"user"`
 	Data         ldvalue.Value `json:"data,omitempty"`
 	OmitNullData bool          `json:"omitNullData"`
 	MetricValue  *float64      `json:"metricValue,omitempty"`

@@ -29,7 +29,7 @@ func doServerSideEventBufferTests(t *ldtest.T) {
 	makeIdentifyEventExpectations := func(count int) []m.Matcher {
 		ret := make([]m.Matcher, 0, count)
 		for i := 0; i < count; i++ {
-			ret = append(ret, EventIsIdentifyEvent(mockld.SimpleEventUser(users[i])))
+			ret = append(ret, IsIdentifyEventForUserKey(users[i].GetKey()))
 		}
 		return ret
 	}
@@ -67,7 +67,7 @@ func doServerSideEventBufferTests(t *ldtest.T) {
 		client.FlushEvents(t)
 		payload2 := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
-		m.In(t).Assert(payload2, m.Items(EventIsIdentifyEvent(mockld.SimpleEventUser(anotherUser))))
+		m.In(t).Assert(payload2, m.Items(IsIdentifyEventForUserKey(anotherUser.GetKey())))
 	})
 
 	t.Run("summary event is still included even if buffer was full", func(t *ldtest.T) {
@@ -77,7 +77,7 @@ func doServerSideEventBufferTests(t *ldtest.T) {
 
 		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 			FlagKey:      flag.Key,
-			User:         &users[0],
+			User:         users[0],
 			ValueType:    servicedef.ValueTypeBool,
 			DefaultValue: ldvalue.Bool(false),
 		})
@@ -86,7 +86,7 @@ func doServerSideEventBufferTests(t *ldtest.T) {
 		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
 		expectations := append(makeIdentifyEventExpectations(capacity),
-			EventIsSummaryEvent())
+			IsSummaryEvent())
 		m.In(t).Assert(payload, m.Items(expectations...))
 	})
 }
