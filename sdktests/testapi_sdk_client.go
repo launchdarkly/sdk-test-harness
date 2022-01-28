@@ -30,16 +30,14 @@ func WithConfig(config servicedef.SDKConfigParams) SDKConfigurer {
 	})
 }
 
-// WithEventsConfig is used with StartSDKClient to specify a non-default events configuration. Use this
-// before any other SDKConfigurers or it will overwrite their effects.
+// WithEventsConfig is used with StartSDKClient to specify a non-default events configuration.
 func WithEventsConfig(eventsConfig servicedef.SDKConfigEventParams) SDKConfigurer {
 	return sdkConfigurerFunc(func(configOut *servicedef.SDKConfigParams) {
 		configOut.Events = &eventsConfig
 	})
 }
 
-// WithEventsConfig is used with StartSDKClient to specify a non-default streaming configuration. Use this
-// before any other SDKConfigurers or it will overwrite their effects.
+// WithStreamingConfig is used with StartSDKClient to specify a non-default streaming configuration.
 func WithStreamingConfig(streamingConfig servicedef.SDKConfigStreamingParams) SDKConfigurer {
 	return sdkConfigurerFunc(func(configOut *servicedef.SDKConfigParams) {
 		configOut.Streaming = &streamingConfig
