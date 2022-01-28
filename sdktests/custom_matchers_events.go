@@ -14,10 +14,10 @@ import (
 // In order to make tests as granular and useful as possible, we don't want to always be
 // making equality assertions about entire events at once; if we did, then an SDK bug that
 // affects just one detail of an event would cause failures in many tests that were supposed
-// to be about other things, making it harder to isolate the problem. Therefore, we have less
-// detailed matchers like EventIsIdentify which just verify the kind of the event, and also
-// ones like EventIsIdentifyForUserKey that look at an additional property to make sure it is
-// for the right user, without verifying all of the properties.
+// to be about other things, making it harder to isolate the problem. Therefore, we have very
+// basic matchers like IsIdentifyEvent which just verify the kind of the event, and also ones
+// like IsIdentifyEventForUserKey that look at an additional property to make sure it is for
+// the right user, without verifying all of the properties.
 
 func EventHasKind(kind string) m.Matcher {
 	return m.JSONProperty("kind").Should(m.Equal(kind))
