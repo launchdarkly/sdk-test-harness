@@ -95,7 +95,7 @@ func RunParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
 			t.Run("evaluate flag without detail", func(t *ldtest.T) {
 				result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 					FlagKey:      flagKey,
-					User:         &user,
+					User:         user,
 					ValueType:    valueType,
 					DefaultValue: defaultValue,
 				})
@@ -105,7 +105,7 @@ func RunParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
 			t.Run("evaluate flag with detail", func(t *ldtest.T) {
 				result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 					FlagKey:      flagKey,
-					User:         &user,
+					User:         user,
 					ValueType:    valueType,
 					DefaultValue: defaultValue,
 					Detail:       true,
@@ -143,7 +143,7 @@ func parseServerSideEvalTestSuite(t *ldtest.T, source testdata.SourceInfo) testm
 func makeEvalFlagParams(test testmodel.EvalTest, sdkData mockld.ServerSDKData) servicedef.EvaluateFlagParams {
 	p := servicedef.EvaluateFlagParams{
 		FlagKey:      test.FlagKey,
-		User:         &test.User,
+		User:         test.User,
 		ValueType:    test.ValueType,
 		DefaultValue: test.Default,
 	}

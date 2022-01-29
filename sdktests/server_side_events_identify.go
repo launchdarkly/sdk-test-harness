@@ -9,7 +9,6 @@ import (
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
 
 func doServerSideIdentifyEventTests(t *ldtest.T) {
@@ -22,17 +21,23 @@ func doServerSideIdentifyEventTests(t *ldtest.T) {
 	events := NewSDKEventSink(t)
 	client := NewSDKClient(t, dataSource, events)
 
-	for _, isAnonymousUser := range []bool{false, true} {
-		t.Run(selectString(isAnonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
-			user := users.NextUniqueUserMaybeAnonymous(isAnonymousUser)
-			client.SendIdentifyEvent(t, user)
-			client.FlushEvents(t)
-			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-			m.In(t).Assert(payload, m.Items(
-				EventIsIdentifyEvent(mockld.SimpleEventUser(user)),
-			))
-		})
-	}
+	t.Run("basic properties", func(t *ldtest.T) {
+		for _, isAnonymousUser := range []bool{false, true} {
+			t.Run(selectString(isAnonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
+				user := users.NextUniqueUserMaybeAnonymous(isAnonymousUser)
+				client.SendIdentifyEvent(t, user)
+				client.FlushEvents(t)
+				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+				m.In(t).Assert(payload, m.Items(
+					m.AllOf(
+						JSONPropertyKeysCanOnlyBe("kind", "creationDate", "key", "user"),
+						IsIdentifyEventForUserKey(user.GetKey()),
+						HasAnyCreationDate(),
+					),
+				))
+			})
+		}
+	})
 
 	t.Run("user with empty key generates no event", func(t *ldtest.T) {
 		keylessUser := lduser.NewUserBuilder("").Name("has a name but not a key").Build()
@@ -46,15 +51,15 @@ func doServerSideIdentifyEventTests(t *ldtest.T) {
 		client.SendIdentifyEvent(t, user)
 		client.SendCustomEvent(t, servicedef.CustomEventParams{
 			EventKey: "event-key",
-			User:     &user,
+			User:     user,
 		})
 		// Sending a custom event would also generate an index event for the user,
 		// if we hadn't already seen that user
 		client.FlushEvents(t)
 		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 		m.In(t).Assert(payload, m.ItemsInAnyOrder(
-			EventIsIdentifyEvent(mockld.SimpleEventUser(user)),
-			EventIsCustomEvent("event-key", mockld.SimpleEventUser(user), false, ldvalue.Null(), nil),
+			IsIdentifyEventForUserKey(user.GetKey()),
+			IsCustomEvent(),
 		))
 	})
 }

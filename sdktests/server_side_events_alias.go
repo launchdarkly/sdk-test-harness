@@ -12,8 +12,8 @@ import (
 )
 
 type aliasEventTestScenario struct {
-	params        servicedef.AliasEventParams
-	expectedEvent mockld.Event
+	params       servicedef.AliasEventParams
+	eventMatcher m.Matcher
 }
 
 func doServerSideAliasEventTests(t *ldtest.T) {
@@ -44,13 +44,15 @@ func doServerSideAliasEventTests(t *ldtest.T) {
 			}
 			scenario.params.PreviousUser = user1.Build()
 			scenario.params.User = user2.Build()
-			scenario.expectedEvent = mockld.EventFromMap(map[string]interface{}{
-				"kind":                "alias",
-				"key":                 scenario.params.User.GetKey(),
-				"previousKey":         scenario.params.PreviousUser.GetKey(),
-				"contextKind":         newContextKind,
-				"previousContextKind": previousContextKind,
-			})
+			scenario.eventMatcher = m.AllOf(
+				JSONPropertyKeysCanOnlyBe("kind", "creationDate", "key", "previousKey", "contextKind", "previousContextKind"),
+				IsAliasEvent(),
+				HasAnyCreationDate(),
+				m.JSONProperty("key").Should(m.Equal(scenario.params.User.GetKey())),
+				m.JSONProperty("previousKey").Should(m.Equal(scenario.params.PreviousUser.GetKey())),
+				m.JSONProperty("contextKind").Should(m.Equal(newContextKind)),
+				m.JSONProperty("previousContextKind").Should(m.Equal(previousContextKind)),
+			)
 			scenarios = append(scenarios, scenario)
 		}
 	}
@@ -62,9 +64,7 @@ func doServerSideAliasEventTests(t *ldtest.T) {
 			client.SendAliasEvent(t, scenario.params)
 			client.FlushEvents(t)
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-			m.In(t).Assert(payload, m.Items(
-				CanonicalizedEventJSON().Should(m.JSONEqual(scenario.expectedEvent.AsValue())),
-			))
+			m.In(t).Assert(payload, m.Items(scenario.eventMatcher))
 		})
 	}
 }

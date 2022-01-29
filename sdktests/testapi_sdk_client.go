@@ -30,6 +30,20 @@ func WithConfig(config servicedef.SDKConfigParams) SDKConfigurer {
 	})
 }
 
+// WithEventsConfig is used with StartSDKClient to specify a non-default events configuration.
+func WithEventsConfig(eventsConfig servicedef.SDKConfigEventParams) SDKConfigurer {
+	return sdkConfigurerFunc(func(configOut *servicedef.SDKConfigParams) {
+		configOut.Events = &eventsConfig
+	})
+}
+
+// WithStreamingConfig is used with StartSDKClient to specify a non-default streaming configuration.
+func WithStreamingConfig(streamingConfig servicedef.SDKConfigStreamingParams) SDKConfigurer {
+	return sdkConfigurerFunc(func(configOut *servicedef.SDKConfigParams) {
+		configOut.Streaming = &streamingConfig
+	})
+}
+
 // SDKClient represents an SDK client instance in the test service which can be controlled by test logic.
 type SDKClient struct {
 	sdkConfig       servicedef.SDKConfigParams
