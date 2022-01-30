@@ -108,28 +108,13 @@ func (h *TestHarness) NewTestServiceEntity(
 	if err != nil {
 		return nil, err
 	}
-	body := bytes.NewBuffer(data)
 
 	logger.Printf("Creating test service entity (%s) with parameters: %s", description, string(data))
-	req, err := http.NewRequest("POST", h.testServiceBaseURL, body)
+	_, headers, err := doRequest("POST", h.testServiceBaseURL, data)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Add("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		var message string
-		if resp.Body != nil {
-			data, _ = ioutil.ReadAll(resp.Body)
-			message = ": " + string(data)
-			_ = resp.Body.Close()
-		}
-		return nil, fmt.Errorf("unexpected response status %d from test service%s", resp.StatusCode, message)
-	}
-	resourceURL := resp.Header.Get("Location")
+	resourceURL := headers.Get("Location")
 	if resourceURL == "" {
 		return nil, errors.New("test service did not return a Location header with a resource URL")
 	}
@@ -145,24 +130,45 @@ func (h *TestHarness) NewTestServiceEntity(
 	return e, nil
 }
 
+func doRequest(method, url string, body []byte) ([]byte, http.Header, error) {
+	var bodyReader io.Reader
+	if body != nil {
+		bodyReader = bytes.NewBuffer(body)
+	}
+	req, err := http.NewRequest(method, url, bodyReader)
+	if err != nil {
+		return nil, nil, err
+	}
+	if body != nil {
+		req.Header.Add("Content-Type", "application/json")
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, nil, err
+	}
+	var respBody []byte
+	if resp.Body != nil {
+		respBody, _ = ioutil.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+	}
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		message := ""
+		if body != nil {
+			message = " (" + string(body) + ")"
+		}
+		err = fmt.Errorf("test service returned error %d for %s %s%s", resp.StatusCode, method, url, message)
+	}
+	return respBody, resp.Header, err
+}
+
 // Close tells the test service to dispose of this entity.
 func (e *TestServiceEntity) Close() error {
 	e.logger.Printf("Closing %s", e.resourceURL)
-	req, _ := http.NewRequest("DELETE", e.resourceURL, nil)
-	resp, err := http.DefaultClient.Do(req)
+	_, _, err := doRequest("DELETE", e.resourceURL, nil)
 	if err != nil {
 		e.logger.Printf("DELETE request to test service failed: %s", err)
-		return err
 	}
-	if resp.Body != nil {
-		_ = resp.Body.Close()
-	}
-	if resp.StatusCode != 200 && resp.StatusCode != 204 {
-		err := fmt.Errorf("DELETE request to test service returned HTTP status %d", resp.StatusCode)
-		e.logger.Println(err)
-		return err
-	}
-	return nil
+	return err
 }
 
 // SendCommand sends a command to the test service entity.
@@ -189,24 +195,9 @@ func (e *TestServiceEntity) SendCommandWithParams(
 	}
 	data, _ := json.Marshal(allParams)
 	logger.Printf("Sending command: %s", string(data))
-	resp, err := http.DefaultClient.Post(e.resourceURL, "application/json", bytes.NewBuffer(data))
+	body, _, err := doRequest("POST", e.resourceURL, data)
 	if err != nil {
 		return err
-	}
-	var body []byte
-	if resp.Body != nil {
-		body, err = ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		_ = resp.Body.Close()
-	}
-	if resp.StatusCode >= 300 {
-		message := ""
-		if body != nil {
-			message = " (" + string(body) + ")"
-		}
-		return fmt.Errorf("command returned HTTP status %d%s", resp.StatusCode, message)
 	}
 	if responseOut != nil {
 		if body == nil {
