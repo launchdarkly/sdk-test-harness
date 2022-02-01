@@ -2,6 +2,10 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [1.1.3] - 2022-02-01
+### Fixed:
+- Fixed excessive usage of sockets/file handles due to not always using Keep-Alive for HTTP requests.
+
 ## [1.1.2] - 2022-01-28
 ### Fixed:
 - Many event-related tests have been rewritten for better separation of concerns, so that if the SDK behaves wrongly in a particular area such as the computation of user properties, the error will be more clearly visible in tests for that area and will not break other tests. Failure messages should now be clearer in general as well, due to changes in how the assertions are done.
