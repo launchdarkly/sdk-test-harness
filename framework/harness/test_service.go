@@ -45,20 +45,12 @@ func queryTestServiceInfo(url string, timeout time.Duration, output io.Writer) (
 	deadline := time.Now().Add(timeout)
 	for {
 		fmt.Fprintf(output, ".")
-		resp, err := http.DefaultClient.Get(url)
+		respData, _, err := doRequest("GET", url, nil)
 		if err == nil {
 			fmt.Fprintln(output)
-			if resp.StatusCode != 200 {
-				return TestServiceInfo{}, fmt.Errorf("test service returned status code %d", resp.StatusCode)
-			}
-			if resp.Body == nil {
+			if respData == nil {
 				fmt.Fprintf(output, "Status query successful, but service provided no metadata\n")
 				return TestServiceInfo{}, nil
-			}
-			respData, err := ioutil.ReadAll(resp.Body)
-			_ = resp.Body.Close()
-			if err != nil {
-				return TestServiceInfo{}, err
 			}
 			fmt.Fprintf(output, "Status query returned metadata: %s\n", string(respData))
 			var base TestServiceInfoBase
@@ -76,14 +68,7 @@ func queryTestServiceInfo(url string, timeout time.Duration, output io.Writer) (
 
 // StopService tells the test service that it should exit.
 func (h *TestHarness) StopService() error {
-	req, _ := http.NewRequest("DELETE", h.testServiceBaseURL, nil)
-	resp, err := http.DefaultClient.Do(req)
-	if resp != nil && resp.Body != nil {
-		_ = resp.Body.Close()
-	}
-	if err == nil && resp.StatusCode >= 300 {
-		return fmt.Errorf("service returned HTTP %d", resp.StatusCode)
-	}
+	_, _, _ = doRequest("DELETE", h.testServiceBaseURL, nil)
 	// It's normal for the request to return an I/O error if the service immediately quit before sending a response
 	return nil
 }
@@ -130,6 +115,10 @@ func (h *TestHarness) NewTestServiceEntity(
 	return e, nil
 }
 
+// Helper method for making an HTTP request to the test service. Using this for all requests
+// ensures that we consistently close the response body (important in order for Keep-Alive
+// to work), and also that we consistently check for HTTP errors: unlike the HTTPClient
+// methods, it returns an error if the HTTP status is not 2xx.
 func doRequest(method, url string, body []byte) ([]byte, http.Header, error) {
 	var bodyReader io.Reader
 	if body != nil {
@@ -148,13 +137,16 @@ func doRequest(method, url string, body []byte) ([]byte, http.Header, error) {
 	}
 	var respBody []byte
 	if resp.Body != nil {
-		respBody, _ = ioutil.ReadAll(resp.Body)
+		respBody, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, nil, err
+		}
 		_ = resp.Body.Close()
 	}
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		message := ""
-		if body != nil {
-			message = " (" + string(body) + ")"
+		if respBody != nil {
+			message = " (" + string(respBody) + ")"
 		}
 		err = fmt.Errorf("test service returned error %d for %s %s%s", resp.StatusCode, method, url, message)
 	}
@@ -203,10 +195,10 @@ func (e *TestServiceEntity) SendCommandWithParams(
 		if body == nil {
 			return errors.New("expected a response body but got none")
 		}
+		logger.Printf("Response: %s", string(body))
 		if err = json.Unmarshal(body, responseOut); err != nil {
 			return err
 		}
-		logger.Printf("Response: %s", string(body))
 	}
 	return nil
 }

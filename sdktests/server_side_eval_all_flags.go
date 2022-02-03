@@ -180,7 +180,7 @@ func doServerSideAllFlagsExperimentationTest(t *ldtest.T) {
 		},
 		"$valid": true
 	}`
-	assert.JSONEq(t, expectedJSON, string(resultJSON))
+	m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedJSON))
 }
 
 func doServerSideAllFlagsErrorInFlagTest(t *ldtest.T) {

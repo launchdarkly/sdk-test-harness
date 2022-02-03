@@ -4,8 +4,10 @@ import (
 	"testing"
 
 	"github.com/launchdarkly/sdk-test-harness/framework"
+	"github.com/launchdarkly/sdk-test-harness/framework/ldtest/internal"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTestScopeInheritsConfiguration(t *testing.T) {
@@ -205,4 +207,45 @@ func TestNonCriticalFailure(t *testing.T) {
 	assert.Equal(t, "would be nice if this worked", result.NonCriticalFailures[0].Explanation)
 	assert.Len(t, result.NonCriticalFailures[0].Errors, 1)
 	assert.Equal(t, "but it doesn't", result.NonCriticalFailures[0].Errors[0].Error())
+}
+
+func TestFailureStacktrace(t *testing.T) {
+	t.Run("stacktrace is captured", func(t *testing.T) {
+		result := Run(TestConfiguration{}, func(ldt *T) {
+			internal.RunAction(func() { // RunAction is there just so it'll show up in the stacktrace
+				ldt.Errorf("sorry")
+			})
+		})
+		require.Len(t, result.Failures, 1)
+		require.Len(t, result.Failures[0].Errors, 1)
+		err := result.Failures[0].Errors[0]
+		if assert.IsType(t, ErrorWithStacktrace{}, err) {
+			es := err.(ErrorWithStacktrace)
+			assert.Equal(t, "sorry", es.Error())
+			require.Len(t, es.Stacktrace, 1)
+			assert.Equal(t, "RunAction", es.Stacktrace[0].Function)
+		}
+	})
+
+	t.Run("helpers are filtered out", func(t *testing.T) {
+		result := Run(TestConfiguration{}, func(ldt *T) {
+			internal.RunAction(func() {
+				// The assert functions all call Helper() if it is available
+				assert.Fail(ldt, "sorry")
+			})
+		})
+		require.Len(t, result.Failures, 1)
+		require.Len(t, result.Failures[0].Errors, 1)
+		err := result.Failures[0].Errors[0]
+		if assert.IsType(t, ErrorWithStacktrace{}, err) {
+			es := err.(ErrorWithStacktrace)
+			assert.Equal(t, "sorry", es.Error())
+			assert.Greater(t, len(es.Stacktrace), 0)
+			for _, s := range es.Stacktrace {
+				assert.NotEqual(t, "github.com/stretchr/testify/assert", s.Package,
+					"assert functions should not appear in stacktrace due to using t.Helper(); stacktrace: %+v",
+					es.Stacktrace)
+			}
+		}
+	})
 }

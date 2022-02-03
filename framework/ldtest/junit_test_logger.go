@@ -10,6 +10,7 @@ import (
 
 	"github.com/launchdarkly/sdk-test-harness/framework"
 	"github.com/launchdarkly/sdk-test-harness/framework/harness"
+
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
 
@@ -171,7 +172,14 @@ func (j *JUnitTestLogger) EndLog(results Results) error {
 			if len(status.failures) != 0 {
 				var messages []string
 				for _, e := range status.failures {
-					messages = append(messages, e.Error())
+					message := e.Error()
+					if es, ok := e.(ErrorWithStacktrace); ok {
+						message += "\n  Stacktrace:"
+						for _, s := range es.Stacktrace {
+							message += "\n    " + s.String()
+						}
+					}
+					messages = append(messages, message)
 				}
 				testCase.Failure = &jUnitXMLFailure{
 					Message:  strings.Join(messages, "\n"),

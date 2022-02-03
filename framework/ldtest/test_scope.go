@@ -3,6 +3,7 @@ package ldtest
 import (
 	"errors"
 	"fmt"
+	"runtime"
 	"runtime/debug"
 
 	"github.com/launchdarkly/sdk-test-harness/framework"
@@ -24,6 +25,7 @@ type T struct {
 	skipReason  string
 	cleanups    []func()
 	errors      []error
+	helperFns   []string
 }
 
 // TestConfiguration contains options for the entire test run.
@@ -142,8 +144,12 @@ func (t *T) NonCritical(explanation string) {
 func (t *T) Errorf(format string, args ...interface{}) {
 	t.failed = true
 	err := fmt.Errorf(format, args...)
+
+	stacktrace := getStacktrace(false, t.helperFns)
+	err = transformError(err, stacktrace)
+
 	t.errors = append(t.errors, err)
-	t.env.config.TestLogger.TestError(t.id, reformatError(err))
+	t.env.config.TestLogger.TestError(t.id, err)
 }
 
 // FailNow causes the test to immediately terminate and be marked as failed.
@@ -199,4 +205,18 @@ func (t *T) RequireCapability(name string) {
 	if !t.Capabilities().Has(name) {
 		t.SkipWithReason(fmt.Sprintf("test service does not have capability %q", name))
 	}
+}
+
+// Helper marks the function that calls it as a test helper that shouldn't appear in stacktraces.
+// Equivalent to Go's testing.T.Helper().
+func (t *T) Helper() {
+	pc, _, _, ok := runtime.Caller(1) // 0 is Helper() itself, 1 is who called it
+	if !ok {
+		return
+	}
+	f := runtime.FuncForPC(pc)
+	if f == nil {
+		return
+	}
+	t.helperFns = append(t.helperFns, f.Name())
 }

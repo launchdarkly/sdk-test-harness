@@ -10,12 +10,13 @@ import (
 	"github.com/fatih/color"
 )
 
-var consoleTestErrorColor = color.New(color.FgYellow)              //nolint:gochecknoglobals
-var consoleTestFailedColor = color.New(color.FgRed)                //nolint:gochecknoglobals
-var consoleTestFailedNonCriticalColor = color.New(color.FgYellow)  //nolint:gochecknoglobals
-var consoleTestSkippedColor = color.New(color.Faint, color.FgBlue) //nolint:gochecknoglobals
-var consoleDebugOutputColor = color.New(color.Faint)               //nolint:gochecknoglobals
-var allTestsPassedColor = color.New(color.FgGreen)                 //nolint:gochecknoglobals
+var consoleTestErrorColor = color.New(color.FgYellow)                   //nolint:gochecknoglobals
+var consoleTestFailedColor = color.New(color.FgRed)                     //nolint:gochecknoglobals
+var consoleTestFailedNonCriticalColor = color.New(color.FgYellow)       //nolint:gochecknoglobals
+var consoleTestSkippedColor = color.New(color.Faint, color.FgBlue)      //nolint:gochecknoglobals
+var consoleFailedDebugOutputColor = color.New(color.Faint, color.FgRed) //nolint:gochecknoglobals
+var consolePassedDebugOutputColor = color.New(color.Faint)              //nolint:gochecknoglobals
+var allTestsPassedColor = color.New(color.FgGreen)                      //nolint:gochecknoglobals
 
 type TestLogger interface {
 	TestStarted(id TestID)
@@ -50,10 +51,18 @@ func (c ConsoleTestLogger) TestError(id TestID, err error) {
 	for _, line := range strings.Split(err.Error(), "\n") {
 		_, _ = consoleTestErrorColor.Printf("  %s\n", line)
 	}
+	if es, ok := err.(ErrorWithStacktrace); ok {
+		_, _ = consoleTestErrorColor.Println("  Stacktrace:")
+		for _, s := range es.Stacktrace {
+			_, _ = consoleTestErrorColor.Printf("    %s\n", s.String())
+		}
+	}
 }
 
 func (c ConsoleTestLogger) TestFinished(id TestID, result TestResult, debugOutput framework.CapturedOutput) {
+	debugOutputColor := consolePassedDebugOutputColor
 	if result.Failed() {
+		debugOutputColor = consoleFailedDebugOutputColor
 		if result.NonCritical {
 			_, _ = consoleTestFailedNonCriticalColor.Printf("  FAILED (non-critical): %s\n", id)
 			_, _ = consoleTestFailedNonCriticalColor.Printf("  Explanation: %s\n", result.Explanation)
@@ -63,7 +72,7 @@ func (c ConsoleTestLogger) TestFinished(id TestID, result TestResult, debugOutpu
 	}
 	if len(debugOutput) > 0 &&
 		((result.Failed() && c.DebugOutputOnFailure) || (!result.Failed() && c.DebugOutputOnSuccess)) {
-		_, _ = consoleDebugOutputColor.Println(debugOutput.ToString("    DEBUG "))
+		_, _ = debugOutputColor.Println(debugOutput.ToString("    DEBUG "))
 	}
 }
 
