@@ -150,7 +150,7 @@ func (s *StreamingService) Replay(channel, id string) chan eventsource.Event {
 }
 
 func (s *StreamingService) logEvent(e eventsource.Event) {
-	s.debugLogger.Printf("sending %s event with data: %s", e.Event(), e.Data())
+	s.debugLogger.Printf("Sending %s event with data: %s", e.Event(), e.Data())
 }
 
 func (e eventImpl) Event() string { return e.name }

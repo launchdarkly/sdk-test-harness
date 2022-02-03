@@ -249,3 +249,42 @@ func TestFailureStacktrace(t *testing.T) {
 		}
 	})
 }
+
+func TestParentTestLoggerIsCopiedToChildTestLogger(t *testing.T) {
+	outputLines := func(ldt *T) []string {
+		var ret []string
+		for _, m := range ldt.debugLogger.Output() {
+			ret = append(ret, m.Message)
+		}
+		return ret
+	}
+
+	Run(TestConfiguration{}, func(ldt *T) {
+		ldt.DebugLogger().Println("parent log 1")
+
+		ldt.Run("child1", func(ldt1 *T) {
+			ldt1.DebugLogger().Println("child1 log 1")
+			ldt.DebugLogger().Println("parent log 2")
+			ldt1.DebugLogger().Println("child1 log 2")
+
+			assert.Equal(t, []string{
+				"parent log 1", "child1 log 1", "parent log 2", "child1 log 2",
+			}, outputLines(ldt1))
+		})
+
+		ldt.Run("child2", func(ldt2 *T) {
+			ldt2.DebugLogger().Println("child2 log 1")
+			ldt.DebugLogger().Println("parent log 3")
+			ldt2.DebugLogger().Println("child2 log 2")
+
+			assert.Equal(t, []string{
+				"parent log 1", "child2 log 1", "parent log 3", "child2 log 2",
+			}, outputLines(ldt2))
+		})
+
+		ldt.DebugLogger().Println("parent log 4")
+		assert.Equal(t, []string{
+			"parent log 1", "parent log 4",
+		}, outputLines(ldt))
+	})
+}

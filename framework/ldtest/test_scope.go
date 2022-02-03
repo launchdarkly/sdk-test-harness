@@ -120,7 +120,9 @@ func (t *T) Run(name string, action func(*T)) {
 		id:  id,
 		env: t.env,
 	}
+	t.debugLogger.AddChildLogger(&c1.debugLogger) // see comments on t.DebugLogger()
 	result := c1.run(action)
+	t.debugLogger.RemoveChildLogger(&c1.debugLogger)
 	if c1.skipped {
 		t.env.config.TestLogger.TestSkipped(id, c1.skipReason)
 	} else {
@@ -178,6 +180,15 @@ func (t *T) Debug(message string, args ...interface{}) {
 }
 
 // DebugLogger returns a Logger instance for writing output for this test scope.
+//
+// The output that is captured for a test will be passed to TestLogger.TestFinished at the end of
+// the test. The test runner can choose whether to display this or not based on command-line options.
+//
+// When a test has subtests (created with t.Run), the logger for a subtest starts out with a copy of
+// any output that was already logged for the parent test. During the lifetime of the subtest, any
+// further output that is sent to the parent test's logger will go to the child test's logger
+// instead. This is useful when the parent test scope manages an object such as a mock endpoint that
+// is reused by many subtests.
 func (t *T) DebugLogger() framework.Logger {
 	return &t.debugLogger
 }

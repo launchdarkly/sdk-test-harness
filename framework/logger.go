@@ -2,6 +2,7 @@ package framework
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 )
@@ -27,21 +28,35 @@ type CapturedMessage struct {
 
 type CapturedOutput []CapturedMessage
 
+// CapturingLogger is used internally to record all output from a test scope. See comments on
+// ldtest.(*T).DebugLogger() for the rules of logging in parent/child scopes.
 type CapturingLogger struct {
-	output []CapturedMessage
-	lock   sync.Mutex
+	output   []CapturedMessage
+	children []*CapturingLogger
+	lock     sync.Mutex
 }
 
 func (l *CapturingLogger) Println(args ...interface{}) {
-	l.lock.Lock()
-	l.output = append(l.output, CapturedMessage{Time: time.Now(), Message: fmt.Sprintln(args...)})
-	l.lock.Unlock()
+	m := strings.TrimRight(fmt.Sprintln(args...), "\r\n") // Sprintln appends a newline
+	l.append(CapturedMessage{Time: time.Now(), Message: m})
 }
 
 func (l *CapturingLogger) Printf(message string, args ...interface{}) {
+	l.append(CapturedMessage{Time: time.Now(), Message: fmt.Sprintf(message, args...)})
+}
+
+func (l *CapturingLogger) append(m CapturedMessage) {
+	var children []*CapturingLogger
 	l.lock.Lock()
-	l.output = append(l.output, CapturedMessage{Time: time.Now(), Message: fmt.Sprintf(message, args...)})
+	if len(l.children) == 0 {
+		l.output = append(l.output, m)
+	} else {
+		children = append([]*CapturingLogger(nil), l.children...)
+	}
 	l.lock.Unlock()
+	for _, c := range children {
+		c.append(m)
+	}
 }
 
 func (l *CapturingLogger) Output() CapturedOutput {
@@ -49,6 +64,27 @@ func (l *CapturingLogger) Output() CapturedOutput {
 	ret := append([]CapturedMessage(nil), l.output...)
 	l.lock.Unlock()
 	return ret
+}
+
+func (l *CapturingLogger) AddChildLogger(child *CapturingLogger) {
+	l.lock.Lock()
+	l.children = append(l.children, child)
+	output := append([]CapturedMessage(nil), l.output...)
+	l.lock.Unlock()
+	child.lock.Lock()
+	child.output = append(output, child.output...)
+	child.lock.Unlock()
+}
+
+func (l *CapturingLogger) RemoveChildLogger(child *CapturingLogger) {
+	l.lock.Lock()
+	for i, c := range l.children {
+		if c == child {
+			l.children = append(l.children[0:i], l.children[i+1:]...)
+			break
+		}
+	}
+	l.lock.Unlock()
 }
 
 func (output CapturedOutput) ToString(prefix string) string {

@@ -38,14 +38,14 @@ func (c *callbackService) addPath(path string, handler func(*json.Decoder) (inte
 			_ = r.Body.Close()
 			requestDecoder = json.NewDecoder(bytes.NewBuffer(body))
 		}
-		c.logger.Printf("[%s] got POST %s %s", c.name, path, string(body))
+		c.logger.Printf("[%s] Got POST %s %s", c.name, path, string(body))
 
 		responseValue, err := handler(requestDecoder)
 		if err != nil {
 			w.Header().Set("content-type", "text/plain")
 			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = w.Write([]byte(err.Error()))
-			c.logger.Printf("[%s] responded with 500 - %s", c.name, err.Error())
+			c.logger.Printf("[%s] Responded with 500 - %s", c.name, err.Error())
 		} else {
 			w.Header().Set("content-type", "application/json")
 			var respBody []byte
@@ -54,12 +54,12 @@ func (c *callbackService) addPath(path string, handler func(*json.Decoder) (inte
 				respBody, _ = json.Marshal(responseValue)
 				_, _ = w.Write(respBody)
 			}
-			c.logger.Printf("[%s] responded with 200 %s", c.name, string(respBody))
+			c.logger.Printf("[%s] Responded with 200 %s", c.name, string(respBody))
 		}
 	})
 }
 
 func (c *callbackService) close(w http.ResponseWriter, r *http.Request) {
-	c.logger.Printf("[%s] got DELETE - closing fixture", c.name)
+	c.logger.Printf("[%s] Got DELETE - closing fixture", c.name)
 	w.WriteHeader(http.StatusNoContent)
 }
