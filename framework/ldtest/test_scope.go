@@ -149,7 +149,7 @@ func (t *T) Errorf(format string, args ...interface{}) {
 	err = transformError(err, stacktrace)
 
 	t.errors = append(t.errors, err)
-	t.env.config.TestLogger.TestError(t.id, reformatError(err))
+	t.env.config.TestLogger.TestError(t.id, err)
 }
 
 // FailNow causes the test to immediately terminate and be marked as failed.
