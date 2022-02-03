@@ -117,6 +117,9 @@ func validateSDKConfig(config servicedef.SDKConfigParams) error {
 //
 // Any error from the test service causes the test to terminate immediately.
 func (c *SDKClient) EvaluateFlag(t *ldtest.T, params servicedef.EvaluateFlagParams) servicedef.EvaluateFlagResponse {
+	if params.ValueType == "" {
+		params.ValueType = servicedef.ValueTypeAny // it'd be easy for a test to forget to set this
+	}
 	var resp servicedef.EvaluateFlagResponse
 	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
 		servicedef.CommandParams{
