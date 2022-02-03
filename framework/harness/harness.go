@@ -126,11 +126,8 @@ func startServer(port int, handler http.Handler) error {
 		case <-deadline.C:
 			return fmt.Errorf("could not detect own listener at %s", server.Addr)
 		case <-ticker.C:
-			resp, err := http.DefaultClient.Head(fmt.Sprintf("http://localhost:%d", port))
-			if resp.Body != nil {
-				_ = resp.Body.Close()
-			}
-			if err == nil && resp.StatusCode == 200 {
+			_, _, err := doRequest("HEAD", fmt.Sprintf("http://localhost:%d", port), nil)
+			if err == nil {
 				return nil
 			}
 		}
