@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	_ "embed" // this is required in order for go:embed to work
 	"fmt"
 	"log"
@@ -27,6 +28,26 @@ func main() {
 	var params commandParams
 	if !params.Read(os.Args) {
 		os.Exit(1)
+	}
+
+	if params.suppressions != "" {
+		file, err := os.Open(params.suppressions)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Cannot open provided suppression file: ", err)
+			os.Exit(1)
+		}
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			if err := params.filters.MustNotMatch.Set(scanner.Text()); err != nil {
+				fmt.Fprintln(os.Stderr, "Cannot parse suppression: ", err)
+				os.Exit(1)
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintln(os.Stderr, "While processing suppression file: ", err)
+			os.Exit(1)
+		}
+		_ = file.Close()
 	}
 
 	mainDebugLogger := framework.NullLogger()
@@ -93,6 +114,18 @@ func main() {
 	if logErr != nil {
 		fmt.Fprintf(os.Stderr, "Error writing log: %s\n", logErr)
 		os.Exit(1)
+	}
+
+	if params.genSuppressions != "" {
+		f, err := os.Create(params.genSuppressions)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Cannot create suppression file: ", err)
+			os.Exit(1)
+		}
+		for _, test := range results.Failures {
+			fmt.Fprintln(f, test.TestID)
+		}
+		_ = f.Close()
 	}
 
 	if !results.OK() {

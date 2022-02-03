@@ -17,6 +17,8 @@ type commandParams struct {
 	debug            bool
 	debugAll         bool
 	jUnitFile        string
+	genSuppressions  string
+	suppressions     string
 }
 
 func (c *commandParams) Read(args []string) bool {
@@ -30,6 +32,8 @@ func (c *commandParams) Read(args []string) bool {
 	fs.BoolVar(&c.debug, "debug", false, "enable debug logging for failed tests")
 	fs.BoolVar(&c.debugAll, "debug-all", false, "enable debug logging for all tests")
 	fs.StringVar(&c.jUnitFile, "junit", "", "write JUnit XML output to the specified path")
+	fs.StringVar(&c.genSuppressions, "gen-suppressions", "", "output suppression file")
+	fs.StringVar(&c.suppressions, "suppressions", "", "input suppression file")
 
 	if err := fs.Parse(args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, err)
