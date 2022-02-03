@@ -2,6 +2,7 @@ package ldtest
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"runtime"
 	"strings"
@@ -20,6 +21,11 @@ type StacktraceInfo struct {
 }
 
 func (e ErrorWithStacktrace) Error() string { return e.Message }
+
+func (s StacktraceInfo) String() string {
+	packageName := strings.TrimPrefix(s.Package, rootPackageName()+"/")
+	return fmt.Sprintf("%s.%s (%s:%d)", packageName, s.Function, s.FileName, s.Line)
+}
 
 var errorTraceInMessageRegex = regexp.MustCompile(`^(?s:\s*Error Trace:.*\sError:\s*)`)
 

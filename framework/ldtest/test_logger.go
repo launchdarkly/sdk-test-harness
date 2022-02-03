@@ -54,8 +54,7 @@ func (c ConsoleTestLogger) TestError(id TestID, err error) {
 	if es, ok := err.(ErrorWithStacktrace); ok {
 		_, _ = consoleTestErrorColor.Println("  Stacktrace:")
 		for _, s := range es.Stacktrace {
-			packageName := strings.TrimPrefix(s.Package, rootPackageName()+"/")
-			_, _ = consoleTestErrorColor.Printf("    %s.%s (%s:%d)\n", packageName, s.Function, s.FileName, s.Line)
+			_, _ = consoleTestErrorColor.Printf("    %s\n", s.String())
 		}
 	}
 }
