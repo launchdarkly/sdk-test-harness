@@ -20,8 +20,9 @@ func TestStacktrace(t *testing.T) {
 
 		ldt.Run("auto-filtering removes ldtest methods", func(ldt *T) {
 			stack := getStacktrace(false, nil)
-			assert.Greater(t, len(stack), 1)
-			assert.Equal(t, "testing", stack[0].Package)
+			assert.Len(t, stack, 0)
+			// Both the ldtest stuff (including this test) and the Go runtime stuff below ldt.Run is
+			// stripped out, leaving nothing.
 		})
 
 		ldt.Run("filter out designated helpers", func(ldt *T) {
