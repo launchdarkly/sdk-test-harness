@@ -36,7 +36,7 @@ func NewEventsService(sdkKind SDKKind, credential string, logger framework.Logge
 }
 
 func (s *EventsService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.logger.Printf("received %s %s", r.Method, r.URL)
+	s.logger.Printf("Received %s %s", r.Method, r.URL)
 	switch r.URL.Path {
 	case "/bulk":
 		s.postEvents(w, r)
@@ -70,7 +70,7 @@ func (s *EventsService) postEvents(w http.ResponseWriter, r *http.Request) {
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		s.logger.Printf("unable to read request body")
+		s.logger.Printf("Unable to read request body")
 		return
 	}
 
@@ -84,11 +84,11 @@ func (s *EventsService) postEvents(w http.ResponseWriter, r *http.Request) {
 	var events []Event
 	if err := json.Unmarshal(data, &events); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		s.logger.Printf("received bad event data (%s): %s", err, string(data))
+		s.logger.Printf("Received bad event data (%s): %s", err, string(data))
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
-	s.logger.Printf("received %d events", len(events))
+	s.logger.Printf("Received %d events", len(events))
 	for _, e := range events {
 		s.logger.Printf("    %s", e.JSONString())
 	}
