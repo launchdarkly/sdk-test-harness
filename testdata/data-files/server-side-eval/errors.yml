@@ -32,7 +32,7 @@ sdkData:
   flags:
     off-variation-too-low-<TYPE_NAME>:
       on: false
-      offVariation: 1
+      offVariation: -1
       variations: [ "<TYPE_VALUE>" ]
 
     off-variation-too-high-<TYPE_NAME>:
