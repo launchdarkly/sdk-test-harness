@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [1.1.4] - 2022-02-03
+### Fixed:
+- Stacktraces now appear consistently for all failures. Previously they only appeared sometimes in console output (in a somewhat different format) and never appeared in JUnit output.
+- Debug logging for a subtest now includes log output from components that were created in a parent test.
+- In `evaluate` requests to the test service, `valueType` is always set.
+- Duplicate event posts are ignored by default if they have the same `X-LaunchDarkly-Payload-Id` header value.
+
 ## [1.1.3] - 2022-02-01
 ### Fixed:
 - Fixed excessive usage of sockets/file handles due to not always using Keep-Alive for HTTP requests.
