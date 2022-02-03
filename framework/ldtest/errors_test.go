@@ -3,6 +3,7 @@ package ldtest
 import (
 	"testing"
 
+	"github.com/launchdarkly/sdk-test-harness/framework/ldtest/internal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,10 +20,14 @@ func TestStacktrace(t *testing.T) {
 		})
 
 		ldt.Run("auto-filtering removes ldtest methods", func(ldt *T) {
-			stack := getStacktrace(false, nil)
-			assert.Len(t, stack, 0)
-			// Both the ldtest stuff (including this test) and the Go runtime stuff below ldt.Run is
-			// stripped out, leaving nothing.
+			internal.RunAction(func() {
+				stack := getStacktrace(false, nil)
+				assert.Len(t, stack, 1)
+				// The ldtest stuff (including this test) and the Go runtime stuff below ldt.Run are
+				// stripped out, leaving only internal.RunAction which isn't in ldtest.
+				assert.Equal(t, currentPackageName()+"/internal", stack[0].Package)
+				assert.Equal(t, "RunAction", stack[0].Function)
+			})
 		})
 
 		ldt.Run("filter out designated helpers", func(ldt *T) {
