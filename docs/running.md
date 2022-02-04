@@ -11,15 +11,18 @@ Options besides `-url`:
 * `-host <NAME>` - sets the hostname to use in callback URLs, if not the same as the host the test service is running on (default: localhost)
 * `-port <PORT>` - sets the callback port that test services will connect to (default: 8111)
 * `-run <PATTERN>` - skips any tests whose names do not match the specified pattern (can specify more than one)
-* `-skip <PATTERN>` - skips any tests whose names match the specified pattern (can specify more than one)
+* `-skip <PATTERN>` - skips any tests whose names match the specified pattern (can specify more than one) 
 * `-stop-service-at-end` - tells the test service to exit after the test run
 * `-junit <FILEPATH>` - writes test results in JUnit XML format to the specified file
 * `-debug` - enables verbose logging of test actions for failed tests
 * `-debug-all` - enables verbose logging of test actions for all tests
+* `-record-failures` - record test failures to the given file. Test failures recorded can be skipped by the next run of 
+the test harness via -suppress-failures.
+* `-suppress-failures` - path to test failures recorded by `-record-failures`. The test harness will automatically skip any tests contained in the file.
 
 For `-run` and `-skip`, the rules for pattern matching are as follows:
 
-* The match is done againt the full path of the test. The full path is the string that appears between brackets in the test output. It may include slash-delimited subtests, such as `parent test name/subtest name/sub-subtest name`.
+* The match is done against the full path of the test. The full path is the string that appears between brackets in the test output. It may include slash-delimited subtests, such as `parent test name/subtest name/sub-subtest name`.
 * In the pattern, each slash-delimited segment is treated as a separate regular expression. So, for instance, you can write `^evaluation$/a.c` to match `evaluation/abc` and `evaluation/xaxcx` but not match `xevaluationx/abc`.
 * However, `(` and `)` will always be treated as literal characters, not regular expression operators. This is because some tests may have parens in their names. If you want "or" behavior, instead of `-run (a|b)` just use `-run a -run b` (in other words, there is an implied "or" for multiple values).
 * If `-run` specifies a test that has subtests, then all of its subtests are also run.
@@ -33,7 +36,7 @@ While tests are running, when each test starts a line is printed to standard out
 [evaluation/all flags state/with reasons]
 ```
 
-If the test is skipped, you will see an explanation starting with `SKIPPED:` on the next line. A test could be skipped because of filter parameters like `-run` or `-skip`, or because the test is only for SDKs with a certain capability and the test service did not report having that capability.
+If the test is skipped, you will see an explanation starting with `SKIPPED:` on the next line. A test could be skipped because of filter parameters like `-run` or `-skip`, or due to `-suppress-failures`, or because the test is only for SDKs with a certain capability and the test service did not report having that capability.
 
 If the test failed, you will see `FAILED:` and a failure message, which normally includes both a description of the problem and a stacktrace. The stacktrace refers to the `sdk-test-harness` code and may be helpful in understanding the test logic.
 

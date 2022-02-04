@@ -43,8 +43,8 @@ func main() {
 }
 
 func run(params commandParams) (*ldtest.Results, error) {
-	if params.suppressions != "" {
-		file, err := os.Open(params.suppressions)
+	if params.suppressFailures != "" {
+		file, err := os.Open(params.suppressFailures)
 		if err != nil {
 			return nil, fmt.Errorf("cannot open provided suppression file: %v", err)
 		}
@@ -123,8 +123,8 @@ func run(params commandParams) (*ldtest.Results, error) {
 		return nil, fmt.Errorf("error writing log: %v", logErr)
 	}
 
-	if params.genSuppressions != "" {
-		f, err := os.Create(params.genSuppressions)
+	if params.recordFailures != "" {
+		f, err := os.Create(params.recordFailures)
 		if err != nil {
 			return nil, fmt.Errorf("cannot create suppression file: %v", err)
 		}
@@ -136,4 +136,3 @@ func run(params commandParams) (*ldtest.Results, error) {
 
 	return &results, nil
 }
-
