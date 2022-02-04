@@ -2,6 +2,10 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [1.1.5] - 2022-02-04
+### Fixed:
+- Fixed a bug that could cause the program to crash with a panic when certain tests failed.
+
 ## [1.1.4] - 2022-02-03
 ### Fixed:
 - Stacktraces now appear consistently for all failures. Previously they only appeared sometimes in console output (in a somewhat different format) and never appeared in JUnit output.
