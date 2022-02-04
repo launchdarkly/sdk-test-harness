@@ -18,6 +18,7 @@ import (
 	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldbuilders"
 	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldmodel"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -151,7 +152,7 @@ func checkForUpdatedValue(
 			return true
 		}
 		if !actualValue.Equal(previousValue) {
-			require.Fail(t, "SDK returned neither previous value nor updated value",
+			assert.Fail(t, "SDK returned neither previous value nor updated value",
 				"previous: %s, updated: %s, actual: %s", previousValue, updatedValue, actualValue)
 		}
 		return false
