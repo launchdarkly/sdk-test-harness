@@ -138,7 +138,7 @@ func BriefFilterDescription(filters RegexFilters) string {
 
 func autoEscapeTestRegex(pattern string) string {
 	s := pattern
-	for _, ch := range []string{"(", ")"} {
+	for _, ch := range []string{"(", ")", "[", "]"} {
 		s = strings.ReplaceAll(s, ch, "\\"+ch)
 		s = strings.ReplaceAll(s, "\\\\"+ch, "\\"+ch) // in case they already escaped it
 	}

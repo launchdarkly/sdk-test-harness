@@ -94,4 +94,6 @@ func TestRegexFilters(t *testing.T) {
 func TestAutoEscapeTestRegex(t *testing.T) {
 	assert.Equal(t, "hello \\(yes\\)", autoEscapeTestRegex("hello (yes)"))
 	assert.Equal(t, "hello \\(yes\\)", autoEscapeTestRegex("hello \\(yes\\)"))
+	assert.Equal(t, "hello \\[yes\\], a \\[test\\]", autoEscapeTestRegex("hello [yes], a [test]"))
+	assert.Equal(t, "hello \\[yes\\], a \\[test\\]", autoEscapeTestRegex("hello \\[yes\\], a \\[test\\]"))
 }
