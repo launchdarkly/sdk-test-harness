@@ -44,10 +44,10 @@ func (s eventUserTestScenario) Description() string {
 		parts = append(parts, "allAttributesPrivate=true")
 	}
 	if len(s.config.GlobalPrivateAttributes) != 0 {
-		parts = append(parts, fmt.Sprintf("globally-private=%v", s.config.GlobalPrivateAttributes))
+		parts = append(parts, fmt.Sprintf("globally-private=(%s)", formatSlice(s.config.GlobalPrivateAttributes)))
 	}
 	if len(s.userPrivateAttrs) != 0 {
-		parts = append(parts, fmt.Sprintf("user-private=%v", s.userPrivateAttrs))
+		parts = append(parts, fmt.Sprintf("user-private=(%s)", formatSlice(s.userPrivateAttrs)))
 	}
 	return strings.Join(parts, ", ")
 }

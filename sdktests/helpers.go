@@ -1,8 +1,10 @@
 package sdktests
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"sort"
 	"time"
 
@@ -204,4 +206,22 @@ func timeValueAsPointer(value ldtime.UnixMillisecondTime) *ldtime.UnixMillisecon
 
 func testDescFromType(valueType servicedef.ValueType) string {
 	return fmt.Sprintf("type: %s", valueType)
+}
+
+func formatSlice(a interface{}) string {
+	kind := reflect.TypeOf(a).Kind()
+	if kind != reflect.Slice {
+		panic("formatSlice expects slice argument")
+	}
+	var out bytes.Buffer
+	arr := reflect.ValueOf(a)
+	if arr.Len() == 0 {
+		return ""
+	}
+	for i := 0; i < arr.Len()-1; i++ {
+		out.Write([]byte(fmt.Sprint(arr.Index(i).Interface())))
+		out.Write([]byte(", "))
+	}
+	out.Write([]byte(fmt.Sprint(arr.Index(arr.Len() - 1).Interface())))
+	return out.String()
 }
