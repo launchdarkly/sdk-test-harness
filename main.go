@@ -132,6 +132,8 @@ func loadSuppressions(params *commandParams) error {
 	if err != nil {
 		return fmt.Errorf("cannot open provided suppression file: %v", err)
 	}
+	// #nosec G307 -- This is a read-only file so Close failing will not result in data loss.
+	// Additionally, this is a false positive since we are checking the error code.
 	defer func() {
 		if err := file.Close(); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to close suppressions file: %v\n", err)
