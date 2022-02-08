@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -50,7 +51,8 @@ func run(params commandParams) (*ldtest.Results, error) {
 		}
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
-			if err := params.filters.MustNotMatch.Set(scanner.Text()); err != nil {
+			escaped := regexp.QuoteMeta(scanner.Text())
+			if err := params.filters.MustNotMatch.Set(escaped); err != nil {
 				return nil, fmt.Errorf("cannot parse suppression: %v", err)
 			}
 		}
