@@ -86,7 +86,7 @@ func doServerSideExperimentationEventTests(t *ldtest.T) {
 				JSONPropertyNullOrAbsent("prereqOf"),
 			)
 
-			m.In(t).Assert(payload, m.Items(
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(
 				IsIndexEventForUserKey(user.GetKey()),
 				matchFeatureEvent,
 				IsSummaryEvent(),

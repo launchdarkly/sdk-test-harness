@@ -38,7 +38,7 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 				client.FlushEvents(t)
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
-				m.In(t).Assert(payload, m.Items(
+				m.In(t).Assert(payload, m.ItemsInAnyOrder(
 					matchIndexEvent(user),
 					IsSummaryEvent(),
 				))
