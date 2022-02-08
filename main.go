@@ -49,6 +49,7 @@ func run(params commandParams) (*ldtest.Results, error) {
 		if err != nil {
 			return nil, fmt.Errorf("cannot open provided suppression file: %v", err)
 		}
+		defer file.Close()
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
 			escaped := regexp.QuoteMeta(scanner.Text())
