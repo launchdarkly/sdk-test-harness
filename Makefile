@@ -2,7 +2,7 @@
 GORELEASER_VERSION=v0.141.0
 GORELEASER_CMD=curl -sL https://git.io/goreleaser | GOPATH=$(mktemp -d) VERSION=$(GORELEASER_VERSION) bash -s -- --rm-dist
 
-GOLANGCI_LINT_VERSION=v1.43.0
+GOLANGCI_LINT_VERSION=v1.44.0
 
 LINTER=./bin/golangci-lint
 LINTER_VERSION_FILE=./bin/.golangci-lint-version-$(GOLANGCI_LINT_VERSION)
