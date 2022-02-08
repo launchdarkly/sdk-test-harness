@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bufio"
 	_ "embed" // this is required in order for go:embed to work
+	"errors"
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -29,6 +32,43 @@ func main() {
 		os.Exit(1)
 	}
 
+	results, err := run(params)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if !results.OK() {
+		os.Exit(1)
+	}
+}
+
+func run(params commandParams) (*ldtest.Results, error) {
+	if params.suppressFailures != "" {
+		file, err := os.Open(params.suppressFailures)
+		if err != nil {
+			return nil, fmt.Errorf("cannot open provided suppression file: %v", err)
+		}
+		closeSuppressionFile := func() {
+			if err := file.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to close suppression file: %v\n", err)
+			}
+		}
+		defer closeSuppressionFile()
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			escaped := regexp.QuoteMeta(scanner.Text())
+			if err := params.filters.MustNotMatch.Set(escaped); err != nil {
+				return nil, fmt.Errorf("cannot parse suppression: %v", err)
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			return nil, fmt.Errorf("while processing suppression file: %v", err)
+		}
+		// Explicit close because this file may be re-opened later on to record an updated suppression file.
+		closeSuppressionFile()
+	}
+
 	mainDebugLogger := framework.NullLogger()
 	if params.debugAll {
 		mainDebugLogger = log.New(os.Stdout, "", log.LstdFlags)
@@ -42,9 +82,9 @@ func main() {
 		mainDebugLogger,
 		os.Stdout,
 	)
+
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Test service error: %s\n", err)
-		os.Exit(1)
+		return nil, err
 	}
 
 	var testLogger ldtest.TestLogger
@@ -68,11 +108,9 @@ func main() {
 		fmt.Println("Running server-side SDK test suite")
 		allCapabilities = sdktests.AllImportantServerSideCapabilities()
 	case enabledCapabilities.Has(servicedef.CapabilityClientSide):
-		fmt.Fprintln(os.Stderr, "Client-side SDK tests are not yet implemented")
-		os.Exit(1)
+		return nil, errors.New("client-side SDK tests are not yet implemented")
 	default:
-		fmt.Fprintln(os.Stderr, `Test service has neither "client-side" nor "server-side" capability`)
-		os.Exit(1)
+		return nil, errors.New(`test service has neither "client-side" nor "server-side" capability`)
 	}
 
 	fmt.Println()
@@ -91,11 +129,19 @@ func main() {
 	}
 
 	if logErr != nil {
-		fmt.Fprintf(os.Stderr, "Error writing log: %s\n", logErr)
-		os.Exit(1)
+		return nil, fmt.Errorf("error writing log: %v", logErr)
 	}
 
-	if !results.OK() {
-		os.Exit(1)
+	if params.recordFailures != "" {
+		f, err := os.Create(params.recordFailures)
+		if err != nil {
+			return nil, fmt.Errorf("cannot create suppression file: %v", err)
+		}
+		for _, test := range results.Failures {
+			fmt.Fprintln(f, test.TestID)
+		}
+		_ = f.Close()
 	}
+
+	return &results, nil
 }

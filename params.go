@@ -17,6 +17,8 @@ type commandParams struct {
 	debug            bool
 	debugAll         bool
 	jUnitFile        string
+	recordFailures   string
+	suppressFailures string
 }
 
 func (c *commandParams) Read(args []string) bool {
@@ -30,6 +32,10 @@ func (c *commandParams) Read(args []string) bool {
 	fs.BoolVar(&c.debug, "debug", false, "enable debug logging for failed tests")
 	fs.BoolVar(&c.debugAll, "debug-all", false, "enable debug logging for all tests")
 	fs.StringVar(&c.jUnitFile, "junit", "", "write JUnit XML output to the specified path")
+	fs.StringVar(&c.recordFailures, "record-failures", "", "record test failures to the specified file path.\n"+
+		"Recorded failures can be skipped by the next run of the test harness via -suppress-failures")
+	fs.StringVar(&c.suppressFailures, "suppress-failures", "", "path to recorded test failures generated "+
+		"by -record-failures.\nThe test harness will automatically skip tests contained in the specified file")
 
 	if err := fs.Parse(args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, err)
