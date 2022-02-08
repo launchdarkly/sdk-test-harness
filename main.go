@@ -34,7 +34,7 @@ func main() {
 
 	results, err := run(params)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Test Service Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
