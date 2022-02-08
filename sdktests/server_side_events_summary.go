@@ -61,7 +61,7 @@ func doServerSideSummaryEventBasicTest(t *ldtest.T) {
 	client.FlushEvents(t)
 	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
-	m.In(t).Assert(payload, m.Items(
+	m.In(t).Assert(payload, m.ItemsInAnyOrder(
 		IsIndexEvent(),
 		IsIndexEvent(),
 		IsValidSummaryEventWithFlags(
@@ -100,7 +100,7 @@ func doServerSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 	client.FlushEvents(t)
 	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
-	m.In(t).Assert(payload, m.Items(
+	m.In(t).Assert(payload, m.ItemsInAnyOrder(
 		IsIndexEventForUserKey(user.GetKey()),
 		IsValidSummaryEventWithFlags(
 			m.KV(unknownKey, m.MapOf(
@@ -142,7 +142,7 @@ func doServerSideSummaryEventResetTest(t *ldtest.T) {
 	client.FlushEvents(t)
 	payload1 := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
-	m.In(t).Assert(payload1, m.Items(
+	m.In(t).Assert(payload1, m.ItemsInAnyOrder(
 		IsIndexEvent(),
 		IsIndexEvent(),
 		IsValidSummaryEventWithFlags(
@@ -213,7 +213,7 @@ func doServerSideSummaryEventPrerequisitesTest(t *ldtest.T) {
 	client.FlushEvents(t)
 	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
-	m.In(t).Assert(payload, m.Items(
+	m.In(t).Assert(payload, m.ItemsInAnyOrder(
 		IsIndexEvent(),
 		IsValidSummaryEventWithFlags(
 			m.KV(flag1.Key, m.MapOf(
@@ -271,7 +271,7 @@ func doServerSideSummaryEventVersionTest(t *ldtest.T) {
 	client.FlushEvents(t)
 	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
-	m.In(t).Assert(payload, m.Items(
+	m.In(t).Assert(payload, m.ItemsInAnyOrder(
 		IsIndexEvent(),
 		IsValidSummaryEventWithFlags(
 			m.KV(flagKey, m.MapOf(

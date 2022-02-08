@@ -49,7 +49,7 @@ func doServerSideEventBufferTests(t *ldtest.T) {
 		client.FlushEvents(t)
 		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
-		m.In(t).Assert(payload, m.Items(makeIdentifyEventExpectations(capacity)...))
+		m.In(t).Assert(payload, m.ItemsInAnyOrder(makeIdentifyEventExpectations(capacity)...))
 	})
 
 	t.Run("buffer is reset after flush", func(t *ldtest.T) {
@@ -86,6 +86,6 @@ func doServerSideEventBufferTests(t *ldtest.T) {
 
 		expectations := append(makeIdentifyEventExpectations(capacity),
 			IsSummaryEvent())
-		m.In(t).Assert(payload, m.Items(expectations...))
+		m.In(t).Assert(payload, m.ItemsInAnyOrder(expectations...))
 	})
 }
