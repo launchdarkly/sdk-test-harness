@@ -45,7 +45,7 @@ func main() {
 
 func run(params commandParams) (*ldtest.Results, error) {
 	if params.suppressFailures != "" {
-		if err := loadSuppressions(params); err != nil {
+		if err := loadSuppressions(&params); err != nil {
 			return nil, err
 		}
 	}
@@ -127,7 +127,7 @@ func run(params commandParams) (*ldtest.Results, error) {
 	return &results, nil
 }
 
-func loadSuppressions(params commandParams) error {
+func loadSuppressions(params *commandParams) error {
 	file, err := os.Open(params.suppressFailures)
 	if err != nil {
 		return fmt.Errorf("cannot open provided suppression file: %v", err)
