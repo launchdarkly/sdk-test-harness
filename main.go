@@ -45,28 +45,9 @@ func main() {
 
 func run(params commandParams) (*ldtest.Results, error) {
 	if params.suppressFailures != "" {
-		file, err := os.Open(params.suppressFailures)
-		if err != nil {
-			return nil, fmt.Errorf("cannot open provided suppression file: %v", err)
+		if err := loadSuppressions(params); err != nil {
+			return nil, err
 		}
-		closeSuppressionFile := func() {
-			if err := file.Close(); err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to close suppression file: %v\n", err)
-			}
-		}
-		defer closeSuppressionFile()
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			escaped := regexp.QuoteMeta(scanner.Text())
-			if err := params.filters.MustNotMatch.Set(escaped); err != nil {
-				return nil, fmt.Errorf("cannot parse suppression: %v", err)
-			}
-		}
-		if err := scanner.Err(); err != nil {
-			return nil, fmt.Errorf("while processing suppression file: %v", err)
-		}
-		// Explicit close because this file may be re-opened later on to record an updated suppression file.
-		closeSuppressionFile()
 	}
 
 	mainDebugLogger := framework.NullLogger()
@@ -144,4 +125,27 @@ func run(params commandParams) (*ldtest.Results, error) {
 	}
 
 	return &results, nil
+}
+
+func loadSuppressions(params commandParams) error {
+	file, err := os.Open(params.suppressFailures)
+	if err != nil {
+		return fmt.Errorf("cannot open provided suppression file: %v", err)
+	}
+	defer func() {
+		if err := file.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to close suppressions file: %v\n", err)
+		}
+	}()
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		escaped := regexp.QuoteMeta(scanner.Text())
+		if err := params.filters.MustNotMatch.Set(escaped); err != nil {
+			return fmt.Errorf("cannot parse suppression: %v", err)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("while processing suppression file: %v", err)
+	}
+	return nil
 }
