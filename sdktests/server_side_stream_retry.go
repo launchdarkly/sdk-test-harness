@@ -122,7 +122,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		expectNoMoreRequests(t, streamEndpoint)
 	}
 
-	t.Run("retry after I/O error on initial connect", func(t *ldtest.T) {
+	t.Run("retry after IO error on initial connect", func(t *ldtest.T) {
 		shouldRetryAfterErrorOnInitialConnect(t, httphelpers.BrokenConnectionHandler())
 	})
 
@@ -169,7 +169,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		pollUntilFlagValueUpdated(t, client, flagKey, user, expectedValueV1, expectedValueV2, ldvalue.Null())
 	}
 
-	t.Run("retry after I/O error on reconnect", func(t *ldtest.T) {
+	t.Run("retry after IO error on reconnect", func(t *ldtest.T) {
 		shouldRetryAfterErrorOnReconnect(t, httphelpers.BrokenConnectionHandler())
 	})
 
