@@ -49,7 +49,12 @@ func run(params commandParams) (*ldtest.Results, error) {
 		if err != nil {
 			return nil, fmt.Errorf("cannot open provided suppression file: %v", err)
 		}
-		defer file.Close()
+		closeSuppressionFile := func() {
+			if err := file.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to close suppression file: %v\n", err)
+			}
+		}
+		defer closeSuppressionFile()
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
 			escaped := regexp.QuoteMeta(scanner.Text())
@@ -60,7 +65,8 @@ func run(params commandParams) (*ldtest.Results, error) {
 		if err := scanner.Err(); err != nil {
 			return nil, fmt.Errorf("while processing suppression file: %v", err)
 		}
-		_ = file.Close()
+		// Explicit close because this file may be re-opened later on to record an updated suppression file.
+		closeSuppressionFile()
 	}
 
 	mainDebugLogger := framework.NullLogger()
