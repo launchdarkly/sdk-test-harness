@@ -2,6 +2,10 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [1.2.0] - 2022-02-09
+### Added:
+- Command line options `-record-failures` and `-skip-from`.
+
 ## [1.1.6] - 2022-02-08
 ### Fixed:
 - Analytics event tests no longer care about the order in which events appear in a payload; the order isn't of any significance to LaunchDarkly.
