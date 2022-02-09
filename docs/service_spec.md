@@ -1,5 +1,14 @@
 # SDK test service specification
 
+## General guidelines
+
+* Request and response bodies, if required for a particular endpoint, are always in JSON.
+* For any optional property in a request or response, `"propertyName": null` should be treated the same as if `propertyName` were entirely omitted.
+* If the test service is unable to decode a JSON request body, either because it's not valid JSON or because a property value is of the wrong type, it should return a 400 error.
+* For any request where the body is irrelevant, the test service should not care whether there is a body and, if there is, should not attempt to decode it as any specific content type. Similarly, for callback endpoints, if no body data is specified for a `POST` request it does not matter what the test service puts in the callback request body.
+* To simplify test service implementation, the test harness does not distinguish between different 2xx statuses, so for instance 201 and 202 are equally valid regardless of which one would be most appropriate in HTTP semantics.
+* If an endpoint returns a 400 or 500 error status, it may put a plain text message in the response body which will be shown in the test harness log.
+
 ## Service endpoints
 
 ### Status resource: `GET /`
@@ -169,6 +178,10 @@ The `aliasEvent` property in the request body will be a JSON object with these p
 * `previousUser` (object): The user properties of the previous user.
 
 The response should be an empty 2xx response.
+
+### Close client: `DELETE <URL of SDK client instance>`
+
+The response should be an empty 2xx response if successful, or 500 if the close operation returned an error (for SDKs where that is possible).
 
 #### Flush events
 
