@@ -132,11 +132,7 @@ func loadSuppressions(params *commandParams) error {
 	if err != nil {
 		return fmt.Errorf("cannot open provided suppression file: %v", err)
 	}
-	defer func() {
-		if err := file.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to close suppressions file: %v\n", err)
-		}
-	}()
+	defer func() { _ = file.Close() }()
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		escaped := regexp.QuoteMeta(scanner.Text())
