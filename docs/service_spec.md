@@ -130,7 +130,7 @@ The response should be a JSON object with a single property, `state`. The value 
     "flagkey1": "value1",
     "flagkey2": "value2",
     "$flagsState": {
-      "flagKey1": { "variation": 0, "version": 100 }
+      "flagKey1": { "variation": 0, "version": 100 },
       "flagKey2": { "variation": 1, "version": 200 }
     },
     "$valid": true
@@ -168,7 +168,7 @@ Some SDKs have multiple variants or overloads of `Track`: one that takes both `d
 
 The response should be an empty 2xx response.
 
-#### Send alias eent
+#### Send alias event
 
 If `command` is `"aliasEvent"`, the test service should tell the SDK to send an alias event.
 
@@ -179,17 +179,19 @@ The `aliasEvent` property in the request body will be a JSON object with these p
 
 The response should be an empty 2xx response.
 
+#### Flush events
+
+If `command` is `"flush"`, the test service should tell the SDK to initiate an event flush.
+
+The request body, if any, is irrelevant.
+
+The response should be an empty 2xx response.
+
 ### Close client: `DELETE <URL of SDK client instance>`
 
 The test harness sends this request when it is finished using a specific client instance. The test service should use the appropriate SDK operation to shut down the client (normally this is called `Close` or `Dispose`).
 
 The response should be an empty 2xx response if successful, or 500 if the close operation returned an error (for SDKs where that is possible).
-
-#### Flush events
-
-If `command` is `"flush"`, the test service should tell the SDK to initiate an event flush.
-
-The response should be an empty 2xx response.
 
 ## Callback endpoints
 
@@ -209,7 +211,7 @@ The service supports the following requests. For simplicity and to ensure that H
 
 #### Get metadata: `POST /getMetadata`
 
-The test service should send this request when the SDK calls the method for getting store metadata. The request body is ignored. The response is a JSON object with these properties:
+The test service should send this request when the SDK calls the method for getting store metadata. The request body, if any, is ignored. The response is a JSON object with these properties:
 
 * `lastUpToDate` (number, required): The epoch millisecond time that the simulated store was last updated.
 
