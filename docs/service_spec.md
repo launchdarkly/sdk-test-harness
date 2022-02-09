@@ -181,6 +181,8 @@ The response should be an empty 2xx response.
 
 ### Close client: `DELETE <URL of SDK client instance>`
 
+The test harness sends this request when it is finished using a specific client instance. The test service should use the appropriate SDK operation to shut down the client (normally this is called `Close` or `Dispose`).
+
 The response should be an empty 2xx response if successful, or 500 if the close operation returned an error (for SDKs where that is possible).
 
 #### Flush events
