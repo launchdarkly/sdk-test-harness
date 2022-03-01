@@ -73,12 +73,6 @@ type SDKClient struct {
 // The object's lifecycle is tied to the test scope that created it; it will be automatically closed
 // when this test scope exits. It can be reused by subtests until then.
 func NewSDKClient(t *ldtest.T, configurer SDKConfigurer, moreConfigurers ...SDKConfigurer) *SDKClient {
-	sdkClient, err := TryNewSDKClient(t, configurer, moreConfigurers...)
-	require.NoError(t, err)
-	return sdkClient
-}
-
-func TryNewSDKClient(t *ldtest.T, configurer SDKConfigurer, moreConfigurers ...SDKConfigurer) (*SDKClient, error) {
 	config := servicedef.SDKConfigParams{}
 	configurer.ApplyConfiguration(&config)
 	for _, c := range moreConfigurers {
@@ -95,17 +89,16 @@ func TryNewSDKClient(t *ldtest.T, configurer SDKConfigurer, moreConfigurers ...S
 	}
 
 	sdkClient, err := requireContext(t).harness.NewTestServiceEntity(params, "SDK client", t.DebugLogger())
-	if sdkClient != nil {
-		t.Defer(func() {
-			_ = sdkClient.Close()
-		})
-		return &SDKClient{
-			sdkClientEntity: sdkClient,
-			sdkConfig:       config,
-		}, nil
-	}
+	require.NoError(t, err)
 
-	return nil, err
+	t.Defer(func() {
+		_ = sdkClient.Close()
+	})
+
+	return &SDKClient{
+		sdkClientEntity: sdkClient,
+		sdkConfig:       config,
+	}
 }
 
 func validateSDKConfig(config servicedef.SDKConfigParams) error {
