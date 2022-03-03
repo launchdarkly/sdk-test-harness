@@ -75,7 +75,8 @@ func doServerSideEventUserTests(t *ldtest.T) {
 	defaultValue := ldvalue.String("default")
 	users := NewUserFactory("doServerSideEventUserTests",
 		func(ub lduser.UserBuilder) {
-			ub.FirstName("first").LastName("last").Country("us").Custom("preferredLanguage", ldvalue.String("go")).Custom("primaryLanguage", ldvalue.String("go"))
+			ub.FirstName("first").LastName("last").Country("us").
+				Custom("preferredLanguage", ldvalue.String("go")).Custom("primaryLanguage", ldvalue.String("go"))
 		})
 	flags := FlagFactoryForValueTypes{
 		KeyPrefix:      "ServerSideEvalEventUserFlag",
