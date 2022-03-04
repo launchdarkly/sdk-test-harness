@@ -95,10 +95,10 @@ func DefaultValueByTypeFactory() ValueFactory {
 	}
 }
 
-// Returns a list of values that cover all JSON types *and* all special values that might conceivably
-// be handled wrong in SDK implementations-- for instance, we should check both non-empty and empty
-// strings, and both zero and non-zero numbers, to make sure "" and 0 ares not being treated the same
-// as "undefined/null".
+// MakeStandardTestValues returns a list of values that cover all JSON types, *and* all special values
+// that might conceivably be handled wrong in SDK implementations. For instance, we should check both
+// non-empty and empty strings, and both zero and non-zero numbers, to make sure "" and 0 ares not being
+// treated the same as "undefined/null".
 func MakeStandardTestValues() []ldvalue.Value {
 	return []ldvalue.Value{
 		ldvalue.Null(),

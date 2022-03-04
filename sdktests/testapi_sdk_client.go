@@ -208,11 +208,13 @@ func (c *SDKClient) ContextBuild(t *ldtest.T, params servicedef.ContextBuildPara
 		&resp,
 	))
 	return resp
-
 }
 
 // ContextConvert tells the test service to use the SDK's JSON converters to unmarshal and remarshal a context.
-func (c *SDKClient) ContextConvert(t *ldtest.T, params servicedef.ContextConvertParams) servicedef.ContextBuildResponse {
+func (c *SDKClient) ContextConvert(
+	t *ldtest.T,
+	params servicedef.ContextConvertParams,
+) servicedef.ContextBuildResponse {
 	var resp servicedef.ContextBuildResponse
 	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
 		servicedef.CommandParams{
