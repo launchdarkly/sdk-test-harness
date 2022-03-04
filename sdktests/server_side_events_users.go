@@ -54,7 +54,7 @@ func doServerSideEventUserTests(t *ldtest.T) {
 	var scenarios []eventUserTestScenario
 	for _, allAttrsPrivate := range []bool{false, true} {
 		for _, globalPrivateAttrs := range [][]string{nil, {"firstName"}} {
-			for _, userPrivateAttrs := range [][]string{nil, {"lastName"}} {
+			for _, userPrivateAttrs := range [][]string{nil, {"lastName", "preferredLanguage"}} {
 				scenarios = append(scenarios, eventUserTestScenario{
 					config: servicedef.SDKConfigEventParams{
 						AllAttributesPrivate:    allAttrsPrivate,
@@ -69,7 +69,10 @@ func doServerSideEventUserTests(t *ldtest.T) {
 	flagValue := ldvalue.String("value")
 	defaultValue := ldvalue.String("default")
 	users := NewUserFactory("doServerSideEventUserTests",
-		func(ub lduser.UserBuilder) { ub.FirstName("first").LastName("last").Country("us") })
+		func(ub lduser.UserBuilder) {
+			ub.FirstName("first").LastName("last").Country("us").
+				Custom("preferredLanguage", ldvalue.String("go")).Custom("primaryLanguage", ldvalue.String("go"))
+		})
 	flags := FlagFactoryForValueTypes{
 		KeyPrefix:      "ServerSideEvalEventUserFlag",
 		ValueFactory:   SingleValueFactory(flagValue),
