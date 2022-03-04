@@ -168,17 +168,6 @@ Some SDKs have multiple variants or overloads of `Track`: one that takes both `d
 
 The response should be an empty 2xx response.
 
-#### Send alias event
-
-If `command` is `"aliasEvent"`, the test service should tell the SDK to send an alias event.
-
-The `aliasEvent` property in the request body will be a JSON object with these properties:
-
-* `user` (object): The user properties of the new user.
-* `previousUser` (object): The user properties of the previous user.
-
-The response should be an empty 2xx response.
-
 #### Flush events
 
 If `command` is `"flush"`, the test service should tell the SDK to initiate an event flush.
@@ -186,6 +175,53 @@ If `command` is `"flush"`, the test service should tell the SDK to initiate an e
 The request body, if any, is irrelevant.
 
 The response should be an empty 2xx response.
+
+#### Get big segment store status
+
+If `command` is `""`, the test service should ask the SDK for the big segment store status.
+
+The test harness will only send this command if the test service has the `"big-segments"` capability.
+
+The request body, if any, is irrelevant.
+
+The response should be a JSON object with two boolean properties, `available` and `stale`, corresponding to the standard properties of this status object in all SDKs that support Big Segments.
+
+#### Build a context
+
+If `command` is `"contextBuild"`, the test service should use the SDK's context builder to construct a context and then return a JSON representation of it.
+
+The test harness will only send this command if the test service has the `"strongly-typed"` capability.
+
+The `contextBuild` property in the request body will be a JSON object with these properties:
+
+* `single` (object, optional): If present, this is a JSON object with properties for a single-kind context. The test service should pass these values to the corresponding builder methods if they are present.
+  * `kind` (string, optional): Even though a context always has a kind, this is optional because the builder should use `"user"` as a default.
+  * `key` (string, required)
+  * `name` (string, optional)
+  * `transient` (boolean, optional)
+  * `secondary` (string, optional)
+  * `private` (array of strings, optional): These strings should be treated as attribute references, i.e. they may be slash-delimited paths.
+  * `custom` (object, optional): If present, these are name-value pairs for custom attributes.
+* `multi` (array, optional): If present, this is an array of objects in the same format as shown for `single` above, for a multi-kind context. Only one of `single` or `multi` will be present.
+
+The response should be a JSON object with these properties:
+
+* `output` (string, optional): If successful, this is the JSON representation of the context as a string.
+* `error` (string, optional): If present, this is an error message indicating that the SDK said the context was invalid or could not serialize it.
+
+If the SDK returns an error for this operation, the test service should _not_ return a `4xx` response, but just return the error message in the `error` property. This is because some tests have intentionally invalid values of `input`, but the test service command itself is still valid. That is also why `input` is passed as a serialized string, rather than just being the JSON value itself, since it may be intentionally malformed. The test service should only return an HTTP error code if the request did not use the format described above.
+
+#### Convert a context
+
+If `command` is `"contextConvert"`, the test service should use the SDK's JSON conversions for the context type to parse a context from JSON and then return a JSON representation of the result. This verifies that parsing works correctly _and_ that the SDK does any necessary transformations, such as converting an old-style user to a context, or dropping properties that have null values.
+
+The test harness will only send this command if the test service has the `"strongly-typed"` capability.
+
+The `contextConvert` property in the request body will be a JSON object with these properties:
+
+* `input` (string, required): A string that should be treated as JSON.
+
+The response body and response status are the same as for the `contextBuild` command.
 
 ### Close client: `DELETE <URL of SDK client instance>`
 
