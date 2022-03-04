@@ -47,6 +47,10 @@ func (s eventUserTestScenario) Description() string {
 	if len(s.userPrivateAttrs) != 0 {
 		parts = append(parts, fmt.Sprintf("user-private=%v", s.userPrivateAttrs))
 	}
+	if len(parts) == 0 {
+		parts = append(parts, "no-attributes-filtered")
+	}
+
 	return strings.Join(parts, ", ")
 }
 
