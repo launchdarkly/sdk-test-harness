@@ -195,3 +195,32 @@ func (c *SDKClient) GetBigSegmentStoreStatus(t *ldtest.T) servicedef.BigSegmentS
 		t.DebugLogger(), &resp))
 	return resp
 }
+
+// ContextBuild tells the test service to use the SDK's context builder to build a context and return it as JSON.
+func (c *SDKClient) ContextBuild(t *ldtest.T, params servicedef.ContextBuildParams) servicedef.ContextBuildResponse {
+	var resp servicedef.ContextBuildResponse
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:      servicedef.CommandContextBuild,
+			ContextBuild: &params,
+		},
+		t.DebugLogger(),
+		&resp,
+	))
+	return resp
+
+}
+
+// ContextConvert tells the test service to use the SDK's JSON converters to unmarshal and remarshal a context.
+func (c *SDKClient) ContextConvert(t *ldtest.T, params servicedef.ContextConvertParams) servicedef.ContextBuildResponse {
+	var resp servicedef.ContextBuildResponse
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:        servicedef.CommandContextConvert,
+			ContextConvert: &params,
+		},
+		t.DebugLogger(),
+		&resp,
+	))
+	return resp
+}

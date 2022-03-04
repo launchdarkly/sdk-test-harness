@@ -95,6 +95,30 @@ func DefaultValueByTypeFactory() ValueFactory {
 	}
 }
 
+// Returns a list of values that cover all JSON types *and* all special values that might conceivably
+// be handled wrong in SDK implementations-- for instance, we should check both non-empty and empty
+// strings, and both zero and non-zero numbers, to make sure "" and 0 ares not being treated the same
+// as "undefined/null".
+func MakeStandardTestValues() []ldvalue.Value {
+	return []ldvalue.Value{
+		ldvalue.Null(),
+		ldvalue.Bool(false),
+		ldvalue.Bool(true),
+		ldvalue.Int(-1000),
+		ldvalue.Int(0),
+		ldvalue.Int(1000),
+		ldvalue.Float64(-1000.5),
+		ldvalue.Float64(1000.5), // don't bother with Float64(0) because it is identical to Int(0)
+		ldvalue.String(""),
+		ldvalue.String("abc"),
+		ldvalue.String("has \"escaped\" characters"),
+		ldvalue.ArrayOf(),
+		ldvalue.ArrayOf(ldvalue.String("a"), ldvalue.String("b")),
+		ldvalue.ObjectBuild().Build(),
+		ldvalue.ObjectBuild().Set("a", ldvalue.Int(1)).Build(),
+	}
+}
+
 func NewMemoizingFlagFactory(startingVersion int, factoryFn func(interface{}) ldmodel.FeatureFlag) FlagFactory {
 	f := &MemoizingFlagFactory{
 		factoryFn:   factoryFn,
