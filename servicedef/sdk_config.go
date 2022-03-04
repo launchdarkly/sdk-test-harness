@@ -2,7 +2,6 @@ package servicedef
 
 import (
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
 
@@ -26,9 +25,8 @@ type SDKConfigEventParams struct {
 	Capacity                ldvalue.OptionalInt        `json:"capacity,omitempty"`
 	EnableDiagnostics       bool                       `json:"enableDiagnostics"`
 	AllAttributesPrivate    bool                       `json:"allAttributesPrivate,omitempty"`
-	GlobalPrivateAttributes []lduser.UserAttribute     `json:"globalPrivateAttributes,omitempty"`
+	GlobalPrivateAttributes []string                   `json:"globalPrivateAttributes,omitempty"`
 	FlushIntervalMS         ldtime.UnixMillisecondTime `json:"flushIntervalMs,omitempty"`
-	InlineUsers             bool                       `json:"inlineUsers,omitempty"`
 }
 
 type SDKConfigPersistentDataStoreParams struct {

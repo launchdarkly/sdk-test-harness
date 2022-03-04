@@ -32,7 +32,6 @@ type CommandParams struct {
 	EvaluateAll   *EvaluateAllFlagsParams `json:"evaluateAll,omitempty"`
 	CustomEvent   *CustomEventParams      `json:"customEvent,omitempty"`
 	IdentifyEvent *IdentifyEventParams    `json:"identifyEvent,omitempty"`
-	AliasEvent    *AliasEventParams       `json:"aliasEvent,omitempty"`
 }
 
 type EvaluateFlagParams struct {
@@ -70,11 +69,6 @@ type CustomEventParams struct {
 
 type IdentifyEventParams struct {
 	User lduser.User `json:"user"`
-}
-
-type AliasEventParams struct {
-	User         lduser.User `json:"user"`
-	PreviousUser lduser.User `json:"previousUser"`
 }
 
 type BigSegmentStoreStatusResponse struct {
