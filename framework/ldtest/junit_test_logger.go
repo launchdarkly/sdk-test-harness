@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/framework"
-	"github.com/launchdarkly/sdk-test-harness/framework/harness"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )

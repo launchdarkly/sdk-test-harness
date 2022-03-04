@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/framework"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 )
 
 const endpointPathPrefix = "/endpoints/"

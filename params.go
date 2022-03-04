@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 )
 
 type commandParams struct {
