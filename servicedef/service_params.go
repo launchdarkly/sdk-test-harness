@@ -1,6 +1,6 @@
 package servicedef
 
-import "github.com/launchdarkly/sdk-test-harness/framework/harness"
+import "github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 
 const (
 	CapabilityClientSide    = "client-side"

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/framework"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 )
 
 // Somewhat arbitrary buffer size for the channel that we use as a queue for received events. We
