@@ -18,7 +18,7 @@ import (
 
 type eventUserTestScenario struct {
 	config           servicedef.SDKConfigEventParams
-	userPrivateAttrs []lduser.UserAttribute
+	userPrivateAttrs []string
 }
 
 func (s eventUserTestScenario) MakeUser(originalUser lduser.User) lduser.User {
@@ -27,7 +27,7 @@ func (s eventUserTestScenario) MakeUser(originalUser lduser.User) lduser.User {
 	}
 	ub := lduser.NewUserBuilderFromUser(originalUser)
 	for _, a := range s.userPrivateAttrs {
-		ub.SetAttribute(a, originalUser.GetAttribute(a)).AsPrivateAttribute()
+		ub.SetAttribute(lduser.UserAttribute(a), originalUser.GetAttribute(lduser.UserAttribute(a))).AsPrivateAttribute()
 	}
 	return ub.Build()
 }
@@ -37,9 +37,7 @@ func (s eventUserTestScenario) hasExpectedUserObject(user lduser.User) m.Matcher
 }
 
 func (s eventUserTestScenario) Description() string {
-	parts := []string{
-		fmt.Sprintf("inlineUsers=%t", s.config.InlineUsers),
-	}
+	var parts []string
 	if s.config.AllAttributesPrivate {
 		parts = append(parts, "allAttributesPrivate=true")
 	}
@@ -54,19 +52,16 @@ func (s eventUserTestScenario) Description() string {
 
 func doServerSideEventUserTests(t *ldtest.T) {
 	var scenarios []eventUserTestScenario
-	for _, inlineUsers := range []bool{false, true} {
-		for _, allAttrsPrivate := range []bool{false, true} {
-			for _, globalPrivateAttrs := range [][]lduser.UserAttribute{nil, {lduser.FirstNameAttribute}} {
-				for _, userPrivateAttrs := range [][]lduser.UserAttribute{nil, {lduser.LastNameAttribute, "preferredLanguage"}} {
-					scenarios = append(scenarios, eventUserTestScenario{
-						config: servicedef.SDKConfigEventParams{
-							InlineUsers:             inlineUsers,
-							AllAttributesPrivate:    allAttrsPrivate,
-							GlobalPrivateAttributes: globalPrivateAttrs,
-						},
-						userPrivateAttrs: userPrivateAttrs,
-					})
-				}
+	for _, allAttrsPrivate := range []bool{false, true} {
+		for _, globalPrivateAttrs := range [][]string{nil, {"firstName"}} {
+			for _, userPrivateAttrs := range [][]string{nil, {"lastName", "preferredLanguage"}} {
+				scenarios = append(scenarios, eventUserTestScenario{
+					config: servicedef.SDKConfigEventParams{
+						AllAttributesPrivate:    allAttrsPrivate,
+						GlobalPrivateAttributes: globalPrivateAttrs,
+					},
+					userPrivateAttrs: userPrivateAttrs,
+				})
 			}
 		}
 	}
@@ -102,18 +97,11 @@ func doServerSideEventUserTests(t *ldtest.T) {
 				client.FlushEvents(t)
 
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-				if scenario.config.InlineUsers {
-					m.In(t).Assert(payload, m.ItemsInAnyOrder(
-						m.AllOf(IsFeatureEvent(), scenario.hasExpectedUserObject(user), HasNoUserKeyProperty()),
-						IsSummaryEvent(),
-					))
-				} else {
-					m.In(t).Assert(payload, m.ItemsInAnyOrder(
-						IsIndexEvent(),
-						m.AllOf(IsFeatureEvent(), HasNoUserObject(), HasUserKeyProperty(user.GetKey())),
-						IsSummaryEvent(),
-					))
-				}
+				m.In(t).Assert(payload, m.ItemsInAnyOrder(
+					IsIndexEvent(),
+					m.AllOf(IsFeatureEvent(), HasNoUserObject(), HasUserKeyProperty(user.GetKey())),
+					IsSummaryEvent(),
+				))
 			})
 
 			t.Run("identify event", func(t *ldtest.T) {
@@ -140,16 +128,10 @@ func doServerSideEventUserTests(t *ldtest.T) {
 				client.FlushEvents(t)
 
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-				if scenario.config.InlineUsers {
-					m.In(t).Assert(payload, m.Items(
-						m.AllOf(IsCustomEvent(), scenario.hasExpectedUserObject(user)),
-					))
-				} else {
-					m.In(t).Assert(payload, m.ItemsInAnyOrder(
-						m.AllOf(IsIndexEvent()),
-						m.AllOf(IsCustomEvent(), HasNoUserObject(), HasUserKeyProperty(user.GetKey())),
-					))
-				}
+				m.In(t).Assert(payload, m.ItemsInAnyOrder(
+					m.AllOf(IsIndexEvent()),
+					m.AllOf(IsCustomEvent(), HasNoUserObject(), HasUserKeyProperty(user.GetKey())),
+				))
 			})
 
 			t.Run("index event", func(t *ldtest.T) {
@@ -200,7 +182,7 @@ func eventUserMatcher(user lduser.User, eventsConfig servicedef.SDKConfigEventPa
 		isPrivate := attr != "key" && (eventsConfig.AllAttributesPrivate ||
 			user.IsPrivateAttribute(lduser.UserAttribute(attr)))
 		for _, pa := range eventsConfig.GlobalPrivateAttributes {
-			isPrivate = isPrivate || string(pa) == attr
+			isPrivate = isPrivate || pa == attr
 		}
 		if isPrivate {
 			private = append(private, attr)

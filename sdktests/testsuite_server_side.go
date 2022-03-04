@@ -68,7 +68,6 @@ func doServerSideEventTests(t *ldtest.T) {
 	t.Run("experimentation", doServerSideExperimentationEventTests)
 	t.Run("identify events", doServerSideIdentifyEventTests)
 	t.Run("custom events", doServerSideCustomEventTests)
-	t.Run("alias events", doServerSideAliasEventTests)
 	t.Run("index events", doServerSideIndexEventTests)
 	t.Run("user properties", doServerSideEventUserTests)
 	t.Run("event capacity", doServerSideEventBufferTests)
