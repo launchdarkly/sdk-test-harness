@@ -76,7 +76,7 @@ func doServerSideExperimentationEventTests(t *ldtest.T) {
 
 			matchFeatureEvent := IsValidFeatureEventWithConditions(
 				m.JSONProperty("key").Should(m.Equal(flag.Key)),
-				HasUserKeyProperty(user.GetKey()),
+				HasContextKeys(user),
 				HasNoUserObject(),
 				m.JSONProperty("version").Should(m.Equal(flag.Version)),
 				m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),

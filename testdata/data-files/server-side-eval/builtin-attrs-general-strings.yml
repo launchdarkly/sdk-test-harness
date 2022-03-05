@@ -12,7 +12,6 @@ constants:
     reason: { kind: "FALLTHROUGH" }
 
 parameters:
-  - ATTR_NAME: secondary
   - ATTR_NAME: name
   - ATTR_NAME: email
   - ATTR_NAME: firstName
