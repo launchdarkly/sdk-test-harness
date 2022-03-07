@@ -1,22 +1,24 @@
 package sdktests
 
 import (
+	"strings"
 	"time"
 
-	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
+	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
+	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 
 	"github.com/stretchr/testify/assert"
 )
 
 type tagsTestParams struct {
 	description         string
-	tags                map[string][]string
+	tags                servicedef.SDKConfigTagsParams
 	expectedHeaderValue string
 }
 
@@ -34,11 +36,12 @@ func doServerSideTagsTests(t *ldtest.T) {
 	}
 
 	t.Run("stream requests", func(t *ldtest.T) {
-		for _, p := range makeTagsTestParams() {
+		for _, p := range makeValidTagsTestParams() {
 			t.Run(p.description, func(t *ldtest.T) {
+				tags := p.tags
 				dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
 				_ = NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
-					Tags: p.tags,
+					Tags: &tags,
 				}), dataSource)
 				verifyRequestHeader(t, p, dataSource.Endpoint())
 			})
@@ -46,13 +49,12 @@ func doServerSideTagsTests(t *ldtest.T) {
 	})
 
 	t.Run("event posts", func(t *ldtest.T) {
-		for _, p := range makeTagsTestParams() {
+		unimportantDataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+		for _, p := range makeValidTagsTestParams() {
 			t.Run(p.description, func(t *ldtest.T) {
-				dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+				tags := p.tags
 				events := NewSDKEventSink(t)
-				client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
-					Tags: p.tags,
-				}), dataSource, events)
+				client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{Tags: &tags}), unimportantDataSource, events)
 
 				client.SendIdentifyEvent(t, lduser.NewUser("user-key"))
 				client.FlushEvents(t)
@@ -63,107 +65,74 @@ func doServerSideTagsTests(t *ldtest.T) {
 	})
 
 	t.Run("disallowed characters", func(t *ldtest.T) {
-		dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
-
-		type scenario struct {
-			tags map[string][]string
-		}
-		var scenarios []scenario
+		params := []tagsTestParams{}
 		badStrings := makeTagStringsWithDisallowedCharacters()
 		for _, badString := range badStrings {
-			scenarios = append(scenarios, scenario{
-				tags: map[string][]string{
-					"goodkey": {"goodvalue"},
-					badString: {"badvalue"},
+			params = append(params, tagsTestParams{
+				tags: servicedef.SDKConfigTagsParams{
+					ApplicationID:      ldvalue.NewOptionalString("ok"),
+					ApplicationVersion: ldvalue.NewOptionalString(badString),
 				},
+				expectedHeaderValue: tagNameAppID + "/ok",
 			})
-			scenarios = append(scenarios, scenario{
-				tags: map[string][]string{
-					"goodkey": {badString, "goodvalue"},
+			params = append(params, tagsTestParams{
+				tags: servicedef.SDKConfigTagsParams{
+					ApplicationID:      ldvalue.NewOptionalString(badString),
+					ApplicationVersion: ldvalue.NewOptionalString("ok"),
 				},
+				expectedHeaderValue: tagNameAppVersion + "/ok",
 			})
 		}
-		expectedHeader := "goodkey/goodvalue"
-		for _, scenario := range scenarios {
+		for _, p := range params {
 			// We're not using t.Run to make a subtest here because there would be so many. We'll
 			// just print details of any failures we see.
-			config := servicedef.SDKConfigParams{
-				Tags: scenario.tags,
+			tags := p.tags
+			dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+			if _, err := TryNewSDKClient(t, WithConfig(servicedef.SDKConfigParams{Tags: &tags}), dataSource); err != nil {
+				assert.Fail(t, "error initializing client", "for input tags: %s\nerror: %s", jsonhelpers.ToJSONString(tags), err)
 			}
-			_ = NewSDKClient(t, WithConfig(config), dataSource)
-			request := expectRequest(t, dataSource.Endpoint(), time.Second)
-			headerTags := request.Headers.Get("X-LaunchDarkly-Tags")
-			assert.Equal(t, expectedHeader, headerTags, "for input tags: %s", jsonhelpers.ToJSONString(scenario.tags))
+			if request, err := dataSource.Endpoint().AwaitConnection(time.Second); err == nil {
+				headerTags := request.Headers.Get("X-LaunchDarkly-Tags")
+				assert.Equal(t, p.expectedHeaderValue, headerTags, "for input tags: %s", jsonhelpers.ToJSONString(tags))
+			} else {
+				assert.Fail(t, "timed out waiting for request", "for input tags: %s", jsonhelpers.ToJSONString(tags))
+			}
 		}
 	})
 }
 
-func makeTagsTestParams() []tagsTestParams {
-	return []tagsTestParams{
-		{
-			description:         "no tags",
-			tags:                nil,
-			expectedHeaderValue: "",
-		},
-		{
-			description: "single key-value pair",
-			tags: map[string][]string{
-				"tagname": {"tagvalue"},
-			},
-			expectedHeaderValue: "tagname/tagvalue",
-		},
-		{
-			description: "multiple keys, one value each",
-			tags: map[string][]string{
-				"tagname1": {"tagvalue1"},
-				"tagname2": {"tagvalue2"},
-			},
-			expectedHeaderValue: "tagname1/tagvalue1:tagname2/tagvalue2",
-		},
-		{
-			description: "multiple values per key",
-			tags: map[string][]string{
-				"tagname1": {"tagvalue1a", "tagvalue1b"},
-			},
-			expectedHeaderValue: "tagname1/tagvalue1a:tagname1/tagvalue1b",
-		},
-		{
-			description: "tags are sorted by key and then value",
-			tags: map[string][]string{
-				"tagname2": {"tagvalue2b", "tagvalue2a"},
-				"tagname4": {"tagvalue4a", "tagvalue4c", "tagvalue4b"},
-				"tagname1": {"tagvalue1"},
-				"tagname3": {"tagvalue3"},
-			},
-			expectedHeaderValue: "tagname1/tagvalue1:tagname2/tagvalue2a:tagname2/tagvalue2b" +
-				":tagname3/tagvalue3:tagname4/tagvalue4a:tagname4/tagvalue4b:tagname4/tagvalue4c",
-		},
-		{
-			description: "all allowable characters",
-			tags: map[string][]string{
-				"._-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789": {
-					"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-",
-				},
-			},
-			expectedHeaderValue: "._-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" +
-				"/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-",
-		},
+func makeValidTagsTestParams() []tagsTestParams {
+	ret := make([]tagsTestParams, 0)
+	values := []ldvalue.OptionalString{
+		{},
+		ldvalue.NewOptionalString(allAllowedTagChars),
 	}
+	for _, appID := range values {
+		for _, appVersion := range values {
+			tags := servicedef.SDKConfigTagsParams{ApplicationID: appID, ApplicationVersion: appVersion}
+			ret = append(ret, tagsTestParams{
+				description:         jsonhelpers.ToJSONString(tags),
+				tags:                tags,
+				expectedHeaderValue: makeExpectedTagsHeader(tags),
+			})
+		}
+	}
+	return ret
+}
+
+func makeExpectedTagsHeader(tags servicedef.SDKConfigTagsParams) string {
+	headerParts := []string{}
+	if tags.ApplicationID.StringValue() != "" {
+		headerParts = append(headerParts, "application-id/"+tags.ApplicationID.StringValue())
+	}
+	if tags.ApplicationVersion.StringValue() != "" {
+		headerParts = append(headerParts, "application-version/"+tags.ApplicationVersion.StringValue())
+	}
+	return strings.Join(headerParts, " ")
 }
 
 func makeTagStringsWithDisallowedCharacters() []string {
-	var badChars []rune
-	badChars = append(badChars, '\t', '\n', '\r') // don't bother including every control character
-	for ch := 1; ch <= 127; ch++ {
-		if (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-			ch == '.' || ch == '-' || ch == '_' {
-			continue
-		}
-		badChars = append(badChars, rune(ch))
-	}
-	// Don't try to cover the whole Unicode space, just pick a couple of multi-byte characters
-	badChars = append(badChars, 'é', '😀')
-
+	badChars := makeCharactersNotInAllowedCharsetString(allAllowedTagChars)
 	ret := make([]string, 0, len(badChars))
 	for _, ch := range badChars {
 		ret = append(ret, "bad-"+string(ch))

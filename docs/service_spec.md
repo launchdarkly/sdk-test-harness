@@ -80,7 +80,9 @@ A `POST` request indicates that the test harness wants to start an instance of t
   * `bigSegments` (object, optional): Enables and configures Big Segments. Properties are:
     * `callbackUri` (string, required): The base URI for the big segments store callback fixture. See [Callback fixtures](#callback-fixtures).
     * `userCacheSize`, `userCacheTimeMs`, `statusPollIntervalMS`, `staleAfterMs`: These correspond to the standard optional configuration parameters for every SDK that supports Big Segments.
-  * `tags` (object, optional): If specified, this is an object where each key is a tag key, and each value is an array of strings that are the tag values for that key (always an array even if there is only one value).
+  * `tags` (object, optional): If specified, this has options for metadata/tags (that is, values that are translated into an `X-LaunchDarkly-Tags` header):
+    * `applicationId` (string, optional): If present and non-null, the SDK should set the "application ID" property to this string.
+    * `applicationVersion` (string, optional): If present and non-null, the SDK should set the "application version" property to this string.
 
 The response to a valid request is any HTTP `2xx` status, with a `Location` header whose value is the URL of the test service resource representing this SDK client instance (that is, the one that would be used for "Close client" or "Send command" as described below).
 
