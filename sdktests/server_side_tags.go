@@ -104,7 +104,10 @@ func doServerSideTagsTests(t *ldtest.T) {
 func makeValidTagsTestParams() []tagsTestParams {
 	ret := make([]tagsTestParams, 0)
 	values := []ldvalue.OptionalString{
-		{},
+		// Note that on *some* platforms, there's a distinction between "undefined" and "empty string".
+		// We test both, to ensure that empty strings are correctly ignored in terms of the header.
+		{},                            // "undefined"
+		ldvalue.NewOptionalString(""), // empty string
 		ldvalue.NewOptionalString(allAllowedTagChars),
 	}
 	for _, appID := range values {
