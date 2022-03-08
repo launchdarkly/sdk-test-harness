@@ -88,8 +88,10 @@ func doServerSideTagsTests(t *ldtest.T) {
 			// just print details of any failures we see.
 			tags := p.tags
 			dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
-			if _, err := TryNewSDKClient(t, WithConfig(servicedef.SDKConfigParams{Tags: &tags}), dataSource); err != nil {
+			client, err := TryNewSDKClient(t, WithConfig(servicedef.SDKConfigParams{Tags: &tags}), dataSource)
+			if err != nil {
 				assert.Fail(t, "error initializing client", "for input tags: %s\nerror: %s", jsonhelpers.ToJSONString(tags), err)
+				continue
 			}
 			if request, err := dataSource.Endpoint().AwaitConnection(time.Second); err == nil {
 				headerTags := request.Headers.Get("X-LaunchDarkly-Tags")
@@ -97,6 +99,7 @@ func doServerSideTagsTests(t *ldtest.T) {
 			} else {
 				assert.Fail(t, "timed out waiting for request", "for input tags: %s", jsonhelpers.ToJSONString(tags))
 			}
+			_ = client.Close()
 		}
 	})
 }
