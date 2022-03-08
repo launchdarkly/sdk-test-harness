@@ -45,6 +45,6 @@ type SDKConfigBigSegmentsParams struct {
 }
 
 type SDKConfigTagsParams struct {
-	ApplicationID      ldvalue.OptionalString `json:"applicationID,omitempty"`
+	ApplicationID      ldvalue.OptionalString `json:"applicationId,omitempty"`
 	ApplicationVersion ldvalue.OptionalString `json:"applicationVersion,omitempty"`
 }
