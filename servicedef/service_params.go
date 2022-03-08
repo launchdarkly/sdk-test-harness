@@ -13,6 +13,7 @@ const (
 
 	CapabilityPersistentDataStore = "persistent-data-store"
 	CapabilityBigSegments         = "big-segments"
+	CapabilityTags                = "tags"
 )
 
 type StatusRep struct {
