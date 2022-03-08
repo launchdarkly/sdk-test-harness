@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [1.3.0] - 2022-03-08
+### Added:
+- Tests for new SDK application metadata properties, enabled by the "tags" capability.
+
+### Changed:
+- Improved test coverage for private attributes in events.
+
 ## [1.2.0] - 2022-02-09
 ### Added:
 - Command line options `-record-failures` and `-skip-from`.

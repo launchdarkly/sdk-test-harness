@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
@@ -113,6 +114,20 @@ func inferDefaultFromFlag(sdkData mockld.ServerSDKData, flagKey string) ldvalue.
 	default:
 		return ldvalue.Null()
 	}
+}
+
+func makeCharactersNotInAllowedCharsetString(allowed string) []rune {
+	var badChars []rune
+	badChars = append(badChars, '\t', '\n', '\r') // don't bother including every control character
+	for ch := 32; ch <= 127; ch++ {
+		if strings.ContainsRune(allowed, rune(ch)) {
+			continue
+		}
+		badChars = append(badChars, rune(ch))
+	}
+	// Don't try to cover the whole Unicode space, just pick a couple of multi-byte characters
+	badChars = append(badChars, 'é', '😀')
+	return badChars
 }
 
 func makeFlagToCheckSegmentMatch(
