@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/framework"
@@ -37,6 +38,7 @@ type TestServiceInfoBase struct {
 type TestServiceEntity struct {
 	resourceURL string
 	logger      framework.Logger
+	closeOnce   sync.Once
 }
 
 func queryTestServiceInfo(url string, timeout time.Duration, output io.Writer) (TestServiceInfo, error) {
@@ -155,11 +157,14 @@ func doRequest(method, url string, body []byte) ([]byte, http.Header, error) {
 
 // Close tells the test service to dispose of this entity.
 func (e *TestServiceEntity) Close() error {
-	e.logger.Printf("Closing %s", e.resourceURL)
-	_, _, err := doRequest("DELETE", e.resourceURL, nil)
-	if err != nil {
-		e.logger.Printf("DELETE request to test service failed: %s", err)
-	}
+	var err error
+	e.closeOnce.Do(func() {
+		e.logger.Printf("Closing %s", e.resourceURL)
+		_, _, err = doRequest("DELETE", e.resourceURL, nil)
+		if err != nil {
+			e.logger.Printf("DELETE request to test service failed: %s", err)
+		}
+	})
 	return err
 }
 

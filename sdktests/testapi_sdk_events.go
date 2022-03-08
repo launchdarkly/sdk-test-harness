@@ -55,6 +55,9 @@ func (e *SDKEventSink) ApplyConfiguration(config *servicedef.SDKConfigParams) {
 	config.Events.BaseURI = e.eventsEndpoint.BaseURL()
 }
 
+// Endpoint returns the low-level object that manages incoming requests.
+func (e *SDKEventSink) Endpoint() *harness.MockEndpoint { return e.eventsEndpoint }
+
 // Service returns the underlying mock events service component, for access to special options.
 func (e *SDKEventSink) Service() *mockld.EventsService { return e.eventsService }
 

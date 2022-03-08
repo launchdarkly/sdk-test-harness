@@ -47,6 +47,12 @@ This means that the SDK supports Big Segments and can be configured with a custo
 
 For tests that involve Big Segments, the test harness will provide parameters in the `bigSegments` property of the configuration object, including a `callbackUri` that points to one of the test harness's callback services (see [Callback endpoints](#callback-endpoints)). The test service should configure the SDK with its own implementation of a Big Segment store, where every method of the store delegates to a corresponding endpoint in the callback service.
 
+#### Capability `"tags"`
+
+This means that the SDK supports the "tags" configuration option and will send the `X-LaunchDarkly-Tags` header in HTTP requests if tags are defined.
+
+For tests that involve tags, the test harness will set the `tags` property of the configuration object.
+
 ### Stop test service: `DELETE /`
 
 The test harness sends this request at the end of a test run if you have specified `--stop-service-at-end` on the [command line](./running.md). The test service should simply quit. This is a convenience so CI scripts can simply start the test service in the background and assume it will be stopped for them.
@@ -74,6 +80,9 @@ A `POST` request indicates that the test harness wants to start an instance of t
   * `bigSegments` (object, optional): Enables and configures Big Segments. Properties are:
     * `callbackUri` (string, required): The base URI for the big segments store callback fixture. See [Callback fixtures](#callback-fixtures).
     * `userCacheSize`, `userCacheTimeMs`, `statusPollIntervalMS`, `staleAfterMs`: These correspond to the standard optional configuration parameters for every SDK that supports Big Segments.
+  * `tags` (object, optional): If specified, this has options for metadata/tags (that is, values that are translated into an `X-LaunchDarkly-Tags` header):
+    * `applicationId` (string, optional): If present and non-null, the SDK should set the "application ID" property to this string.
+    * `applicationVersion` (string, optional): If present and non-null, the SDK should set the "application version" property to this string.
 
 The response to a valid request is any HTTP `2xx` status, with a `Location` header whose value is the URL of the test service resource representing this SDK client instance (that is, the one that would be used for "Close client" or "Send command" as described below).
 

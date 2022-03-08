@@ -73,6 +73,12 @@ type SDKClient struct {
 // The object's lifecycle is tied to the test scope that created it; it will be automatically closed
 // when this test scope exits. It can be reused by subtests until then.
 func NewSDKClient(t *ldtest.T, configurer SDKConfigurer, moreConfigurers ...SDKConfigurer) *SDKClient {
+	client, err := TryNewSDKClient(t, configurer, moreConfigurers...)
+	require.NoError(t, err)
+	return client
+}
+
+func TryNewSDKClient(t *ldtest.T, configurer SDKConfigurer, moreConfigurers ...SDKConfigurer) (*SDKClient, error) {
 	config := servicedef.SDKConfigParams{}
 	configurer.ApplyConfiguration(&config)
 	for _, c := range moreConfigurers {
@@ -81,7 +87,9 @@ func NewSDKClient(t *ldtest.T, configurer SDKConfigurer, moreConfigurers ...SDKC
 	if config.Credential == "" {
 		config.Credential = defaultSDKKey
 	}
-	require.NoError(t, validateSDKConfig(config))
+	if err := validateSDKConfig(config); err != nil {
+		return nil, err
+	}
 
 	params := servicedef.CreateInstanceParams{
 		Configuration: config,
@@ -89,16 +97,18 @@ func NewSDKClient(t *ldtest.T, configurer SDKConfigurer, moreConfigurers ...SDKC
 	}
 
 	sdkClient, err := requireContext(t).harness.NewTestServiceEntity(params, "SDK client", t.DebugLogger())
-	require.NoError(t, err)
+	if err != nil {
+		return nil, err
+	}
 
-	t.Defer(func() {
-		_ = sdkClient.Close()
-	})
-
-	return &SDKClient{
+	c := &SDKClient{
 		sdkClientEntity: sdkClient,
 		sdkConfig:       config,
 	}
+	t.Defer(func() {
+		_ = c.Close()
+	})
+	return c, nil
 }
 
 func validateSDKConfig(config servicedef.SDKConfigParams) error {
@@ -110,6 +120,12 @@ func validateSDKConfig(config servicedef.SDKConfigParams) error {
 			" did you forget to include the SDKEventSink as a parameter?")
 	}
 	return nil
+}
+
+// Close tells the test service to shut down the client instance. Normally this happens automatically at
+// the end of a test.
+func (c *SDKClient) Close() error {
+	return c.sdkClientEntity.Close()
 }
 
 // EvaluateFlag tells the SDK client to evaluate a feature flag. This corresponds to calling one of the SDK's
