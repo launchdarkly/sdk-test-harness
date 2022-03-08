@@ -2,7 +2,7 @@
 name: evaluate flag with targeting off
 
 constants:
-  USER: { key: "user-key" }
+  CONTEXT: { key: "user-key" }
 
 parameters:
   - TYPE_NAME: bool
@@ -44,7 +44,7 @@ sdkData:
 
 evaluations:
   - flagKey: off-flag-<TYPE_NAME>
-    user: <USER>
+    context: <CONTEXT>
     valueType: <TYPE_NAME>
     default: <TYPE_DEFAULT>
     expect:
@@ -53,7 +53,7 @@ evaluations:
       reason: { kind: "OFF" }
 
   - flagKey: off-flag-with-undefined-off-variation-<TYPE_NAME>
-    user: <USER>
+    context: <CONTEXT>
     valueType: <TYPE_NAME>
     default: <TYPE_DEFAULT>
     expect:

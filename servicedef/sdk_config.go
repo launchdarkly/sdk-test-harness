@@ -1,8 +1,8 @@
 package servicedef
 
 import (
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldtime"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
 )
 
 type SDKConfigParams struct {

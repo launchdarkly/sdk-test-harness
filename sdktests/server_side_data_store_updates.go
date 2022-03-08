@@ -10,9 +10,9 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldbuilders"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
+	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldbuilders"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,7 +31,7 @@ func doServerSideDataStoreStreamUpdateTests(t *ldtest.T) {
 	valueBefore := ldvalue.String("valueBefore")
 	valueAfter := ldvalue.String("valueAfter")
 	defaultValue := ldvalue.String("defaultValue")
-	user := lduser.NewUser("user-key")
+	user := ldcontext.New("user-key")
 
 	versionDeltaDesc := func(delta int) string {
 		switch {
@@ -96,7 +96,7 @@ func doServerSideDataStoreStreamUpdateTests(t *ldtest.T) {
 					)
 				}
 
-				allFlags := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
+				allFlags := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: user})
 				if shouldApply {
 					if isDelete {
 						assert.NotContains(t, allFlags.State, flagKey)
@@ -113,7 +113,7 @@ func doServerSideDataStoreStreamUpdateTests(t *ldtest.T) {
 
 			t.Run(segmentTestDesc, func(t *ldtest.T) {
 				segmentBefore := ldbuilders.NewSegmentBuilder(segmentKey).Version(versionBefore).
-					Included(user.GetKey()).Build()
+					Included(user.Key()).Build()
 				segmentAfter := ldbuilders.NewSegmentBuilder(segmentKey).Version(versionAfter).
 					Build() // user is not included in segmentAfter
 
@@ -191,7 +191,7 @@ func doServerSideDataStoreStreamUpdateTests(t *ldtest.T) {
 		t.Run(fmt.Sprintf("segment %s for previously nonexistent segment is applied", operationDesc), func(t *ldtest.T) {
 			version := 100
 			segment := ldbuilders.NewSegmentBuilder(segmentKey).Version(version).
-				Included(user.GetKey()).Build()
+				Included(user.Key()).Build()
 			flag := makeFlagToCheckSegmentMatch(flagKey, segmentKey, valueBefore, valueAfter)
 
 			dataBefore := mockld.NewServerSDKDataBuilder().Flag(flag).Build() // data does *not* include segment yet

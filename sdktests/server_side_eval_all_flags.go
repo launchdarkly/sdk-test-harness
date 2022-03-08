@@ -9,10 +9,10 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldbuilders"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldtime"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
+	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldbuilders"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -66,10 +66,10 @@ func doServerSideAllFlagsBasicTest(t *ldtest.T) {
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	client := NewSDKClient(t, dataSource)
-	user := lduser.NewUser("user-key")
+	user := ldcontext.New("user-key")
 
 	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
-		User: &user,
+		Context: user,
 	})
 	resultJSON, _ := json.Marshal(canonicalizeAllFlagsData(result.State))
 	expectedJSON := `{
@@ -116,10 +116,10 @@ func doServerSideAllFlagsWithReasonsTest(t *ldtest.T) {
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	client := NewSDKClient(t, dataSource)
-	user := lduser.NewUser("user-key")
+	user := ldcontext.New("user-key")
 
 	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
-		User:        &user,
+		Context:     user,
 		WithReasons: true,
 	})
 	resultJSON, _ := json.Marshal(canonicalizeAllFlagsData(result.State))
@@ -159,10 +159,10 @@ func doServerSideAllFlagsExperimentationTest(t *ldtest.T) {
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	client := NewSDKClient(t, dataSource)
-	user := lduser.NewUser("user-key")
+	user := ldcontext.New("user-key")
 
 	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
-		User: &user,
+		Context: user,
 	})
 	resultJSON, _ := json.Marshal(canonicalizeAllFlagsData(result.State))
 	expectedJSON := `{
@@ -205,11 +205,11 @@ func doServerSideAllFlagsErrorInFlagTest(t *ldtest.T) {
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	client := NewSDKClient(t, dataSource)
-	user := lduser.NewUser("user-key")
+	user := ldcontext.New("user-key")
 
 	t.Run("without reasons", func(t *ldtest.T) {
 		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
-			User: &user,
+			Context: user,
 		})
 
 		resultJSON, _ := json.Marshal(canonicalizeAllFlagsData(result.State))
@@ -231,7 +231,7 @@ func doServerSideAllFlagsErrorInFlagTest(t *ldtest.T) {
 
 	t.Run("with reasons", func(t *ldtest.T) {
 		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
-			User:        &user,
+			Context:     user,
 			WithReasons: true,
 		})
 
@@ -269,10 +269,10 @@ func doServerSideAllFlagsClientSideOnlyTest(t *ldtest.T) {
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	client := NewSDKClient(t, dataSource)
-	user := lduser.NewUser("user-key")
+	user := ldcontext.New("user-key")
 
 	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
-		User:           &user,
+		Context:        user,
 		ClientSideOnly: true,
 	})
 	assert.Contains(t, result.State, flag3.Key)
@@ -316,10 +316,10 @@ func doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest(t *ldtest.T) {
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	client := NewSDKClient(t, dataSource)
-	user := lduser.NewUser("user-key")
+	user := ldcontext.New("user-key")
 
 	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
-		User:                       &user,
+		Context:                    user,
 		WithReasons:                true,
 		DetailsOnlyForTrackedFlags: true,
 	})
@@ -350,10 +350,10 @@ func doServerSideAllFlagsClientNotReadyTest(t *ldtest.T) {
 	client := NewSDKClient(t,
 		WithConfig(servicedef.SDKConfigParams{StartWaitTimeMS: 1, InitCanFail: true}),
 		dataSource)
-	user := lduser.NewUser("user-key")
+	user := ldcontext.New("user-key")
 
 	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
-		User: &user,
+		Context: user,
 	})
 	resultJSON, _ := json.Marshal(result.State)
 	expectedJSON := `{
@@ -379,10 +379,10 @@ func doServerSideAllFlagsCompactRepresentationsTest(t *ldtest.T) {
 	dataSource := NewSDKDataSource(t, data)
 	client := NewSDKClient(t, dataSource)
 
-	user := lduser.NewUser("user-key")
+	user := ldcontext.New("user-key")
 
 	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
-		User: &user,
+		Context: user,
 	})
 
 	resultJSON, _ := json.Marshal(result.State["$flagsState"])

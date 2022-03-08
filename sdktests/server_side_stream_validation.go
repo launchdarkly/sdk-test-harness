@@ -10,8 +10,8 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
 )
 
 func doServerSideStreamValidationTests(t *ldtest.T) {
@@ -21,7 +21,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 	flagV1, flagV2 := makeFlagVersionsWithValues(flagKey, 1, 2, expectedValueV1, expectedValueV2)
 	dataV1 := mockld.NewServerSDKDataBuilder().Flag(flagV1).Build()
 	dataV2 := mockld.NewServerSDKDataBuilder().Flag(flagV2).Build()
-	user := lduser.NewUser("user-key")
+	user := ldcontext.New("user-key")
 
 	shouldDropAndReconnectAfterEvent := func(t *ldtest.T, badEventName string, badEventData json.RawMessage) {
 		stream1 := NewSDKDataSourceWithoutEndpoint(t, dataV1)
@@ -34,7 +34,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 		t.Defer(streamEndpoint.Close)
 
 		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: user})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get & discard the request info for the first request
@@ -84,7 +84,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 			InitialRetryDelayMs: timeValueAsPointer(briefDelay), // brief delay so we can easily detect if it reconnects
 		}), dataSource)
 
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: user})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get & discard the request info for the first request

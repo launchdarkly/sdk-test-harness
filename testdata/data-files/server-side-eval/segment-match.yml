@@ -58,39 +58,39 @@ sdkData:
 evaluations:
   - name: user matches via include
     flagKey: flag-using-segment1
-    user:
+    context:
       key: "user-included-in-segment"
     expect: <IS_MATCH>
 
   - name: user matches via rule
     flagKey: flag-using-segment1
-    user:
+    context:
       key: "some-user"
       custom: { "segment1RuleShouldMatch": true }
     expect: <IS_MATCH>
 
   - name: user matches via rule but is excluded
     flagKey: flag-using-segment1
-    user:
+    context:
       key: "user-excluded-from-segment"
       custom: { "segment1RuleShouldMatch": true }
     expect: <IS_NOT_MATCH>
 
   - name: user does not match and is not included
     flagKey: flag-using-segment1
-    user:
+    context:
       key: "some-user"
     expect: <IS_NOT_MATCH>
 
   - name: clause matches if any of the segments match
     flagKey: flag-using-segment1-and-segment2
-    user:
+    context:
       key: "user-key"
       custom: { "segment2RuleShouldMatch": true }
     expect: <IS_MATCH>
 
   - name: unknown segment is non-match, not an error
     flagKey: flag-using-unknown-segment
-    user:
+    context:
       key: "user-key"
     expect: <IS_NOT_MATCH>

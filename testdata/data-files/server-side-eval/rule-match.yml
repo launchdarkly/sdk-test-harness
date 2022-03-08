@@ -2,7 +2,7 @@
 name: rule match (<TYPE_NAME>)
 
 constants:
-  USER: { key: "user-key" }
+  CONTEXT: { key: "user-key" }
   IS_MATCH_RULE1:
     value: <TYPE_VALUE_1>
     variationIndex: 2
@@ -113,7 +113,7 @@ sdkData:
 evaluations:
   - name: all clauses of rule1 match
     flagKey: flag-with-rules
-    user:
+    context:
       key: user-key
       custom:
         rule1Clause1ShouldMatch: true
@@ -124,7 +124,7 @@ evaluations:
 
   - name: rule2 matches, after one clause of rule1 fails
     flagKey: flag-with-rules
-    user:
+    context:
       key: user-key
       custom:
         rule1Clause1ShouldMatch: true
@@ -136,7 +136,7 @@ evaluations:
 
   - name: unknown operator is treated as a non-match, can still match another rule
     flagKey: flag-with-unknown-operator-in-first-rule
-    user:
+    context:
       key: user-key
       custom:
         rule2ShouldMatch: true
@@ -146,7 +146,7 @@ evaluations:
 
   - name: no rules match, fallthrough
     flagKey: flag-with-rules
-    user: { "key": "user-key" }
+    context: { "key": "user-key" }
     valueType: <TYPE_NAME>
     default: <TYPE_DEFAULT>
     expect:
@@ -156,7 +156,7 @@ evaluations:
 
   - name: rules are ignored when flag is off
     flagKey: off-flag-with-rule
-    user:
+    context:
       key: user-key
       custom:
         rule1ShouldMatch: true
@@ -169,7 +169,7 @@ evaluations:
 
   - name: negated clause, non-match becomes match
     flagKey: flag-with-negated-clause
-    user:
+    context:
       key: user-key
       custom:
         attrname: undesirable-key
@@ -179,7 +179,7 @@ evaluations:
 
   - name: negated clause, match becomes non-match
     flagKey: flag-with-negated-clause
-    user:
+    context:
       key: user-key
       custom:
         attrname: any-other-value
@@ -189,7 +189,7 @@ evaluations:
 
   - name: negated clause, null user attribute is always non-match regardless of negation
     flagKey: flag-with-negated-clause
-    user:
+    context:
       key: user-key
       custom:
         attrname: null

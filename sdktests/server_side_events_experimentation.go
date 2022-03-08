@@ -7,11 +7,11 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldbuilders"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldmodel"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldreason"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
+	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldbuilders"
+	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldmodel"
 )
 
 func doServerSideExperimentationEventTests(t *ldtest.T) {
@@ -34,7 +34,7 @@ func doServerSideExperimentationEventTests(t *ldtest.T) {
 			},
 		},
 	}
-	user := lduser.NewUser("user-key")
+	user := ldcontext.New("user-key")
 
 	scenarios := []struct {
 		name           string
@@ -87,7 +87,7 @@ func doServerSideExperimentationEventTests(t *ldtest.T) {
 			)
 
 			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				IsIndexEventForUserKey(user.GetKey()),
+				IsIndexEventForUserKey(user.Key()),
 				matchFeatureEvent,
 				IsSummaryEvent(),
 			))

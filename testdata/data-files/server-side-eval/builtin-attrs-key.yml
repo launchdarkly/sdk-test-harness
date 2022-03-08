@@ -23,31 +23,15 @@ sdkData:
           clauses:
             - { attribute: key, op: in, values: [ "right-value" ] }
 
-    test-flag-for-blank-key:
-      on: true
-      fallthrough: { variation: 1 }
-      variations: [ true, false ]
-      rules:
-        - id: ruleid
-          variation: 0
-          clauses:
-            - { attribute: key, op: in, values: [ "" ] }
-
 evaluations:
   - name: key matches clause
     flagKey: test-flag-for-key
-    user: { key: "right-value" }
+    context: { key: "right-value" }
     default: false
     expect: <IS_MATCH>
 
   - name: key does not match clause - wrong value
     flagKey: test-flag-for-key
-    user: { key: "wrong-value" }
+    context: { key: "wrong-value" }
     default: false
     expect: <IS_NOT_MATCH>
-
-  - name: key is allowed to be empty
-    flagKey: test-flag-for-blank-key
-    user: { key: "" }
-    default: false
-    expect: <IS_MATCH>

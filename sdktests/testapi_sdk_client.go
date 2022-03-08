@@ -6,8 +6,7 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
-
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
 
 	"github.com/stretchr/testify/require"
 )
@@ -171,11 +170,11 @@ func (c *SDKClient) EvaluateAllFlags(
 // SendIdentifyEvent tells the SDK client to send an identify event.
 //
 // Any error from the test service causes the test to terminate immediately.
-func (c *SDKClient) SendIdentifyEvent(t *ldtest.T, user lduser.User) {
+func (c *SDKClient) SendIdentifyEvent(t *ldtest.T, context ldcontext.Context) {
 	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
 		servicedef.CommandParams{
 			Command:       servicedef.CommandIdentifyEvent,
-			IdentifyEvent: &servicedef.IdentifyEventParams{User: user},
+			IdentifyEvent: &servicedef.IdentifyEventParams{Context: context},
 		},
 		t.DebugLogger(),
 		nil,
