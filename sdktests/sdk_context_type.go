@@ -274,7 +274,7 @@ func doSDKContextConvertTests(t *ldtest.T) {
 			`{}`,
 			`{"key": true}`,
 			`{"key": "a", "anonymous": 3}`,
-			`{"key": "a", "anonymous": 3}`,
+			`{"key": "a", "secondary": 3}`,
 			`{"key": "a", "privateAttributeNames": 3"}`,
 			`{"key": "a", "privateAttributeNames": {}"}`,
 		}
