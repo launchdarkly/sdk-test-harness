@@ -30,7 +30,7 @@ func doServerSideIdentifyEventTests(t *ldtest.T) {
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 				m.In(t).Assert(payload, m.Items(
 					m.AllOf(
-						JSONPropertyKeysCanOnlyBe("kind", "creationDate", "key", "user"),
+						JSONPropertyKeysCanOnlyBe("kind", "creationDate", "key", "context"),
 						IsIdentifyEventForUserKey(user.GetKey()),
 						HasAnyCreationDate(),
 					),

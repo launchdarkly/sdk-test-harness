@@ -17,7 +17,7 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 	users := NewUserFactory("doServerSideIndexEventTests")
 	matchIndexEvent := func(user lduser.User) m.Matcher {
 		return m.AllOf(
-			JSONPropertyKeysCanOnlyBe("kind", "creationDate", "user"),
+			JSONPropertyKeysCanOnlyBe("kind", "creationDate", "context"),
 			IsIndexEvent(),
 			HasAnyCreationDate(),
 			HasUserObjectWithKey(user.GetKey()),

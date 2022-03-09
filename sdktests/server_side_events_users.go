@@ -33,7 +33,7 @@ func (s eventUserTestScenario) MakeUser(originalUser lduser.User) lduser.User {
 }
 
 func (s eventUserTestScenario) hasExpectedUserObject(user lduser.User) m.Matcher {
-	return m.JSONProperty("user").Should(eventUserMatcher(user, s.config))
+	return m.JSONProperty("context").Should(eventUserMatcher(user, s.config))
 }
 
 func (s eventUserTestScenario) Description() string {
@@ -103,7 +103,7 @@ func doServerSideEventUserTests(t *ldtest.T) {
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 				m.In(t).Assert(payload, m.ItemsInAnyOrder(
 					IsIndexEvent(),
-					m.AllOf(IsFeatureEvent(), HasNoUserObject(), HasUserKeyProperty(user.GetKey())),
+					m.AllOf(IsFeatureEvent(), HasNoUserObject(), HasContextKeys(user)),
 					IsSummaryEvent(),
 				))
 			})
@@ -134,7 +134,7 @@ func doServerSideEventUserTests(t *ldtest.T) {
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 				m.In(t).Assert(payload, m.ItemsInAnyOrder(
 					m.AllOf(IsIndexEvent()),
-					m.AllOf(IsCustomEvent(), HasNoUserObject(), HasUserKeyProperty(user.GetKey())),
+					m.AllOf(IsCustomEvent(), HasNoUserObject(), HasContextKeys(user)),
 				))
 			})
 
@@ -162,20 +162,19 @@ func eventUserMatcher(user lduser.User, eventsConfig servicedef.SDKConfigEventPa
 	// First, get the regular JSON representation of the user, since it's simplest to treat
 	// this as a transformation of one JSON object to another.
 	allJSON := ldvalue.Parse(jsonhelpers.ToJSON(user))
-	custom := make(map[string]ldvalue.Value)
-	var private []string
 	allAttributes := append(allJSON.Keys(), allJSON.GetByKey("custom").Keys()...)
 
-	var conditions []m.Matcher
-	allowedTopLevelKeys := []string{"custom"}
+	expected := []m.KeyValueMatcher{
+		m.KV("kind", m.Equal("user")),
+	}
+	var private []string
 
 	// allAttributes is now a list of all of the user's top-level properties plus all of
 	// its custom attribute names. It's simplest to loop through all of those at once since
 	// the logic for determining whether an attribute should be private is always the same.
 	for _, attr := range allAttributes {
-		if attr == "custom" || attr == "privateAttributeNames" {
-			// "custom" and "privateAttributeNames" aren't considered user attributes, they
-			// are just details of the JSON schema
+		if attr == "custom" || attr == "privateAttributeNames" || attr == "secondary" {
+			// these aren't top-level attributes
 			continue
 		}
 		// An attribute is private if 1. it was marked private for that particular user (as
@@ -192,33 +191,20 @@ func eventUserMatcher(user lduser.User, eventsConfig servicedef.SDKConfigEventPa
 			private = append(private, attr)
 		} else {
 			value := user.GetAttribute(lduser.UserAttribute(attr))
-			if _, isTopLevel := allJSON.TryGetByKey(attr); isTopLevel {
-				conditions = append(conditions, m.JSONProperty(attr).Should(m.JSONEqual(value)))
-				allowedTopLevelKeys = append(allowedTopLevelKeys, attr)
-			} else {
-				custom[attr] = value
-			}
+			expected = append(expected, m.KV(attr, m.JSONEqual(value)))
 		}
 	}
-	if len(custom) == 0 {
-		// if there are no custom properties, the SDK is allowed to write "custom":{}, "custom":null,
-		// or just omit the property
-		conditions = append(conditions,
-			m.JSONOptProperty("custom").Should(m.AnyOf(
-				m.BeNil(),
-				m.JSONStrEqual("{}"),
-			)),
-		)
-	} else {
-		conditions = append(conditions, m.JSONProperty("custom").Should(m.JSONEqual(custom)))
+	secondary := user.GetSecondaryKey()
+	if len(private) != 0 || secondary.IsDefined() {
+		metaProps := make([]m.KeyValueMatcher, 0)
+		if len(private) != 0 {
+			sort.Strings(private)
+			metaProps = append(metaProps, m.KV("redactedAttributes", SortedStrings().Should(m.Equal(private))))
+		}
+		if secondary.IsDefined() {
+			metaProps = append(metaProps, m.KV("secondary", m.Equal(secondary.StringValue())))
+		}
+		expected = append(expected, m.KV("_meta", m.MapOf(metaProps...)))
 	}
-	if len(private) != 0 {
-		// the SDK should only send "privateAttrs" if there are some private attributes
-		allowedTopLevelKeys = append(allowedTopLevelKeys, "privateAttrs")
-		sort.Strings(private)
-		conditions = append(conditions, m.JSONProperty("privateAttrs").Should(SortedStrings().Should(m.Equal(private))))
-	}
-
-	conditions = append(conditions, JSONPropertyKeysCanOnlyBe(allowedTopLevelKeys...))
-	return m.AllOf(conditions...)
+	return m.JSONMap().Should(m.MapOf(expected...))
 }

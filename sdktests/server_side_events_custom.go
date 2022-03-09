@@ -41,11 +41,9 @@ func doServerSideCustomEventTests(t *ldtest.T) {
 				m.In(t).Assert(payload, m.ItemsInAnyOrder(
 					IsIndexEvent(),
 					m.AllOf(
-						JSONPropertyKeysCanOnlyBe("kind", "creationDate", "key", "userKey", "contextKind",
-							"data", "metricValue"),
+						JSONPropertyKeysCanOnlyBe("kind", "creationDate", "key", "contextKeys", "data", "metricValue"),
 						IsCustomEvent(),
-						HasUserKeyProperty(user.GetKey()),
-						HasContextKind(user),
+						HasContextKeys(user),
 					),
 				))
 			})

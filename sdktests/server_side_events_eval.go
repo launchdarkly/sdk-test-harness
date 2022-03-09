@@ -120,7 +120,7 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 				}
 				matchFeatureEvent := IsValidFeatureEventWithConditions(
 					m.JSONProperty("key").Should(m.Equal(flag.Key)),
-					HasUserKeyProperty(user.GetKey()),
+					HasContextKeys(user),
 					HasNoUserObject(),
 					m.JSONProperty("version").Should(m.Equal(flag.Version)),
 					m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),
@@ -228,7 +228,7 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 
 						if shouldSeeDebugEvent {
 							matchDebugEvent := m.AllOf(
-								JSONPropertyKeysCanOnlyBe("kind", "creationDate", "key", "user",
+								JSONPropertyKeysCanOnlyBe("kind", "creationDate", "key", "context",
 									"version", "value", "variation", "reason", "default"),
 								IsDebugEvent(),
 								HasAnyCreationDate(),
@@ -350,7 +350,7 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 				IsIndexEventForUserKey(user.GetKey()),
 				IsValidFeatureEventWithConditions(
 					m.JSONProperty("key").Should(m.Equal(flag1.Key)),
-					HasUserKeyProperty(user.GetKey()),
+					HasContextKeys(user),
 					HasNoUserObject(),
 					m.JSONProperty("version").Should(m.Equal(flag1.Version)),
 					m.JSONProperty("value").Should(m.Equal("value1")),
@@ -360,7 +360,7 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 				),
 				IsValidFeatureEventWithConditions(
 					m.JSONProperty("key").Should(m.Equal(flag2.Key)),
-					HasUserKeyProperty(user.GetKey()),
+					HasContextKeys(user),
 					HasNoUserObject(),
 					m.JSONProperty("version").Should(m.Equal(flag2.Version)),
 					m.JSONProperty("value").Should(m.Equal("ok2")),
@@ -371,7 +371,7 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 				),
 				IsValidFeatureEventWithConditions(
 					m.JSONProperty("key").Should(m.Equal(flag3.Key)),
-					HasUserKeyProperty(user.GetKey()),
+					HasContextKeys(user),
 					HasNoUserObject(),
 					m.JSONProperty("version").Should(m.Equal(flag3.Version)),
 					m.JSONProperty("value").Should(m.Equal("ok3")),

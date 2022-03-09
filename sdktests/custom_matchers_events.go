@@ -23,11 +23,10 @@ func EventHasKind(kind string) m.Matcher {
 	return m.JSONProperty("kind").Should(m.Equal(kind))
 }
 
-func HasContextKind(user lduser.User) m.Matcher {
-	if user.GetAnonymous() {
-		return m.JSONProperty("contextKind").Should(m.Equal("anonymousUser"))
-	}
-	return JSONPropertyNullOrAbsent("contextKind")
+func HasContextKeys(user lduser.User) m.Matcher {
+	return m.JSONProperty("contextKeys").Should(m.MapOf(
+		m.KV("user", m.Equal(user.GetKey())),
+	))
 }
 
 func HasAnyCreationDate() m.Matcher {
@@ -35,19 +34,11 @@ func HasAnyCreationDate() m.Matcher {
 }
 
 func HasUserObjectWithKey(key string) m.Matcher {
-	return m.JSONProperty("user").Should(m.JSONProperty("key").Should(m.Equal(key)))
+	return m.JSONProperty("context").Should(m.JSONProperty("key").Should(m.Equal(key)))
 }
 
 func HasNoUserObject() m.Matcher {
-	return JSONPropertyNullOrAbsent("user")
-}
-
-func HasUserKeyProperty(key string) m.Matcher {
-	return m.JSONProperty("userKey").Should(m.Equal(key))
-}
-
-func HasNoUserKeyProperty() m.Matcher {
-	return JSONPropertyNullOrAbsent("userKey")
+	return JSONPropertyNullOrAbsent("context")
 }
 
 func IsIndexEvent() m.Matcher    { return EventHasKind("index") }
@@ -77,7 +68,7 @@ func IsValidFeatureEventWithConditions(matchers ...m.Matcher) m.Matcher {
 				IsFeatureEvent(),
 				HasAnyCreationDate(),
 				JSONPropertyKeysCanOnlyBe(
-					"kind", "creationDate", "key", "version", "user", "userKey", "contextKind",
+					"kind", "creationDate", "key", "version", "contextKeys", "contextKind",
 					"value", "variation", "reason", "default", "prereqOf",
 				),
 			},
