@@ -45,6 +45,7 @@ func RunServerSideTestSuite(
 		t.Run("streaming", doServerSideStreamTests)
 		t.Run("big segments", doServerSideBigSegmentsTests)
 		t.Run("tags", doServerSideTagsTests)
+		t.Run("context type", doSDKContextTypeTests)
 	})
 }
 

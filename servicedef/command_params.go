@@ -14,6 +14,8 @@ const (
 	CommandAliasEvent               = "aliasEvent"
 	CommandFlushEvents              = "flushEvents"
 	CommandGetBigSegmentStoreStatus = "getBigSegmentStoreStatus"
+	CommandContextBuild             = "contextBuild"
+	CommandContextConvert           = "contextConvert"
 )
 
 type ValueType string
@@ -27,11 +29,13 @@ const (
 )
 
 type CommandParams struct {
-	Command       string                  `json:"command"`
-	Evaluate      *EvaluateFlagParams     `json:"evaluate,omitempty"`
-	EvaluateAll   *EvaluateAllFlagsParams `json:"evaluateAll,omitempty"`
-	CustomEvent   *CustomEventParams      `json:"customEvent,omitempty"`
-	IdentifyEvent *IdentifyEventParams    `json:"identifyEvent,omitempty"`
+	Command        string                  `json:"command"`
+	Evaluate       *EvaluateFlagParams     `json:"evaluate,omitempty"`
+	EvaluateAll    *EvaluateAllFlagsParams `json:"evaluateAll,omitempty"`
+	CustomEvent    *CustomEventParams      `json:"customEvent,omitempty"`
+	IdentifyEvent  *IdentifyEventParams    `json:"identifyEvent,omitempty"`
+	ContextBuild   *ContextBuildParams     `json:"contextBuild,omitempty"`
+	ContextConvert *ContextConvertParams   `json:"contextConvert,omitempty"`
 }
 
 type EvaluateFlagParams struct {
@@ -74,4 +78,32 @@ type IdentifyEventParams struct {
 type BigSegmentStoreStatusResponse struct {
 	Available bool `json:"available"`
 	Stale     bool `json:"stale"`
+}
+
+type ContextBuildParams struct {
+	Single *ContextBuildSingleParams `json:"single,omitempty"`
+	Multi  *ContextBuildMultiParams  `json:"multi,omitempty"`
+}
+
+type ContextBuildSingleParams struct {
+	Kind      *string                  `json:"kind,omitempty"`
+	Key       string                   `json:"key"`
+	Name      *string                  `json:"name,omitempty"`
+	Transient *bool                    `json:"transient,omitempty"`
+	Secondary *string                  `json:"secondary,omitempty"`
+	Private   []string                 `json:"private,omitempty"`
+	Custom    map[string]ldvalue.Value `json:"custom,omitempty"`
+}
+
+type ContextBuildMultiParams struct {
+	Kinds []ContextBuildSingleParams `json:"kinds,omitempty"`
+}
+
+type ContextBuildResponse struct {
+	Output string `json:"output"`
+	Error  string `json:"error"`
+}
+
+type ContextConvertParams struct {
+	Input string `json:"input"`
 }
