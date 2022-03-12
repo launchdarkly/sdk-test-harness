@@ -40,6 +40,10 @@ sdkData:
       offVariation: 1
       variations: [ "<TYPE_VALUE>" ]
 
+    no-off-variation-<TYPE_NAME>:
+      on: false
+      variations: [ "<TYPE_VALUE>" ]
+
     fallthrough-variation-too-low-<TYPE_NAME>:
       on: true
       fallthrough: { "variation": -1 }
@@ -60,6 +64,35 @@ sdkData:
       on: true
       targets:
         - { "variation": 1, "values": [ "user-key" ] } 
+      variations: [ "<TYPE_VALUE>" ]
+
+    rule-match-variation-too-low-<TYPE_NAME>:
+      on: true
+      rules:
+        - { "variation": -1, "clauses": [ { "attribute": "key", "op": "in", "values": [""], "negate": true }] }
+      variations: [ "<TYPE_VALUE>" ]
+
+    rule-match-variation-too-high-<TYPE_NAME>:
+      on: true
+      rules:
+        - { "variation": 1, "clauses": [ { "attribute": "key", "op": "in", "values": [""], "negate": true }] }
+      variations: [ "<TYPE_VALUE>" ]
+
+    clause-with-no-attribute-reference-<TYPE_NAME>:
+      on: true
+      rules:
+        - { "variation": 0, "clauses": [ { "op": "in", "values": [""], "negate": true } ] }
+        # second rule here would normally be a match, but we want to prove that we bail out immediately on the first bad rule
+        - { "id": "should_not_match_this_rule_because_previous_rule_triggers_error", "variation": 0,
+            "clauses": [ { "attribute": "key", "op": "in", "values": [""], "negate": true } ] }
+      variations: [ "<TYPE_VALUE>" ]
+
+    clause-with-malformed-attribute-reference-<TYPE_NAME>:
+      on: true
+      rules:
+        - { "variation": 0, "clauses": [ { "attribute": "///", "op": "in", "values": [""], "negate": true } ] }
+        - { "id": "should_not_match_this_rule_because_previous_rule_triggers_error", "variation": 0,
+            "clauses": [ { "attribute": "key", "op": "in", "values": [""], "negate": true } ] }
       variations: [ "<TYPE_VALUE>" ]
 
 evaluations:
@@ -86,6 +119,15 @@ evaluations:
     default: <TYPE_DEFAULT>
     expect: <MALFORMED_FLAG_RESULT>
 
+  - name: flag is off but has no off variation
+    flagKey: no-off-variation-<TYPE_NAME>
+    context: <CONTEXT>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect:
+      value: <TYPE_DEFAULT>
+      reason: { kind: "OFF" }  # this is *not* considered a "malformed flag" condition even though it returns the default
+
   - name: fallthrough variation too low
     flagKey: fallthrough-variation-too-low-<TYPE_NAME>
     context: <CONTEXT>
@@ -109,6 +151,34 @@ evaluations:
 
   - name: target variation too high
     flagKey: target-match-variation-too-high-<TYPE_NAME>
+    context: <CONTEXT>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect: <MALFORMED_FLAG_RESULT>
+
+  - name: rule variation too low
+    flagKey: rule-match-variation-too-low-<TYPE_NAME>
+    context: <CONTEXT>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect: <MALFORMED_FLAG_RESULT>
+
+  - name: rule variation too high
+    flagKey: rule-match-variation-too-high-<TYPE_NAME>
+    context: <CONTEXT>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect: <MALFORMED_FLAG_RESULT>
+
+  - name: clause with no attribute reference
+    flagKey: clause-with-no-attribute-reference-<TYPE_NAME>
+    context: <CONTEXT>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect: <MALFORMED_FLAG_RESULT>
+
+  - name: clause with malformed attribute reference
+    flagKey: clause-with-malformed-attribute-reference-<TYPE_NAME>
     context: <CONTEXT>
     valueType: <TYPE_NAME>
     default: <TYPE_DEFAULT>
