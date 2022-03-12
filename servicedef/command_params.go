@@ -1,9 +1,9 @@
 package servicedef
 
 import (
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldreason"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
 )
 
 const (
@@ -39,11 +39,11 @@ type CommandParams struct {
 }
 
 type EvaluateFlagParams struct {
-	FlagKey      string        `json:"flagKey"`
-	User         lduser.User   `json:"user"`
-	ValueType    ValueType     `json:"valueType"`
-	DefaultValue ldvalue.Value `json:"defaultValue"`
-	Detail       bool          `json:"detail"`
+	FlagKey      string            `json:"flagKey"`
+	Context      ldcontext.Context `json:"context"`
+	ValueType    ValueType         `json:"valueType"`
+	DefaultValue ldvalue.Value     `json:"defaultValue"`
+	Detail       bool              `json:"detail"`
 }
 
 type EvaluateFlagResponse struct {
@@ -53,10 +53,10 @@ type EvaluateFlagResponse struct {
 }
 
 type EvaluateAllFlagsParams struct {
-	User                       *lduser.User `json:"user,omitempty"`
-	WithReasons                bool         `json:"withReasons"`
-	ClientSideOnly             bool         `json:"clientSideOnly"`
-	DetailsOnlyForTrackedFlags bool         `json:"detailsOnlyForTrackedFlags"`
+	Context                    ldcontext.Context `json:"context"`
+	WithReasons                bool              `json:"withReasons"`
+	ClientSideOnly             bool              `json:"clientSideOnly"`
+	DetailsOnlyForTrackedFlags bool              `json:"detailsOnlyForTrackedFlags"`
 }
 
 type EvaluateAllFlagsResponse struct {
@@ -64,15 +64,15 @@ type EvaluateAllFlagsResponse struct {
 }
 
 type CustomEventParams struct {
-	EventKey     string        `json:"eventKey"`
-	User         lduser.User   `json:"user"`
-	Data         ldvalue.Value `json:"data,omitempty"`
-	OmitNullData bool          `json:"omitNullData"`
-	MetricValue  *float64      `json:"metricValue,omitempty"`
+	EventKey     string            `json:"eventKey"`
+	Context      ldcontext.Context `json:"context"`
+	Data         ldvalue.Value     `json:"data,omitempty"`
+	OmitNullData bool              `json:"omitNullData"`
+	MetricValue  *float64          `json:"metricValue,omitempty"`
 }
 
 type IdentifyEventParams struct {
-	User lduser.User `json:"user"`
+	Context ldcontext.Context `json:"context"`
 }
 
 type BigSegmentStoreStatusResponse struct {

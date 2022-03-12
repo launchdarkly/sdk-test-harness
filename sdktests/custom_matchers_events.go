@@ -2,7 +2,7 @@ package sdktests
 
 import (
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
 )
 
 // These are used with the matchers API to make assertions about JSON event data. The value
@@ -23,10 +23,18 @@ func EventHasKind(kind string) m.Matcher {
 	return m.JSONProperty("kind").Should(m.Equal(kind))
 }
 
-func HasContextKeys(user lduser.User) m.Matcher {
-	return m.JSONProperty("contextKeys").Should(m.MapOf(
-		m.KV("user", m.Equal(user.GetKey())),
-	))
+func HasContextKeys(context ldcontext.Context) m.Matcher {
+	var kvs []m.KeyValueMatcher
+	if context.Multiple() {
+		for i := 0; i < context.MultiKindCount(); i++ {
+			if mc, ok := context.MultiKindByIndex(i); ok {
+				kvs = append(kvs, m.KV(string(mc.Kind()), m.Equal(mc.Key())))
+			}
+		}
+	} else {
+		kvs = append(kvs, m.KV(string(context.Kind()), m.Equal(context.Key())))
+	}
+	return m.JSONProperty("contextKeys").Should(m.MapOf(kvs...))
 }
 
 func HasAnyCreationDate() m.Matcher {

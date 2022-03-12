@@ -137,6 +137,6 @@ sdkData:
 evaluations:
   - name: "<USER_VALUE> <OP> <CLAUSE_VALUE>"
     flagKey: test-string
-    user: { key: "user-key", custom: { attrname: "<USER_VALUE>" } }
+    context: { key: "user-key", custom: { attrname: "<USER_VALUE>" } }
     default: false
     expect: <EXPECT>

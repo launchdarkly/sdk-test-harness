@@ -2,7 +2,7 @@
 name: evaluation failures (<TYPE_NAME>)
 
 constants:
-  USER: { key: "user-key" }
+  CONTEXT: { kind: "user", key: "user-key" }
   MALFORMED_FLAG_RESULT:
     value: <TYPE_DEFAULT>
     reason: { "kind": "ERROR", "errorKind": "MALFORMED_FLAG" }
@@ -65,7 +65,7 @@ sdkData:
 evaluations:
   - name: flag not found
     flagKey: no-such-flag
-    user: <USER>
+    context: <CONTEXT>
     valueType: <TYPE_NAME>
     default: <TYPE_DEFAULT>
     expect:
@@ -74,42 +74,42 @@ evaluations:
 
   - name: off variation too low
     flagKey: off-variation-too-low-<TYPE_NAME>
-    user: <USER>
+    context: <CONTEXT>
     valueType: <TYPE_NAME>
     default: <TYPE_DEFAULT>
     expect: <MALFORMED_FLAG_RESULT>
 
   - name: off variation too high
     flagKey: off-variation-too-high-<TYPE_NAME>
-    user: <USER>
+    context: <CONTEXT>
     valueType: <TYPE_NAME>
     default: <TYPE_DEFAULT>
     expect: <MALFORMED_FLAG_RESULT>
 
   - name: fallthrough variation too low
     flagKey: fallthrough-variation-too-low-<TYPE_NAME>
-    user: <USER>
+    context: <CONTEXT>
     valueType: <TYPE_NAME>
     default: <TYPE_DEFAULT>
     expect: <MALFORMED_FLAG_RESULT>
 
   - name: fallthrough variation too high
     flagKey: fallthrough-variation-too-high-<TYPE_NAME>
-    user: <USER>
+    context: <CONTEXT>
     valueType: <TYPE_NAME>
     default: <TYPE_DEFAULT>
     expect: <MALFORMED_FLAG_RESULT>
 
   - name: target variation too low
     flagKey: target-match-variation-too-low-<TYPE_NAME>
-    user: <USER>
+    context: <CONTEXT>
     valueType: <TYPE_NAME>
     default: <TYPE_DEFAULT>
     expect: <MALFORMED_FLAG_RESULT>
 
   - name: target variation too high
     flagKey: target-match-variation-too-high-<TYPE_NAME>
-    user: <USER>
+    context: <CONTEXT>
     valueType: <TYPE_NAME>
     default: <TYPE_DEFAULT>
     expect: <MALFORMED_FLAG_RESULT>

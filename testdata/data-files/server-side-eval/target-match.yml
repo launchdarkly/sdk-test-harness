@@ -2,7 +2,7 @@
 name: target match (<TYPE_NAME>)
 
 constants:
-  USER: { key: "user-key" }
+  CONTEXT: { key: "user-key" }
 
 parameters:
   - TYPE_NAME: bool
@@ -63,7 +63,7 @@ sdkData:
 evaluations:
   - name: user1 matches
     flagKey: flag-with-targets
-    user: { "key": "user1" }
+    context: { "key": "user1" }
     valueType: <TYPE_NAME>
     default: <TYPE_DEFAULT>
     expect:
@@ -73,7 +73,7 @@ evaluations:
 
   - name: user2 matches
     flagKey: flag-with-targets
-    user: { "key": "user2" }
+    context: { "key": "user2" }
     valueType: <TYPE_NAME>
     default: <TYPE_DEFAULT>
     expect:
@@ -83,7 +83,7 @@ evaluations:
 
   - name: user3 matches
     flagKey: flag-with-targets
-    user: { "key": "user3" }
+    context: { "key": "user3" }
     valueType: <TYPE_NAME>
     default: <TYPE_DEFAULT>
     expect:
@@ -93,7 +93,7 @@ evaluations:
 
   - name: user4 matches
     flagKey: flag-with-targets
-    user: { "key": "user4" }
+    context: { "key": "user4" }
     valueType: <TYPE_NAME>
     default: <TYPE_DEFAULT>
     expect:
@@ -103,7 +103,7 @@ evaluations:
 
   - name: fallthrough for non-match
     flagKey: flag-with-targets
-    user: { "key": "user99" }
+    context: { "key": "user99" }
     valueType: <TYPE_NAME>
     default: <TYPE_DEFAULT>
     expect:
@@ -113,7 +113,7 @@ evaluations:
 
   - name: targets are ignored when flag is off
     flagKey: off-flag-with-targets
-    user: { "key": "user1" }
+    context: { "key": "user1" }
     valueType: <TYPE_NAME>
     default: <TYPE_DEFAULT>
     expect:

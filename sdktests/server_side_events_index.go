@@ -6,8 +6,8 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
 )
 
 func doServerSideIndexEventTests(t *ldtest.T) {
@@ -15,12 +15,12 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 	// server_side_events_users.go.
 
 	users := NewUserFactory("doServerSideIndexEventTests")
-	matchIndexEvent := func(user lduser.User) m.Matcher {
+	matchIndexEvent := func(user ldcontext.Context) m.Matcher {
 		return m.AllOf(
 			JSONPropertyKeysCanOnlyBe("kind", "creationDate", "context"),
 			IsIndexEvent(),
 			HasAnyCreationDate(),
-			HasUserObjectWithKey(user.GetKey()),
+			HasUserObjectWithKey(user.Key()),
 		)
 	}
 
@@ -79,8 +79,8 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 
 			user1 := users.NextUniqueUser()
 			user2 := users.NextUniqueUser()
-			params1 := servicedef.CustomEventParams{EventKey: "event1", User: user1}
-			params2 := servicedef.CustomEventParams{EventKey: "event1", User: user2}
+			params1 := servicedef.CustomEventParams{EventKey: "event1", Context: user1}
+			params2 := servicedef.CustomEventParams{EventKey: "event1", Context: user2}
 
 			client.SendCustomEvent(t, params1)
 			client.SendCustomEvent(t, params1)

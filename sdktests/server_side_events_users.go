@@ -9,11 +9,11 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
-	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldbuilders"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/lduser"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
+	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldbuilders"
 )
 
 type eventUserTestScenario struct {
@@ -21,18 +21,18 @@ type eventUserTestScenario struct {
 	userPrivateAttrs []string
 }
 
-func (s eventUserTestScenario) MakeUser(originalUser lduser.User) lduser.User {
+func (s eventUserTestScenario) MakeUser(originalUser ldcontext.Context) ldcontext.Context {
 	if len(s.userPrivateAttrs) == 0 {
 		return originalUser
 	}
-	ub := lduser.NewUserBuilderFromUser(originalUser)
+	builder := ldcontext.NewBuilderFromContext(originalUser)
 	for _, a := range s.userPrivateAttrs {
-		ub.SetAttribute(lduser.UserAttribute(a), originalUser.GetAttribute(lduser.UserAttribute(a))).AsPrivateAttribute()
+		builder.Private(a)
 	}
-	return ub.Build()
+	return builder.Build()
 }
 
-func (s eventUserTestScenario) hasExpectedUserObject(user lduser.User) m.Matcher {
+func (s eventUserTestScenario) hasExpectedUserObject(user ldcontext.Context) m.Matcher {
 	return m.JSONProperty("context").Should(eventUserMatcher(user, s.config))
 }
 
@@ -94,7 +94,7 @@ func doServerSideEventUserTests(t *ldtest.T) {
 				user := scenario.MakeUser(users.NextUniqueUser())
 				client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 					FlagKey:      flag.Key,
-					User:         user,
+					Context:      user,
 					ValueType:    servicedef.ValueTypeAny,
 					DefaultValue: defaultValue,
 				})
@@ -124,7 +124,7 @@ func doServerSideEventUserTests(t *ldtest.T) {
 				eventData := ldvalue.Bool(true)
 				metricValue := float64(10)
 				client.SendCustomEvent(t, servicedef.CustomEventParams{
-					User:        user,
+					Context:     user,
 					EventKey:    "event-key",
 					Data:        eventData,
 					MetricValue: &metricValue,
@@ -153,58 +153,57 @@ func doServerSideEventUserTests(t *ldtest.T) {
 	}
 }
 
-func eventUserMatcher(user lduser.User, eventsConfig servicedef.SDKConfigEventParams) m.Matcher {
-	// This simulates the expected behavior of SDK event processors with regard to redacting
-	// private attributes. For more details about how this works, please see the SDK
-	// documentation, and/or the implementations of the equivalent logic in the SDKs
-	// (such as https://github.com/launchdarkly/go-sdk-events).
-
-	// First, get the regular JSON representation of the user, since it's simplest to treat
-	// this as a transformation of one JSON object to another.
-	allJSON := ldvalue.Parse(jsonhelpers.ToJSON(user))
-	allAttributes := append(allJSON.Keys(), allJSON.GetByKey("custom").Keys()...)
-
-	expected := []m.KeyValueMatcher{
-		m.KV("kind", m.Equal("user")),
+// eventUserMatcher returns a Matcher to verify that a JSON object has the expected properties based on
+// the input context and the events configuration. This mostly means verifying that private attributes
+// behave correctly.
+//
+// Because the rules for private attributes are fairly complicated, we have not reimplemented that logic
+// here. Instead, this function depends on the Go SDK's implementation of event context formatting,
+// treating it as a reference implementation that has been validated by its own thorough tests.
+func eventUserMatcher(context ldcontext.Context, eventsConfig servicedef.SDKConfigEventParams) m.Matcher {
+	kvs := []m.KeyValueMatcher{
+		m.KV("kind", m.Equal(string(context.Kind()))),
+		m.KV("key", m.Equal(context.Key())),
 	}
-	var private []string
-
-	// allAttributes is now a list of all of the user's top-level properties plus all of
-	// its custom attribute names. It's simplest to loop through all of those at once since
-	// the logic for determining whether an attribute should be private is always the same.
-	for _, attr := range allAttributes {
-		if attr == "custom" || attr == "privateAttributeNames" || attr == "secondary" {
-			// these aren't top-level attributes
-			continue
+	if context.Transient() {
+		kvs = append(kvs, m.KV("transient", m.Equal(true)))
+	}
+	isPrivate := func(name string) bool {
+		if eventsConfig.AllAttributesPrivate {
+			return true
 		}
-		// An attribute is private if 1. it was marked private for that particular user (as
-		// reported by user.IsPrivateAttribute), 2. the SDK configuration (represented here
-		// as eventsConfig) says that that particular one should always be private, or 3.
-		// the SDK configuration says *all* of them should be private. Note that "key" can
-		// never be private.
-		isPrivate := attr != "key" && (eventsConfig.AllAttributesPrivate ||
-			user.IsPrivateAttribute(lduser.UserAttribute(attr)))
-		for _, pa := range eventsConfig.GlobalPrivateAttributes {
-			isPrivate = isPrivate || pa == attr
+		for _, a := range eventsConfig.GlobalPrivateAttributes {
+			if name == a {
+				return true
+			}
 		}
-		if isPrivate {
-			private = append(private, attr)
-		} else {
-			value := user.GetAttribute(lduser.UserAttribute(attr))
-			expected = append(expected, m.KV(attr, m.JSONEqual(value)))
+		for i := 0; i < context.PrivateAttributeCount(); i++ {
+			if a, _ := context.PrivateAttributeByIndex(i); name == a.String() {
+				return true
+			}
+		}
+		return false
+	}
+	redacted := []string{}
+	for _, name := range context.GetOptionalAttributeNames(nil) {
+		if value, ok := context.GetValue(name); ok {
+			if isPrivate(name) {
+				redacted = append(redacted, name)
+			} else {
+				kvs = append(kvs, m.KV(name, m.JSONEqual(value)))
+			}
 		}
 	}
-	secondary := user.GetSecondaryKey()
-	if len(private) != 0 || secondary.IsDefined() {
-		metaProps := make([]m.KeyValueMatcher, 0)
-		if len(private) != 0 {
-			sort.Strings(private)
-			metaProps = append(metaProps, m.KV("redactedAttributes", SortedStrings().Should(m.Equal(private))))
+	if len(redacted) != 0 || context.Secondary().IsDefined() {
+		kvsMeta := []m.KeyValueMatcher{}
+		if context.Secondary().IsDefined() {
+			kvsMeta = append(kvsMeta, m.KV("secondary", m.Equal(context.Secondary().StringValue())))
 		}
-		if secondary.IsDefined() {
-			metaProps = append(metaProps, m.KV("secondary", m.Equal(secondary.StringValue())))
+		if len(redacted) != 0 {
+			sort.Strings(redacted)
+			kvsMeta = append(kvsMeta, m.KV("redactedAttributes", SortedStrings().Should(m.Equal(redacted))))
 		}
-		expected = append(expected, m.KV("_meta", m.MapOf(metaProps...)))
+		kvs = append(kvs, m.KV("_meta", m.MapOf(kvsMeta...)))
 	}
-	return m.JSONMap().Should(m.MapOf(expected...))
+	return m.JSONMap().Should(m.MapOf(kvs...))
 }

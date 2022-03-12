@@ -97,36 +97,36 @@ sdkData:
 evaluations:
   - name: "<LOWER_VALUE> semVerEqual <HIGHER_VALUE> fails"
     flagKey: test-semVerEqualHigher
-    user: { key: "user-key", custom: { attrname: "<LOWER_VALUE>" } }
+    context: { key: "user-key", custom: { attrname: "<LOWER_VALUE>" } }
     default: false
     expect: <IS_NOT_MATCH>
 
   - name: "<HIGHER_VALUE> semVerEqual <LOWER_VALUE> fails"
     flagKey: test-semVerEqualLower
-    user: { key: "user-key", custom: { attrname: "<HIGHER_VALUE>" } }
+    context: { key: "user-key", custom: { attrname: "<HIGHER_VALUE>" } }
     default: false
     expect: <IS_NOT_MATCH>
 
   - name: "<LOWER_VALUE> semVerLessThan <HIGHER_VALUE> passes"
     flagKey: test-semVerLessThanHigher
-    user: { key: "user-key", custom: { attrname: "<LOWER_VALUE>" } }
+    context: { key: "user-key", custom: { attrname: "<LOWER_VALUE>" } }
     default: false
     expect: <IS_MATCH>
 
   - name: "<HIGHER_VALUE> semVerLessThan <LOWER_VALUE> fails"
     flagKey: test-semVerLessThanLower
-    user: { key: "user-key", custom: { attrname: "<HIGHER_VALUE>" } }
+    context: { key: "user-key", custom: { attrname: "<HIGHER_VALUE>" } }
     default: false
     expect: <IS_NOT_MATCH>
 
   - name: "<HIGHER_VALUE> semVerGreaterThan <LOWER_VALUE> passes"
     flagKey: test-semVerGreaterThanLower
-    user: { key: "user-key", custom: { attrname: "<HIGHER_VALUE>" } }
+    context: { key: "user-key", custom: { attrname: "<HIGHER_VALUE>" } }
     default: false
     expect: <IS_MATCH>
 
   - name: "<LOWER_VALUE> semVerGreaterThan <HIGHER_VALUE> fails"
     flagKey: test-semVerGreaterThanHigher
-    user: { key: "user-key", custom: { attrname: "<LOWER_VALUE>" } }
+    context: { key: "user-key", custom: { attrname: "<LOWER_VALUE>" } }
     default: false
     expect: <IS_NOT_MATCH>

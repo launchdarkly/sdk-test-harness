@@ -13,11 +13,11 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldbuilders"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldmodel"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldtime"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
+	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldbuilders"
+	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldmodel"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,12 +30,12 @@ func basicEvaluateFlag(
 	t *ldtest.T,
 	client *SDKClient,
 	flagKey string,
-	user lduser.User,
+	context ldcontext.Context,
 	defaultValue ldvalue.Value,
 ) ldvalue.Value {
 	result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 		FlagKey:      flagKey,
-		User:         user,
+		Context:      context,
 		ValueType:    servicedef.ValueTypeAny,
 		DefaultValue: defaultValue,
 	})
@@ -53,12 +53,12 @@ func evaluateFlagDetail(
 	t *ldtest.T,
 	client *SDKClient,
 	flagKey string,
-	user lduser.User,
+	context ldcontext.Context,
 	defaultValue ldvalue.Value,
 ) servicedef.EvaluateFlagResponse {
 	return client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 		FlagKey:      flagKey,
-		User:         user,
+		Context:      context,
 		ValueType:    servicedef.ValueTypeAny,
 		DefaultValue: defaultValue,
 		Detail:       true,
@@ -156,13 +156,13 @@ func checkForUpdatedValue(
 	t *ldtest.T,
 	client *SDKClient,
 	flagKey string,
-	user lduser.User,
+	context ldcontext.Context,
 	previousValue ldvalue.Value,
 	updatedValue ldvalue.Value,
 	defaultValue ldvalue.Value,
 ) func() bool {
 	return func() bool {
-		actualValue := basicEvaluateFlag(t, client, flagKey, user, defaultValue)
+		actualValue := basicEvaluateFlag(t, client, flagKey, context, defaultValue)
 		if actualValue.Equal(updatedValue) {
 			return true
 		}
@@ -178,7 +178,7 @@ func pollUntilFlagValueUpdated(
 	t *ldtest.T,
 	client *SDKClient,
 	flagKey string,
-	user lduser.User,
+	context ldcontext.Context,
 	previousValue ldvalue.Value,
 	updatedValue ldvalue.Value,
 	defaultValue ldvalue.Value,
@@ -187,7 +187,7 @@ func pollUntilFlagValueUpdated(
 	// reconnected, so we have to poll till the new data shows up
 	require.Eventually(
 		t,
-		checkForUpdatedValue(t, client, flagKey, user, previousValue, updatedValue, defaultValue),
+		checkForUpdatedValue(t, client, flagKey, context, previousValue, updatedValue, defaultValue),
 		time.Second, time.Millisecond*50, "timed out without seeing updated flag value")
 }
 

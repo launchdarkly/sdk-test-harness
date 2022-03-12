@@ -74,9 +74,8 @@ A `POST` request indicates that the test harness wants to start an instance of t
     * `capacity` (number, optional): If specified and greater than zero, the event buffer capacity should be set to this value.
     * `enableDiagnostics` (boolean, optional): If true, diagnostic events should be enabled. Otherwise they should be disabled.
     * `allAttributesPrivate` (boolean, optional): Corresponds to the SDK configuration property of the same name.
-    * `globalPrivateAttributes` (array, optional): Corresponds to the `privateAttributes` property in the SDK configuration (rather than in an individual user).
+    * `globalPrivateAttributes` (array, optional): Corresponds to the `privateAttributes` property in the SDK configuration (rather than in an individual context).
     * `flushIntervalMs` (number, optional): The event flush interval in milliseconds. If omitted or zero, use the SDK's default value.
-    * `inlineUsers` (boolean, optional): Corresponds to the SDK configuration property of the same name.
   * `bigSegments` (object, optional): Enables and configures Big Segments. Properties are:
     * `callbackUri` (string, required): The base URI for the big segments store callback fixture. See [Callback fixtures](#callback-fixtures).
     * `userCacheSize`, `userCacheTimeMs`, `statusPollIntervalMS`, `staleAfterMs`: These correspond to the standard optional configuration parameters for every SDK that supports Big Segments.
@@ -100,7 +99,7 @@ A `POST` request to the resource that was returned by "Create SDK client" means 
 
 The request body is a JSON object. It always has a string property `command` which identifies the command. For each command that takes parameters, there is an optional property with the same name as that command, containing its parameters, which will be present only for that command. This simplifies the implementation of the test service by not requiring a separate endpoint for each command.
 
-Whenever there is a `user` property, the JSON object for the user follows the standard schema used by all LaunchDarkly SDKs.
+Whenever there is a `context` property, the JSON object for the context follows the standard schema used by all LaunchDarkly SDKs.
 
 #### Evaluate flag
 
@@ -109,7 +108,7 @@ If `command` is `"evaluate"`, the test service should perform a single feature f
 The `evaluate` property in the request body will be a JSON object with these properties:
 
 * `flagKey` (string): The flag key.
-* `user` (object): The user properties.
+* `context` (object): The context properties.
 * `valueType` (string): For strongly-typed SDKs, this can be `"bool"`, `"int"`, `"double"`, `"string"`, or `"any"`, indicating which typed `Variation` or `VariationDetail` method to use (`any` is called "JSON" in most SDKs). For weakly-typed SDKs, it can be ignored.
 * `defaultValue` (any): A JSON value whose type corresponds to `valueType`. This should be used as the application default/fallback parameter for the `Variation` or `VariationDetail` method.
 * `detail` (boolean): If true, use `VariationDetail`. If false or omitted, use `Variation`.
@@ -126,7 +125,7 @@ If `command` is `"evaluateAll"`, the test service should call the SDK method tha
 
 The `evaluateAll` property in the request body will be a JSON object with these properties:
 
-* `user` (object): The user properties.
+* `context` (object): The context properties.
 * `withReasons` (boolean, optional): If true, enables the SDK option for including evaluation reasons in the result. The test harness will only set this option if the test service has the capability `"all-flags-with-reasons"`.
 * `clientSideOnly` (boolean, optional): If true, enables the SDK option for filtering the result to only include flags that are enabled for client-side use. The test harness will only set this option if the test service has the capability `"all-flags-client-side-only"`.
 * `detailsOnlyForTrackedFlags` (boolean, optional): If true, enables the SDK option for filtering the result to only include evaluation reason data if the SDK will need it for events (due to event tracking or debugging or an experiment). The test harness will only set this option if the test service has the capability `"all-flags-details-only-for-tracked-flags"`.
@@ -153,7 +152,7 @@ If `command` is `"identifyEvent"`, the test service should call the SDK's `Ident
 
 The `identifyEvent` property in the request body will be a JSON object with these properties:
 
-* `user` (object): The user properties.
+* `context` (object): The context properties.
 
 The response should be an empty 2xx response.
 
@@ -164,16 +163,16 @@ If `command` is `"customEvent"`, the test service should tell the SDK to send a 
 The `customEvent` property in the request body will be a JSON object with these properties:
 
 * `eventKey` (string): The event key.
-* `user` (object): The user properties.
+* `context` (object): The context properties.
 * `data` (any): If present, a JSON value for the `data` parameter.
 * `omitNullData` (boolean or null): See below.
 * `metricValue` (number or null): If present, a metric value.
 
 Some SDKs have multiple variants or overloads of `Track`: one that takes both `data` and `metricValue` parameters, one with only `data`, one with neither, etc. To ensure full test coverage, the test service for such an SDK should interpret the parameters as follows:
 
-* A `Track` variant with only `eventKey` and `user` should be called if `data` and `metricValue` are both null _and_ `omitNullData` is true.
-* Otherwise, a variant with only `eventKey`, `user`, and `data` should be called if `metricValue` is null.
-* Otherwise, call the variant that takes `eventKey`, `user`, `data`, and `metricValue`.
+* A `Track` variant with only `eventKey` and `context` should be called if `data` and `metricValue` are both null _and_ `omitNullData` is true.
+* Otherwise, a variant with only `eventKey`, `context`, and `data` should be called if `metricValue` is null.
+* Otherwise, call the variant that takes `eventKey`, `context`, `data`, and `metricValue`.
 
 The response should be an empty 2xx response.
 
@@ -260,13 +259,13 @@ The test service should send this request when the SDK calls the method for gett
 
 * `lastUpToDate` (number, required): The epoch millisecond time that the simulated store was last updated.
 
-#### Get user membership: `POST /getMembership`
+#### Get context membership: `POST /getMembership`
 
-The test service should send this request when the SDK calls the method for getting a user's Big Segment membership.
+The test service should send this request when the SDK calls the method for getting a context's Big Segment membership.
 
 The request body is a JSON object with these properties:
 
-* `userHash` (string, required): A hash of the user key. There is a standard algorithm for computing this; the test harness will check the hash to ensure that the SDK follows the specification.
+* `contextHash` (string, required): A hash of the context key. There is a standard algorithm for computing this; the test harness will check the hash to ensure that the SDK follows the specification.
 
 The response body is a JSON object with these properties:
 

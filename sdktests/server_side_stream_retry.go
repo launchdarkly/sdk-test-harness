@@ -12,9 +12,9 @@ import (
 
 	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldtime"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
 )
 
 const briefDelay ldtime.UnixMillisecondTime = 1
@@ -36,7 +36,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 	flagV1, flagV2 := makeFlagVersionsWithValues(flagKey, 1, 2, expectedValueV1, expectedValueV2)
 	dataV1 := mockld.NewServerSDKDataBuilder().Flag(flagV1).Build()
 	dataV2 := mockld.NewServerSDKDataBuilder().Flag(flagV2).Build()
-	user := lduser.NewUser("user-key")
+	user := ldcontext.New("user-key")
 
 	t.Run("retry after stream is closed", func(t *ldtest.T) {
 		stream1 := NewSDKDataSourceWithoutEndpoint(t, dataV1)
@@ -49,7 +49,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		t.Defer(streamEndpoint.Close)
 
 		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: user})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get the request info for the first request
@@ -78,7 +78,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 			}),
 			stream,
 		)
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: user})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get the request info for the first request
@@ -112,7 +112,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		t.Defer(streamEndpoint.Close)
 
 		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: user})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		for i := 0; i < 3; i++ { // expect three requests
@@ -147,7 +147,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		t.Defer(streamEndpoint.Close)
 
 		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: user})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get the request info for the first request
@@ -215,7 +215,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 				t.Defer(streamEndpoint.Close)
 
 				client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
-				result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
+				result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: user})
 				m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 				// get the request info for the first request

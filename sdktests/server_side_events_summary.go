@@ -9,10 +9,11 @@ import (
 
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldbuilders"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldmodel"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldattr"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
+	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldbuilders"
+	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldmodel"
 
 	"github.com/stretchr/testify/require"
 )
@@ -38,8 +39,8 @@ func doServerSideSummaryEventBasicTest(t *ldtest.T) {
 		AddTarget(1, "user-b").
 		Build()
 
-	userA := lduser.NewUser("user-a")
-	userB := lduser.NewUser("user-b")
+	userA := ldcontext.New("user-a")
+	userB := ldcontext.New("user-b")
 	default1 := ldvalue.String("default1")
 	default2 := ldvalue.String("default2")
 
@@ -51,12 +52,12 @@ func doServerSideSummaryEventBasicTest(t *ldtest.T) {
 	client := NewSDKClient(t, dataSource, events)
 
 	// evaluations for flag1: two for userA producing value1a, one for userB producing value1b
-	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1.Key, User: userA, DefaultValue: default1})
-	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1.Key, User: userB, DefaultValue: default1})
-	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1.Key, User: userA, DefaultValue: default1})
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1.Key, Context: userA, DefaultValue: default1})
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1.Key, Context: userB, DefaultValue: default1})
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1.Key, Context: userA, DefaultValue: default1})
 
 	// evaluations for flag2: one for userA producing value2a
-	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag2.Key, User: userA, DefaultValue: default2})
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag2.Key, Context: userA, DefaultValue: default2})
 
 	client.FlushEvents(t)
 	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
@@ -84,7 +85,7 @@ func doServerSideSummaryEventBasicTest(t *ldtest.T) {
 
 func doServerSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 	unknownKey := "flag-x"
-	user := lduser.NewUser("user-key")
+	user := ldcontext.New("user-key")
 	default1 := ldvalue.String("default1")
 
 	dataBuilder := mockld.NewServerSDKDataBuilder()
@@ -94,14 +95,14 @@ func doServerSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 	client := NewSDKClient(t, dataSource, events)
 
 	// evaluate the unknown flag twice
-	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: unknownKey, User: user, DefaultValue: default1})
-	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: unknownKey, User: user, DefaultValue: default1})
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: unknownKey, Context: user, DefaultValue: default1})
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: unknownKey, Context: user, DefaultValue: default1})
 
 	client.FlushEvents(t)
 	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
 	m.In(t).Assert(payload, m.ItemsInAnyOrder(
-		IsIndexEventForUserKey(user.GetKey()),
+		IsIndexEventForUserKey(user.Key()),
 		IsValidSummaryEventWithFlags(
 			m.KV(unknownKey, m.MapOf(
 				m.KV("default", m.JSONEqual(default1)),
@@ -120,8 +121,8 @@ func doServerSideSummaryEventResetTest(t *ldtest.T) {
 		AddTarget(1, "user-b").
 		Build()
 
-	userA := lduser.NewUser("user-a")
-	userB := lduser.NewUser("user-b")
+	userA := ldcontext.New("user-a")
+	userB := ldcontext.New("user-b")
 	defaultValue := ldvalue.String("default1")
 
 	dataBuilder := mockld.NewServerSDKDataBuilder()
@@ -133,10 +134,12 @@ func doServerSideSummaryEventResetTest(t *ldtest.T) {
 
 	// evaluate flag 10 times for userA producing value-a, 3 times for userB producing value-b
 	for i := 0; i < 10; i++ {
-		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag.Key, User: userA, DefaultValue: defaultValue})
+		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+			FlagKey: flag.Key, Context: userA, DefaultValue: defaultValue})
 	}
 	for i := 0; i < 3; i++ {
-		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag.Key, User: userB, DefaultValue: defaultValue})
+		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+			FlagKey: flag.Key, Context: userB, DefaultValue: defaultValue})
 	}
 
 	client.FlushEvents(t)
@@ -158,7 +161,8 @@ func doServerSideSummaryEventResetTest(t *ldtest.T) {
 
 	// Now do 2 evaluations for value-b and verify that the summary shows only those, not the previous counts
 	for i := 0; i < 2; i++ {
-		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag.Key, User: userB, DefaultValue: defaultValue})
+		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+			FlagKey: flag.Key, Context: userB, DefaultValue: defaultValue})
 	}
 
 	client.FlushEvents(t)
@@ -176,7 +180,7 @@ func doServerSideSummaryEventResetTest(t *ldtest.T) {
 }
 
 func doServerSideSummaryEventPrerequisitesTest(t *ldtest.T) {
-	user := lduser.NewUser("user-key")
+	user := ldcontext.New("user-key")
 	expectedValue1 := ldvalue.String("value1")
 	expectedPrereqValue2 := ldvalue.String("ok2")
 	expectedPrereqValue3 := ldvalue.String("ok3")
@@ -196,7 +200,7 @@ func doServerSideSummaryEventPrerequisitesTest(t *ldtest.T) {
 		On(true).OffVariation(0).FallthroughVariation(0).
 		AddRule(ldbuilders.NewRuleBuilder().ID("rule1").
 			Variation(3). // this 3 matches the 3 in flag2's prerequisites
-			Clauses(ldbuilders.Clause(lduser.KeyAttribute, ldmodel.OperatorIn, ldvalue.String(user.GetKey())))).
+			Clauses(ldbuilders.Clause(ldattr.KeyAttr, ldmodel.OperatorIn, ldvalue.String(user.Key())))).
 		Variations(dummyValue0, dummyValue1, dummyValue2, expectedPrereqValue3).
 		Build()
 
@@ -207,7 +211,8 @@ func doServerSideSummaryEventPrerequisitesTest(t *ldtest.T) {
 
 	// evaluate flag1 3 times, which should cause flag2 and flag3 to also be evaluated 3 times
 	for i := 0; i < 3; i++ {
-		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1.Key, User: user, DefaultValue: defaultValue})
+		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+			FlagKey: flag1.Key, Context: user, DefaultValue: defaultValue})
 	}
 
 	client.FlushEvents(t)
@@ -248,7 +253,7 @@ func doServerSideSummaryEventVersionTest(t *ldtest.T) {
 	valueBefore, valueAfter := ldvalue.String("a"), ldvalue.String("b")
 	flagBefore, flagAfter := makeFlagVersionsWithValues(flagKey, versionBefore, versionAfter, valueBefore, valueAfter)
 	defaultValue := ldvalue.String("default")
-	user := lduser.NewUser("user-key")
+	user := ldcontext.New("user-key")
 
 	data := mockld.NewServerSDKDataBuilder().Flag(flagBefore).Build()
 	dataSource := NewSDKDataSource(t, data)

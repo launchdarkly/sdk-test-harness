@@ -66,24 +66,24 @@ sdkData:
 evaluations:
   - name: "<VALUE1> before <VALUE2> fails"
     flagKey: test-before-value2
-    user: { key: "user-key", custom: { attrname: "<VALUE1>" } }
+    context: { key: "user-key", custom: { attrname: "<VALUE1>" } }
     default: false
     expect: <IS_NOT_MATCH>
 
   - name: "<VALUE2> before <VALUE1> fails"
     flagKey: test-before-value1
-    user: { key: "user-key", custom: { attrname: "<VALUE2>" } }
+    context: { key: "user-key", custom: { attrname: "<VALUE2>" } }
     default: false
     expect: <IS_NOT_MATCH>
 
   - name: "<VALUE1> after <VALUE2> fails"
     flagKey: test-after-value2
-    user: { key: "user-key", custom: { attrname: "<VALUE1>" } }
+    context: { key: "user-key", custom: { attrname: "<VALUE1>" } }
     default: false
     expect: <IS_NOT_MATCH>
 
   - name: "<VALUE2> after <VALUE1> fails"
     flagKey: test-after-value1
-    user: { key: "user-key", custom: { attrname: "<VALUE2>" } }
+    context: { key: "user-key", custom: { attrname: "<VALUE2>" } }
     default: false
     expect: <IS_NOT_MATCH>

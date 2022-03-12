@@ -24,7 +24,7 @@ sdkData:
 evaluations:
   - name: fallthrough rollout - error for empty variations list
     flagKey: flag-with-empty-fallthrough-rollout
-    user: { key: "user-key" }
+    context: { key: "user-key" }
     default: false
     expect:
       value: false

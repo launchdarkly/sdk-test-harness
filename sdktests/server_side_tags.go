@@ -10,8 +10,8 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -56,7 +56,7 @@ func doServerSideTagsTests(t *ldtest.T) {
 				events := NewSDKEventSink(t)
 				client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{Tags: &tags}), unimportantDataSource, events)
 
-				client.SendIdentifyEvent(t, lduser.NewUser("user-key"))
+				client.SendIdentifyEvent(t, ldcontext.New("user-key"))
 				client.FlushEvents(t)
 
 				verifyRequestHeader(t, p, events.Endpoint())

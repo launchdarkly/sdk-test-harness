@@ -6,9 +6,10 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldbuilders"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/lduser"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
+	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldbuilders"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -21,7 +22,7 @@ func doServerSideEventBufferTests(t *ldtest.T) {
 
 	userFactory := NewUserFactory("doServerSideEventCapacityTests",
 		func(b lduser.UserBuilder) { b.Name("my favorite user") })
-	users := make([]lduser.User, 0)
+	users := make([]ldcontext.Context, 0)
 	for i := 0; i < capacity+extraItemsOverCapacity; i++ {
 		users = append(users, userFactory.NextUniqueUser())
 	}
@@ -29,7 +30,7 @@ func doServerSideEventBufferTests(t *ldtest.T) {
 	makeIdentifyEventExpectations := func(count int) []m.Matcher {
 		ret := make([]m.Matcher, 0, count)
 		for i := 0; i < count; i++ {
-			ret = append(ret, IsIdentifyEventForUserKey(users[i].GetKey()))
+			ret = append(ret, IsIdentifyEventForUserKey(users[i].Key()))
 		}
 		return ret
 	}
@@ -66,7 +67,7 @@ func doServerSideEventBufferTests(t *ldtest.T) {
 		client.FlushEvents(t)
 		payload2 := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
-		m.In(t).Assert(payload2, m.Items(IsIdentifyEventForUserKey(anotherUser.GetKey())))
+		m.In(t).Assert(payload2, m.Items(IsIdentifyEventForUserKey(anotherUser.Key())))
 	})
 
 	t.Run("summary event is still included even if buffer was full", func(t *ldtest.T) {
@@ -76,7 +77,7 @@ func doServerSideEventBufferTests(t *ldtest.T) {
 
 		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 			FlagKey:      flag.Key,
-			User:         users[0],
+			Context:      users[0],
 			ValueType:    servicedef.ValueTypeBool,
 			DefaultValue: ldvalue.Bool(false),
 		})

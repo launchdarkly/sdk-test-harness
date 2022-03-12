@@ -8,7 +8,7 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
 )
 
 func doServerSideCustomEventTests(t *ldtest.T) {
@@ -30,7 +30,7 @@ func doServerSideCustomEventTests(t *ldtest.T) {
 
 				client.SendCustomEvent(t, servicedef.CustomEventParams{
 					EventKey:    "event-key",
-					User:        user,
+					Context:     user,
 					Data:        ldvalue.Bool(true),
 					MetricValue: &metricValue,
 				})
@@ -90,7 +90,7 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 		} {
 			params := baseParams
 			params.Data = dataValue
-			params.User = users.NextUniqueUser()
+			params.Context = users.NextUniqueUser()
 			allParams = append(allParams, params)
 		}
 
@@ -99,7 +99,7 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 		// data which may be null", to make sure we're covering both methods.
 		params := baseParams
 		params.OmitNullData = true
-		params.User = users.NextUniqueUser()
+		params.Context = users.NextUniqueUser()
 		allParams = append(allParams, params)
 	}
 

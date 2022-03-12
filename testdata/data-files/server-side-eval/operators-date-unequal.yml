@@ -60,24 +60,24 @@ sdkData:
 evaluations:
   - name: "<LOWER_VALUE> after <HIGHER_VALUE> fails"
     flagKey: test-after-higher
-    user: { key: "user-key", custom: { attrname: "<LOWER_VALUE>" } }
+    context: { key: "user-key", custom: { attrname: "<LOWER_VALUE>" } }
     default: false
     expect: <IS_NOT_MATCH>
 
   - name: "<HIGHER_VALUE> after <LOWER_VALUE> passes"
     flagKey: test-after-lower
-    user: { key: "user-key", custom: { attrname: "<HIGHER_VALUE>" } }
+    context: { key: "user-key", custom: { attrname: "<HIGHER_VALUE>" } }
     default: false
     expect: <IS_MATCH>
 
   - name: "<LOWER_VALUE> before <HIGHER_VALUE> passes"
     flagKey: test-before-higher
-    user: { key: "user-key", custom: { attrname: "<LOWER_VALUE>" } }
+    context: { key: "user-key", custom: { attrname: "<LOWER_VALUE>" } }
     default: false
     expect: <IS_MATCH>
 
   - name: "<HIGHER_VALUE> before <LOWER_VALUE> fails"
     flagKey: test-before-lower
-    user: { key: "user-key", custom: { attrname: "<HIGHER_VALUE>" } }
+    context: { key: "user-key", custom: { attrname: "<HIGHER_VALUE>" } }
     default: false
     expect: <IS_NOT_MATCH>

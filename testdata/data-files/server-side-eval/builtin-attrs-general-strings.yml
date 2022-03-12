@@ -36,18 +36,18 @@ sdkData:
 evaluations:
   - name: built-in attribute value matches clause
     flagKey: test-flag
-    user: { key: "user-key", <ATTR_NAME>: "right-value" }
+    context: { key: "user-key", <ATTR_NAME>: "right-value" }
     default: false
     expect: <IS_MATCH>
 
   - name: built-in attribute does not match clause - wrong value
     flagKey: test-flag
-    user: { key: "user-key", <ATTR_NAME>: "wrong-value" }
+    context: { key: "user-key", <ATTR_NAME>: "wrong-value" }
     default: false
     expect: <IS_NOT_MATCH>
 
   - name: built-in attribute does not match clause - not set
     flagKey: test-flag
-    user: { key: "user-key" }
+    context: { key: "user-key" }
     default: false
     expect: <IS_NOT_MATCH>

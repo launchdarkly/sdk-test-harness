@@ -7,7 +7,7 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
 
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
@@ -185,6 +185,7 @@ func doSDKContextConvertTests(t *ldtest.T) {
 		}
 
 		params := []contextConversionParams{
+			{`{"key": ""}`, `{"kind": "user", "key": ""}`}, // empty key *is* allowed for old user format only
 			{`{"key": "a"}`, `{"kind": "user", "key": "a"}`},
 			{`{"key": "a", "anonymous": true}`, `{"kind": "user", "key": "a", "transient": true}`},
 			{`{"key": "a", "anonymous": false}`, `{"kind": "user", "key": "a"}`},

@@ -2,7 +2,7 @@
 name: prerequisites
 
 constants:
-  USER: { key: "user-key" }
+  CONTEXT: { key: "user-key" }
   IS_MATCH:
     value: true
     variationIndex: 0
@@ -133,7 +133,7 @@ sdkData:
 evaluations:
   - name: prerequisite succeeds, flag rule matches
     flagKey: flag-with-prereq1
-    user:
+    context:
       key: "user-key"
       custom:
         prereq1-should-match: true
@@ -143,7 +143,7 @@ evaluations:
 
   - name: prerequisite succeeds, flag rule does not match
     flagKey: flag-with-prereq1
-    user:
+    context:
       key: "user-key"
       custom:
         prereq1-should-match: true
@@ -153,7 +153,7 @@ evaluations:
 
   - name: prerequisite fails
     flagKey: flag-with-prereq1
-    user:
+    context:
       key: "user-key"
       custom:
         prereq1-should-match: false
@@ -163,7 +163,7 @@ evaluations:
 
   - name: two prerequisites, both succeed, flag rule matches
     flagKey: flag-with-prereq1-and-prereq2
-    user:
+    context:
       key: "user-key"
       custom:
         prereq1-should-match: true
@@ -174,7 +174,7 @@ evaluations:
 
   - name: two prerequisites, both valid, flag rule matches
     flagKey: flag-with-prereq1-and-prereq2
-    user:
+    context:
       key: "user-key"
       custom:
         prereq1-should-match: true
@@ -185,7 +185,7 @@ evaluations:
 
   - name: two prerequisites, second fails
     flagKey: flag-with-prereq1-and-prereq2
-    user:
+    context:
       key: "user-key"
       custom:
         prereq1-should-match: true
@@ -196,7 +196,7 @@ evaluations:
 
   - name: nested prerequisites, all succeed
     flagKey: flag-with-prereq3
-    user:
+    context:
       key: "user-key"
       custom:
         prereq1-should-match: true
@@ -208,7 +208,7 @@ evaluations:
 
   - name: nested prerequisites, transitive one fails
     flagKey: flag-with-prereq3
-    user:
+    context:
       key: "user-key"
       custom:
         prereq1-should-match: true
@@ -220,7 +220,7 @@ evaluations:
 
   - name: prerequisite flag not found
     flagKey: flag-with-unknown-prereq
-    user:
+    context:
       key: "user-key"
       custom:
         prereq1-should-match: true
@@ -233,7 +233,7 @@ evaluations:
 
   - name: failed prerequisite always returns off variation
     flagKey: flag-with-prereq1-and-special-off-variation
-    user:
+    context:
       key: "user-key"
       custom:
         prereq1-should-match: false
@@ -245,7 +245,7 @@ evaluations:
 
   - name: prerequisite fails regardless of variation if it is off
     flagKey: flag-with-prereq-that-returns-true-but-is-off
-    user:
+    context:
       key: "user-key"
       custom:
         flag-rule-should-match: true

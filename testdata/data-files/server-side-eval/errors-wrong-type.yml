@@ -8,7 +8,7 @@ requireCapability: strongly-typed
 skipEvaluateAllFlags: true
 
 constants:
-  USER: { key: "user-key" }
+  CONTEXT: { key: "user-key" }
   EXPECTED_ERROR_REASON: { "kind": "ERROR", "errorKind": "WRONG_TYPE" }
 
 sdkData:
@@ -31,7 +31,7 @@ sdkData:
 evaluations:
   - name: want bool, got number
     flagKey: flag-with-number-value
-    user: <USER>
+    context: <CONTEXT>
     valueType: bool
     default: true
     expect:
@@ -40,7 +40,7 @@ evaluations:
 
   - name: want bool, got string
     flagKey: flag-with-string-value
-    user: <USER>
+    context: <CONTEXT>
     valueType: bool
     default: true
     expect:
@@ -49,7 +49,7 @@ evaluations:
 
   - name: want int, got bool
     flagKey: flag-with-bool-value
-    user: <USER>
+    context: <CONTEXT>
     valueType: int
     default: 1
     expect:
@@ -58,7 +58,7 @@ evaluations:
 
   - name: want int, got string
     flagKey: flag-with-string-value
-    user: <USER>
+    context: <CONTEXT>
     valueType: int
     default: 1
     expect:
@@ -67,7 +67,7 @@ evaluations:
 
   - name: want string, got bool
     flagKey: flag-with-bool-value
-    user: <USER>
+    context: <CONTEXT>
     valueType: string
     default: "default"
     expect:
@@ -76,7 +76,7 @@ evaluations:
 
   - name: want string, got number
     flagKey: flag-with-number-value
-    user: <USER>
+    context: <CONTEXT>
     valueType: string
     default: "default"
     expect:

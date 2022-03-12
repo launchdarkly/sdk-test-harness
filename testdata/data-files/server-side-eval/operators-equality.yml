@@ -72,30 +72,30 @@ sdkData:
 evaluations:
   - name: user matches clause with single value
     flagKey: test-against-single-value
-    user: { key: "user-key", custom: { attrname: <TYPE_VALUE_1> } }
+    context: { key: "user-key", custom: { attrname: <TYPE_VALUE_1> } }
     default: false
     expect: <IS_MATCH>
 
   - name: user does not match clause with single value
     flagKey: test-against-single-value
-    user: { key: "user-key", custom: { attrname: <TYPE_VALUE_2> } }
+    context: { key: "user-key", custom: { attrname: <TYPE_VALUE_2> } }
     default: false
     expect: <IS_NOT_MATCH>
 
   - name: user with single value matches clause with multiple values
     flagKey: test-against-multiple-values
-    user: { key: "user-key", custom: { attrname: <TYPE_VALUE_2> } }
+    context: { key: "user-key", custom: { attrname: <TYPE_VALUE_2> } }
     default: false
     expect: <IS_MATCH>
 
   - name: user with multiple values matches clause with single value
     flagKey: test-against-single-value
-    user: { key: "user-key", custom: { attrname: [ <TYPE_VALUE_2>, <TYPE_VALUE_1> ] } }
+    context: { key: "user-key", custom: { attrname: [ <TYPE_VALUE_2>, <TYPE_VALUE_1> ] } }
     default: false
     expect: <IS_MATCH>
 
   - name: user with no value for attribute does not match clause
     flagKey: test-against-single-value
-    user: { key: "user-key" }
+    context: { key: "user-key" }
     default: false
     expect: <IS_NOT_MATCH>
