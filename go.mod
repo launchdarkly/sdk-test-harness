@@ -16,7 +16,6 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/google/uuid v1.1.2 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/launchdarkly/go-semver v1.0.2 // indirect
@@ -30,6 +29,6 @@ require (
 
 replace gopkg.in/launchdarkly/go-sdk-common.v3 => github.com/launchdarkly/go-sdk-common-private/v3 v3.0.0-alpha.3
 
-replace gopkg.in/launchdarkly/go-server-sdk-evaluation.v2 => github.com/launchdarkly/go-server-sdk-evaluation-private/v2 v2.0.0-alpha.2
+replace gopkg.in/launchdarkly/go-sdk-events.v2 => github.com/launchdarkly/go-sdk-events-private/v2 v2.0.0-alpha.2
 
-replace gopkg.in/launchdarkly/go-sdk-events.v2 => github.com/launchdarkly/go-sdk-events-private/v2 v2.0.0-alpha.1
+replace gopkg.in/launchdarkly/go-server-sdk-evaluation.v2 => github.com/launchdarkly/go-server-sdk-evaluation-private/v2 v2.0.0-alpha.4

@@ -35,8 +35,8 @@ sdkData:
       offVariation: 0
       fallthrough: { variation: 1 }
       targets:
-        - { "variation": 2, "values": [ "key1", "key2" ] }
-        - { "variation": 3, "values": [ "key3", "key4" ] }
+        - { variation: 2, values: [ "key1", "key2" ] }
+        - { variation: 3, values: [ "key3", "key4" ] }
 
     flag-with-context-targets:
       on: true
@@ -44,13 +44,13 @@ sdkData:
       offVariation: 0
       fallthrough: { variation: 1 }
       targets:
-        - { "variation": 2, "values": [ "key1", "key2" ] }
-        - { "variation": 3, "values": [ "key3", "key4" ] }
+        - { variation: 2, values: [ "key1", "key2" ] }
+        - { variation: 3, values: [ "key3", "key4" ] }
       contextTargets:  # for the "other" kind, the result variations for same keys are deliberately the opposite of "user"
-        - { "kind": "other", "variation": 3, "values": [ "key1", "key2" ] }
-        - { "kind": "other", "variation": 2, "values": [ "key3", "key4" ] }
-        - { "kind": "user", "variation": 2 }
-        - { "kind": "user", "variation": 3 }
+        - { contextKind: "other", variation: 3, values: [ "key1", "key2" ] }
+        - { contextKind: "other", variation: 2, values: [ "key3", "key4" ] }
+        - { contextKind: "user", variation: 2 }
+        - { contextKind: "user", variation: 3 }
 
     off-flag-with-targets:
       on: false
@@ -58,8 +58,8 @@ sdkData:
       offVariation: 0
       fallthrough: { variation: 1 }
       targets:
-        - { "variation": 2, "values": [ "key1", "key2" ] }
-        - { "variation": 3, "values": [ "key3", "key4" ] }
+        - { variation: 2, values: [ "key1", "key2" ] }
+        - { variation: 3, values: [ "key3", "key4" ] }
 
     off-flag-with-context-targets:
       on: false
@@ -67,13 +67,13 @@ sdkData:
       offVariation: 0
       fallthrough: { variation: 1 }
       targets:
-        - { "variation": 2, "values": [ "key1", "key2" ] }
-        - { "variation": 3, "values": [ "key3", "key4" ] }
+        - { variation: 2, values: [ "key1", "key2" ] }
+        - { variation: 3, values: [ "key3", "key4" ] }
       contextTargets:
-        - { "kind": "other", "variation": 3, "values": [ "key1", "key2" ] }
-        - { "kind": "other", "variation": 2, "values": [ "key3", "key4" ] }
-        - { "kind": "user", "variation": 2 }
-        - { "kind": "user", "variation": 3 }
+        - { contextKind: "other", variation: 3, values: [ "key1", "key2" ] }
+        - { contextKind: "other", variation: 2, values: [ "key3", "key4" ] }
+        - { contextKind: "user", variation: 2 }
+        - { contextKind: "user", variation: 3 }
 
 evaluations:
   - name: user targets only, match user 1

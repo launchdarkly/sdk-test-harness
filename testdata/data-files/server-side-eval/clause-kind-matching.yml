@@ -24,12 +24,12 @@ parameters:
 
   - NAME: multi-kind context, clause specifies existing kind, match
     CONTEXT: { kind: "multi", user: { key: "a" }, other: { key: "b" } }
-    CLAUSE: { kind: "other", attribute: "key", op: "in", values: ["b"] }
+    CLAUSE: { contextKind: "other", attribute: "key", op: "in", values: ["b"] }
     EXPECT: <IS_MATCH>
 
   - NAME: multi-kind context, clause specifies existing kind, no match
     CONTEXT: { kind: "multi", user: { key: "a" }, other: { key: "b" } }
-    CLAUSE: { kind: "other", attribute: "key", op: "in", values: ["a"] }
+    CLAUSE: { contextKind: "other", attribute: "key", op: "in", values: ["a"] }
     EXPECT: <IS_NOT_MATCH>
 
   - NAME: kind match for single-kind context
