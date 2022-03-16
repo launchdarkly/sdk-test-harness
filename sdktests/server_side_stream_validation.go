@@ -21,7 +21,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 	flagV1, flagV2 := makeFlagVersionsWithValues(flagKey, 1, 2, expectedValueV1, expectedValueV2)
 	dataV1 := mockld.NewServerSDKDataBuilder().Flag(flagV1).Build()
 	dataV2 := mockld.NewServerSDKDataBuilder().Flag(flagV2).Build()
-	user := ldcontext.New("user-key")
+	context := ldcontext.New("user-key")
 
 	shouldDropAndReconnectAfterEvent := func(t *ldtest.T, badEventName string, badEventData json.RawMessage) {
 		stream1 := NewSDKDataSourceWithoutEndpoint(t, dataV1)
@@ -34,7 +34,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 		t.Defer(streamEndpoint.Close)
 
 		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: user})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: context})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get & discard the request info for the first request
@@ -47,7 +47,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 		_ = expectRequest(t, streamEndpoint, time.Millisecond*100)
 
 		// Check that the client got the new data from the second stream
-		pollUntilFlagValueUpdated(t, client, flagKey, user, expectedValueV1, expectedValueV2, ldvalue.Null())
+		pollUntilFlagValueUpdated(t, client, flagKey, context, expectedValueV1, expectedValueV2, ldvalue.Null())
 	}
 
 	t.Run("drop and reconnect if stream event has malformed JSON", func(t *ldtest.T) {
@@ -84,7 +84,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 			InitialRetryDelayMs: timeValueAsPointer(briefDelay), // brief delay so we can easily detect if it reconnects
 		}), dataSource)
 
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: user})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: context})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get & discard the request info for the first request
@@ -97,7 +97,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 		dataSource.Service().PushUpdate("flags", flagKey, jsonhelpers.ToJSON(flagV2))
 
 		// Check that the client got the new data
-		pollUntilFlagValueUpdated(t, client, flagKey, user, expectedValueV1, expectedValueV2, ldvalue.Null())
+		pollUntilFlagValueUpdated(t, client, flagKey, context, expectedValueV1, expectedValueV2, ldvalue.Null())
 
 		// Verify that it did not reconnect
 		expectNoMoreRequests(t, dataSource.Endpoint())

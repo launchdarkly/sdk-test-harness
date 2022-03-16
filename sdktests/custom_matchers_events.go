@@ -16,8 +16,8 @@ import (
 // affects just one detail of an event would cause failures in many tests that were supposed
 // to be about other things, making it harder to isolate the problem. Therefore, we have very
 // basic matchers like IsIdentifyEvent which just verify the kind of the event, and also ones
-// like IsIdentifyEventForUserKey that look at an additional property to make sure it is for
-// the right user, without verifying all of the properties.
+// like IsIdentifyEventForContext that look at an additional property to make sure it is for
+// the right context, without verifying all of the properties.
 
 func EventHasKind(kind string) m.Matcher {
 	return m.JSONProperty("kind").Should(m.Equal(kind))
@@ -41,11 +41,27 @@ func HasAnyCreationDate() m.Matcher {
 	return m.JSONProperty("creationDate").Should(ValueIsPositiveNonZeroInteger())
 }
 
-func HasUserObjectWithKey(key string) m.Matcher {
+func HasContextObjectWithMatchingKeys(context ldcontext.Context) m.Matcher {
+	if context.Multiple() {
+		kvs := []m.KeyValueMatcher{
+			m.KV("kind", m.Equal("multi")),
+		}
+		for i := 0; i < context.MultiKindCount(); i++ {
+			if mc, ok := context.MultiKindByIndex(i); ok {
+				kvs = append(kvs, m.KV(string(mc.Kind()),
+					m.JSONProperty("key").Should(m.Equal(mc.Key()))))
+			}
+		}
+		return m.JSONProperty("context").Should(m.MapOf(kvs...))
+	}
+	return m.JSONProperty("context").Should(m.JSONProperty("key").Should(m.Equal(context.Key())))
+}
+
+func HasContextObjectWithKey(key string) m.Matcher {
 	return m.JSONProperty("context").Should(m.JSONProperty("key").Should(m.Equal(key)))
 }
 
-func HasNoUserObject() m.Matcher {
+func HasNoContextObject() m.Matcher {
 	return JSONPropertyNullOrAbsent("context")
 }
 
@@ -54,15 +70,14 @@ func IsIdentifyEvent() m.Matcher { return EventHasKind("identify") }
 func IsFeatureEvent() m.Matcher  { return EventHasKind("feature") }
 func IsDebugEvent() m.Matcher    { return EventHasKind("debug") }
 func IsCustomEvent() m.Matcher   { return EventHasKind("custom") }
-func IsAliasEvent() m.Matcher    { return EventHasKind("alias") }
 func IsSummaryEvent() m.Matcher  { return EventHasKind("summary") }
 
-func IsIndexEventForUserKey(key string) m.Matcher {
-	return m.AllOf(IsIndexEvent(), HasUserObjectWithKey(key))
+func IsIndexEventForContext(context ldcontext.Context) m.Matcher {
+	return m.AllOf(IsIndexEvent(), HasContextObjectWithMatchingKeys(context))
 }
 
-func IsIdentifyEventForUserKey(key string) m.Matcher {
-	return m.AllOf(IsIdentifyEvent(), HasUserObjectWithKey(key))
+func IsIdentifyEventForContext(context ldcontext.Context) m.Matcher {
+	return m.AllOf(IsIdentifyEvent(), HasContextObjectWithMatchingKeys(context))
 }
 
 func IsCustomEventForEventKey(key string) m.Matcher {

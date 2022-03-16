@@ -22,21 +22,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var bigSegmentsUser = ldcontext.New("user-key")                                  //nolint:gochecknoglobals
-var bigSegmentsExpectedUserHash = "CEXjZY7cHJG/ydFy7q4+YEFwVrG3/pkJwA4FAjrbfx0=" //nolint:gochecknoglobals
+var bigSegmentsContext = ldcontext.New("user-key")                           //nolint:gochecknoglobals
+var bigSegmentsExpectedHash = "CEXjZY7cHJG/ydFy7q4+YEFwVrG3/pkJwA4FAjrbfx0=" //nolint:gochecknoglobals
 
 func doBigSegmentsEvaluateSegment(t *ldtest.T) {
-	otherUser := ldcontext.New("other-user-key")
+	otherContext := ldcontext.New("other-user-key")
 
 	basicSegment := ldbuilders.NewSegmentBuilder("segment1").Version(1).
-		Included(otherUser.Key()). // for "regular included list is ignored for big segment" test
+		Included(otherContext.Key()). // for "regular included list is ignored for big segment" test
 		Unbounded(true).Generation(100).Build()
 	basicSegmentRef := fmt.Sprintf("%s.g%d", basicSegment.Key, basicSegment.Generation.IntValue())
 
 	segmentWithRule := ldbuilders.NewSegmentBuilder("segment2").Version(1).
 		Unbounded(true).Generation(100).
 		AddRule(ldbuilders.NewSegmentRuleBuilder().Clauses(
-			ldbuilders.Clause(ldattr.KeyAttr, ldmodel.OperatorIn, ldvalue.String(bigSegmentsUser.Key())),
+			ldbuilders.Clause(ldattr.KeyAttr, ldmodel.OperatorIn, ldvalue.String(bigSegmentsContext.Key())),
 		)).
 		Build()
 	segmentWithRuleRef := fmt.Sprintf("%s.g%d", segmentWithRule.Key, segmentWithRule.Generation.IntValue())
@@ -55,80 +55,80 @@ func doBigSegmentsEvaluateSegment(t *ldtest.T) {
 			bigSegmentStore := NewBigSegmentStore(t, status)
 			client := NewSDKClient(t, dataSource, bigSegmentStore)
 
-			result := evaluateFlagDetail(t, client, basicFlag.Key, bigSegmentsUser, ldvalue.Null())
+			result := evaluateFlagDetail(t, client, basicFlag.Key, bigSegmentsContext, ldvalue.Null())
 			m.In(t).Assert(result, expectBigSegmentsResult(false, basicFlag, status))
 
-			assert.Equal(t, []string{bigSegmentsExpectedUserHash}, bigSegmentStore.GetMembershipQueries())
+			assert.Equal(t, []string{bigSegmentsExpectedHash}, bigSegmentStore.GetMembershipQueries())
 		})
 
 		t.Run(fmt.Sprintf("context not included nor excluded (empty membership), status %s", status), func(t *ldtest.T) {
 			bigSegmentStore := NewBigSegmentStore(t, status)
-			bigSegmentStore.SetupMemberships(t, map[string]map[string]bool{bigSegmentsExpectedUserHash: {}})
+			bigSegmentStore.SetupMemberships(t, map[string]map[string]bool{bigSegmentsExpectedHash: {}})
 			client := NewSDKClient(t, dataSource, bigSegmentStore)
 
-			result := evaluateFlagDetail(t, client, basicFlag.Key, bigSegmentsUser, ldvalue.Null())
+			result := evaluateFlagDetail(t, client, basicFlag.Key, bigSegmentsContext, ldvalue.Null())
 			m.In(t).Assert(result, expectBigSegmentsResult(false, basicFlag, status))
 
-			assert.Equal(t, []string{bigSegmentsExpectedUserHash}, bigSegmentStore.GetMembershipQueries())
+			assert.Equal(t, []string{bigSegmentsExpectedHash}, bigSegmentStore.GetMembershipQueries())
 		})
 
 		t.Run(fmt.Sprintf("context not included nor excluded (null membership), status %s", status), func(t *ldtest.T) {
 			bigSegmentStore := NewBigSegmentStore(t, status)
-			bigSegmentStore.SetupMemberships(t, map[string]map[string]bool{bigSegmentsExpectedUserHash: nil})
+			bigSegmentStore.SetupMemberships(t, map[string]map[string]bool{bigSegmentsExpectedHash: nil})
 			client := NewSDKClient(t, dataSource, bigSegmentStore)
 
-			result := evaluateFlagDetail(t, client, basicFlag.Key, bigSegmentsUser, ldvalue.Null())
+			result := evaluateFlagDetail(t, client, basicFlag.Key, bigSegmentsContext, ldvalue.Null())
 			m.In(t).Assert(result, expectBigSegmentsResult(false, basicFlag, status))
 
-			assert.Equal(t, []string{bigSegmentsExpectedUserHash}, bigSegmentStore.GetMembershipQueries())
+			assert.Equal(t, []string{bigSegmentsExpectedHash}, bigSegmentStore.GetMembershipQueries())
 		})
 
 		t.Run(fmt.Sprintf("context not included nor excluded, matched by segment rule, status %s", status), func(
 			t *ldtest.T) {
 			bigSegmentStore := NewBigSegmentStore(t, status)
-			bigSegmentStore.SetupMemberships(t, map[string]map[string]bool{bigSegmentsExpectedUserHash: {}})
+			bigSegmentStore.SetupMemberships(t, map[string]map[string]bool{bigSegmentsExpectedHash: {}})
 			client := NewSDKClient(t, dataSource, bigSegmentStore)
 
-			result := evaluateFlagDetail(t, client, flagForSegmentWithRule.Key, bigSegmentsUser, ldvalue.Null())
+			result := evaluateFlagDetail(t, client, flagForSegmentWithRule.Key, bigSegmentsContext, ldvalue.Null())
 			m.In(t).Assert(result, expectBigSegmentsResult(true, flagForSegmentWithRule, status))
 
-			assert.Equal(t, []string{bigSegmentsExpectedUserHash}, bigSegmentStore.GetMembershipQueries())
+			assert.Equal(t, []string{bigSegmentsExpectedHash}, bigSegmentStore.GetMembershipQueries())
 		})
 
 		t.Run(fmt.Sprintf("context included, status is %s", status), func(t *ldtest.T) {
 			bigSegmentStore := NewBigSegmentStore(t, status)
 			bigSegmentStore.SetupMemberships(t, map[string]map[string]bool{
-				bigSegmentsExpectedUserHash: {basicSegmentRef: true}})
+				bigSegmentsExpectedHash: {basicSegmentRef: true}})
 			client := NewSDKClient(t, dataSource, bigSegmentStore)
 
-			result := evaluateFlagDetail(t, client, basicFlag.Key, bigSegmentsUser, ldvalue.Null())
+			result := evaluateFlagDetail(t, client, basicFlag.Key, bigSegmentsContext, ldvalue.Null())
 			m.In(t).Assert(result, expectBigSegmentsResult(true, basicFlag, status))
 
-			assert.Equal(t, []string{bigSegmentsExpectedUserHash}, bigSegmentStore.GetMembershipQueries())
+			assert.Equal(t, []string{bigSegmentsExpectedHash}, bigSegmentStore.GetMembershipQueries())
 		})
 
 		t.Run(fmt.Sprintf("context excluded, no rules, status is %s", status), func(t *ldtest.T) {
 			bigSegmentStore := NewBigSegmentStore(t, status)
 			bigSegmentStore.SetupMemberships(t, map[string]map[string]bool{
-				bigSegmentsExpectedUserHash: {basicSegmentRef: false}})
+				bigSegmentsExpectedHash: {basicSegmentRef: false}})
 			client := NewSDKClient(t, dataSource, bigSegmentStore)
 
-			result := evaluateFlagDetail(t, client, basicFlag.Key, bigSegmentsUser, ldvalue.Null())
+			result := evaluateFlagDetail(t, client, basicFlag.Key, bigSegmentsContext, ldvalue.Null())
 			m.In(t).Assert(result, expectBigSegmentsResult(false, basicFlag, status))
 
-			assert.Equal(t, []string{bigSegmentsExpectedUserHash}, bigSegmentStore.GetMembershipQueries())
+			assert.Equal(t, []string{bigSegmentsExpectedHash}, bigSegmentStore.GetMembershipQueries())
 		})
 
 		t.Run(fmt.Sprintf("context excluded, matched by segment rule, status is %s", status), func(t *ldtest.T) {
 			bigSegmentStore := NewBigSegmentStore(t, status)
 			bigSegmentStore.SetupMemberships(t, map[string]map[string]bool{
-				bigSegmentsExpectedUserHash: {segmentWithRuleRef: false}})
+				bigSegmentsExpectedHash: {segmentWithRuleRef: false}})
 			client := NewSDKClient(t, dataSource, bigSegmentStore)
 
-			result := evaluateFlagDetail(t, client, flagForSegmentWithRule.Key, bigSegmentsUser, ldvalue.Null())
+			result := evaluateFlagDetail(t, client, flagForSegmentWithRule.Key, bigSegmentsContext, ldvalue.Null())
 			m.In(t).Assert(result, expectBigSegmentsResult(false, basicFlag, status))
 
-			assert.Equal(t, []string{bigSegmentsExpectedUserHash}, bigSegmentStore.GetMembershipQueries())
+			assert.Equal(t, []string{bigSegmentsExpectedHash}, bigSegmentStore.GetMembershipQueries())
 		})
 	}
 
@@ -136,7 +136,7 @@ func doBigSegmentsEvaluateSegment(t *ldtest.T) {
 		bigSegmentStore := NewBigSegmentStore(t, ldreason.BigSegmentsHealthy)
 		client := NewSDKClient(t, dataSource, bigSegmentStore)
 
-		result := evaluateFlagDetail(t, client, basicFlag.Key, otherUser, ldvalue.Null())
+		result := evaluateFlagDetail(t, client, basicFlag.Key, otherContext, ldvalue.Null())
 		m.In(t).Assert(result, expectBigSegmentsResult(false, basicFlag, ldreason.BigSegmentsHealthy))
 	})
 }
@@ -396,7 +396,7 @@ func doBigSegmentsStatusPollingTests(t *ldtest.T) {
 
 	t.Run("multiple evaluations don't cause another status poll before next interval", func(t *ldtest.T) {
 		segment := ldbuilders.NewSegmentBuilder("segment-key").Version(1).
-			Included(bigSegmentsUser.Key()). // regular include list should be ignored if unbounded=true
+			Included(bigSegmentsContext.Key()). // regular include list should be ignored if unbounded=true
 			Unbounded(true).Generation(100).Build()
 		flag := makeFlagToCheckSegmentMatch("flag-key", segment.Key, ldvalue.Bool(false), ldvalue.Bool(true))
 		data := mockld.NewServerSDKDataBuilder().Flag(flag).Segment(segment).Build()
@@ -425,7 +425,7 @@ func doBigSegmentsStatusPollingTests(t *ldtest.T) {
 func doBigSegmentsErrorHandlingTests(t *ldtest.T) {
 	t.Run("big segment store was not configured", func(t *ldtest.T) {
 		segment := ldbuilders.NewSegmentBuilder("segment-key").Version(1).
-			Included(bigSegmentsUser.Key()). // regular include list should be ignored if unbounded=true
+			Included(bigSegmentsContext.Key()). // regular include list should be ignored if unbounded=true
 			Unbounded(true).Generation(100).Build()
 		flag := makeFlagToCheckSegmentMatch("flag-key", segment.Key, ldvalue.Bool(false), ldvalue.Bool(true))
 		data := mockld.NewServerSDKDataBuilder().Flag(flag).Segment(segment).Build()
@@ -433,7 +433,7 @@ func doBigSegmentsErrorHandlingTests(t *ldtest.T) {
 		dataSource := NewSDKDataSource(t, data)
 		client := NewSDKClient(t, dataSource)
 
-		result := evaluateFlagDetail(t, client, flag.Key, bigSegmentsUser, ldvalue.Null())
+		result := evaluateFlagDetail(t, client, flag.Key, bigSegmentsContext, ldvalue.Null())
 		m.In(t).Assert(result.Value, m.JSONEqual(false))
 		m.In(t).Assert(result.Reason, m.JSONEqual(
 			ldreason.NewEvalReasonFromReasonWithBigSegmentsStatus(ldreason.NewEvalReasonFallthrough(),
@@ -457,9 +457,9 @@ func doBigSegmentsErrorHandlingTests(t *ldtest.T) {
 		client := NewSDKClient(t, dataSource, bigSegmentStore)
 
 		bigSegmentStore.SetupMemberships(t, map[string]map[string]bool{
-			bigSegmentsExpectedUserHash: {segmentRef0: true}})
+			bigSegmentsExpectedHash: {segmentRef0: true}})
 
-		result := evaluateFlagDetail(t, client, flag.Key, bigSegmentsUser, ldvalue.Null())
+		result := evaluateFlagDetail(t, client, flag.Key, bigSegmentsContext, ldvalue.Null())
 		m.In(t).Assert(result.Value, m.JSONEqual(false))
 		m.In(t).Assert(result.Reason, m.JSONEqual(
 			ldreason.NewEvalReasonFromReasonWithBigSegmentsStatus(ldreason.NewEvalReasonFallthrough(),
@@ -477,17 +477,17 @@ func doBigSegmentsErrorHandlingTests(t *ldtest.T) {
 		bigSegmentStore := NewBigSegmentStore(t, ldreason.BigSegmentsHealthy)
 		client := NewSDKClient(t, dataSource, bigSegmentStore)
 
-		bigSegmentStore.SetupGetUserMembership(func(string) (map[string]bool, error) {
+		bigSegmentStore.SetupGetMembership(func(string) (map[string]bool, error) {
 			return nil, errors.New("THIS IS A DELIBERATE ERROR")
 		})
 
-		result := evaluateFlagDetail(t, client, flag.Key, bigSegmentsUser, ldvalue.Null())
+		result := evaluateFlagDetail(t, client, flag.Key, bigSegmentsContext, ldvalue.Null())
 		m.In(t).Assert(result.Value, m.JSONEqual(false))
 		m.In(t).Assert(result.Reason, m.JSONEqual(
 			ldreason.NewEvalReasonFromReasonWithBigSegmentsStatus(ldreason.NewEvalReasonFallthrough(),
 				ldreason.BigSegmentsStoreError)))
 
-		assert.Equal(t, []string{bigSegmentsExpectedUserHash}, bigSegmentStore.GetMembershipQueries())
+		assert.Equal(t, []string{bigSegmentsExpectedHash}, bigSegmentStore.GetMembershipQueries())
 	})
 }
 

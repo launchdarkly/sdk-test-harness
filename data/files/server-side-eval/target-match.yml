@@ -1,0 +1,211 @@
+---
+name: target match
+
+constants:
+  VALUE_OFF: "off"
+  VALUE_A: "valueA"
+  VALUE_B: "valueB"
+  VALUE_FALLTHROUGH: "fallthrough"
+  VALUE_DEFAULT: "default"
+  IS_MATCH_A:
+    value: "valueA"
+    variationIndex: 2
+    reason: { "kind": "TARGET_MATCH" }
+  IS_MATCH_B:
+    value: "valueB"
+    variationIndex: 3
+    reason: { "kind": "TARGET_MATCH" }
+  IS_FALLTHROUGH:
+    value: "fallthrough"
+    variationIndex: 1
+    reason: { "kind": "FALLTHROUGH" }
+  IS_OFF:
+    value: "off"
+    variationIndex: 0
+    reason: { "kind": "OFF" }
+  EXPECTED_ERROR_RESULT:
+    value: "default"
+    reason: { "kind": "ERROR", "errorKind": "MALFORMED_FLAG" }
+
+sdkData:
+  flags:
+    flag-with-targets:
+      on: true
+      variations: [ <VALUE_OFF>, <VALUE_FALLTHROUGH>, <VALUE_A>, <VALUE_B> ]
+      offVariation: 0
+      fallthrough: { variation: 1 }
+      targets:
+        - { variation: 2, values: [ "key1", "key2" ] }
+        - { variation: 3, values: [ "key3", "key4" ] }
+
+    flag-with-context-targets:
+      on: true
+      variations: [ <VALUE_OFF>, <VALUE_FALLTHROUGH>, <VALUE_A>, <VALUE_B> ]
+      offVariation: 0
+      fallthrough: { variation: 1 }
+      targets:
+        - { variation: 2, values: [ "key1", "key2" ] }
+        - { variation: 3, values: [ "key3", "key4" ] }
+      contextTargets:  # for the "other" kind, the result variations for same keys are deliberately the opposite of "user"
+        - { contextKind: "other", variation: 3, values: [ "key1", "key2" ] }
+        - { contextKind: "other", variation: 2, values: [ "key3", "key4" ] }
+        - { contextKind: "user", variation: 2 }
+        - { contextKind: "user", variation: 3 }
+
+    off-flag-with-targets:
+      on: false
+      variations: [ <VALUE_OFF>, <VALUE_FALLTHROUGH>, <VALUE_A>, <VALUE_B> ]
+      offVariation: 0
+      fallthrough: { variation: 1 }
+      targets:
+        - { variation: 2, values: [ "key1", "key2" ] }
+        - { variation: 3, values: [ "key3", "key4" ] }
+
+    off-flag-with-context-targets:
+      on: false
+      variations: [ <VALUE_OFF>, <VALUE_FALLTHROUGH>, <VALUE_A>, <VALUE_B> ]
+      offVariation: 0
+      fallthrough: { variation: 1 }
+      targets:
+        - { variation: 2, values: [ "key1", "key2" ] }
+        - { variation: 3, values: [ "key3", "key4" ] }
+      contextTargets:
+        - { contextKind: "other", variation: 3, values: [ "key1", "key2" ] }
+        - { contextKind: "other", variation: 2, values: [ "key3", "key4" ] }
+        - { contextKind: "user", variation: 2 }
+        - { contextKind: "user", variation: 3 }
+
+evaluations:
+  - name: user targets only, match user 1
+    flagKey: flag-with-targets
+    context: { "kind": "user", "key": "key1" }
+    default: <VALUE_DEFAULT>
+    expect: <IS_MATCH_A>
+
+  - name: user targets only, match user 2
+    flagKey: flag-with-targets
+    context: { "kind": "user", "key": "key2" }
+    default: <VALUE_DEFAULT>
+    expect: <IS_MATCH_A>
+
+  - name: user targets only, match user 3
+    flagKey: flag-with-targets
+    context: { "kind": "user", "key": "key3" }
+    default: <VALUE_DEFAULT>
+    expect: <IS_MATCH_B>
+
+  - name: user targets only, match user 4
+    flagKey: flag-with-targets
+    context: { "kind": "user", "key": "key4" }
+    default: <VALUE_DEFAULT>
+    expect: <IS_MATCH_B>
+
+  - name: user targets only, non-match user key
+    flagKey: flag-with-targets
+    context: { "kind": "user", "key": "key99" }
+    default: <VALUE_DEFAULT>
+    expect: <IS_FALLTHROUGH>
+
+  - name: user targets only, match user key from multi-kind context
+    flagKey: flag-with-targets
+    context: { "kind": "multi", "user": { "key": "key1" }, "other": { "key": "key4" } }
+    default: <VALUE_DEFAULT>
+    expect: <IS_MATCH_A>
+
+  - name: user targets only, non-match user key from multi-kind context
+    flagKey: flag-with-targets
+    context: { "kind": "multi", "user": { "key": "key99" }, "other": { "key": "key4" } }
+    default: <VALUE_DEFAULT>
+    expect: <IS_FALLTHROUGH>
+
+  - name: context targets, match user 1
+    flagKey: flag-with-context-targets
+    context: { "kind": "user", "key": "key1" }
+    default: <VALUE_DEFAULT>
+    expect: <IS_MATCH_A>
+
+  - name: context targets, match user 2
+    flagKey: flag-with-context-targets
+    context: { "kind": "user", "key": "key2" }
+    default: <VALUE_DEFAULT>
+    expect: <IS_MATCH_A>
+
+  - name: context targets, match user 3
+    flagKey: flag-with-context-targets
+    context: { "kind": "user", "key": "key3" }
+    default: <VALUE_DEFAULT>
+    expect: <IS_MATCH_B>
+
+  - name: context targets, match user 4
+    flagKey: flag-with-context-targets
+    context: { "kind": "user", "key": "key4" }
+    default: <VALUE_DEFAULT>
+    expect: <IS_MATCH_B>
+
+  - name: context targets, match other 1
+    flagKey: flag-with-context-targets
+    context: { "kind": "other", "key": "key1" }
+    default: <VALUE_DEFAULT>
+    expect: <IS_MATCH_B>
+
+  - name: context targets, match other 2
+    flagKey: flag-with-context-targets
+    context: { "kind": "other", "key": "key2" }
+    default: <VALUE_DEFAULT>
+    expect: <IS_MATCH_B>
+
+  - name: context targets, match other 3
+    flagKey: flag-with-context-targets
+    context: { "kind": "other", "key": "key3" }
+    default: <VALUE_DEFAULT>
+    expect: <IS_MATCH_A>
+
+  - name: context targets, match other 4
+    flagKey: flag-with-context-targets
+    context: { "kind": "other", "key": "key4" }
+    default: <VALUE_DEFAULT>
+    expect: <IS_MATCH_A>
+
+  - name: context targets, non-match user key
+    flagKey: flag-with-context-targets
+    context: { "kind": "user", "key": "key99" }
+    default: <VALUE_DEFAULT>
+    expect: <IS_FALLTHROUGH>
+
+  - name: context targets, non-match other key
+    flagKey: flag-with-context-targets
+    context: { "kind": "other", "key": "key99" }
+    default: <VALUE_DEFAULT>
+    expect: <IS_FALLTHROUGH>
+
+  - name: context targets, match user key from multi-kind context
+    flagKey: flag-with-context-targets
+    context: { "kind": "multi", "user": { "key": "key1" }, "other": { "key": "key99" } }
+    default: <VALUE_DEFAULT>
+    expect: <IS_MATCH_A>
+
+  - name: context targets, match other key from multi-kind context
+    flagKey: flag-with-context-targets
+    context: { "kind": "multi", "user": { "key": "key1" }, "other": { "key": "key1" } }
+    # keys are deliberately the same to prove that we are matching the "other" target list first
+    # (because it appears first in contextTargets)
+    default: <VALUE_DEFAULT>
+    expect: <IS_MATCH_B>
+
+  - name: context targets, non-match multi-kind context
+    flagKey: flag-with-context-targets
+    context: { "kind": "multi", "user": { "key": "key98" }, "other": { "key": "key99" } }
+    default: <VALUE_DEFAULT>
+    expect: <IS_FALLTHROUGH>
+
+  - name: user targets ignored when flag is off
+    flagKey: off-flag-with-targets
+    context: { "kind": "user", "key": "key1" }
+    default: <VALUE_DEFAULT>
+    expect: <IS_OFF>
+
+  - name: context targets ignored when flag is off
+    flagKey: off-flag-with-context-targets
+    context: { "kind": "user", "key": "key1" }
+    default: <VALUE_DEFAULT>
+    expect: <IS_OFF>

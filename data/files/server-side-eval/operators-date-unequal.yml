@@ -1,0 +1,83 @@
+---
+name: operators - date - unequal
+
+constants:
+  IS_MATCH:
+    value: true
+    variationIndex: 0
+    reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "ruleid" }
+  IS_NOT_MATCH:
+    value: false
+    variationIndex: 1
+    reason: { kind: "FALLTHROUGH" }
+  base_flag: &base_flag
+    on: true
+    fallthrough: { variation: 1 }
+    variations: [ true, false ]
+  base_rule: &base_rule
+    id: ruleid
+    variation: 0
+
+parameters:
+  # do permutations of each LOWER_VALUE with each HIGHER_VALUE; all of the values in
+  # each group represent the same timestamp
+  -
+    - LOWER_VALUE: "2017-12-06T00:00:00.000-07:00"
+    - LOWER_VALUE: "2017-12-06T07:00:00.000Z"  # same time but in UTC
+    - LOWER_VALUE: 1512543600000  # same time as epoch milliseconds
+  -
+    - HIGHER_VALUE: "2017-12-06T00:01:01.000-07:00"
+    - HIGHER_VALUE: "2017-12-06T07:01:01.000Z"
+    - HIGHER_VALUE: 1512543601000
+
+sdkData:
+  flags:
+    test-after-higher:
+      <<: *base_flag
+      rules:
+        - <<: *base_rule
+          clauses:
+            - { attribute: attrname, op: "after", values: [ "<HIGHER_VALUE>" ] }
+    test-after-lower:
+      <<: *base_flag
+      rules:
+        - <<: *base_rule
+          clauses:
+            - { attribute: attrname, op: "after", values: [ "<LOWER_VALUE>" ] }
+    test-before-higher:
+      <<: *base_flag
+      rules:
+        - <<: *base_rule
+          clauses:
+            - { attribute: attrname, op: "before", values: [ "<HIGHER_VALUE>" ] }
+    test-before-lower:
+      <<: *base_flag
+      rules:
+        - <<: *base_rule
+          clauses:
+            - { attribute: attrname, op: "before", values: [ "<LOWER_VALUE>" ] }
+
+evaluations:
+  - name: "<LOWER_VALUE> after <HIGHER_VALUE> fails"
+    flagKey: test-after-higher
+    context: { key: "user-key", custom: { attrname: "<LOWER_VALUE>" } }
+    default: false
+    expect: <IS_NOT_MATCH>
+
+  - name: "<HIGHER_VALUE> after <LOWER_VALUE> passes"
+    flagKey: test-after-lower
+    context: { key: "user-key", custom: { attrname: "<HIGHER_VALUE>" } }
+    default: false
+    expect: <IS_MATCH>
+
+  - name: "<LOWER_VALUE> before <HIGHER_VALUE> passes"
+    flagKey: test-before-higher
+    context: { key: "user-key", custom: { attrname: "<LOWER_VALUE>" } }
+    default: false
+    expect: <IS_MATCH>
+
+  - name: "<HIGHER_VALUE> before <LOWER_VALUE> fails"
+    flagKey: test-before-lower
+    context: { key: "user-key", custom: { attrname: "<HIGHER_VALUE>" } }
+    default: false
+    expect: <IS_NOT_MATCH>

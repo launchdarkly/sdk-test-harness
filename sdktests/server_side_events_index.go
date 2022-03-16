@@ -12,42 +12,39 @@ import (
 )
 
 func doServerSideIndexEventTests(t *ldtest.T) {
-	// These do not include detailed tests of the properties within the user object, which are in
-	// server_side_events_users.go.
+	// These do not include detailed tests of the properties within the context object, which are in
+	// server_side_events_contexts.go.
 
 	contexts := data.NewContextFactory("doServerSideIndexEventTests")
-	matchIndexEvent := func(user ldcontext.Context) m.Matcher {
+	matchIndexEvent := func(context ldcontext.Context) m.Matcher {
 		return m.AllOf(
 			JSONPropertyKeysCanOnlyBe("kind", "creationDate", "context"),
 			IsIndexEvent(),
 			HasAnyCreationDate(),
-			HasUserObjectWithKey(user.Key()),
+			HasContextObjectWithMatchingKeys(context),
 		)
 	}
 
 	t.Run("basic properties", func(t *ldtest.T) {
+		// Details of the JSON representation of the context are tested in server_side_events_contexts.go.
 		dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
 		events := NewSDKEventSink(t)
 		client := NewSDKClient(t, dataSource, events)
 
-		for _, contextCategory := range data.NewContextFactoriesForAnonymousAndNonAnonymous("doServerSideIndexEventTests") {
-			t.Run(contextCategory.Description(), func(t *ldtest.T) {
-				context := contextCategory.NextUniqueContext()
+		context := contexts.NextUniqueContext()
 
-				basicEvaluateFlag(t, client, "arbitrary-flag-key", context, ldvalue.Null())
+		basicEvaluateFlag(t, client, "arbitrary-flag-key", context, ldvalue.Null())
 
-				client.FlushEvents(t)
-				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+		client.FlushEvents(t)
+		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
-				m.In(t).Assert(payload, m.ItemsInAnyOrder(
-					matchIndexEvent(context),
-					IsSummaryEvent(),
-				))
-			})
-		}
+		m.In(t).Assert(payload, m.ItemsInAnyOrder(
+			matchIndexEvent(context),
+			IsSummaryEvent(),
+		))
 	})
 
-	t.Run("only one index event per user", func(t *ldtest.T) {
+	t.Run("only one index event per evaluation context", func(t *ldtest.T) {
 		dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
 
 		t.Run("from feature event", func(t *ldtest.T) {

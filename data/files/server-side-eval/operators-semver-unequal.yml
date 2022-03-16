@@ -1,0 +1,132 @@
+---
+name: operators - semver - unequal
+
+constants:
+  IS_MATCH:
+    value: true
+    variationIndex: 0
+    reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "ruleid" }
+  IS_NOT_MATCH:
+    value: false
+    variationIndex: 1
+    reason: { kind: "FALLTHROUGH" }
+  base_flag: &base_flag
+    on: true
+    fallthrough: { variation: 1 }
+    variations: [ true, false ]
+  base_rule: &base_rule
+    id: ruleid
+    variation: 0
+
+parameters:
+  - LOWER_VALUE: "1.0.0"
+    HIGHER_VALUE: "2.0.0"
+
+  - LOWER_VALUE: "1.0"
+    HIGHER_VALUE: "2.0"
+  
+  - LOWER_VALUE: "1"
+    HIGHER_VALUE: "2"
+
+  - LOWER_VALUE: "2.0.0"
+    HIGHER_VALUE: "2.1.0"
+
+  - LOWER_VALUE: "2.0"
+    HIGHER_VALUE: "2.1"
+
+  - LOWER_VALUE: "2.0.0"
+    HIGHER_VALUE: "2.0.1"
+
+  - LOWER_VALUE: "2.0.0-rc"
+    HIGHER_VALUE: "2.0.0"  # released version > prerelease version
+
+  - LOWER_VALUE: "2.0.0-rc"
+    HIGHER_VALUE: "2.0.0-rc.1"
+
+  - LOWER_VALUE: "2.0.0-rc.2.green"
+    HIGHER_VALUE: "2.0.0-rc.10.green"  # numeric comparison: 10 > 2
+    
+  - LOWER_VALUE: "2.0.0-rc.2.green"
+    HIGHER_VALUE: "2.0.0-rc.2.red"  # string comparison: red > green
+
+  - LOWER_VALUE: "2.0.0-rc.2.green"
+    HIGHER_VALUE: "2.0.0-rc.2.green.1"  # adding more version components makes it greater
+    
+  - LOWER_VALUE: "2.0.0-rc.2.green"
+    HIGHER_VALUE: "2.0.1-rc.2.green"
+
+sdkData:
+  flags:
+    test-semVerEqualHigher:
+      <<: *base_flag
+      rules:
+        - <<: *base_rule
+          clauses:
+            - { attribute: attrname, op: "semVerEqual", values: [ "<HIGHER_VALUE>" ] }
+    test-semVerEqualLower:
+      <<: *base_flag
+      rules:
+        - <<: *base_rule
+          clauses:
+            - { attribute: attrname, op: "semVerEqual", values: [ "<LOWER_VALUE>" ] }
+    test-semVerLessThanHigher:
+      <<: *base_flag
+      rules:
+        - <<: *base_rule
+          clauses:
+            - { attribute: attrname, op: "semVerLessThan", values: [ "<HIGHER_VALUE>" ] }
+    test-semVerLessThanLower:
+      <<: *base_flag
+      rules:
+        - <<: *base_rule
+          clauses:
+            - { attribute: attrname, op: "semVerLessThan", values: [ "<LOWER_VALUE>" ] }
+    test-semVerGreaterThanLower:
+      <<: *base_flag
+      rules:
+        - <<: *base_rule
+          clauses:
+            - { attribute: attrname, op: "semVerGreaterThan", values: [ "<LOWER_VALUE>" ] }
+    test-semVerGreaterThanHigher:
+      <<: *base_flag
+      rules:
+        - <<: *base_rule
+          clauses:
+            - { attribute: attrname, op: "semVerGreaterThan", values: [ "<HIGHER_VALUE>" ] }
+
+evaluations:
+  - name: "<LOWER_VALUE> semVerEqual <HIGHER_VALUE> fails"
+    flagKey: test-semVerEqualHigher
+    context: { key: "user-key", custom: { attrname: "<LOWER_VALUE>" } }
+    default: false
+    expect: <IS_NOT_MATCH>
+
+  - name: "<HIGHER_VALUE> semVerEqual <LOWER_VALUE> fails"
+    flagKey: test-semVerEqualLower
+    context: { key: "user-key", custom: { attrname: "<HIGHER_VALUE>" } }
+    default: false
+    expect: <IS_NOT_MATCH>
+
+  - name: "<LOWER_VALUE> semVerLessThan <HIGHER_VALUE> passes"
+    flagKey: test-semVerLessThanHigher
+    context: { key: "user-key", custom: { attrname: "<LOWER_VALUE>" } }
+    default: false
+    expect: <IS_MATCH>
+
+  - name: "<HIGHER_VALUE> semVerLessThan <LOWER_VALUE> fails"
+    flagKey: test-semVerLessThanLower
+    context: { key: "user-key", custom: { attrname: "<HIGHER_VALUE>" } }
+    default: false
+    expect: <IS_NOT_MATCH>
+
+  - name: "<HIGHER_VALUE> semVerGreaterThan <LOWER_VALUE> passes"
+    flagKey: test-semVerGreaterThanLower
+    context: { key: "user-key", custom: { attrname: "<HIGHER_VALUE>" } }
+    default: false
+    expect: <IS_MATCH>
+
+  - name: "<LOWER_VALUE> semVerGreaterThan <HIGHER_VALUE> fails"
+    flagKey: test-semVerGreaterThanHigher
+    context: { key: "user-key", custom: { attrname: "<LOWER_VALUE>" } }
+    default: false
+    expect: <IS_NOT_MATCH>

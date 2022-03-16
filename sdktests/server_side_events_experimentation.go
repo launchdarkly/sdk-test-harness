@@ -8,7 +8,6 @@ import (
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldreason"
 	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
 	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldbuilders"
 	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldmodel"
@@ -34,26 +33,26 @@ func doServerSideExperimentationEventTests(t *ldtest.T) {
 			},
 		},
 	}
-	user := ldcontext.New("user-key")
+	context := ldcontext.New("user-key")
 
 	scenarios := []struct {
 		name           string
 		flagConfig     func(*ldbuilders.FlagBuilder)
-		expectedReason ldreason.EvaluationReason
+		expectedReason string
 	}{
 		{
 			name: "experiment in rule",
 			flagConfig: func(f *ldbuilders.FlagBuilder) {
 				f.AddRule(ldbuilders.NewRuleBuilder().ID("rule1").VariationOrRollout(rollout))
 			},
-			expectedReason: ldreason.NewEvalReasonRuleMatchExperiment(0, "rule1", true),
+			expectedReason: `{"kind": "RULE_MATCH", "ruleIndex": 0, "ruleId": "rule1", "inExperiment": true}`,
 		},
 		{
 			name: "experiment in fallthrough",
 			flagConfig: func(f *ldbuilders.FlagBuilder) {
 				f.Fallthrough(rollout)
 			},
-			expectedReason: ldreason.NewEvalReasonFallthroughExperiment(true),
+			expectedReason: `{"kind": "FALLTHROUGH", "inExperiment": true}`,
 		},
 	}
 	for _, scenario := range scenarios {
@@ -68,7 +67,7 @@ func doServerSideExperimentationEventTests(t *ldtest.T) {
 			eventSink := NewSDKEventSink(t)
 			client := NewSDKClient(t, dataSource, eventSink)
 
-			result := basicEvaluateFlag(t, client, flag.Key, user, defaultValue)
+			result := basicEvaluateFlag(t, client, flag.Key, context, defaultValue)
 			m.In(t).Assert(result, m.JSONEqual(expectedValue))
 
 			client.FlushEvents(t)
@@ -76,18 +75,17 @@ func doServerSideExperimentationEventTests(t *ldtest.T) {
 
 			matchFeatureEvent := IsValidFeatureEventWithConditions(
 				m.JSONProperty("key").Should(m.Equal(flag.Key)),
-				HasContextKeys(user),
-				HasNoUserObject(),
+				HasContextKeys(context),
 				m.JSONProperty("version").Should(m.Equal(flag.Version)),
 				m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),
 				m.JSONProperty("variation").Should(m.Equal(expectedVariation)),
-				m.JSONProperty("reason").Should(m.JSONEqual(scenario.expectedReason)),
+				m.JSONProperty("reason").Should(m.JSONStrEqual(scenario.expectedReason)),
 				m.JSONProperty("default").Should(m.JSONEqual(defaultValue)),
 				JSONPropertyNullOrAbsent("prereqOf"),
 			)
 
 			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				IsIndexEventForUserKey(user.Key()),
+				IsIndexEventForContext(context),
 				matchFeatureEvent,
 				IsSummaryEvent(),
 			))

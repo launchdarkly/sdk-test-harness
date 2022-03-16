@@ -1,0 +1,156 @@
+---
+name: rule match (<TYPE_NAME>)
+
+constants:
+  VALUE_OFF: "off"
+  VALUE_A: "valueA"
+  VALUE_B: "valueB"
+  VALUE_FALLTHROUGH: "fallthrough"
+  VALUE_DEFAULT: "default"
+  IS_MATCH_RULE1:
+    value: "valueA"
+    variationIndex: 2
+    reason: { "kind": "RULE_MATCH", "ruleIndex": 0, "ruleId": "rule1" }
+  IS_MATCH_RULE2:
+    value: "valueB"
+    variationIndex: 3
+    reason: { "kind": "RULE_MATCH", "ruleIndex": 1, "ruleId": "rule2" }
+  IS_FALLTHROUGH:
+    value: "fallthrough"
+    variationIndex: 1
+    reason: { "kind": "FALLTHROUGH" }
+  IS_OFF:
+    value: "off"
+    variationIndex: 0
+    reason: { "kind": "OFF" }
+  EXPECTED_ERROR_RESULT:
+    value: "default"
+    reason: { "kind": "ERROR", "errorKind": "MALFORMED_FLAG" }
+
+sdkData:
+  flags:
+    flag-with-rules:
+      on: true
+      variations: [ <VALUE_OFF>, <VALUE_FALLTHROUGH>, <VALUE_A>, <VALUE_B> ]
+      offVariation: 0
+      fallthrough: { variation: 1 }
+      rules:
+        - id: rule1
+          variation: 2
+          clauses:
+            - { "attribute": "rule1Clause1ShouldMatch", "op": "in", "values": [ true ] }
+            - { "attribute": "rule1Clause2ShouldMatch", "op": "in", "values": [ true ] }
+        - id: rule2
+          variation: 3
+          clauses:
+            - { "attribute": "rule2ShouldMatch", "op": "in", "values": [ true ] }
+
+    off-flag-with-rule:
+      on: false
+      variations: [ <VALUE_OFF>, <VALUE_FALLTHROUGH>, <VALUE_A>, <VALUE_B> ]
+      offVariation: 0
+      fallthrough: { variation: 1 }
+      rules:
+        - id: rule1
+          variation: 2
+          clauses:
+            - { "attribute": "rule1ShouldMatch", "op": "in", "values": [ true ] }
+
+    flag-with-unknown-operator-in-first-rule:
+      on: true
+      variations: [ <VALUE_OFF>, <VALUE_FALLTHROUGH>, <VALUE_A>, <VALUE_B> ]
+      offVariation: 0
+      fallthrough: { variation: 1 }
+      rules:
+        - id: rule1
+          variation: 2
+          clauses:
+            - { "attribute": "key", "op": "unsupportedOperator", "values": [ true ] }
+        - id: rule2
+          variation: 3
+          clauses:
+            - { "attribute": "rule2ShouldMatch", "op": "in", "values": [ true ] }
+
+    flag-with-negated-clause:
+      on: true
+      variations: [ <VALUE_OFF>, <VALUE_FALLTHROUGH>, <VALUE_A>, <VALUE_B> ]
+      offVariation: 0
+      fallthrough: { variation: 1 }
+      rules:
+        - id: rule1
+          variation: 2
+          clauses:
+            - { "attribute": "attrname", "op": "in", "values": [ "undesirable-key" ], negate: true }
+
+evaluations:
+  - name: all clauses of rule1 match
+    flagKey: flag-with-rules
+    context:
+      key: user-key
+      custom:
+        rule1Clause1ShouldMatch: true
+        rule1Clause2ShouldMatch: true
+    default: <VALUE_DEFAULT>
+    expect: <IS_MATCH_RULE1>
+
+  - name: rule2 matches, after one clause of rule1 fails
+    flagKey: flag-with-rules
+    context:
+      key: user-key
+      custom:
+        rule1Clause1ShouldMatch: true
+        rule1Clause2ShouldMatch: false
+        rule2ShouldMatch: true
+    default: <VALUE_DEFAULT>
+    expect: <IS_MATCH_RULE2>
+
+  - name: unknown operator is treated as a non-match, can still match another rule
+    flagKey: flag-with-unknown-operator-in-first-rule
+    context:
+      key: user-key
+      custom:
+        rule2ShouldMatch: true
+    default: <VALUE_DEFAULT>
+    expect: <IS_MATCH_RULE2>
+
+  - name: no rules match, fallthrough
+    flagKey: flag-with-rules
+    context: { "key": "user-key" }
+    default: <VALUE_DEFAULT>
+    expect: <IS_FALLTHROUGH>
+
+  - name: rules are ignored when flag is off
+    flagKey: off-flag-with-rule
+    context:
+      key: user-key
+      custom:
+        rule1ShouldMatch: true
+    default: <VALUE_DEFAULT>
+    expect: <IS_OFF>
+
+  - name: negated clause, non-match becomes match
+    flagKey: flag-with-negated-clause
+    context:
+      key: user-key
+      custom:
+        attrname: undesirable-key
+    default: <VALUE_DEFAULT>
+    expect: <IS_FALLTHROUGH>
+
+  - name: negated clause, match becomes non-match
+    flagKey: flag-with-negated-clause
+    context:
+      key: user-key
+      custom:
+        attrname: any-other-value
+    default: <VALUE_DEFAULT>
+    expect: <IS_MATCH_RULE1>
+
+  - name: negated clause, null user attribute is always non-match regardless of negation
+    flagKey: flag-with-negated-clause
+    context:
+      key: user-key
+      custom:
+        attrname: null
+    default: <VALUE_DEFAULT>
+    expect: <IS_FALLTHROUGH>

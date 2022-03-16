@@ -116,7 +116,7 @@ func runParameterizedTestEval(t *ldtest.T, suite testmodel.EvalTestSuite, test t
 func RunParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
 	defaultValues := data.MakeValueFactoryBySDKValueType()
 	flagKey := "some-flag"
-	user := ldcontext.New("user-key")
+	context := ldcontext.New("user-key")
 	expectedReason := ldreason.NewEvalReasonError(ldreason.EvalErrorClientNotReady)
 
 	dataSource := NewSDKDataSource(t, mockld.BlockingUnavailableSDKData(mockld.ServerSideSDK))
@@ -131,7 +131,7 @@ func RunParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
 			t.Run("evaluate flag without detail", func(t *ldtest.T) {
 				result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 					FlagKey:      flagKey,
-					Context:      user,
+					Context:      context,
 					ValueType:    valueType,
 					DefaultValue: defaultValue,
 				})
@@ -141,7 +141,7 @@ func RunParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
 			t.Run("evaluate flag with detail", func(t *ldtest.T) {
 				result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 					FlagKey:      flagKey,
-					Context:      user,
+					Context:      context,
 					ValueType:    valueType,
 					DefaultValue: defaultValue,
 					Detail:       true,

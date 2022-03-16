@@ -36,7 +36,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 	flagV1, flagV2 := makeFlagVersionsWithValues(flagKey, 1, 2, expectedValueV1, expectedValueV2)
 	dataV1 := mockld.NewServerSDKDataBuilder().Flag(flagV1).Build()
 	dataV2 := mockld.NewServerSDKDataBuilder().Flag(flagV2).Build()
-	user := ldcontext.New("user-key")
+	context := ldcontext.New("user-key")
 
 	t.Run("retry after stream is closed", func(t *ldtest.T) {
 		stream1 := NewSDKDataSourceWithoutEndpoint(t, dataV1)
@@ -49,7 +49,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		t.Defer(streamEndpoint.Close)
 
 		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: user})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: context})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get the request info for the first request
@@ -62,7 +62,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		expectRequest(t, streamEndpoint, time.Millisecond*100)
 
 		// Check that the client got the new data from the second stream
-		pollUntilFlagValueUpdated(t, client, flagKey, user, expectedValueV1, expectedValueV2, ldvalue.Null())
+		pollUntilFlagValueUpdated(t, client, flagKey, context, expectedValueV1, expectedValueV2, ldvalue.Null())
 	})
 
 	t.Run("initial retry delay is applied", func(t *ldtest.T) {
@@ -78,7 +78,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 			}),
 			stream,
 		)
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: user})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: context})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get the request info for the first request
@@ -112,7 +112,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		t.Defer(streamEndpoint.Close)
 
 		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: user})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: context})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		for i := 0; i < 3; i++ { // expect three requests
@@ -147,7 +147,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		t.Defer(streamEndpoint.Close)
 
 		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: user})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: context})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get the request info for the first request
@@ -166,7 +166,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		_ = expectRequest(t, streamEndpoint, time.Millisecond*100)
 
 		// check that the client got the new data from the second stream
-		pollUntilFlagValueUpdated(t, client, flagKey, user, expectedValueV1, expectedValueV2, ldvalue.Null())
+		pollUntilFlagValueUpdated(t, client, flagKey, context, expectedValueV1, expectedValueV2, ldvalue.Null())
 	}
 
 	t.Run("retry after IO error on reconnect", func(t *ldtest.T) {
@@ -215,7 +215,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 				t.Defer(streamEndpoint.Close)
 
 				client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
-				result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: user})
+				result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: context})
 				m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 				// get the request info for the first request

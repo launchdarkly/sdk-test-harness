@@ -79,7 +79,7 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 						client.FlushEvents(t)
 						payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 						m.In(t).Assert(payload, m.ItemsInAnyOrder(
-							IsIndexEventForUserKey(context.Key()),
+							IsIndexEventForContext(context),
 							IsSummaryEvent(),
 						))
 					})
@@ -122,7 +122,6 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 				matchFeatureEvent := IsValidFeatureEventWithConditions(
 					m.JSONProperty("key").Should(m.Equal(flag.Key)),
 					HasContextKeys(context),
-					HasNoUserObject(),
 					m.JSONProperty("version").Should(m.Equal(flag.Version)),
 					m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),
 					m.JSONOptProperty("variation").Should(m.JSONEqual(expectedVariation)),
@@ -133,7 +132,7 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 				m.In(t).Assert(payload, m.ItemsInAnyOrder(
-					IsIndexEventForUserKey(context.Key()),
+					IsIndexEventForContext(context),
 					matchFeatureEvent,
 					EventHasKind("summary"),
 				))
@@ -142,7 +141,7 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 	}
 
 	t.Run("full feature event for tracked flag", func(t *ldtest.T) {
-		contextCategories := data.NewContextFactoriesForAnonymousAndNonAnonymous("doServerSideFeatureEventTests")
+		contextCategories := data.NewContextFactoriesForSingleAndMultiKind("doServerSideFeatureEventTests")
 		for _, withReason := range []bool{false, true} {
 			t.Run(selectString(withReason, "with reason", "without reason"), func(t *ldtest.T) {
 				for _, contextCategory := range contextCategories {
@@ -212,11 +211,11 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 			t.Run(selectString(withReasons, "with reasons", "without reasons"), func(t *ldtest.T) {
 				for _, valueType := range getValueTypesToTest(t) {
 					t.Run(testDescFromType(valueType), func(t *ldtest.T) {
-						user := contexts.NextUniqueContext()
+						context := contexts.NextUniqueContext()
 						flag := flags.ReuseFlagForValueType(valueType)
 						result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 							FlagKey:      flag.Key,
-							Context:      user,
+							Context:      context,
 							ValueType:    valueType,
 							DefaultValue: defaultValues(valueType),
 							Detail:       withReasons,
@@ -233,7 +232,7 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 								IsDebugEvent(),
 								HasAnyCreationDate(),
 								m.JSONProperty("key").Should(m.Equal(flag.Key)),
-								HasUserObjectWithKey(user.Key()),
+								HasContextObjectWithMatchingKeys(context),
 								m.JSONProperty("version").Should(m.Equal(flag.Version)),
 								m.JSONProperty("value").Should(m.JSONEqual(result.Value)),
 								m.JSONProperty("variation").Should(m.Equal(0)),
@@ -241,13 +240,13 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 								m.JSONProperty("default").Should(m.JSONEqual(defaultValues(valueType))),
 							)
 							m.In(t).Assert(payload, m.ItemsInAnyOrder(
-								IsIndexEventForUserKey(user.Key()),
+								IsIndexEventForContext(context),
 								matchDebugEvent,
 								EventHasKind("summary"),
 							))
 						} else {
 							m.In(t).Assert(payload, m.ItemsInAnyOrder(
-								IsIndexEventForUserKey(user.Key()),
+								IsIndexEventForContext(context),
 								EventHasKind("summary"),
 							))
 						}
@@ -347,11 +346,10 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
 			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				IsIndexEventForUserKey(context.Key()),
+				IsIndexEventForContext(context),
 				IsValidFeatureEventWithConditions(
 					m.JSONProperty("key").Should(m.Equal(flag1.Key)),
 					HasContextKeys(context),
-					HasNoUserObject(),
 					m.JSONProperty("version").Should(m.Equal(flag1.Version)),
 					m.JSONProperty("value").Should(m.Equal("value1")),
 					m.JSONProperty("variation").Should(m.Equal(1)),
@@ -361,7 +359,6 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 				IsValidFeatureEventWithConditions(
 					m.JSONProperty("key").Should(m.Equal(flag2.Key)),
 					HasContextKeys(context),
-					HasNoUserObject(),
 					m.JSONProperty("version").Should(m.Equal(flag2.Version)),
 					m.JSONProperty("value").Should(m.Equal("ok2")),
 					m.JSONProperty("variation").Should(m.Equal(2)),
@@ -372,7 +369,6 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 				IsValidFeatureEventWithConditions(
 					m.JSONProperty("key").Should(m.Equal(flag3.Key)),
 					HasContextKeys(context),
-					HasNoUserObject(),
 					m.JSONProperty("version").Should(m.Equal(flag3.Version)),
 					m.JSONProperty("value").Should(m.Equal("ok3")),
 					m.JSONProperty("variation").Should(m.Equal(3)),
