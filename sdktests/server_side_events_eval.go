@@ -3,6 +3,7 @@ package sdktests
 import (
 	"time"
 
+	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
@@ -20,16 +21,16 @@ import (
 )
 
 func doServerSideFeatureEventTests(t *ldtest.T) {
-	flagValues := FlagValueByTypeFactory()
-	defaultValues := DefaultValueByTypeFactory()
-	users := NewUserFactory("doServerSideFeatureEventTests")
+	flagValues := data.FlagValueByTypeFactory()
+	defaultValues := data.DefaultValueByTypeFactory()
+	contexts := data.NewContextFactory("doServerSideFeatureEventTests")
 	expectedReason := ldreason.NewEvalReasonFallthrough()
-	untrackedFlags := FlagFactoryForValueTypes{
+	untrackedFlags := data.FlagFactoryForValueTypes{
 		KeyPrefix:    "untracked-flag-",
 		ValueFactory: flagValues,
 		Reason:       expectedReason,
 	}
-	trackedFlags := FlagFactoryForValueTypes{
+	trackedFlags := data.FlagFactoryForValueTypes{
 		KeyPrefix:      "tracked-flag-",
 		ValueFactory:   flagValues,
 		BuilderActions: func(b *ldbuilders.FlagBuilder) { b.TrackEvents(true) },
@@ -56,7 +57,7 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 				for _, valueType := range getValueTypesToTest(t) {
 					t.Run(testDescFromType(valueType), func(t *ldtest.T) {
 						flag := untrackedFlags.ForType(valueType)
-						context := users.NextUniqueUser()
+						context := contexts.NextUniqueContext()
 
 						resp := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 							FlagKey:      flag.Key,
@@ -79,7 +80,7 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 						client.FlushEvents(t)
 						payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 						m.In(t).Assert(payload, m.ItemsInAnyOrder(
-							IsIndexEventForUserKey(context.Key()),
+							IsIndexEventForContext(context),
 							IsSummaryEvent(),
 						))
 					})
@@ -88,7 +89,7 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 		}
 	})
 
-	doFeatureEventTest := func(t *ldtest.T, withReason, isAnonymousUser, isBadFlag bool) {
+	doFeatureEventTest := func(t *ldtest.T, contexts *data.ContextFactory, withReason, isBadFlag bool) {
 		for _, valueType := range getValueTypesToTest(t) {
 			t.Run(testDescFromType(valueType), func(t *ldtest.T) {
 				flag := trackedFlags.ForType(valueType)
@@ -99,7 +100,7 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 					expectedValue = defaultValues(valueType)
 					expectedVariation = ldvalue.OptionalInt{}
 				}
-				context := users.NextUniqueUserMaybeAnonymous(isAnonymousUser)
+				context := contexts.NextUniqueContext()
 				resp := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 					FlagKey:      flag.Key,
 					Context:      context,
@@ -122,7 +123,6 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 				matchFeatureEvent := IsValidFeatureEventWithConditions(
 					m.JSONProperty("key").Should(m.Equal(flag.Key)),
 					HasContextKeys(context),
-					HasNoUserObject(),
 					m.JSONProperty("version").Should(m.Equal(flag.Version)),
 					m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),
 					m.JSONOptProperty("variation").Should(m.JSONEqual(expectedVariation)),
@@ -133,7 +133,7 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 				m.In(t).Assert(payload, m.ItemsInAnyOrder(
-					IsIndexEventForUserKey(context.Key()),
+					IsIndexEventForContext(context),
 					matchFeatureEvent,
 					EventHasKind("summary"),
 				))
@@ -144,11 +144,11 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 	t.Run("full feature event for tracked flag", func(t *ldtest.T) {
 		for _, withReason := range []bool{false, true} {
 			t.Run(selectString(withReason, "with reason", "without reason"), func(t *ldtest.T) {
-				for _, isAnonymousUser := range []bool{false, true} {
-					t.Run(selectString(isAnonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
+				for _, contexts := range data.NewContextFactoriesForSingleAndMultiKind("doServerSideFeatureEventTests") {
+					t.Run(contexts.Description(), func(t *ldtest.T) {
 						for _, isBadFlag := range []bool{false, true} {
 							t.Run(selectString(isBadFlag, "malformed flag", "valid flag"), func(t *ldtest.T) {
-								doFeatureEventTest(t, withReason, isAnonymousUser, isBadFlag)
+								doFeatureEventTest(t, contexts, withReason, isBadFlag)
 							})
 						}
 					})
@@ -163,9 +163,9 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 	// and the host that's running the test service are out of sync by at least an hour. However,
 	// in normal usage those are the same host.
 
-	flagValues := FlagValueByTypeFactory()
-	defaultValues := DefaultValueByTypeFactory()
-	users := NewUserFactory("doServerSideDebugEventTests")
+	flagValues := data.FlagValueByTypeFactory()
+	defaultValues := data.DefaultValueByTypeFactory()
+	contexts := data.NewContextFactory("doServerSideDebugEventTests")
 	expectedReason := ldreason.NewEvalReasonFallthrough()
 
 	doDebugTest := func(
@@ -174,7 +174,7 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 		flagDebugUntil time.Time,
 		lastKnownTimeFromLD time.Time,
 	) {
-		flags := FlagFactoryForValueTypes{
+		flags := data.FlagFactoryForValueTypes{
 			KeyPrefix:    "flag",
 			ValueFactory: flagValues,
 			Reason:       expectedReason,
@@ -199,7 +199,7 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 			// In this scenario, we want the SDK to be aware of the LD host's clock because it
 			// has seen a Date header in an event post response. Send an unimportant event so
 			// the SDK will see a response before we do the rest of the test.
-			client.SendIdentifyEvent(t, users.NextUniqueUser())
+			client.SendIdentifyEvent(t, contexts.NextUniqueContext())
 			client.FlushEvents(t)
 			_ = events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
@@ -213,11 +213,11 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 			t.Run(selectString(withReasons, "with reasons", "without reasons"), func(t *ldtest.T) {
 				for _, valueType := range getValueTypesToTest(t) {
 					t.Run(testDescFromType(valueType), func(t *ldtest.T) {
-						user := users.NextUniqueUser()
+						context := contexts.NextUniqueContext()
 						flag := flags.ForType(valueType)
 						result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 							FlagKey:      flag.Key,
-							Context:      user,
+							Context:      context,
 							ValueType:    valueType,
 							DefaultValue: defaultValues(valueType),
 							Detail:       withReasons,
@@ -234,7 +234,7 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 								IsDebugEvent(),
 								HasAnyCreationDate(),
 								m.JSONProperty("key").Should(m.Equal(flag.Key)),
-								HasUserObjectWithKey(user.Key()),
+								HasContextObjectWithMatchingKeys(context),
 								m.JSONProperty("version").Should(m.Equal(flag.Version)),
 								m.JSONProperty("value").Should(m.JSONEqual(result.Value)),
 								m.JSONProperty("variation").Should(m.Equal(0)),
@@ -242,13 +242,13 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 								m.JSONProperty("default").Should(m.JSONEqual(defaultValues(valueType))),
 							)
 							m.In(t).Assert(payload, m.ItemsInAnyOrder(
-								IsIndexEventForUserKey(user.Key()),
+								IsIndexEventForContext(context),
 								matchDebugEvent,
 								EventHasKind("summary"),
 							))
 						} else {
 							m.In(t).Assert(payload, m.ItemsInAnyOrder(
-								IsIndexEventForUserKey(user.Key()),
+								IsIndexEventForContext(context),
 								EventHasKind("summary"),
 							))
 						}
@@ -348,11 +348,10 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
 			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				IsIndexEventForUserKey(context.Key()),
+				IsIndexEventForContext(context),
 				IsValidFeatureEventWithConditions(
 					m.JSONProperty("key").Should(m.Equal(flag1.Key)),
 					HasContextKeys(context),
-					HasNoUserObject(),
 					m.JSONProperty("version").Should(m.Equal(flag1.Version)),
 					m.JSONProperty("value").Should(m.Equal("value1")),
 					m.JSONProperty("variation").Should(m.Equal(1)),
@@ -362,7 +361,6 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 				IsValidFeatureEventWithConditions(
 					m.JSONProperty("key").Should(m.Equal(flag2.Key)),
 					HasContextKeys(context),
-					HasNoUserObject(),
 					m.JSONProperty("version").Should(m.Equal(flag2.Version)),
 					m.JSONProperty("value").Should(m.Equal("ok2")),
 					m.JSONProperty("variation").Should(m.Equal(2)),
@@ -373,7 +371,6 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 				IsValidFeatureEventWithConditions(
 					m.JSONProperty("key").Should(m.Equal(flag3.Key)),
 					HasContextKeys(context),
-					HasNoUserObject(),
 					m.JSONProperty("version").Should(m.Equal(flag3.Version)),
 					m.JSONProperty("value").Should(m.Equal("ok3")),
 					m.JSONProperty("variation").Should(m.Equal(3)),

@@ -1,3 +1,3 @@
 // Package testmodel contains schema types for data files used in parameterized tests. The
-// actual data files are in subdirectories of testdata/data-files.
+// actual data files are in subdirectories of data/files.
 package testmodel

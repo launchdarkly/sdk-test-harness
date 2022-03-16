@@ -28,7 +28,7 @@ func NewMockBigSegmentStoreService(
 	m := &MockBigSegmentStoreService{service: service, getMetadataFn: getMetadata,
 		getContextMembershipFn: getContextMembership}
 	service.addPath(cf.BigSegmentStorePathGetMetadata, m.doGetMetadata)
-	service.addPath(cf.BigSegmentStorePathGetMembership, m.doGetUserMembership)
+	service.addPath(cf.BigSegmentStorePathGetMembership, m.doGetMembership)
 	return m
 }
 
@@ -50,7 +50,7 @@ func (m *MockBigSegmentStoreService) doGetMetadata(*json.Decoder) (interface{}, 
 	return cf.BigSegmentStoreGetMetadataResponse{LastUpToDate: lastUpToDate}, nil
 }
 
-func (m *MockBigSegmentStoreService) doGetUserMembership(readParams *json.Decoder) (interface{}, error) {
+func (m *MockBigSegmentStoreService) doGetMembership(readParams *json.Decoder) (interface{}, error) {
 	var params cf.BigSegmentStoreGetMembershipParams
 	if err := readParams.Decode(&params); err != nil {
 		return nil, err

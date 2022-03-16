@@ -1,4 +1,4 @@
-package testdata
+package data
 
 import (
 	"testing"
@@ -7,10 +7,10 @@ import (
 )
 
 func TestFileEmbedding(t *testing.T) {
-	_, err := dataFilesRoot.ReadFile("data-files/README.md")
+	_, err := dataFilesRoot.ReadFile("files/README.md")
 	assert.NoError(t, err)
 
-	files, err := dataFilesRoot.ReadDir("data-files/server-side-eval")
+	files, err := dataFilesRoot.ReadDir("files/server-side-eval")
 	assert.NoError(t, err)
 	assert.NotEqual(t, 0, len(files))
 }

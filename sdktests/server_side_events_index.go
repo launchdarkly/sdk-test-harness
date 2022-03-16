@@ -1,6 +1,7 @@
 package sdktests
 
 import (
+	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
@@ -11,64 +12,61 @@ import (
 )
 
 func doServerSideIndexEventTests(t *ldtest.T) {
-	// These do not include detailed tests of the properties within the user object, which are in
-	// server_side_events_users.go.
+	// These do not include detailed tests of the properties within the context object, which are in
+	// server_side_events_contexts.go.
 
-	users := NewUserFactory("doServerSideIndexEventTests")
-	matchIndexEvent := func(user ldcontext.Context) m.Matcher {
+	contexts := data.NewContextFactory("doServerSideIndexEventTests")
+	matchIndexEvent := func(context ldcontext.Context) m.Matcher {
 		return m.AllOf(
 			JSONPropertyKeysCanOnlyBe("kind", "creationDate", "context"),
 			IsIndexEvent(),
 			HasAnyCreationDate(),
-			HasUserObjectWithKey(user.Key()),
+			HasContextObjectWithMatchingKeys(context),
 		)
 	}
 
 	t.Run("basic properties", func(t *ldtest.T) {
+		// Details of the JSON representation of the context are tested in server_side_events_contexts.go.
 		dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
 		events := NewSDKEventSink(t)
 		client := NewSDKClient(t, dataSource, events)
 
-		for _, isAnonymousUser := range []bool{false, true} {
-			t.Run(selectString(isAnonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
-				user := users.NextUniqueUserMaybeAnonymous(isAnonymousUser)
+		context := contexts.NextUniqueContext()
 
-				basicEvaluateFlag(t, client, "arbitrary-flag-key", user, ldvalue.Null())
+		basicEvaluateFlag(t, client, "arbitrary-flag-key", context, ldvalue.Null())
 
-				client.FlushEvents(t)
-				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+		client.FlushEvents(t)
+		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
-				m.In(t).Assert(payload, m.ItemsInAnyOrder(
-					matchIndexEvent(user),
-					IsSummaryEvent(),
-				))
-			})
-		}
+		m.In(t).Assert(payload, m.ItemsInAnyOrder(
+			matchIndexEvent(context),
+			IsSummaryEvent(),
+		))
 	})
 
-	t.Run("only one index event per user", func(t *ldtest.T) {
+	t.Run("only one index event per evaluation context", func(t *ldtest.T) {
 		dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
 
 		t.Run("from feature event", func(t *ldtest.T) {
 			events := NewSDKEventSink(t)
 			client := NewSDKClient(t, dataSource, events)
 
-			user1 := users.NextUniqueUser()
-			user2 := users.NextUniqueUser()
+			context1 := contexts.NextUniqueContext()
+			context2 := contexts.NextUniqueContext()
 			flagKey := "arbitrary-flag-key"
 
-			basicEvaluateFlag(t, client, flagKey, user1, ldvalue.Null())
-			basicEvaluateFlag(t, client, flagKey, user1, ldvalue.Null())
-			basicEvaluateFlag(t, client, flagKey, user2, ldvalue.Null())
-			basicEvaluateFlag(t, client, flagKey, user1, ldvalue.Null())
-			basicEvaluateFlag(t, client, flagKey, user2, ldvalue.Null())
+			basicEvaluateFlag(t, client, flagKey, context1, ldvalue.Null())
+			basicEvaluateFlag(t, client, flagKey, context1, ldvalue.Null())
+			basicEvaluateFlag(t, client, flagKey, context2, ldvalue.Null())
+			basicEvaluateFlag(t, client, flagKey, context1, ldvalue.Null())
+			basicEvaluateFlag(t, client, flagKey, context2, ldvalue.Null())
 
 			client.FlushEvents(t)
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
 			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				matchIndexEvent(user1),
-				matchIndexEvent(user2),
+				matchIndexEvent(context1),
+				matchIndexEvent(context2),
 				IsSummaryEvent(),
 			))
 		})
@@ -77,10 +75,10 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 			events := NewSDKEventSink(t)
 			client := NewSDKClient(t, dataSource, events)
 
-			user1 := users.NextUniqueUser()
-			user2 := users.NextUniqueUser()
-			params1 := servicedef.CustomEventParams{EventKey: "event1", Context: user1}
-			params2 := servicedef.CustomEventParams{EventKey: "event1", Context: user2}
+			context1 := contexts.NextUniqueContext()
+			context2 := contexts.NextUniqueContext()
+			params1 := servicedef.CustomEventParams{EventKey: "event1", Context: context1}
+			params2 := servicedef.CustomEventParams{EventKey: "event1", Context: context2}
 
 			client.SendCustomEvent(t, params1)
 			client.SendCustomEvent(t, params1)
@@ -92,8 +90,8 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
 			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				matchIndexEvent(user1),
-				matchIndexEvent(user2),
+				matchIndexEvent(context1),
+				matchIndexEvent(context2),
 				IsCustomEvent(), IsCustomEvent(), IsCustomEvent(), IsCustomEvent(), IsCustomEvent(),
 			))
 		})

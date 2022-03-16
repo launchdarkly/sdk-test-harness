@@ -1,4 +1,4 @@
-package testdata
+package data
 
 import (
 	"embed"
@@ -9,10 +9,10 @@ import (
 	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
 )
 
-//go:embed data-files
+//go:embed files
 var dataFilesRoot embed.FS
 
-const dataBasePath = "data-files"
+const dataBasePath = "files"
 
 // SourceInfo represents JSON or YAML data that was read from a file, after post-processing to expand
 // constants and parameters. For non-parameterized tests, you will get one SourceInfo per file. For
@@ -49,7 +49,7 @@ func (s SourceInfo) ParamsString() string {
 // LoadDataFile reads a data file and performs any necessary constant/parameter substitutions. It can
 // return more than one SourceInfo because any file can be a parameterized test. See docs/data_files.md.
 //
-// The path parameter is relative to testdata/data-files.
+// The path parameter is relative to data/files.
 func LoadDataFile(path string) ([]SourceInfo, error) {
 	ret := make([]SourceInfo, 0, 10) // preallocate a little because it's likely there will be multiple results
 	data, err := dataFilesRoot.ReadFile(dataBasePath + "/" + path)
@@ -73,7 +73,7 @@ func LoadDataFile(path string) ([]SourceInfo, error) {
 // substitutions. It can return more than one SourceInfo per file, because any file can be a parameterized
 // test. See docs/data_files.md.
 //
-// The path parameter is relative to testdata/data-files.
+// The path parameter is relative to data/files.
 func LoadAllDataFiles(path string) ([]SourceInfo, error) {
 	files, err := dataFilesRoot.ReadDir(dataBasePath + "/" + path)
 	if err != nil {

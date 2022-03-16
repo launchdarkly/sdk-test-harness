@@ -3,6 +3,7 @@ package sdktests
 import (
 	"fmt"
 
+	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
@@ -12,17 +13,16 @@ import (
 )
 
 func doServerSideCustomEventTests(t *ldtest.T) {
-	// These do not include detailed tests of the encoding of user attributes in custom events,
-	// which are in server_side_events_users.go.
+	// These do not include detailed tests of the encoding of context attributes in custom events,
+	// which are in server_side_events_contexts.go.
 
 	t.Run("data and metricValue parameters", doServerSideParameterizedCustomEventTests)
 
 	t.Run("basic properties", func(t *ldtest.T) {
-		users := NewUserFactory("doServerSideCustomEventTests-")
 		metricValue := 1.0
-		for _, anonymousUser := range []bool{false, true} {
-			t.Run(selectString(anonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
-				user := users.NextUniqueUserMaybeAnonymous(anonymousUser)
+		for _, contexts := range data.NewContextFactoriesForSingleAndMultiKind("doServerSideCustomEventTests") {
+			t.Run(contexts.Description(), func(t *ldtest.T) {
+				context := contexts.NextUniqueContext()
 
 				dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
 				events := NewSDKEventSink(t)
@@ -30,7 +30,7 @@ func doServerSideCustomEventTests(t *ldtest.T) {
 
 				client.SendCustomEvent(t, servicedef.CustomEventParams{
 					EventKey:    "event-key",
-					Context:     user,
+					Context:     context,
 					Data:        ldvalue.Bool(true),
 					MetricValue: &metricValue,
 				})
@@ -43,7 +43,7 @@ func doServerSideCustomEventTests(t *ldtest.T) {
 					m.AllOf(
 						JSONPropertyKeysCanOnlyBe("kind", "creationDate", "key", "contextKeys", "data", "metricValue"),
 						IsCustomEvent(),
-						HasContextKeys(user),
+						HasContextKeys(context),
 					),
 				))
 			})
@@ -56,7 +56,7 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 	events := NewSDKEventSink(t)
 	client := NewSDKClient(t, dataSource, events)
 
-	users := NewUserFactory("doServerSideParameterizedCustomEventTests")
+	contexts := data.NewContextFactory("doServerSideParameterizedCustomEventTests")
 
 	// Generate many permutations of 1. data types that can be used for the data parameter, if any, and
 	// 2. metric value parameter, if any.
@@ -90,7 +90,7 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 		} {
 			params := baseParams
 			params.Data = dataValue
-			params.Context = users.NextUniqueUser()
+			params.Context = contexts.NextUniqueContext()
 			allParams = append(allParams, params)
 		}
 
@@ -99,7 +99,7 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 		// data which may be null", to make sure we're covering both methods.
 		params := baseParams
 		params.OmitNullData = true
-		params.Context = users.NextUniqueUser()
+		params.Context = contexts.NextUniqueContext()
 		allParams = append(allParams, params)
 	}
 

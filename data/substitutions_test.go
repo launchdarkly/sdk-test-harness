@@ -1,12 +1,14 @@
-package testdata
+package data
 
 import (
 	"testing"
 
-	"github.com/launchdarkly/go-test-helpers/v2/matchers"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
+
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
 )
 
 type testExpandStruct struct {
@@ -60,7 +62,7 @@ values:
 				require.NoError(t, ParseJSONOrYAML(source.Data, &s))
 				valuesList.Add(s.Values)
 			}
-			matchers.AssertThat(t, valuesList.Build().JSONString(), matchers.JSONStrEqual(expectedValues))
+			m.In(t).Assert(valuesList.Build().JSONString(), m.JSONStrEqual(expectedValues))
 		})
 	}
 }

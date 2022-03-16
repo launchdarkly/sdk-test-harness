@@ -2,7 +2,7 @@
 
 The SDK test harness is not purely data-driven as some test harnesses are; most of the tests are written in Go code, rather than declared in data. However, for some very repetitive tests it is convenient to provide parameters in data files.
 
-Files should be grouped by their purpose in subdirectories of `testdata/data-files`. Related Go code, such as structs defining the layout of the data, should be in `testdata`.
+Files should be grouped by their purpose in subdirectories of `data/files`. Related Go code, such as structs defining the layout of the data, should be in `data`.
 
 ## File format
 
@@ -77,6 +77,6 @@ parameters:
 
 ## Loading files in test code
 
-Call `testdata.LoadDataFile` for a single file or `testdata.LoadAllDataFiles` for all files in a directory. The path must be relative to the `testdata/data-files` directory; only files in that tree can be used.
+Call `data.LoadDataFile` for a single file or `data.LoadAllDataFiles` for all files in a directory. The path must be relative to the `data/files` directory; only files in that tree can be used.
 
 You will get a list of `SourceInfo` structs. Each one represents a copy of the file data after all constant/parameter substitutions have been done. If a file has no `parameters` (see above), then there will be just one `SourceInfo` for that file; otherwise there will be one for each permutation of parameters.

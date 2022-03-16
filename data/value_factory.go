@@ -1,48 +1,15 @@
-package sdktests
+package data
 
 import (
 	"fmt"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
+
 	"gopkg.in/launchdarkly/go-sdk-common.v3/ldreason"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldtime"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/lduser"
 	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
 	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldbuilders"
 	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldmodel"
 )
-
-type ContextFactory struct {
-	prefix         string
-	counter        int
-	builderActions []func(lduser.UserBuilder)
-}
-
-func NewUserFactory(prefix string, builderActions ...func(lduser.UserBuilder)) *ContextFactory {
-	return &ContextFactory{
-		prefix:         fmt.Sprintf("%s.%d", prefix, ldtime.UnixMillisNow()),
-		builderActions: builderActions,
-	}
-}
-
-func (f *ContextFactory) NextUniqueUser() ldcontext.Context {
-	f.counter++
-	key := fmt.Sprintf("%s.%d", f.prefix, f.counter)
-	builder := lduser.NewUserBuilder(key)
-	for _, ba := range f.builderActions {
-		ba(builder)
-	}
-	return builder.Build()
-}
-
-func (f *ContextFactory) NextUniqueUserMaybeAnonymous(shouldBeAnonymous bool) ldcontext.Context {
-	user := f.NextUniqueUser()
-	if shouldBeAnonymous {
-		return lduser.NewUserBuilderFromUser(user).Anonymous(true).Build()
-	}
-	return user
-}
 
 type FlagFactory interface {
 	MakeFlag(param interface{}) ldmodel.FeatureFlag

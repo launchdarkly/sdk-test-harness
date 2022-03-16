@@ -85,7 +85,7 @@ func doServerSideSummaryEventBasicTest(t *ldtest.T) {
 
 func doServerSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 	unknownKey := "flag-x"
-	user := ldcontext.New("user-key")
+	context := ldcontext.New("user-key")
 	default1 := ldvalue.String("default1")
 
 	dataBuilder := mockld.NewServerSDKDataBuilder()
@@ -95,14 +95,16 @@ func doServerSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 	client := NewSDKClient(t, dataSource, events)
 
 	// evaluate the unknown flag twice
-	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: unknownKey, Context: user, DefaultValue: default1})
-	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: unknownKey, Context: user, DefaultValue: default1})
+	_ = client.EvaluateFlag(t,
+		servicedef.EvaluateFlagParams{FlagKey: unknownKey, Context: context, DefaultValue: default1})
+	_ = client.EvaluateFlag(t,
+		servicedef.EvaluateFlagParams{FlagKey: unknownKey, Context: context, DefaultValue: default1})
 
 	client.FlushEvents(t)
 	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
 	m.In(t).Assert(payload, m.ItemsInAnyOrder(
-		IsIndexEventForUserKey(user.Key()),
+		IsIndexEventForContext(context),
 		IsValidSummaryEventWithFlags(
 			m.KV(unknownKey, m.MapOf(
 				m.KV("default", m.JSONEqual(default1)),
@@ -180,7 +182,7 @@ func doServerSideSummaryEventResetTest(t *ldtest.T) {
 }
 
 func doServerSideSummaryEventPrerequisitesTest(t *ldtest.T) {
-	user := ldcontext.New("user-key")
+	context := ldcontext.New("user-key")
 	expectedValue1 := ldvalue.String("value1")
 	expectedPrereqValue2 := ldvalue.String("ok2")
 	expectedPrereqValue3 := ldvalue.String("ok3")
@@ -200,7 +202,7 @@ func doServerSideSummaryEventPrerequisitesTest(t *ldtest.T) {
 		On(true).OffVariation(0).FallthroughVariation(0).
 		AddRule(ldbuilders.NewRuleBuilder().ID("rule1").
 			Variation(3). // this 3 matches the 3 in flag2's prerequisites
-			Clauses(ldbuilders.Clause(ldattr.KeyAttr, ldmodel.OperatorIn, ldvalue.String(user.Key())))).
+			Clauses(ldbuilders.Clause(ldattr.KeyAttr, ldmodel.OperatorIn, ldvalue.String(context.Key())))).
 		Variations(dummyValue0, dummyValue1, dummyValue2, expectedPrereqValue3).
 		Build()
 
@@ -212,7 +214,7 @@ func doServerSideSummaryEventPrerequisitesTest(t *ldtest.T) {
 	// evaluate flag1 3 times, which should cause flag2 and flag3 to also be evaluated 3 times
 	for i := 0; i < 3; i++ {
 		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
-			FlagKey: flag1.Key, Context: user, DefaultValue: defaultValue})
+			FlagKey: flag1.Key, Context: context, DefaultValue: defaultValue})
 	}
 
 	client.FlushEvents(t)
@@ -253,21 +255,21 @@ func doServerSideSummaryEventVersionTest(t *ldtest.T) {
 	valueBefore, valueAfter := ldvalue.String("a"), ldvalue.String("b")
 	flagBefore, flagAfter := makeFlagVersionsWithValues(flagKey, versionBefore, versionAfter, valueBefore, valueAfter)
 	defaultValue := ldvalue.String("default")
-	user := ldcontext.New("user-key")
+	context := ldcontext.New("user-key")
 
 	data := mockld.NewServerSDKDataBuilder().Flag(flagBefore).Build()
 	dataSource := NewSDKDataSource(t, data)
 	events := NewSDKEventSink(t)
 	client := NewSDKClient(t, dataSource, events)
 
-	initialValue := basicEvaluateFlag(t, client, flagKey, user, defaultValue)
+	initialValue := basicEvaluateFlag(t, client, flagKey, context, defaultValue)
 	m.In(t).Require(initialValue, m.JSONEqual(valueBefore))
 
 	dataSource.Service().PushUpdate("flags", flagKey, jsonhelpers.ToJSON(flagAfter))
 
 	require.Eventually(
 		t,
-		checkForUpdatedValue(t, client, flagKey, user, valueBefore, valueAfter, defaultValue),
+		checkForUpdatedValue(t, client, flagKey, context, valueBefore, valueAfter, defaultValue),
 		time.Second,
 		time.Millisecond*20,
 		"timed out waiting for evaluation to return updated value",
