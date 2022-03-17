@@ -14,7 +14,7 @@ The `sdktests` package also contains test control APIs that are specific to SDK 
   * `framework/ldtest`: Contains the `ldtest.T` type that represents a test scope. See "Conceptual model".
 * `mockld`: The test fixture components that simulate LaunchDarkly services. Test logic will not interact with most of these directly; they have facades in the `sdktests` package.
 * `servicedef`: Go imlementation of the [test service specification](./service_spec.md).
-* `testdata`: Data files for file-driven parameterized tests.
+* `data`: Data files for file-driven parameterized tests.
 * `testmodel`: Go schemas of the data files, and tools for reading them.
 
 ## Conceptual model

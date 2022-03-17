@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
 
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
+	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -61,7 +62,7 @@ func doSDKContextBuildTests(t *ldtest.T) {
 			{servicedef.ContextBuildSingleParams{Key: "a", Custom: map[string]ldvalue.Value{"attr": ldvalue.Null()}},
 				`{"kind": "user", "key": "a"}`},
 		}
-		for _, v := range MakeStandardTestValues() {
+		for _, v := range data.MakeStandardTestValues() {
 			if v.IsNull() {
 				continue
 			}
@@ -128,7 +129,7 @@ func doSDKContextConvertTests(t *ldtest.T) {
 			`"_meta": {"privateAttributes": ["x", "y"]}`,                   // basic case of multiple private attrs
 			`"_meta": {"secondary": "b", "privateAttributes": ["x", "y"]}`, // two things in _meta
 		}
-		for _, v := range MakeStandardTestValues() {
+		for _, v := range data.MakeStandardTestValues() {
 			// verify that custom attributes of various types and values are allowed - not counting null,
 			// which is covered under "unnecessary properties" below
 			if v.IsNull() {

@@ -8,5 +8,5 @@
 //
 // servicedef: types used in communication with an SDK test service
 //
-// testdata: test data file schemas and loader
+// data: test data file schemas and loader
 package sdktests
