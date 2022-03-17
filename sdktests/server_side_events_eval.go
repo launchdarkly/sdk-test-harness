@@ -142,9 +142,10 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 	}
 
 	t.Run("full feature event for tracked flag", func(t *ldtest.T) {
+		contextCategories := data.NewContextFactoriesForAnonymousAndNonAnonymous("doServerSideFeatureEventTests")
 		for _, withReason := range []bool{false, true} {
 			t.Run(selectString(withReason, "with reason", "without reason"), func(t *ldtest.T) {
-				for _, contextCategory := range data.NewContextFactoriesForAnonymousAndNonAnonymous("doServerSideFeatureEventTests") {
+				for _, contextCategory := range contextCategories {
 					t.Run(contextCategory.Description(), func(t *ldtest.T) {
 						for _, isBadFlag := range []bool{false, true} {
 							t.Run(selectString(isBadFlag, "malformed flag", "valid flag"), func(t *ldtest.T) {

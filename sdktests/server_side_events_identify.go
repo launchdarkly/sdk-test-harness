@@ -18,7 +18,8 @@ func doServerSideIdentifyEventTests(t *ldtest.T) {
 	client := NewSDKClient(t, dataSource, events)
 
 	t.Run("basic properties", func(t *ldtest.T) {
-		for _, contextCategory := range data.NewContextFactoriesForAnonymousAndNonAnonymous("doServerSideIdentifyEventTests") {
+		contextCategories := data.NewContextFactoriesForAnonymousAndNonAnonymous("doServerSideIdentifyEventTests")
+		for _, contextCategory := range contextCategories {
 			t.Run(contextCategory.Description(), func(t *ldtest.T) {
 				context := contextCategory.NextUniqueContext()
 				client.SendIdentifyEvent(t, context)

@@ -2,7 +2,6 @@ package data
 
 import (
 	"embed"
-	_ "embed"
 	"fmt"
 	"path/filepath"
 
