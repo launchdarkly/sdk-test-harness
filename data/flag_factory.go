@@ -23,6 +23,11 @@ type FlagFactory struct {
 	counter        int
 }
 
+// NewFlagFactory creates a FlagFactory with the specified configuration.
+//
+// The valueFactory parameter provides the value that each flag will return for evaluations.
+// The builderActions, if any, will be run each time a flag is created. Each flag will have
+// a unique key beginning with the specified prefix.
 func NewFlagFactory(
 	keyPrefix string,
 	valueFactory ValueFactoryBySDKValueType,
@@ -135,6 +140,8 @@ func FlagShouldProduceThisEvalReason(
 	}
 }
 
+// ReuseFlagForValueType is the same as MakeFlagForValueType except that if MakeFlagForValueType
+// has already been called for the same type, it will return the same flag and not create a new one.
 func (f *FlagFactory) ReuseFlagForValueType(valueType servicedef.ValueType) ldmodel.FeatureFlag {
 	if flag, found := f.existingFlags[valueType]; found {
 		return flag
