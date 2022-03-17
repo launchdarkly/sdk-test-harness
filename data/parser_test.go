@@ -1,9 +1,9 @@
-package testdata
+package data
 
 import (
 	"testing"
 
-	"github.com/launchdarkly/go-test-helpers/v2/matchers"
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -61,5 +61,5 @@ values:
 
 	var s testExpandStruct
 	require.NoError(t, ParseJSONOrYAML([]byte(input), &s))
-	matchers.AssertThat(t, s.Values.JSONString(), matchers.JSONStrEqual(expectedValues))
+	m.In(t).Assert(s.Values, m.JSONStrEqual(expectedValues))
 }

@@ -1,9 +1,10 @@
-package testdata
+package data
 
 import (
 	"testing"
 
-	"github.com/launchdarkly/go-test-helpers/v2/matchers"
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
@@ -60,7 +61,7 @@ values:
 				require.NoError(t, ParseJSONOrYAML(source.Data, &s))
 				valuesList.Add(s.Values)
 			}
-			matchers.AssertThat(t, valuesList.Build().JSONString(), matchers.JSONStrEqual(expectedValues))
+			m.In(t).Assert(valuesList.Build(), m.JSONStrEqual(expectedValues))
 		})
 	}
 }

@@ -1,13 +1,13 @@
 package sdktests
 
 import (
+	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/lduser"
 	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
 	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldbuilders"
 
@@ -20,11 +20,13 @@ func doServerSideEventBufferTests(t *ldtest.T) {
 	eventsConfig := baseEventsConfig()
 	eventsConfig.Capacity = ldvalue.NewOptionalInt(capacity)
 
-	userFactory := NewUserFactory("doServerSideEventCapacityTests",
-		func(b lduser.UserBuilder) { b.Name("my favorite user") })
+	contextFactory := data.NewContextFactory(
+		"doServerSideEventBufferTests",
+		func(b *ldcontext.Builder) { b.Name("my favorite user") },
+	)
 	users := make([]ldcontext.Context, 0)
 	for i := 0; i < capacity+extraItemsOverCapacity; i++ {
-		users = append(users, userFactory.NextUniqueUser())
+		users = append(users, contextFactory.NextUniqueContext())
 	}
 
 	makeIdentifyEventExpectations := func(count int) []m.Matcher {
@@ -62,7 +64,7 @@ func doServerSideEventBufferTests(t *ldtest.T) {
 
 		assert.Len(t, payload1, capacity)
 
-		anotherUser := userFactory.NextUniqueUser()
+		anotherUser := contextFactory.NextUniqueContext()
 		client.SendIdentifyEvent(t, anotherUser)
 		client.FlushEvents(t)
 		payload2 := events.ExpectAnalyticsEvents(t, defaultEventTimeout)

@@ -5,15 +5,14 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/lduser"
 	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldbuilders"
 )
 
 type eventUserTestScenario struct {
@@ -72,17 +71,18 @@ func doServerSideEventUserTests(t *ldtest.T) {
 
 	flagValue := ldvalue.String("value")
 	defaultValue := ldvalue.String("default")
-	users := NewUserFactory("doServerSideEventUserTests",
-		func(ub lduser.UserBuilder) {
-			ub.FirstName("first").LastName("last").Country("us").
-				Custom("preferredLanguage", ldvalue.String("go")).Custom("primaryLanguage", ldvalue.String("go"))
+	contexts := data.NewContextFactory(
+		"doServerSideEventUserTests",
+		func(b *ldcontext.Builder) {
+			b.SetString("firstName", "first").SetString("lastName", "last").SetString("country", "us").
+				SetString("preferredLanguage", "go").SetString("primaryLanguage", "go")
 		})
-	flags := FlagFactoryForValueTypes{
-		KeyPrefix:      "ServerSideEvalEventUserFlag",
-		ValueFactory:   SingleValueFactory(flagValue),
-		BuilderActions: func(b *ldbuilders.FlagBuilder) { b.TrackEvents(true) },
-	}
-	flag := flags.ForType(servicedef.ValueTypeAny)
+	flags := data.NewFlagFactory(
+		"ServerSideEvalEventUserFlag",
+		data.SingleValueForAllSDKValueTypes(flagValue),
+		data.FlagShouldHaveFullEventTracking,
+	)
+	flag := flags.MakeFlag()
 	dataSource := NewSDKDataSource(t, mockld.NewServerSDKDataBuilder().Flag(flag).Build())
 	events := NewSDKEventSink(t)
 
@@ -91,7 +91,7 @@ func doServerSideEventUserTests(t *ldtest.T) {
 			client := NewSDKClient(t, WithEventsConfig(scenario.config), dataSource, events)
 
 			t.Run("feature event", func(t *ldtest.T) {
-				user := scenario.MakeUser(users.NextUniqueUser())
+				user := scenario.MakeUser(contexts.NextUniqueContext())
 				client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 					FlagKey:      flag.Key,
 					Context:      user,
@@ -109,7 +109,7 @@ func doServerSideEventUserTests(t *ldtest.T) {
 			})
 
 			t.Run("identify event", func(t *ldtest.T) {
-				user := scenario.MakeUser(users.NextUniqueUser())
+				user := scenario.MakeUser(contexts.NextUniqueContext())
 				client.SendIdentifyEvent(t, user)
 				client.FlushEvents(t)
 
@@ -120,7 +120,7 @@ func doServerSideEventUserTests(t *ldtest.T) {
 			})
 
 			t.Run("custom event", func(t *ldtest.T) {
-				user := scenario.MakeUser(users.NextUniqueUser())
+				user := scenario.MakeUser(contexts.NextUniqueContext())
 				eventData := ldvalue.Bool(true)
 				metricValue := float64(10)
 				client.SendCustomEvent(t, servicedef.CustomEventParams{
@@ -139,7 +139,7 @@ func doServerSideEventUserTests(t *ldtest.T) {
 			})
 
 			t.Run("index event", func(t *ldtest.T) {
-				user := scenario.MakeUser(users.NextUniqueUser())
+				user := scenario.MakeUser(contexts.NextUniqueContext())
 				basicEvaluateFlag(t, client, "arbitrary-flag-key", user, ldvalue.Null())
 				client.FlushEvents(t)
 

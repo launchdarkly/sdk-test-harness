@@ -3,11 +3,11 @@ package sdktests
 import (
 	"fmt"
 
+	"github.com/launchdarkly/sdk-test-harness/v2/data"
+	"github.com/launchdarkly/sdk-test-harness/v2/data/testmodel"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
-	"github.com/launchdarkly/sdk-test-harness/v2/testdata"
-	"github.com/launchdarkly/sdk-test-harness/v2/testdata/testmodel"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
@@ -114,7 +114,7 @@ func runParameterizedTestEval(t *ldtest.T, suite testmodel.EvalTestSuite, test t
 }
 
 func RunParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
-	defaultValues := DefaultValueByTypeFactory()
+	defaultValues := data.MakeValueFactoryBySDKValueType()
 	flagKey := "some-flag"
 	user := ldcontext.New("user-key")
 	expectedReason := ldreason.NewEvalReasonError(ldreason.EvalErrorClientNotReady)
@@ -159,7 +159,7 @@ func RunParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
 func getAllServerSideEvalTestSuites(t *ldtest.T, dirName string) [][]testmodel.EvalTestSuite {
 	// See comments in RunParameterizedServerSideEvalTests regarding the reason for grouping the
 	// results by name as we're doing here.
-	sources, err := testdata.LoadAllDataFiles(dirName)
+	sources, err := data.LoadAllDataFiles(dirName)
 	require.NoError(t, err)
 
 	ret := [][]testmodel.EvalTestSuite{}
@@ -180,9 +180,9 @@ func getAllServerSideEvalTestSuites(t *ldtest.T, dirName string) [][]testmodel.E
 	return ret
 }
 
-func parseServerSideEvalTestSuite(t *ldtest.T, source testdata.SourceInfo) testmodel.EvalTestSuite {
+func parseServerSideEvalTestSuite(t *ldtest.T, source data.SourceInfo) testmodel.EvalTestSuite {
 	var suite testmodel.EvalTestSuite
-	if err := testdata.ParseJSONOrYAML(source.Data, &suite); err != nil {
+	if err := data.ParseJSONOrYAML(source.Data, &suite); err != nil {
 		require.NoError(t, fmt.Errorf("error parsing %q %s: %w", source.BaseName, source.ParamsString(), err))
 	}
 	return suite

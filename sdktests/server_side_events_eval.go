@@ -3,6 +3,7 @@ package sdktests
 import (
 	"time"
 
+	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
@@ -11,7 +12,6 @@ import (
 	"gopkg.in/launchdarkly/go-sdk-common.v3/ldattr"
 	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
 	"gopkg.in/launchdarkly/go-sdk-common.v3/ldreason"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldtime"
 	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
 	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldbuilders"
 	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldmodel"
@@ -20,28 +20,28 @@ import (
 )
 
 func doServerSideFeatureEventTests(t *ldtest.T) {
-	flagValues := FlagValueByTypeFactory()
-	defaultValues := DefaultValueByTypeFactory()
-	users := NewUserFactory("doServerSideFeatureEventTests")
+	valueFactories := data.MakeValueFactoriesBySDKValueType(2)
+	flagValues, defaultValues := valueFactories[0], valueFactories[1]
+	contexts := data.NewContextFactory("doServerSideFeatureEventTests")
 	expectedReason := ldreason.NewEvalReasonFallthrough()
-	untrackedFlags := FlagFactoryForValueTypes{
-		KeyPrefix:    "untracked-flag-",
-		ValueFactory: flagValues,
-		Reason:       expectedReason,
-	}
-	trackedFlags := FlagFactoryForValueTypes{
-		KeyPrefix:      "tracked-flag-",
-		ValueFactory:   flagValues,
-		BuilderActions: func(b *ldbuilders.FlagBuilder) { b.TrackEvents(true) },
-		Reason:         expectedReason,
-	}
+	untrackedFlags := data.NewFlagFactory(
+		"untracked-flag",
+		flagValues,
+		data.FlagShouldProduceThisEvalReason(expectedReason),
+	)
+	trackedFlags := data.NewFlagFactory(
+		"tracked-flag",
+		flagValues,
+		data.FlagShouldProduceThisEvalReason(expectedReason),
+		data.FlagShouldHaveFullEventTracking,
+	)
 	malformedFlag := ldbuilders.NewFlagBuilder("bad-flag").Version(1).
 		On(false).OffVariation(-1).TrackEvents(true).Build()
 
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	for _, valueType := range getValueTypesToTest(t) {
-		dataBuilder.Flag(untrackedFlags.ForType(valueType))
-		dataBuilder.Flag(trackedFlags.ForType(valueType))
+		dataBuilder.Flag(untrackedFlags.MakeFlagForValueType(valueType))
+		dataBuilder.Flag(trackedFlags.MakeFlagForValueType(valueType))
 	}
 	dataBuilder.Flag(malformedFlag)
 
@@ -55,8 +55,8 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 			t.Run(selectString(withReason, "with reasons", "without reasons"), func(t *ldtest.T) {
 				for _, valueType := range getValueTypesToTest(t) {
 					t.Run(testDescFromType(valueType), func(t *ldtest.T) {
-						flag := untrackedFlags.ForType(valueType)
-						context := users.NextUniqueUser()
+						flag := untrackedFlags.ReuseFlagForValueType(valueType)
+						context := contexts.NextUniqueContext()
 
 						resp := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 							FlagKey:      flag.Key,
@@ -88,10 +88,10 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 		}
 	})
 
-	doFeatureEventTest := func(t *ldtest.T, withReason, isAnonymousUser, isBadFlag bool) {
+	doFeatureEventTest := func(t *ldtest.T, contexts *data.ContextFactory, withReason, isBadFlag bool) {
 		for _, valueType := range getValueTypesToTest(t) {
 			t.Run(testDescFromType(valueType), func(t *ldtest.T) {
-				flag := trackedFlags.ForType(valueType)
+				flag := trackedFlags.ReuseFlagForValueType(valueType)
 				expectedValue := flagValues(valueType)
 				expectedVariation := ldvalue.NewOptionalInt(0)
 				if isBadFlag {
@@ -99,7 +99,7 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 					expectedValue = defaultValues(valueType)
 					expectedVariation = ldvalue.OptionalInt{}
 				}
-				context := users.NextUniqueUserMaybeAnonymous(isAnonymousUser)
+				context := contexts.NextUniqueContext()
 				resp := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 					FlagKey:      flag.Key,
 					Context:      context,
@@ -142,13 +142,14 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 	}
 
 	t.Run("full feature event for tracked flag", func(t *ldtest.T) {
+		contextCategories := data.NewContextFactoriesForAnonymousAndNonAnonymous("doServerSideFeatureEventTests")
 		for _, withReason := range []bool{false, true} {
 			t.Run(selectString(withReason, "with reason", "without reason"), func(t *ldtest.T) {
-				for _, isAnonymousUser := range []bool{false, true} {
-					t.Run(selectString(isAnonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
+				for _, contextCategory := range contextCategories {
+					t.Run(contextCategory.Description(), func(t *ldtest.T) {
 						for _, isBadFlag := range []bool{false, true} {
 							t.Run(selectString(isBadFlag, "malformed flag", "valid flag"), func(t *ldtest.T) {
-								doFeatureEventTest(t, withReason, isAnonymousUser, isBadFlag)
+								doFeatureEventTest(t, contextCategory, withReason, isBadFlag)
 							})
 						}
 					})
@@ -163,9 +164,9 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 	// and the host that's running the test service are out of sync by at least an hour. However,
 	// in normal usage those are the same host.
 
-	flagValues := FlagValueByTypeFactory()
-	defaultValues := DefaultValueByTypeFactory()
-	users := NewUserFactory("doServerSideDebugEventTests")
+	valueFactories := data.MakeValueFactoriesBySDKValueType(2)
+	flagValues, defaultValues := valueFactories[0], valueFactories[1]
+	contexts := data.NewContextFactory("doServerSideDebugEventTests")
 	expectedReason := ldreason.NewEvalReasonFallthrough()
 
 	doDebugTest := func(
@@ -174,17 +175,15 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 		flagDebugUntil time.Time,
 		lastKnownTimeFromLD time.Time,
 	) {
-		flags := FlagFactoryForValueTypes{
-			KeyPrefix:    "flag",
-			ValueFactory: flagValues,
-			Reason:       expectedReason,
-			BuilderActions: func(b *ldbuilders.FlagBuilder) {
-				b.DebugEventsUntilDate(ldtime.UnixMillisFromTime(flagDebugUntil))
-			},
-		}
+		flags := data.NewFlagFactory(
+			"flag",
+			flagValues,
+			data.FlagShouldProduceThisEvalReason(expectedReason),
+			data.FlagShouldHaveDebuggingEnabledUntil(flagDebugUntil),
+		)
 		dataBuilder := mockld.NewServerSDKDataBuilder()
 		for _, valueType := range getValueTypesToTest(t) {
-			dataBuilder.Flag(flags.ForType(valueType))
+			dataBuilder.Flag(flags.MakeFlagForValueType(valueType))
 		}
 		dataSource := NewSDKDataSource(t, dataBuilder.Build())
 
@@ -199,7 +198,7 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 			// In this scenario, we want the SDK to be aware of the LD host's clock because it
 			// has seen a Date header in an event post response. Send an unimportant event so
 			// the SDK will see a response before we do the rest of the test.
-			client.SendIdentifyEvent(t, users.NextUniqueUser())
+			client.SendIdentifyEvent(t, contexts.NextUniqueContext())
 			client.FlushEvents(t)
 			_ = events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
@@ -213,8 +212,8 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 			t.Run(selectString(withReasons, "with reasons", "without reasons"), func(t *ldtest.T) {
 				for _, valueType := range getValueTypesToTest(t) {
 					t.Run(testDescFromType(valueType), func(t *ldtest.T) {
-						user := users.NextUniqueUser()
-						flag := flags.ForType(valueType)
+						user := contexts.NextUniqueContext()
+						flag := flags.ReuseFlagForValueType(valueType)
 						result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 							FlagKey:      flag.Key,
 							Context:      user,
