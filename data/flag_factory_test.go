@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setFlagSalt(value string) func(*ldbuilders.FlagBuilder) {
-	return func(b *ldbuilders.FlagBuilder) { b.Salt(value) }
+func setFlagSalt(value string) func(*ldbuilders.FlagBuilder) *ldbuilders.FlagBuilder {
+	return func(b *ldbuilders.FlagBuilder) *ldbuilders.FlagBuilder { return b.Salt(value) }
 }
 
 func TestFlagFactory(t *testing.T) {

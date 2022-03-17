@@ -20,6 +20,7 @@ import (
 
 func doServerSideSummaryEventTests(t *ldtest.T) {
 	t.Run("basic counter behavior", doServerSideSummaryEventBasicTest)
+	t.Run("contextKinds", doServerSideSummaryEventContextKindsTest)
 	t.Run("unknown flag", doServerSideSummaryEventUnknownFlagTest)
 	t.Run("reset after each flush", doServerSideSummaryEventResetTest)
 	t.Run("prerequisites", doServerSideSummaryEventPrerequisitesTest)
@@ -72,12 +73,80 @@ func doServerSideSummaryEventBasicTest(t *ldtest.T) {
 					flagCounter("value1a", 0, flag1.Version, 2),
 					flagCounter("value1b", 1, flag1.Version, 1),
 				)),
+				m.KV("contextKinds", anyContextKindsList()),
 			)),
 			m.KV(flag2.Key, m.MapOf(
 				m.KV("default", m.JSONEqual(default2)),
 				m.KV("counters", m.ItemsInAnyOrder(
 					flagCounter("value2a", 0, flag2.Version, 1),
 				)),
+				m.KV("contextKinds", anyContextKindsList()),
+			)),
+		)),
+	)
+}
+
+func doServerSideSummaryEventContextKindsTest(t *ldtest.T) {
+	flag1 := ldbuilders.NewFlagBuilder("flag1").Version(100).
+		Variations(ldvalue.String("value1a"), ldvalue.String("value1b")).
+		On(true).FallthroughVariation(0).
+		AddTarget(1, "user-b").
+		Build()
+
+	flag2 := ldbuilders.NewFlagBuilder("flag2").Version(200).
+		Variations(ldvalue.String("value2a"), ldvalue.String("value2b")).
+		On(true).FallthroughVariation(0).
+		AddTarget(1, "user-b").
+		Build()
+
+	kind1, kind2, kind3 := ldcontext.Kind("kind1"), ldcontext.Kind("kind2"), ldcontext.Kind("kind3")
+	context1a := ldcontext.NewWithKind(kind1, "key1")
+	context1b := ldcontext.NewWithKind(kind1, "key2")
+	context2 := ldcontext.NewWithKind(kind2, "key1")
+	context3 := ldcontext.NewWithKind(kind3, "key2")
+
+	defaultValue := ldvalue.String("default")
+
+	dataBuilder := mockld.NewServerSDKDataBuilder()
+	dataBuilder.Flag(flag1, flag2)
+
+	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	events := NewSDKEventSink(t)
+	client := NewSDKClient(t, dataSource, events)
+
+	// evaluations for flag1: two for userA producing value1a, one for userB producing value1b
+	for _, flagAndContext := range []struct {
+		flag    ldmodel.FeatureFlag
+		context ldcontext.Context
+	}{
+		{flag1, context1a},
+		{flag2, context2},
+		{flag1, context2},
+		{flag2, context3},
+		{flag1, context1b},
+	} {
+		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+			FlagKey: flagAndContext.flag.Key, Context: flagAndContext.context, DefaultValue: defaultValue})
+	}
+
+	client.FlushEvents(t)
+	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+	m.In(t).Assert(payload, m.ItemsInAnyOrder(
+		IsIndexEvent(),
+		IsIndexEvent(),
+		IsIndexEvent(),
+		IsIndexEvent(),
+		IsValidSummaryEventWithFlags(
+			m.KV(flag1.Key, m.MapOf(
+				m.KV("default", m.Not(m.BeNil())),
+				m.KV("counters", m.JSONArray().Should(m.Not(m.BeNil()))),
+				m.KV("contextKinds", contextKindsList(kind1, kind2)),
+			)),
+			m.KV(flag2.Key, m.MapOf(
+				m.KV("default", m.Not(m.BeNil())),
+				m.KV("counters", m.JSONArray().Should(m.Not(m.BeNil()))),
+				m.KV("contextKinds", contextKindsList(kind2, kind3)),
 			)),
 		)),
 	)
@@ -111,6 +180,7 @@ func doServerSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 				m.KV("counters", m.ItemsInAnyOrder(
 					unknownFlagCounter(default1, 2),
 				)),
+				m.KV("contextKinds", anyContextKindsList()),
 			)),
 		)),
 	)
@@ -157,6 +227,7 @@ func doServerSideSummaryEventResetTest(t *ldtest.T) {
 					flagCounter("value-a", 0, flag.Version, 10),
 					flagCounter("value-b", 1, flag.Version, 3),
 				)),
+				m.KV("contextKinds", anyContextKindsList()),
 			)),
 		)),
 	)
@@ -177,6 +248,7 @@ func doServerSideSummaryEventResetTest(t *ldtest.T) {
 				m.KV("counters", m.ItemsInAnyOrder(
 					flagCounter("value-b", 1, flag.Version, 2),
 				)),
+				m.KV("contextKinds", anyContextKindsList()),
 			)),
 		)))
 }
@@ -228,17 +300,20 @@ func doServerSideSummaryEventPrerequisitesTest(t *ldtest.T) {
 				m.KV("counters", m.Items(
 					flagCounter(expectedValue1, 1, flag1.Version, 3),
 				)),
+				m.KV("contextKinds", anyContextKindsList()),
 			)),
 			m.KV(flag2.Key, m.MapIncluding(
 				// "default" may or may not be present here since the default for a prerequisite is always null
 				m.KV("counters", m.Items(
 					flagCounter(expectedPrereqValue2, 2, flag2.Version, 3),
 				)),
+				m.KV("contextKinds", anyContextKindsList()),
 			)),
 			m.KV(flag3.Key, m.MapIncluding(
 				m.KV("counters", m.Items(
 					flagCounter(expectedPrereqValue3, 3, flag3.Version, 3),
 				)),
+				m.KV("contextKinds", anyContextKindsList()),
 			)),
 		)))
 }
@@ -287,6 +362,7 @@ func doServerSideSummaryEventVersionTest(t *ldtest.T) {
 					flagCounterWithAnyCount(valueBefore, 0, versionBefore),
 					flagCounter(valueAfter, 1, versionAfter, 1),
 				)),
+				m.KV("contextKinds", anyContextKindsList()),
 			)),
 		)))
 }
@@ -315,4 +391,16 @@ func unknownFlagCounter(defaultValue interface{}, count int) m.Matcher {
 		m.KV("unknown", m.Equal(true)),
 		m.KV("count", m.Equal(count)),
 	)
+}
+
+func anyContextKindsList() m.Matcher {
+	return m.JSONArray().Should(m.Not(m.BeNil()))
+}
+
+func contextKindsList(kinds ...ldcontext.Kind) m.Matcher {
+	matchers := make([]m.Matcher, 0, len(kinds))
+	for _, kind := range kinds {
+		matchers = append(matchers, m.Equal(string(kind)))
+	}
+	return m.ItemsInAnyOrder(matchers...)
 }
