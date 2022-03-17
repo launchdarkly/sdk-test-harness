@@ -74,6 +74,17 @@ func (f *ContextFactory) NextUniqueContext() ldcontext.Context {
 	return f.factoryFn(key)
 }
 
+// NewContextFactoriesForAnonymousAndNonAnonymous creates two ContextFactory instances: one that
+// always sets Transient (a.k.a. anonymous) to true, and another that doesn't. We use this in tests
+// that need to check slightly different expectations for SDK event output in these two cases.
+//
+// Each will have an appropriate Description, so the test logic can just iterate like this:
+//
+//     for _, contexts := range data.NewContextFactoriesForAnonymousAndNonAnonymous("NameOfTest") {
+//         t.Run(contexts.Description(), func(t *testing.T) {
+//             context := contexts.NextUniqueContext() // do something with this
+//         })
+//     }
 func NewContextFactoriesForAnonymousAndNonAnonymous(
 	prefix string,
 	builderActions ...func(*ldcontext.Builder),
