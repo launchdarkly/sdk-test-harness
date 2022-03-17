@@ -2,18 +2,21 @@ package data
 
 import (
 	"fmt"
+	"math/rand"
+	"time"
 
 	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldtime"
 )
+
+var contextRandomizer = rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gochecknoglobals,gosec
 
 // ContextFactory is a test data generator that produces ldcontext.Context instances.
 type ContextFactory struct {
-	description string
-	prefix      string
-	createdTime ldtime.UnixMillisecondTime
-	counter     int
-	factoryFn   func(string) ldcontext.Context
+	description           string
+	prefix                string
+	keyDisambiguatorValue int64
+	counter               int
+	factoryFn             func(string) ldcontext.Context
 }
 
 // NewContextFactory creates a ContextFactory that produces single-kind Contexts.
@@ -23,8 +26,8 @@ type ContextFactory struct {
 // have no properties other than the key, and its kind will be ldcontext.DefaultKind ("user").
 func NewContextFactory(prefix string, builderActions ...func(*ldcontext.Builder)) *ContextFactory {
 	return &ContextFactory{
-		prefix:      prefix,
-		createdTime: ldtime.UnixMillisNow(),
+		prefix:                prefix,
+		keyDisambiguatorValue: contextRandomizer.Int63(),
 		factoryFn: func(key string) ldcontext.Context {
 			builder := ldcontext.NewBuilder(key)
 			for _, ba := range builderActions {
@@ -46,12 +49,12 @@ func NewMultiContextFactory(
 	builderActions ...func(*ldcontext.Builder),
 ) *ContextFactory {
 	return &ContextFactory{
-		prefix:      prefix,
-		createdTime: ldtime.UnixMillisNow(),
+		prefix:                prefix,
+		keyDisambiguatorValue: contextRandomizer.Int63(),
 		factoryFn: func(key string) ldcontext.Context {
 			multiBuilder := ldcontext.NewMultiBuilder()
 			for i, kind := range kinds {
-				builder := ldcontext.NewBuilder(key + "." + string(kind))
+				builder := ldcontext.NewBuilder(key)
 				builder.Kind(kind)
 				if i < len(builderActions) {
 					builderActions[i](builder)
@@ -70,8 +73,16 @@ func (f *ContextFactory) Description() string { return f.description }
 // NextUniqueContext creates a Context instance.
 func (f *ContextFactory) NextUniqueContext() ldcontext.Context {
 	f.counter++
-	key := fmt.Sprintf("%s.%d.%d", f.prefix, f.createdTime, f.counter)
+	key := fmt.Sprintf("%s.%d.%d", f.prefix, f.keyDisambiguatorValue, f.counter)
 	return f.factoryFn(key)
+}
+
+// SetKeyDisambiguatorValueSameAs overrides the usual "add a randomized value all the keys produced
+// by this factory" logic, which is meant to avoid key collisions, so that these two factories will
+// use the *same* randomized value. This is for tests where we want to verify, for instance, that
+// two contexts with the same key but different kinds are treated as distinct.
+func (f *ContextFactory) SetKeyDisambiguatorValueSameAs(f1 *ContextFactory) {
+	f.keyDisambiguatorValue = f1.keyDisambiguatorValue
 }
 
 // NewContextFactoriesForSingleAndMultiKind produces a list of ContextFactory instances for testing SDK
