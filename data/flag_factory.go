@@ -14,8 +14,6 @@ import (
 	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldmodel"
 )
 
-type FlagFactoryBehavior int
-
 // FlagFactory is a test data generator that produces ldmodel.FeatureFlag instances.
 type FlagFactory struct {
 	keyPrefix      string
