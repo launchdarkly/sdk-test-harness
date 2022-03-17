@@ -17,7 +17,7 @@ import (
 // FlagFactory is a test data generator that produces ldmodel.FeatureFlag instances.
 type FlagFactory struct {
 	keyPrefix      string
-	builderActions []func(*ldbuilders.FlagBuilder) *ldbuilders.FlagBuilder
+	builderActions []func(*ldbuilders.FlagBuilder)
 	valueFactory   ValueFactoryBySDKValueType
 	existingFlags  map[servicedef.ValueType]ldmodel.FeatureFlag
 	counter        int
@@ -31,7 +31,7 @@ type FlagFactory struct {
 func NewFlagFactory(
 	keyPrefix string,
 	valueFactory ValueFactoryBySDKValueType,
-	builderActions ...func(*ldbuilders.FlagBuilder) *ldbuilders.FlagBuilder,
+	builderActions ...func(*ldbuilders.FlagBuilder),
 ) *FlagFactory {
 	return &FlagFactory{
 		keyPrefix:      keyPrefix,
@@ -68,22 +68,22 @@ func (f *FlagFactory) MakeFlagForValueType(valueType servicedef.ValueType) ldmod
 
 // FlagShouldAlwaysHaveDebuggingEnabled is a convenience function for configuring a flag to have debugging
 // enabled (by setting DebugEventsUntilDate to a far future time).
-func FlagShouldAlwaysHaveDebuggingEnabled(builder *ldbuilders.FlagBuilder) *ldbuilders.FlagBuilder {
-	return builder.DebugEventsUntilDate(ldtime.UnixMillisNow() + 10000000)
+func FlagShouldAlwaysHaveDebuggingEnabled(builder *ldbuilders.FlagBuilder) {
+	builder.DebugEventsUntilDate(ldtime.UnixMillisNow() + 10000000)
 }
 
 // FlagShouldHaveDebuggingEnabledUntil is a convenience function for configuring a flag to have debugging
 // enabled until the specified time.
-func FlagShouldHaveDebuggingEnabledUntil(t time.Time) func(*ldbuilders.FlagBuilder) *ldbuilders.FlagBuilder {
-	return func(builder *ldbuilders.FlagBuilder) *ldbuilders.FlagBuilder {
-		return builder.DebugEventsUntilDate(ldtime.UnixMillisFromTime(t))
+func FlagShouldHaveDebuggingEnabledUntil(t time.Time) func(*ldbuilders.FlagBuilder) {
+	return func(builder *ldbuilders.FlagBuilder) {
+		builder.DebugEventsUntilDate(ldtime.UnixMillisFromTime(t))
 	}
 }
 
 // FlagShouldHaveFullEventTracking is a convenience function for configuring a flag to have full
 // event tracking enabled (by setting TrackEvents to true).
-func FlagShouldHaveFullEventTracking(builder *ldbuilders.FlagBuilder) *ldbuilders.FlagBuilder {
-	return builder.TrackEvents(true)
+func FlagShouldHaveFullEventTracking(builder *ldbuilders.FlagBuilder) {
+	builder.TrackEvents(true)
 }
 
 // FlagShouldProduceThisEvalReason is a convenience function for configuring a flag to produce a
@@ -93,7 +93,7 @@ func FlagShouldHaveFullEventTracking(builder *ldbuilders.FlagBuilder) *ldbuilder
 func FlagShouldProduceThisEvalReason(
 	reason ldreason.EvaluationReason,
 	matchContexts ...ldcontext.Context,
-) func(*ldbuilders.FlagBuilder) *ldbuilders.FlagBuilder {
+) func(*ldbuilders.FlagBuilder) {
 	getContextKindAndKeys := func() (ldcontext.Kind, []string) {
 		var keys []string
 		kind := ldcontext.DefaultKind
@@ -103,7 +103,7 @@ func FlagShouldProduceThisEvalReason(
 		}
 		return kind, keys
 	}
-	return func(builder *ldbuilders.FlagBuilder) *ldbuilders.FlagBuilder {
+	return func(builder *ldbuilders.FlagBuilder) {
 		switch reason.GetKind() {
 		case ldreason.EvalReasonOff:
 			builder.On(false).OffVariation(0)
@@ -137,7 +137,6 @@ func FlagShouldProduceThisEvalReason(
 		case ldreason.EvalReasonError:
 			builder.On(false).OffVariation(-1)
 		}
-		return builder
 	}
 }
 
