@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/launchdarkly/go-jsonstream/v2/jreader"
+	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldmodel"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
-	"gopkg.in/launchdarkly/go-jsonstream.v1/jreader"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldmodel"
 )
 
 type SDKKind string

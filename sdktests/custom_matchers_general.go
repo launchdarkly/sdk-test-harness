@@ -7,9 +7,9 @@ import (
 
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
 )
 
 // The functions in this file are for convenient use of the matchers API with complex

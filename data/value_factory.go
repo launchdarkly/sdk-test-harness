@@ -5,7 +5,7 @@ import (
 
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 )
 
 // AllJSONValueTypes returns every possible value of the ldvalue.ValueType enum, corresponding to

@@ -3,8 +3,8 @@ package data
 import (
 	"testing"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"time"
 
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 )
 
 var contextRandomizer = rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gochecknoglobals,gosec

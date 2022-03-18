@@ -3,8 +3,8 @@ package mockld
 import (
 	"encoding/json"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
 )
 
 // Event is a JSON representation of an event. For convenience, this is stored as ldvalue.Value.
