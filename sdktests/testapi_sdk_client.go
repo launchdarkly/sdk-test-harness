@@ -3,10 +3,10 @@ package sdktests
 import (
 	"errors"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
 
 	"github.com/stretchr/testify/require"
 )

@@ -6,12 +6,12 @@ import (
 
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldreason"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldtime"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldbuilders"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldmodel"
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
+	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldbuilders"
+	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldmodel"
 )
 
 // FlagFactory is a test data generator that produces ldmodel.FeatureFlag instances.

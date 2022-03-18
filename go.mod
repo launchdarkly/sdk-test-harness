@@ -6,11 +6,11 @@ require (
 	github.com/fatih/color v1.13.0
 	github.com/gorilla/mux v1.8.0
 	github.com/launchdarkly/eventsource v1.6.2
+	github.com/launchdarkly/go-jsonstream/v2 v2.0.0
+	github.com/launchdarkly/go-sdk-common/v3 v3.0.0
+	github.com/launchdarkly/go-server-sdk-evaluation/v2 v2.0.0-00010101000000-000000000000
 	github.com/launchdarkly/go-test-helpers/v2 v2.3.1
 	github.com/stretchr/testify v1.7.0
-	gopkg.in/launchdarkly/go-jsonstream.v1 v1.0.1
-	gopkg.in/launchdarkly/go-sdk-common.v3 v3.0.0
-	gopkg.in/launchdarkly/go-server-sdk-evaluation.v2 v2.0.0-00010101000000-000000000000
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )
 
@@ -27,8 +27,6 @@ require (
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 )
 
-replace gopkg.in/launchdarkly/go-sdk-common.v3 => github.com/launchdarkly/go-sdk-common-private/v3 v3.0.0-alpha.3
+replace github.com/launchdarkly/go-sdk-common/v3 => github.com/launchdarkly/go-sdk-common-private/v3 v3.0.0-alpha.4
 
-replace gopkg.in/launchdarkly/go-sdk-events.v2 => github.com/launchdarkly/go-sdk-events-private/v2 v2.0.0-alpha.2
-
-replace gopkg.in/launchdarkly/go-server-sdk-evaluation.v2 => github.com/launchdarkly/go-server-sdk-evaluation-private/v2 v2.0.0-alpha.4
+replace github.com/launchdarkly/go-server-sdk-evaluation/v2 => github.com/launchdarkly/go-server-sdk-evaluation-private/v2 v2.0.0-alpha.6

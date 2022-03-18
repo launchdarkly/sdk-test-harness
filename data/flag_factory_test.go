@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
+	evaluation "github.com/launchdarkly/go-server-sdk-evaluation/v2"
+	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldbuilders"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldreason"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldtime"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
-	evaluation "gopkg.in/launchdarkly/go-server-sdk-evaluation.v2"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v2/ldbuilders"
 
 	"github.com/stretchr/testify/assert"
 )

@@ -7,7 +7,7 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 	cf "github.com/launchdarkly/sdk-test-harness/v2/servicedef/callbackfixtures"
 
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldtime"
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 )
 
 // MockBigSegmentStoreService is the low-level component providing the mock endpoints for the

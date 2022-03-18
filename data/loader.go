@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldvalue"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 )
 
 //go:embed data-files
