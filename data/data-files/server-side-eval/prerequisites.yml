@@ -130,6 +130,52 @@ sdkData:
           clauses:
             - { attribute: "flag-rule-should-match", op: "in", values: [ true ] }
 
+    flag-with-prereq-cycle-at-top-level-1:
+      <<: *boolean_flag_base
+      on: true
+      prerequisites:
+        - { key: "flag-with-prereq-cycle-at-top-level-2", variation: 0 }
+      rules:
+        - id: ruleid
+          variation: 0
+          clauses:
+            - { attribute: "key", op: "in", values: [ "" ] } # always matches
+
+    flag-with-prereq-cycle-at-top-level-2:
+      <<: *boolean_flag_base
+      on: true
+      prerequisites:
+        - { key: "flag-with-prereq-cycle-at-top-level-3", variation: 0 }
+
+    flag-with-prereq-cycle-at-top-level-3:
+      <<: *boolean_flag_base
+      on: true
+      prerequisites:
+        - { key: "flag-with-prereq-cycle-at-top-level-1", variation: 0 }
+
+    flag-with-prereq-cycle-at-deeper-level-1:
+      <<: *boolean_flag_base
+      on: true
+      prerequisites:
+        - { key: "flag-with-prereq-cycle-at-deeper-level-2", variation: 0 }
+      rules:
+        - id: ruleid
+          variation: 0
+          clauses:
+            - { attribute: "key", op: "in", values: [ "" ] } # always matches
+
+    flag-with-prereq-cycle-at-deeper-level-2:
+      <<: *boolean_flag_base
+      on: true
+      prerequisites:
+        - { key: "flag-with-prereq-cycle-at-deeper-level-3", variation: 0 }
+
+    flag-with-prereq-cycle-at-deeper-level-3:
+      <<: *boolean_flag_base
+      on: true
+      prerequisites:
+        - { key: "flag-with-prereq-cycle-at-deeper-level-2", variation: 0 }
+
 evaluations:
   - name: prerequisite succeeds, flag rule matches
     flagKey: flag-with-prereq1
@@ -253,3 +299,17 @@ evaluations:
       value: false
       variationIndex: 1
       reason: { "kind": "PREREQUISITE_FAILED", "prerequisiteKey": "prereq-that-returns-true-but-is-off" }
+
+  - NAME: prerequisite cycle is detected at top level, recursion stops
+    flagKey: flag-with-prereq-cycle-at-top-level-1
+    context: { key: "user-key" }
+    expect:
+      value: false
+      reason: { "kind": "ERROR", "errorKind": "MALFORMED_FLAG" }
+
+  - NAME: prerequisite cycle is detected at deeper level, recursion stops
+    flagKey: flag-with-prereq-cycle-at-deeper-level-1
+    context: { key: "user-key" }
+    expect:
+      value: false
+      reason: { "kind": "ERROR", "errorKind": "MALFORMED_FLAG" }
