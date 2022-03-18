@@ -77,7 +77,7 @@ func (f *ContextFactory) NextUniqueContext() ldcontext.Context {
 	return f.factoryFn(key)
 }
 
-// SetKeyDisambiguatorValueSameAs overrides the usual "add a randomized value all the keys produced
+// SetKeyDisambiguatorValueSameAs overrides the usual "add a randomized value to all the keys produced
 // by this factory" logic, which is meant to avoid key collisions, so that these two factories will
 // use the *same* randomized value. This is for tests where we want to verify, for instance, that
 // two contexts with the same key but different kinds are treated as distinct.
