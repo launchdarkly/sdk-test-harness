@@ -13,16 +13,16 @@ import (
 )
 
 func doServerSideCustomEventTests(t *ldtest.T) {
-	// These do not include detailed tests of the encoding of user attributes in custom events,
-	// which are in server_side_events_users.go.
+	// These do not include detailed tests of the encoding of context attributes in custom events,
+	// which are in server_side_events_contexts.go.
 
 	t.Run("data and metricValue parameters", doServerSideParameterizedCustomEventTests)
 
 	t.Run("basic properties", func(t *ldtest.T) {
 		metricValue := 1.0
-		for _, contexts := range data.NewContextFactoriesForAnonymousAndNonAnonymous("doServerSideCustomEventTests") {
+		for _, contexts := range data.NewContextFactoriesForSingleAndMultiKind("doServerSideCustomEventTests") {
 			t.Run(contexts.Description(), func(t *ldtest.T) {
-				user := contexts.NextUniqueContext()
+				context := contexts.NextUniqueContext()
 
 				dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
 				events := NewSDKEventSink(t)
@@ -30,7 +30,7 @@ func doServerSideCustomEventTests(t *ldtest.T) {
 
 				client.SendCustomEvent(t, servicedef.CustomEventParams{
 					EventKey:    "event-key",
-					Context:     user,
+					Context:     context,
 					Data:        ldvalue.Bool(true),
 					MetricValue: &metricValue,
 				})
@@ -43,7 +43,7 @@ func doServerSideCustomEventTests(t *ldtest.T) {
 					m.AllOf(
 						JSONPropertyKeysCanOnlyBe("kind", "creationDate", "key", "contextKeys", "data", "metricValue"),
 						IsCustomEvent(),
-						HasContextKeys(user),
+						HasContextKeys(context),
 					),
 				))
 			})

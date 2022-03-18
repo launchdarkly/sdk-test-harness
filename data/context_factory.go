@@ -2,18 +2,21 @@ package data
 
 import (
 	"fmt"
+	"math/rand"
+	"time"
 
 	"gopkg.in/launchdarkly/go-sdk-common.v3/ldcontext"
-	"gopkg.in/launchdarkly/go-sdk-common.v3/ldtime"
 )
+
+var contextRandomizer = rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gochecknoglobals,gosec
 
 // ContextFactory is a test data generator that produces ldcontext.Context instances.
 type ContextFactory struct {
-	description string
-	prefix      string
-	createdTime ldtime.UnixMillisecondTime
-	counter     int
-	factoryFn   func(string) ldcontext.Context
+	description           string
+	prefix                string
+	keyDisambiguatorValue int64
+	counter               int
+	factoryFn             func(string) ldcontext.Context
 }
 
 // NewContextFactory creates a ContextFactory that produces single-kind Contexts.
@@ -23,8 +26,8 @@ type ContextFactory struct {
 // have no properties other than the key, and its kind will be ldcontext.DefaultKind ("user").
 func NewContextFactory(prefix string, builderActions ...func(*ldcontext.Builder)) *ContextFactory {
 	return &ContextFactory{
-		prefix:      prefix,
-		createdTime: ldtime.UnixMillisNow(),
+		prefix:                prefix,
+		keyDisambiguatorValue: contextRandomizer.Int63(),
 		factoryFn: func(key string) ldcontext.Context {
 			builder := ldcontext.NewBuilder(key)
 			for _, ba := range builderActions {
@@ -46,12 +49,12 @@ func NewMultiContextFactory(
 	builderActions ...func(*ldcontext.Builder),
 ) *ContextFactory {
 	return &ContextFactory{
-		prefix:      prefix,
-		createdTime: ldtime.UnixMillisNow(),
+		prefix:                prefix,
+		keyDisambiguatorValue: contextRandomizer.Int63(),
 		factoryFn: func(key string) ldcontext.Context {
 			multiBuilder := ldcontext.NewMultiBuilder()
 			for i, kind := range kinds {
-				builder := ldcontext.NewBuilder(key + "." + string(kind))
+				builder := ldcontext.NewBuilder(key)
 				builder.Kind(kind)
 				if i < len(builderActions) {
 					builderActions[i](builder)
@@ -70,30 +73,45 @@ func (f *ContextFactory) Description() string { return f.description }
 // NextUniqueContext creates a Context instance.
 func (f *ContextFactory) NextUniqueContext() ldcontext.Context {
 	f.counter++
-	key := fmt.Sprintf("%s.%d.%d", f.prefix, f.createdTime, f.counter)
+	key := fmt.Sprintf("%s.%d.%d", f.prefix, f.keyDisambiguatorValue, f.counter)
 	return f.factoryFn(key)
 }
 
-// NewContextFactoriesForAnonymousAndNonAnonymous creates two ContextFactory instances: one that
-// always sets Transient (a.k.a. anonymous) to true, and another that doesn't. We use this in tests
-// that need to check slightly different expectations for SDK event output in these two cases.
+// SetKeyDisambiguatorValueSameAs overrides the usual "add a randomized value to all the keys produced
+// by this factory" logic, which is meant to avoid key collisions, so that these two factories will
+// use the *same* randomized value. This is for tests where we want to verify, for instance, that
+// two contexts with the same key but different kinds are treated as distinct.
+func (f *ContextFactory) SetKeyDisambiguatorValueSameAs(f1 *ContextFactory) {
+	f.keyDisambiguatorValue = f1.keyDisambiguatorValue
+}
+
+// NewContextFactoriesForSingleAndMultiKind produces a list of ContextFactory instances for testing SDK
+// functionality that may behave differently for different Context variants.
 //
-// Each will have an appropriate Description, so the test logic can just iterate like this:
+// The returned list will include factories for 1. single-kind Contexts of the default kind, 2. single-kind
+// Contexts of a different kind, 3. multi-kind Contexts. The reason for checking single vs. multi-kind is
+// that we want to make sure the SDK correctly enumerates the kinds when it populates the contextKeys
+// property in event data. The reason for checking the default kind vs. a non-default kind is that it
+// affects the deduplication logic for index events.
 //
-//     for _, contexts := range data.NewContextFactoriesForAnonymousAndNonAnonymous("NameOfTest") {
+// Each will have an appropriate Description, so the logic for running a test against each one can look
+// like this:
+//
+//     for _, contexts := range data.NewContextFactoriesForSingleAndMultiKind("NameOfTest") {
 //         t.Run(contexts.Description(), func(t *testing.T) {
 //             context := contexts.NextUniqueContext() // do something with this
 //         })
 //     }
-func NewContextFactoriesForAnonymousAndNonAnonymous(
-	prefix string,
-	builderActions ...func(*ldcontext.Builder),
+func NewContextFactoriesForSingleAndMultiKind(
+	prefix string, builderActions ...func(*ldcontext.Builder),
 ) []*ContextFactory {
-	f1 := NewContextFactory(prefix+".nonanon", builderActions...)
-	f1.description = "non-anonymous user"
-	f2 := NewContextFactory(prefix+".anon", append(builderActions, func(b *ldcontext.Builder) {
-		b.Transient(true)
+	f1 := NewContextFactory(prefix, builderActions...)
+	f1.description = "single kind default"
+	f2 := NewContextFactory(prefix, append(builderActions, func(b *ldcontext.Builder) {
+		b.Kind("org")
 	})...)
-	f2.description = "anonymous user"
-	return []*ContextFactory{f1, f2}
+	f2.description = "single kind non-default"
+	f3 := NewMultiContextFactory(prefix, []ldcontext.Kind{"org", "other"}, builderActions...)
+	f3.description = "multi-kind"
+	return []*ContextFactory{f1, f2, f3}
 }

@@ -23,7 +23,7 @@ type BigSegmentStore struct {
 	service           *mockld.MockBigSegmentStoreService
 	endpoint          *harness.MockEndpoint
 	getMetadata       func() (ldtime.UnixMillisecondTime, error)
-	getUserMembership func(string) (map[string]bool, error)
+	getMembership     func(string) (map[string]bool, error)
 	metadataQueries   chan struct{}
 	membershipQueries []string
 	lock              sync.Mutex
@@ -38,7 +38,7 @@ func NewBigSegmentStore(t *ldtest.T, initialStatus ldreason.BigSegmentsStatus) *
 	b := &BigSegmentStore{}
 	b.service = mockld.NewMockBigSegmentStoreService(
 		b.doGetMetadata,
-		b.doGetUserMembership,
+		b.doGetMembership,
 		t.DebugLogger(),
 	)
 	b.endpoint = requireContext(t).harness.NewMockEndpoint(b.service, nil, t.DebugLogger())
@@ -87,28 +87,28 @@ func (b *BigSegmentStore) SetupMetadataForStatus(status ldreason.BigSegmentsStat
 	})
 }
 
-// SetupGetUserMembership causes the specified function to be called whenever the SDK calls the
-// "get user membership" method on the Big Segment store.
-func (b *BigSegmentStore) SetupGetUserMembership(fn func(userHash string) (map[string]bool, error)) {
+// SetupGetMembership causes the specified function to be called whenever the SDK calls the
+// "get membership" method on the Big Segment store.
+func (b *BigSegmentStore) SetupGetMembership(fn func(contextHash string) (map[string]bool, error)) {
 	b.lock.Lock()
-	b.getUserMembership = fn
+	b.getMembership = fn
 	b.lock.Unlock()
 }
 
-// SetupMemberships is a shortcut to call SetupGetUserMembership with appropriate logic for
-// providing preconfigured results for each possible user hash. Any user hash whose key does not
+// SetupMemberships is a shortcut to call SetupGetMembership with appropriate logic for
+// providing preconfigured results for each possible context hash. Any context hash whose key does not
 // appear in the map will cause the test to fail.
 func (b *BigSegmentStore) SetupMemberships(t *ldtest.T, memberships map[string]map[string]bool) {
-	b.SetupGetUserMembership(func(userHash string) (map[string]bool, error) {
-		if membership, ok := memberships[userHash]; ok {
+	b.SetupGetMembership(func(contextHash string) (map[string]bool, error) {
+		if membership, ok := memberships[contextHash]; ok {
 			return membership, nil
 		}
 		expectedKeys := make([]string, len(memberships))
 		for k := range memberships {
 			expectedKeys = append(expectedKeys, k)
 		}
-		assert.Fail(t, "got membership query with unexpected user hash value",
-			"actual: %s, expected: %v", userHash, sortedStrings(expectedKeys))
+		assert.Fail(t, "got membership query with unexpected context hash value",
+			"actual: %s, expected: %v", contextHash, sortedStrings(expectedKeys))
 		return nil, nil
 	})
 }
@@ -133,7 +133,7 @@ func (b *BigSegmentStore) ExpectNoMoreMetadataQueries(t *ldtest.T, timeout time.
 	}
 }
 
-// GetMembershipQueries returns the user hashes of all membership queries that have been
+// GetMembershipQueries returns the context hashes of all membership queries that have been
 // received so far.
 func (b *BigSegmentStore) GetMembershipQueries() []string {
 	b.lock.Lock()
@@ -155,12 +155,12 @@ func (b *BigSegmentStore) doGetMetadata() (ldtime.UnixMillisecondTime, error) {
 	return 0, nil
 }
 
-func (b *BigSegmentStore) doGetUserMembership(userHash string) (map[string]bool, error) {
+func (b *BigSegmentStore) doGetMembership(contextHash string) (map[string]bool, error) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
-	b.membershipQueries = append(b.membershipQueries, userHash)
-	if b.getUserMembership != nil {
-		return b.getUserMembership(userHash)
+	b.membershipQueries = append(b.membershipQueries, contextHash)
+	if b.getMembership != nil {
+		return b.getMembership(contextHash)
 	}
 	return nil, nil
 }
