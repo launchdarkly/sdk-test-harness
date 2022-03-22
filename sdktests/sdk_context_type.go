@@ -236,6 +236,8 @@ func doSDKContextConvertTests(t *ldtest.T) {
 
 			`{"kind": "kind", "key": "x"}`, // kind cannot be "kind"
 			`{"kind": "multi"}`,            // multi-kind with no kinds
+			`{"kind": "", "key" : "x"}`,    // kind cannot be empty string
+
 		}
 		for _, input := range inputs {
 			t.Run(input, func(t *ldtest.T) {
