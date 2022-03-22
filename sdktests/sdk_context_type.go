@@ -90,8 +90,7 @@ func doSDKContextBuildTests(t *ldtest.T) {
 			testCases = append(testCases, testCase{servicedef.ContextBuildParams{Single: &params}, c.expected})
 		}
 		for _, c := range multiKindTestCases {
-			testCases = append(testCases, testCase{servicedef.ContextBuildParams{
-				Multi: &servicedef.ContextBuildMultiParams{Kinds: c.kinds}}, c.expected})
+			testCases = append(testCases, testCase{servicedef.ContextBuildParams{Multi: c.kinds}, c.expected})
 		}
 
 		for _, p := range testCases {
