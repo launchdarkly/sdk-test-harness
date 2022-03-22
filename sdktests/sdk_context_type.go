@@ -224,6 +224,7 @@ func doSDKContextConvertTests(t *ldtest.T) {
 
 			// wrong type for built-in property
 			`{"kind": null, "key": "x"}`,
+			`{"kind": "", "key" : "x"}`,
 			`{"kind": true, "key": "x"}`,
 			`{"kind": "org", "key": null}`,
 			`{"kind": "org", "key": 3}`,
