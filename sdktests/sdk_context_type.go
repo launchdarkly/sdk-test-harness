@@ -224,7 +224,6 @@ func doSDKContextConvertTests(t *ldtest.T) {
 
 			// wrong type for built-in property
 			`{"kind": null, "key": "x"}`,
-			`{"kind": "", "key" : "x"}`,
 			`{"kind": true, "key": "x"}`,
 			`{"kind": "org", "key": null}`,
 			`{"kind": "org", "key": 3}`,
@@ -237,6 +236,8 @@ func doSDKContextConvertTests(t *ldtest.T) {
 
 			`{"kind": "kind", "key": "x"}`, // kind cannot be "kind"
 			`{"kind": "multi"}`,            // multi-kind with no kinds
+			`{"kind": "", "key" : "x"}`,    // kind cannot be empty string
+
 		}
 		for _, input := range inputs {
 			t.Run(input, func(t *ldtest.T) {
