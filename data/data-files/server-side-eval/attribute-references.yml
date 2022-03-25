@@ -14,89 +14,94 @@ constants:
 parameters:
   - NAME: top-level attribute with no slash prefix
     CONTEXT: { kind: "user", key: "x", attr1: "right"}
-    CLAUSE: { attribute: "attr1", op: "in", values: ["right"] }
+    CLAUSE: { contextKind: "user", attribute: "attr1", op: "in", values: ["right"] }
     EXPECT: <IS_MATCH>
 
   - NAME: top-level attribute with slash prefix
     CONTEXT: { kind: "user", key: "x", attr1: "right"}
-    CLAUSE: { attribute: "/attr1", op: "in", values: ["right"] }
+    CLAUSE: { contextKind: "user", attribute: "/attr1", op: "in", values: ["right"] }
     EXPECT: <IS_MATCH>
 
   - NAME: top-level attribute name containing unescaped slash
     CONTEXT: { kind: "user", key: "x", "attr/a": "right"}
-    CLAUSE: { attribute: "attr/a", op: "in", values: ["right"] }
+    CLAUSE: { contextKind: "user", attribute: "attr/a", op: "in", values: ["right"] }
     EXPECT: <IS_MATCH>
 
   - NAME: top-level attribute with slash prefix containing escaped slash
     CONTEXT: { kind: "user", key: "x", "attr/a": "right"}
-    CLAUSE: { attribute: "/attr~1a", op: "in", values: ["right"] }
+    CLAUSE: { contextKind: "user", attribute: "/attr~1a", op: "in", values: ["right"] }
     EXPECT: <IS_MATCH>
 
   - NAME: top-level attribute name containing unescaped tilde
     CONTEXT: { kind: "user", key: "x", "attr~a": "right"}
-    CLAUSE: { attribute: "attr~a", op: "in", values: ["right"] }
+    CLAUSE: { contextKind: "user", attribute: "attr~a", op: "in", values: ["right"] }
     EXPECT: <IS_MATCH>
 
   - NAME: top-level attribute with slash prefix containing escaped tilde
     CONTEXT: { kind: "user", key: "x", "attr~a": "right"}
-    CLAUSE: { attribute: "/attr~0a", op: "in", values: ["right"] }
+    CLAUSE: { contextKind: "user", attribute: "/attr~0a", op: "in", values: ["right"] }
+    EXPECT: <IS_MATCH>
+
+  - NAME: attribute is interpreted as unescaped name if there is no contextKind
+    CONTEXT: { kind: "user", key: "x", "/attr/a": "right"}
+    CLAUSE: { attribute: "/attr/a", op: "in", values: ["right"] }
     EXPECT: <IS_MATCH>
 
   - NAME: property in object
     CONTEXT: { kind: "user", key: "x", attr1: {prop1: "right", prop2: "wrong"}}
-    CLAUSE: { attribute: "/attr1/prop1", op: "in", values: ["right"] }
+    CLAUSE: { contextKind: "user", attribute: "/attr1/prop1", op: "in", values: ["right"] }
     EXPECT: <IS_MATCH>
 
   - NAME: property with escape sequence in object
     CONTEXT: { kind: "user", key: "x", attr1: {"prop/a": "right", prop2: "wrong"}}
-    CLAUSE: { attribute: "/attr1/prop~1a", op: "in", values: ["right"] }
+    CLAUSE: { contextKind: "user", attribute: "/attr1/prop~1a", op: "in", values: ["right"] }
     EXPECT: <IS_MATCH>
 
   - NAME: property in nested object
     CONTEXT: { kind: "user", key: "x", attr1: {prop1: {prop2: "right"}, prop2: "wrong"}}
-    CLAUSE: { attribute: "/attr1/prop1/prop2", op: "in", values: ["right"] }
+    CLAUSE: { contextKind: "user", attribute: "/attr1/prop1/prop2", op: "in", values: ["right"] }
     EXPECT: <IS_MATCH>
 
   - NAME: nonexistent property automatically fails clause
     CONTEXT: { kind: "user", key: "x", attr1: {prop1: "right", prop2: "wrong"}}
-    CLAUSE: { attribute: "/attr1/prop99", op: "in", values: ["x"], negate: true }
+    CLAUSE: { contextKind: "user", attribute: "/attr1/prop99", op: "in", values: ["x"], negate: true }
     # note that "not in [x]" does *not* match if the context value does not exist
     EXPECT: <IS_NOT_MATCH>
 
   - NAME: property reference in non-object automatically fails clause
     CONTEXT: { kind: "user", key: "x", attr1: "right"}
-    CLAUSE: { attribute: "/attr1/prop1", op: "in", values: ["x"], negate: true }
+    CLAUSE: { contextKind: "user", attribute: "/attr1/prop1", op: "in", values: ["x"], negate: true }
     # note that "not in [x]" does *not* match if the context value does not exist
     EXPECT: <IS_NOT_MATCH>
 
   - NAME: element in array
     CONTEXT: { kind: "user", key: "x", attr1: ["wrong", "alas", "right", "no"]}
-    CLAUSE: { attribute: "/attr1/2", op: "in", values: ["right"] }
+    CLAUSE: { contextKind: "user", attribute: "/attr1/2", op: "in", values: ["right"] }
     EXPECT: <IS_MATCH>
 
   - NAME: element in nested array
     CONTEXT: { kind: "user", key: "x", attr1: ["wrong", "alas", ["right", "sorry"], "no"] }
-    CLAUSE: { attribute: "/attr1/2/0", op: "in", values: ["right"] }
+    CLAUSE: { contextKind: "user", attribute: "/attr1/2/0", op: "in", values: ["right"] }
     EXPECT: <IS_MATCH>
 
   - NAME: element in array in object
     CONTEXT: { kind: "user", key: "x", attr1: { prop1: ["wrong", "alas", "right", "no"] } }
-    CLAUSE: { attribute: "/attr1/prop1/2", op: "in", values: ["right"] }
+    CLAUSE: { contextKind: "user", attribute: "/attr1/prop1/2", op: "in", values: ["right"] }
     EXPECT: <IS_MATCH>
 
   - NAME: array index too low automatically fails clause
     CONTEXT: { kind: "user", key: "x", attr1: ["right"] }
-    CLAUSE: { attribute: "/attr1/-1", op: "in", values: ["x"], negate: true }
+    CLAUSE: { contextKind: "user", attribute: "/attr1/-1", op: "in", values: ["x"], negate: true }
     EXPECT: <IS_NOT_MATCH>
 
   - NAME: array index too high automatically fails clause
     CONTEXT: { kind: "user", key: "x", attr1: ["right", "wrong"] }
-    CLAUSE: { attribute: "/attr1/2", op: "in", values: ["x"], negate: true }
+    CLAUSE: { contextKind: "user", attribute: "/attr1/2", op: "in", values: ["x"], negate: true }
     EXPECT: <IS_NOT_MATCH>
 
   - NAME: array index in non-array automatically fails clause
     CONTEXT: { kind: "user", key: "x", attr1: "right" }
-    CLAUSE: { attribute: "/attr1/0", op: "in", values: ["x"], negate: true }
+    CLAUSE: { contextKind: "user", attribute: "/attr1/0", op: "in", values: ["x"], negate: true }
     EXPECT: <IS_NOT_MATCH>
 
 sdkData:
