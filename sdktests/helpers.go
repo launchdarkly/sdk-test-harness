@@ -130,6 +130,11 @@ func makeCharactersNotInAllowedCharsetString(allowed string) []rune {
 	return badChars
 }
 
+// Returns a clause that will match any user.
+func makeClauseThatAlwaysMatches() ldmodel.Clause {
+	return ldbuilders.Negate(ldbuilders.Clause("key", ldmodel.OperatorIn, ldvalue.String("")))
+}
+
 func makeFlagToCheckSegmentMatch(
 	flagKey string,
 	segmentKey string,

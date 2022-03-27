@@ -9,6 +9,7 @@ import (
 
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
+	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
 
@@ -46,6 +47,13 @@ func EvalResponseReason() m.MatcherTransform {
 			return *r.Reason, nil
 		}).
 		EnsureInputValueType(servicedef.EvaluateFlagResponse{})
+}
+
+// EqualReason is a type-safe replacement for m.Equal(EvaluationReason) that also provides better
+// failure output, by treating it as a JSON object-- since the default implementation of String()
+// for EvaluationReason returns a shorter string that doesn't include every property.
+func EqualReason(reason ldreason.EvaluationReason) m.Matcher {
+	return m.JSONEqual(reason)
 }
 
 func EvalAllFlagsStateMap() m.MatcherTransform {
