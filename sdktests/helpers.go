@@ -13,6 +13,7 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldattr"
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
@@ -26,6 +27,7 @@ import (
 var dummyValue0, dummyValue1, dummyValue2, dummyValue3 ldvalue.Value = ldvalue.String("a"), //nolint:gochecknoglobals
 	ldvalue.String("b"), ldvalue.String("c"), ldvalue.String("d")
 
+// Helper for constructing the parameters for an evaluation request and returning just the value field.
 func basicEvaluateFlag(
 	t *ldtest.T,
 	client *SDKClient,
@@ -42,6 +44,7 @@ func basicEvaluateFlag(
 	return result.Value
 }
 
+// Returns matcherIfTrue or matcherIfFalse depending on isTrue.
 func conditionalMatcher(isTrue bool, matcherIfTrue, matcherIfFalse m.Matcher) m.Matcher {
 	if isTrue {
 		return matcherIfTrue
@@ -49,6 +52,7 @@ func conditionalMatcher(isTrue bool, matcherIfTrue, matcherIfFalse m.Matcher) m.
 	return matcherIfFalse
 }
 
+// Helper for constructing the parameters for an evaluation request and returning the full response.
 func evaluateFlagDetail(
 	t *ldtest.T,
 	client *SDKClient,
@@ -65,17 +69,21 @@ func evaluateFlagDetail(
 	})
 }
 
+// Causes the test to fail and exit if any more requests are received at the endpoint.
 func expectNoMoreRequests(t *ldtest.T, endpoint *harness.MockEndpoint) {
 	_, err := endpoint.AwaitConnection(time.Millisecond * 100)
 	require.Error(t, err, "did not expect another request, but got one")
 }
 
+// Expects a request to be received at the endpoint within the timeout (or already have been received and
+// not yet consumed). Causes the test to fail and exit on timeout.
 func expectRequest(t *ldtest.T, endpoint *harness.MockEndpoint, timeout time.Duration) harness.IncomingRequestInfo {
 	request, err := endpoint.AwaitConnection(timeout)
 	require.NoError(t, err, "timed out waiting for request")
 	return request
 }
 
+// Returns a list of all applicable SDK value types if it is a strongly-typed SDK, or ValueTypeAny if not.
 func getValueTypesToTest(t *ldtest.T) []servicedef.ValueType {
 	// For strongly-typed SDKs, make sure we test each of the typed Variation methods to prove
 	// that they all correctly copy the flag value and default value into the event data. For
@@ -92,6 +100,7 @@ func getValueTypesToTest(t *ldtest.T) []servicedef.ValueType {
 	return append(ret, servicedef.ValueTypeAny)
 }
 
+// Generates a default value based on the variation value type used by the flag.
 func inferDefaultFromFlag(sdkData mockld.ServerSDKData, flagKey string) ldvalue.Value {
 	flagData := sdkData["flags"][flagKey]
 	if flagData == nil {
@@ -116,6 +125,8 @@ func inferDefaultFromFlag(sdkData mockld.ServerSDKData, flagKey string) ldvalue.
 	}
 }
 
+// Generates a list of characters that are not in the specified string, including some control characters
+// and some multi-byte characters.
 func makeCharactersNotInAllowedCharsetString(allowed string) []rune {
 	var badChars []rune
 	badChars = append(badChars, '\t', '\n', '\r') // don't bother including every control character
@@ -130,6 +141,12 @@ func makeCharactersNotInAllowedCharsetString(allowed string) []rune {
 	return badChars
 }
 
+// Returns a clause that will match any context of any kind.
+func makeClauseThatAlwaysMatches() ldmodel.Clause {
+	return ldbuilders.Negate(ldbuilders.Clause(ldattr.KindAttr, ldmodel.OperatorIn, ldvalue.String("")))
+}
+
+// Returns a flag that evaluates to one of two values depending on whether the context matches the segment.
 func makeFlagToCheckSegmentMatch(
 	flagKey string,
 	segmentKey string,
@@ -143,6 +160,7 @@ func makeFlagToCheckSegmentMatch(
 		Build()
 }
 
+// Builds two versions of the same flag, ensuring that each returns the specified value.
 func makeFlagVersionsWithValues(key string, version1, version2 int, value1, value2 ldvalue.Value) (
 	ldmodel.FeatureFlag, ldmodel.FeatureFlag) {
 	flag1 := ldbuilders.NewFlagBuilder(key).Version(version1).
@@ -152,6 +170,8 @@ func makeFlagVersionsWithValues(key string, version1, version2 int, value1, valu
 	return flag1, flag2
 }
 
+// Polls the client once to see whether a flag's value has changed. Causes the test to fail if the
+// result value is neither the expected new value nor the expected old value.
 func checkForUpdatedValue(
 	t *ldtest.T,
 	client *SDKClient,
@@ -174,6 +194,8 @@ func checkForUpdatedValue(
 	}
 }
 
+// Polls the client repeatedly until the flag's value has changed. Causes the test to fail if the
+// timeout elapses without a change, or if an unexpected value is returned.
 func pollUntilFlagValueUpdated(
 	t *ldtest.T,
 	client *SDKClient,
@@ -191,6 +213,7 @@ func pollUntilFlagValueUpdated(
 		time.Second, time.Millisecond*50, "timed out without seeing updated flag value")
 }
 
+// Returns valueIfTrue or valueIfFalse.
 func selectString(boolValue bool, valueIfTrue, valueIfFalse string) string {
 	if boolValue {
 		return valueIfTrue
@@ -198,12 +221,36 @@ func selectString(boolValue bool, valueIfTrue, valueIfFalse string) string {
 	return valueIfFalse
 }
 
+// Configures a (single-kind) context to have the specified value for a particular attribute-- or, if the
+// ldattr.Ref is a complex reference, a particular object property or array element.
+func setContextValueForAttrRef(b *ldcontext.Builder, ref ldattr.Ref, value ldvalue.Value) {
+	for depth := ref.Depth() - 1; depth > 0; depth-- {
+		name, index := ref.Component(depth)
+		if index.IsDefined() {
+			arrayBuilder := ldvalue.ArrayBuild()
+			for i := 0; i < index.IntValue(); i++ {
+				arrayBuilder.Add(ldvalue.Null())
+				arrayBuilder.Add(value)
+			}
+			value = arrayBuilder.Build()
+		} else {
+			objectBuilder := ldvalue.ObjectBuild()
+			objectBuilder.Set(name, value)
+			value = objectBuilder.Build()
+		}
+	}
+	name, _ := ref.Component(0)
+	b.SetValue(name, value)
+}
+
+// Shortcut for creating a sorted copy of a string list.
 func sortedStrings(ss []string) []string {
 	ret := append([]string(nil), ss...)
 	sort.Strings(ret)
 	return ret
 }
 
+// Returns true if a slice element matches the string.
 func stringInSlice(value string, slice []string) bool {
 	for _, s := range slice {
 		if s == value {
@@ -213,10 +260,12 @@ func stringInSlice(value string, slice []string) bool {
 	return false
 }
 
+// Shortcut for converting a millisecond time value to a pointer.
 func timeValueAsPointer(value ldtime.UnixMillisecondTime) *ldtime.UnixMillisecondTime {
 	return &value
 }
 
+// Shortcut for formatting a test description based on a value type.
 func testDescFromType(valueType servicedef.ValueType) string {
 	return fmt.Sprintf("type: %s", valueType)
 }
