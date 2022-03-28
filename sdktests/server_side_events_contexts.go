@@ -87,9 +87,7 @@ func makeEventContextTestParams() []eventContextTestParams {
 				m.KV("transient", m.Equal(true)),
 				m.KV("_meta", m.MapOf(
 					m.KV("secondary", m.Equal("s")),
-					m.KV("redactedAttributes", m.ItemsInAnyOrder(
-						m.Equal("name"), m.Equal("b"),
-					)),
+					m.KV("redactedAttributes", RedactedAttributesAre("name", "b")),
 				)),
 			),
 		},
@@ -111,9 +109,7 @@ func makeEventContextTestParams() []eventContextTestParams {
 				anyKeyMatcher, defaultKindMatcher,
 				m.KV("d", m.Equal("e")),
 				m.KV("_meta", m.MapOf(
-					m.KV("redactedAttributes", m.ItemsInAnyOrder(
-						m.Equal("name"), m.Equal("b"),
-					)),
+					m.KV("redactedAttributes", RedactedAttributesAre("name", "b")),
 				)),
 			),
 		},
@@ -137,9 +133,7 @@ func makeEventContextTestParams() []eventContextTestParams {
 				m.KV("b", m.JSONStrEqual(`{"prop2": 3}`)),
 				m.KV("c", m.JSONStrEqual(`{"prop1": {"sub1": true}, "prop2": {"sub2": 5}}`)),
 				m.KV("_meta", m.MapOf(
-					m.KV("redactedAttributes", m.ItemsInAnyOrder(
-						m.Equal("/b/prop1"), m.Equal("/c/prop2/sub1"),
-					)),
+					m.KV("redactedAttributes", RedactedAttributesAre("/b/prop1", "/c/prop2/sub1")),
 				)),
 			),
 		},
