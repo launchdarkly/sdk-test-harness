@@ -25,7 +25,7 @@ func TestComputeExpectedBucketValue(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("%+v", p), func(t *testing.T) {
 			computedValue := computeExpectedBucketValue(
-				ldvalue.String(p.userValue),
+				p.userValue,
 				p.flagOrSegmentKey,
 				p.salt,
 				ldvalue.OptionalString{},
@@ -35,7 +35,7 @@ func TestComputeExpectedBucketValue(t *testing.T) {
 
 			for _, secondary := range []string{"abcdef", ""} {
 				valueWithSecondaryKey := computeExpectedBucketValue(
-					ldvalue.String(p.userValue),
+					p.userValue,
 					p.flagOrSegmentKey,
 					p.salt,
 					ldvalue.NewOptionalString(secondary),

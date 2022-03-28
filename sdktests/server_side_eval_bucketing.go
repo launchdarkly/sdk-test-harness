@@ -2,6 +2,7 @@ package sdktests
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
@@ -20,7 +21,7 @@ type bucketingTestParams struct {
 	flagOrSegmentKey      string
 	salt                  string
 	seed                  ldvalue.OptionalInt
-	contextValue          interface{} // i.e. the context key, or whatever other attribute we might be bucketing by
+	contextValue          string // i.e. the user key, or whatever other attribute we might be bucketing by
 	overrideExpectedValue ldvalue.OptionalInt
 }
 
@@ -44,43 +45,6 @@ func makeBucketingTestParams() []bucketingTestParams {
 			flagOrSegmentKey: "hashKey",
 			salt:             "saltyA",
 			contextValue:     "userKeyC",
-		},
-	}
-}
-
-func makeBucketingTestParamsWithNonStringValues() []bucketingTestParams {
-	return []bucketingTestParams{
-		{
-			flagOrSegmentKey: "hashKey",
-			salt:             "saltyA",
-			contextValue:     33333,
-		},
-		{
-			flagOrSegmentKey: "hashKey",
-			salt:             "saltyA",
-			contextValue:     99999,
-		},
-		// Non-integer numeric values, and any value types other than string and number, are not allowed
-		// and cause the bucket value to be zero.
-		{
-			flagOrSegmentKey: "hashKey",
-			salt:             "saltyA",
-			contextValue:     1.5,
-		},
-		{
-			flagOrSegmentKey: "hashKey",
-			salt:             "saltyA",
-			contextValue:     true,
-		},
-		{
-			flagOrSegmentKey: "hashKey",
-			salt:             "saltyA",
-			contextValue:     []interface{}{"x"},
-		},
-		{
-			flagOrSegmentKey: "hashKey",
-			salt:             "saltyA",
-			contextValue:     map[string]interface{}{"x": "y"},
 		},
 	}
 }
@@ -180,7 +144,7 @@ func RunServerSideEvalBucketingTests(t *ldtest.T) {
 			expectedBucketValue = p.overrideExpectedValue.IntValue()
 		} else {
 			expectedBucketValue = computeExpectedBucketValue(
-				ldvalue.CopyArbitraryValue(p.contextValue),
+				p.contextValue,
 				p.flagOrSegmentKey,
 				p.salt,
 				ldvalue.OptionalString{},
@@ -326,14 +290,14 @@ func RunServerSideEvalBucketingTests(t *ldtest.T) {
 						}
 						for _, p := range allParams {
 							expectedValueWithoutSecondary := computeExpectedBucketValue(
-								ldvalue.CopyArbitraryValue(p.contextValue),
+								p.contextValue,
 								p.flagOrSegmentKey,
 								p.salt,
 								ldvalue.OptionalString{},
 								p.seed,
 							)
 							expectedValueWithSecondary := computeExpectedBucketValue(
-								ldvalue.CopyArbitraryValue(p.contextValue),
+								p.contextValue,
 								p.flagOrSegmentKey,
 								p.salt,
 								ldvalue.NewOptionalString(secondary),
@@ -350,53 +314,104 @@ func RunServerSideEvalBucketingTests(t *ldtest.T) {
 		}
 	})
 
-	t.Run("bucket by non-key attribute (rollout only)", func(t *ldtest.T) {
-		t.Run("string value", func(t *ldtest.T) {
-			bucketBy := "attr1"
-			makeUser := func(p bucketingTestParams, shouldMatchRule bool) lduser.User {
-				value := ldvalue.CopyArbitraryValue(p.contextValue)
-				b := lduser.NewUserBuilder("arbitrary-key")
-				b.Custom(bucketBy, value)
-				if shouldMatchRule {
-					b.Custom(matchRuleAttr, ldvalue.Bool(true))
-				}
-				return b.Build()
-			}
-			doTests(t, makeBucketingTestParams(), ldmodel.RolloutKindRollout, lduser.UserAttribute(bucketBy), makeUser)
-		})
+	t.Run("bucket by non-key attribute", func(t *ldtest.T) {
+		// Note: in the SDK versions that this version of sdk-test-harness is for, the defined behavior
+		// was that the bucketBy property could be used for either a rollout or an experiment. In later
+		// versions, bucketBy is ignored in experiments and this test logic is changed.
 
-		t.Run("non-string value", func(t *ldtest.T) {
-			bucketBy := "attr1"
-			makeUser := func(p bucketingTestParams, shouldMatchRule bool) lduser.User {
-				value := ldvalue.CopyArbitraryValue(p.contextValue)
-				b := lduser.NewUserBuilder("arbitrary-key")
-				b.Custom(bucketBy, value)
-				if shouldMatchRule {
-					b.Custom(matchRuleAttr, ldvalue.Bool(true))
+		for _, isExperiment := range []bool{false, true} {
+			t.Run(selectString(isExperiment, "experiments", "rollouts"), func(t *ldtest.T) {
+				rolloutKind := ldmodel.RolloutKindRollout
+				if isExperiment {
+					rolloutKind = ldmodel.RolloutKindExperiment
 				}
-				return b.Build()
-			}
-			doTests(t, makeBucketingTestParamsWithNonStringValues(), ldmodel.RolloutKindRollout,
-				lduser.UserAttribute(bucketBy), makeUser)
-		})
 
-		t.Run("attribute not found", func(t *ldtest.T) {
-			bucketBy := "missingAttr"
+				t.Run("string value", func(t *ldtest.T) {
+					bucketBy := "attr1"
+					makeUser := func(p bucketingTestParams, shouldMatchRule bool) lduser.User {
+						value := ldvalue.CopyArbitraryValue(p.contextValue)
+						b := lduser.NewUserBuilder("arbitrary-key")
+						b.Custom(bucketBy, value)
+						if shouldMatchRule {
+							b.Custom(matchRuleAttr, ldvalue.Bool(true))
+						}
+						return b.Build()
+					}
+					doTests(t, makeBucketingTestParams(), rolloutKind, lduser.UserAttribute(bucketBy), makeUser)
+				})
 
-			makeUser := func(p bucketingTestParams, shouldMatchRule bool) lduser.User {
-				b := lduser.NewUserBuilder("arbitrary-key")
-				if shouldMatchRule {
-					b.Custom(matchRuleAttr, ldvalue.Bool(true))
-				}
-				return b.Build()
-			}
-			params := []bucketingTestParams{}
-			for _, p := range makeBucketingTestParams() {
-				p1 := p
-				p1.overrideExpectedValue = ldvalue.NewOptionalInt(0)
-				params = append(params, p1)
-			}
-			doTests(t, params, ldmodel.RolloutKindRollout, lduser.UserAttribute(bucketBy), makeUser)
-		})
+				t.Run("integer value", func(t *ldtest.T) {
+					bucketBy := "attr1"
+					flagKey, salt := "hashKey", "saltyA"
+					for _, n := range []int{33333, 99999} {
+						expectedValue := computeExpectedBucketValue(
+							strconv.Itoa(n),
+							flagKey, salt, ldvalue.OptionalString{}, ldvalue.OptionalInt{},
+						)
+						p := bucketingTestParams{
+							flagOrSegmentKey:      flagKey,
+							salt:                  salt,
+							overrideExpectedValue: ldvalue.NewOptionalInt(expectedValue),
+						}
+						makeUser := func(_ bucketingTestParams, shouldMatchRule bool) lduser.User {
+							b := lduser.NewUserBuilder("arbitrary-key")
+							b.Custom(bucketBy, ldvalue.Int(n))
+							if shouldMatchRule {
+								b.Custom(matchRuleAttr, ldvalue.Bool(true))
+							}
+							return b.Build()
+						}
+						doTest(t, p, rolloutKind, lduser.UserAttribute(bucketBy), makeUser)
+					}
+				})
+
+				t.Run("invalid value type", func(t *ldtest.T) {
+					// Non-integer numeric values, and any value types other than string and number, are not allowed
+					// and cause the bucket value to be zero.
+					bucketBy := "attr1"
+					flagKey, salt := "hashKey", "saltyA"
+					for _, value := range []ldvalue.Value{
+						ldvalue.Float64(1.5),
+						ldvalue.Bool(true),
+						ldvalue.ArrayOf(ldvalue.String("x")),
+						ldvalue.ObjectBuild().Set("x", ldvalue.String("y")).Build(),
+					} {
+						p := bucketingTestParams{
+							flagOrSegmentKey:      flagKey,
+							salt:                  salt,
+							overrideExpectedValue: ldvalue.NewOptionalInt(0),
+						}
+						makeUser := func(p bucketingTestParams, shouldMatchRule bool) lduser.User {
+							b := lduser.NewUserBuilder("arbitrary-key")
+							b.Custom(bucketBy, value)
+							if shouldMatchRule {
+								b.Custom(matchRuleAttr, ldvalue.Bool(true))
+							}
+							return b.Build()
+						}
+						doTest(t, p, rolloutKind, lduser.UserAttribute(bucketBy), makeUser)
+					}
+				})
+
+				t.Run("attribute not found", func(t *ldtest.T) {
+					bucketBy := "missingAttr"
+
+					makeUser := func(p bucketingTestParams, shouldMatchRule bool) lduser.User {
+						b := lduser.NewUserBuilder("arbitrary-key")
+						if shouldMatchRule {
+							b.Custom(matchRuleAttr, ldvalue.Bool(true))
+						}
+						return b.Build()
+					}
+					params := []bucketingTestParams{}
+					for _, p := range makeBucketingTestParams() {
+						p1 := p
+						p1.overrideExpectedValue = ldvalue.NewOptionalInt(0)
+						params = append(params, p1)
+					}
+					doTests(t, params, rolloutKind, lduser.UserAttribute(bucketBy), makeUser)
+				})
+			})
+		}
 	})
 }

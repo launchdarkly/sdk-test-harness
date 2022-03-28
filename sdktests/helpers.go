@@ -51,7 +51,7 @@ func basicEvaluateFlag(
 // this to a floating-point fraction by in effect dividing it by 100000, but this test code needs an
 // integer in order to compute bucket weights.
 func computeExpectedBucketValue(
-	userValue ldvalue.Value,
+	userValue string,
 	flagOrSegmentKey, salt string,
 	secondary ldvalue.OptionalString,
 	seed ldvalue.OptionalInt,
@@ -63,13 +63,7 @@ func computeExpectedBucketValue(
 	} else {
 		hashInput += flagOrSegmentKey + "." + salt
 	}
-	if !userValue.IsString() {
-		if !userValue.IsInt() {
-			return 0
-		}
-		userValue = ldvalue.String(strconv.Itoa(userValue.IntValue()))
-	}
-	hashInput += "." + userValue.StringValue()
+	hashInput += "." + userValue
 	if secondary.IsDefined() {
 		hashInput += "." + secondary.StringValue()
 	}
