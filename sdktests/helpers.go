@@ -1,7 +1,7 @@
 package sdktests
 
 import (
-	"crypto/sha1"
+	"crypto/sha1" //nolint:gosec
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
