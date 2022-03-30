@@ -1,9 +1,13 @@
 package sdktests
 
 import (
+	"crypto/sha1" //nolint:gosec
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -42,6 +46,40 @@ func basicEvaluateFlag(
 		DefaultValue: defaultValue,
 	})
 	return result.Value
+}
+
+// computeExpectedBucketValue implements the bucketing hash value calculation as per the evaluation spec,
+// except that it returns the value as an integer in the range [0, 100000] - currently the SDKs convert
+// this to a floating-point fraction by in effect dividing it by 100000, but this test code needs an
+// integer in order to compute bucket weights.
+func computeExpectedBucketValue(
+	userValue string,
+	flagOrSegmentKey, salt string,
+	secondary ldvalue.OptionalString,
+	seed ldvalue.OptionalInt,
+) int {
+	hashInput := ""
+
+	if seed.IsDefined() {
+		hashInput += strconv.Itoa(seed.IntValue())
+	} else {
+		hashInput += flagOrSegmentKey + "." + salt
+	}
+	hashInput += "." + userValue
+	if secondary.IsDefined() {
+		hashInput += "." + secondary.StringValue()
+	}
+
+	hashOutputBytes := sha1.Sum([]byte(hashInput)) //nolint:gosec // this isn't for authentication
+	hexEncodedChars := make([]byte, 64)
+	hex.Encode(hexEncodedChars, hashOutputBytes[:])
+	hash := hexEncodedChars[:15]
+
+	hashVal, _ := strconv.ParseInt(string(hash), 16, 64)
+	var product, result big.Int
+	product.Mul(big.NewInt(hashVal), big.NewInt(100000))
+	result.Div(&product, big.NewInt(0xFFFFFFFFFFFFFFF))
+	return int(result.Int64())
 }
 
 // Returns matcherIfTrue or matcherIfFalse depending on isTrue.
