@@ -272,7 +272,7 @@ func RunServerSideEvalBucketingTests(t *ldtest.T) {
 				return b.Build()
 			}
 
-			desc := selectString(secondary == "", "empty-but-not-undefined secondary key", "non-empty secondary key")
+			desc := selectString(secondary == "", "secondary key is an empty string", "secondary key is a non-empty string")
 			t.Run(desc, func(t *ldtest.T) {
 				for _, isExperiment := range []bool{false, true} {
 					// Note: in the SDK versions that this version of sdk-test-harness is for, the defined behavior
@@ -280,6 +280,14 @@ func RunServerSideEvalBucketingTests(t *ldtest.T) {
 					// versions, the secondary key is ignored in experiments and this test logic is changed.
 					desc := fmt.Sprintf("affects bucketing calculation in %s", selectString(isExperiment, "experiments", "rollouts"))
 					t.Run(desc, func(t *ldtest.T) {
+						if secondary == "" {
+							t.NonCritical(
+								`If the "secondary key is an empty string" tests fail but the other tests pass, it means the SDK is` +
+									` treating an empty string the same as null/undefined. That is an unlikely edge case, but the spec` +
+									` says the secondary key should have an effect even if its value is "".`,
+							)
+						}
+
 						var allParams []bucketingTestParams
 						rolloutKind := ldmodel.RolloutKindRollout
 						if isExperiment {
