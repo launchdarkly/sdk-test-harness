@@ -19,6 +19,7 @@ import (
 
 func DoServerSideEvalTests(t *ldtest.T) {
 	t.Run("parameterized", RunParameterizedServerSideEvalTests)
+	t.Run("bucketing", RunServerSideEvalBucketingTests)
 	t.Run("all flags state", RunServerSideEvalAllFlagsTests)
 	t.Run("client not ready", RunParameterizedServerSideClientNotReadyEvalTests)
 }
@@ -52,7 +53,7 @@ func RunParameterizedServerSideEvalTests(t *ldtest.T) {
 						m.In(t).Assert(result, m.AllOf(
 							EvalResponseValue().Should(m.Equal(test.Expect.Value)),
 							EvalResponseVariation().Should(m.Equal(test.Expect.VariationIndex)),
-							EvalResponseReason().Should(m.Equal(test.Expect.Reason)),
+							EvalResponseReason().Should(EqualReason(test.Expect.Reason)),
 						))
 					})
 
@@ -113,7 +114,7 @@ func RunParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
 				m.In(t).Assert(result, m.AllOf(
 					EvalResponseValue().Should(m.Equal(defaultValue)),
 					EvalResponseVariation().Should(m.Equal(ldvalue.OptionalInt{})),
-					EvalResponseReason().Should(m.JSONEqual(expectedReason)),
+					EvalResponseReason().Should(EqualReason(expectedReason)),
 				))
 			})
 		})
