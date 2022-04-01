@@ -414,230 +414,170 @@ func RunServerSideEvalBucketingTests(t *ldtest.T) {
 
 			desc := selectString(secondary == "", "secondary key is an empty string", "secondary key is a non-empty string")
 			t.Run(desc, func(t *ldtest.T) {
-				for _, isExperiment := range []bool{false, true} {
-					// Note: in the SDK versions that this version of sdk-test-harness is for, the defined behavior
-					// was that the secondary key could be used for either a rollout or an experiment. In later
-					// versions, the secondary key is ignored in experiments and this test logic is changed.
-					desc := fmt.Sprintf("affects bucketing calculation in %s", selectString(isExperiment, "experiments", "rollouts"))
-					t.Run(desc, func(t *ldtest.T) {
-						var allParams []bucketingTestParams
-						rolloutKind := ldmodel.RolloutKindRollout
-						if isExperiment {
-							allParams = makeBucketingTestParamsForExperiments()
-							rolloutKind = ldmodel.RolloutKindExperiment
-						} else {
-							allParams = makeBucketingTestParams()
-						}
-						for _, p := range allParams {
-							expectedValueWithoutSecondary := computeExpectedBucketValue(
-								p.contextValue,
-								p.flagOrSegmentKey,
-								p.salt,
-								ldvalue.OptionalString{},
-								p.seed,
-							)
-							expectedValueWithSecondary := computeExpectedBucketValue(
-								p.contextValue,
-								p.flagOrSegmentKey,
-								p.salt,
-								ldvalue.NewOptionalString(secondary),
-								p.seed,
-							)
-							require.NotEqual(t, expectedValueWithoutSecondary, expectedValueWithSecondary)
-							p1 := p
-							p1.overrideExpectedValue = ldvalue.NewOptionalInt(expectedValueWithSecondary)
-							doTest(t, p1, rolloutKind, ldcontext.DefaultKind, ldattr.Ref{}, makeContext)
-						}
-					})
-				}
+				t.Run("affects bucketing calculations in rollouts", func(t *ldtest.T) {
+					for _, p := range makeBucketingTestParams() {
+						expectedValueWithoutSecondary := computeExpectedBucketValue(
+							p.contextValue,
+							p.flagOrSegmentKey,
+							p.salt,
+							ldvalue.OptionalString{},
+							p.seed,
+						)
+						expectedValueWithSecondary := computeExpectedBucketValue(
+							p.contextValue,
+							p.flagOrSegmentKey,
+							p.salt,
+							ldvalue.NewOptionalString(secondary),
+							p.seed,
+						)
+						require.NotEqual(t, expectedValueWithoutSecondary, expectedValueWithSecondary)
+						p1 := p
+						p1.overrideExpectedValue = ldvalue.NewOptionalInt(expectedValueWithSecondary)
+						doTest(t, p1, ldmodel.RolloutKindRollout, ldcontext.DefaultKind, ldattr.Ref{}, makeContext)
+					}
+				})
+
+				t.Run("is ignored in experiments", func(t *ldtest.T) {
+					for _, p := range makeBucketingTestParams() {
+						expectedValueWithoutSecondary := computeExpectedBucketValue(
+							p.contextValue,
+							p.flagOrSegmentKey,
+							p.salt,
+							ldvalue.OptionalString{},
+							p.seed,
+						)
+						p1 := p
+						p1.overrideExpectedValue = ldvalue.NewOptionalInt(expectedValueWithoutSecondary)
+						doTest(t, p1, ldmodel.RolloutKindExperiment, ldcontext.DefaultKind, ldattr.Ref{}, makeContext)
+					}
+				})
 			})
 		}
 	})
 
-	// <<<<<<< HEAD
-	// 	t.Run("bucket by non-key attribute (rollout only)", func(t *ldtest.T) {
-	// 		contextKind := ldcontext.Kind("org")
-
-	// 		t.Run("string value", func(t *ldtest.T) {
-	// 			for _, bucketBy := range []ldattr.Ref{ldattr.NewNameRef("attr1"), ldattr.NewRef("/attr1/subprop")} {
-	// 				desc := selectString(bucketBy.Depth() == 1, "simple attribute name", "complex attribute reference")
-
-	// 				makeContext := func(p bucketingTestParams, shouldMatchRule bool) ldcontext.Context {
-	// 					value := ldvalue.CopyArbitraryValue(p.contextValue)
-	// 					b := ldcontext.NewBuilder(value.StringValue()).Kind(contextKind)
-	// 					if bucketBy.IsDefined() && bucketBy.String() != "key" {
-	// 						b.Key("arbitrary-key")
-	// 						setContextValueForAttrRef(b, bucketBy, value)
-	// 					}
-	// 					if p.secondaryKey != "" {
-	// 						b.Secondary(p.secondaryKey)
-	// 					}
-	// 					if shouldMatchRule {
-	// 						b.SetBool(matchRuleAttr, true)
-	// 					}
-	// 					// For this test, we'll always use a multi-kind context to prove that the bucketBy attribute is
-	// 					// being retrieved from the appropriate place depending on contextKind, and not just being
-	// 					// blindly applied to the base context.
-	// 					return ldcontext.NewMulti(ldcontext.NewWithKind("wrongkind", "wrongkey"), b.Build())
-	// 				}
-
-	// 				t.Run(desc, func(t *ldtest.T) {
-	// 					doTests(t, makeBucketingTestParams(), ldmodel.RolloutKindRollout, contextKind, bucketBy, makeContext)
-	// 				})
-	// 			}
-	// 		})
-
-	// 		t.Run("non-string value", func(t *ldtest.T) {
-	// 			bucketBy := ldattr.NewRef("attr1")
-	// 			makeContext := func(p bucketingTestParams, shouldMatchRule bool) ldcontext.Context {
-	// 				value := ldvalue.CopyArbitraryValue(p.contextValue)
-	// 				b := ldcontext.NewBuilder("arbitrary-key")
-	// 				setContextValueForAttrRef(b, bucketBy, value)
-	// 				if shouldMatchRule {
-	// 					b.SetBool(matchRuleAttr, true)
-	// 				}
-	// 				return b.Build()
-	// 			}
-	// 			doTests(t, makeBucketingTestParamsWithNonStringValues(), ldmodel.RolloutKindRollout,
-	// 				ldcontext.DefaultKind, bucketBy, makeContext)
-	// 		})
-
-	// 		t.Run("attribute not found", func(t *ldtest.T) {
-	// 			bucketBy := ldattr.NewRef("missingAttr")
-
-	// 			makeContext := func(p bucketingTestParams, shouldMatchRule bool) ldcontext.Context {
-	// 				b := ldcontext.NewBuilder("arbitrary-key")
-	// 				if shouldMatchRule {
-	// 					b.SetBool(matchRuleAttr, true)
-	// 				}
-	// 				return b.Build()
-	// 			}
-	// 			params := []bucketingTestParams{}
-	// 			for _, p := range makeBucketingTestParams() {
-	// 				p1 := p
-	// 				p1.expectedBucketValue = 0
-	// 				params = append(params, p1)
-	// 			}
-	// 			doTests(t, params, ldmodel.RolloutKindRollout,
-	// 				ldcontext.DefaultKind, bucketBy, makeContext)
-	// 		})
-
-	// 		t.Run("invalid attribute reference", func(t *ldtest.T) {
-	// 			bucketBy := ldattr.NewRef("///")
-
-	// 			makeContext := func(p bucketingTestParams, shouldMatchRule bool) ldcontext.Context {
-	// 				b := ldcontext.NewBuilder("arbitrary-key")
-	// 				if shouldMatchRule {
-	// 					b.SetBool(matchRuleAttr, true)
-	// 				}
-	// 				return b.Build()
-	// 			}
-	// 			params := []bucketingTestParams{}
-	// 			for _, p := range makeBucketingTestParams() {
-	// 				p1 := p
-	// 				p1.expectedBucketValue = 0
-	// 				params = append(params, p1)
-	// 			}
-	// 			doTests(t, params, ldmodel.RolloutKindRollout,
-	// 				ldcontext.DefaultKind, bucketBy, makeContext)
-	// 		})
 	t.Run("bucket by non-key attribute", func(t *ldtest.T) {
-		// Note: in the SDK versions that this version of sdk-test-harness is for, the defined behavior
-		// was that the bucketBy property could be used for either a rollout or an experiment. In later
-		// versions, bucketBy is ignored in experiments and this test logic is changed.
+		t.Run("in rollouts", func(t *ldtest.T) {
+			contextKind := ldcontext.Kind("org")
 
-		for _, isExperiment := range []bool{false, true} {
-			t.Run(selectString(isExperiment, "experiments", "rollouts"), func(t *ldtest.T) {
-				rolloutKind := ldmodel.RolloutKindRollout
-				if isExperiment {
-					rolloutKind = ldmodel.RolloutKindExperiment
-				}
+			t.Run("string value", func(t *ldtest.T) {
+				// For this test group, we'll try it two ways: once with a simple attribute name, and once with a complex
+				// attribute reference. This proves that the SDK is not just assuming bucketBy is a top-level property
+				// name, but is really using the attribute reference logic. We won't bother doing this for the other test
+				// test groups ("integer value", etc.") because the logic for *getting* the attribute is always the same
+				// regardless of what the value of the attribute is.
 
-				t.Run("string value", func(t *ldtest.T) {
-					bucketBy := "attr1"
+				for _, bucketBy := range []ldattr.Ref{ldattr.NewNameRef("attr1"), ldattr.NewRef("/attr1/subprop")} {
+					desc := selectString(bucketBy.Depth() == 1, "simple attribute name", "complex attribute reference")
+
 					makeContext := func(p bucketingTestParams, shouldMatchRule bool) ldcontext.Context {
-						b := ldcontext.NewBuilder("arbitrary-key")
-						b.SetString(bucketBy, p.contextValue)
+						b := ldcontext.NewBuilder("arbitrary-key").Kind(contextKind)
+						setContextValueForAttrRef(b, bucketBy, ldvalue.String(p.contextValue))
 						if shouldMatchRule {
 							b.SetBool(matchRuleAttr, true)
 						}
-						return b.Build()
+						// For this test, we'll always use a multi-kind context to prove that the bucketBy attribute is
+						// being retrieved from the appropriate place depending on contextKind, and not just being
+						// blindly applied to the base context.
+						return ldcontext.NewMulti(ldcontext.NewWithKind("wrongkind", "wrongkey"), b.Build())
 					}
-					doTests(t, makeBucketingTestParams(), rolloutKind, ldcontext.DefaultKind, ldattr.NewRef(bucketBy), makeContext)
-				})
 
-				t.Run("integer value", func(t *ldtest.T) {
-					bucketBy := "attr1"
-					flagKey, salt := "hashKey", "saltyA"
-					for _, n := range []int{33333, 99999} {
-						expectedValue := computeExpectedBucketValue(
-							strconv.Itoa(n),
-							flagKey, salt, ldvalue.OptionalString{}, ldvalue.OptionalInt{},
-						)
-						p := bucketingTestParams{
-							flagOrSegmentKey:      flagKey,
-							salt:                  salt,
-							overrideExpectedValue: ldvalue.NewOptionalInt(expectedValue),
-						}
-						makeContext := func(_ bucketingTestParams, shouldMatchRule bool) ldcontext.Context {
-							b := ldcontext.NewBuilder("arbitrary-key")
-							b.SetInt(bucketBy, n)
-							if shouldMatchRule {
-								b.SetBool(matchRuleAttr, true)
-							}
-							return b.Build()
-						}
-						doTest(t, p, rolloutKind, ldcontext.DefaultKind, ldattr.NewRef(bucketBy), makeContext)
+					t.Run(desc, func(t *ldtest.T) {
+						doTests(t, makeBucketingTestParams(), ldmodel.RolloutKindRollout, contextKind, bucketBy, makeContext)
+					})
+				}
+			})
+
+			t.Run("integer value", func(t *ldtest.T) {
+				bucketBy := "attr1"
+				flagKey, salt := "hashKey", "saltyA"
+				for _, n := range []int{33333, 99999} {
+					expectedValue := computeExpectedBucketValue(
+						strconv.Itoa(n),
+						flagKey, salt, ldvalue.OptionalString{}, ldvalue.OptionalInt{},
+					)
+					p := bucketingTestParams{
+						flagOrSegmentKey:      flagKey,
+						salt:                  salt,
+						overrideExpectedValue: ldvalue.NewOptionalInt(expectedValue),
 					}
-				})
-
-				t.Run("invalid value type", func(t *ldtest.T) {
-					// Non-integer numeric values, and any value types other than string and number, are not allowed
-					// and cause the bucket value to be zero.
-					bucketBy := "attr1"
-					flagKey, salt := "hashKey", "saltyA"
-					for _, value := range []ldvalue.Value{
-						ldvalue.Float64(1.5),
-						ldvalue.Bool(true),
-						ldvalue.ArrayOf(ldvalue.String("x")),
-						ldvalue.ObjectBuild().Set("x", ldvalue.String("y")).Build(),
-					} {
-						p := bucketingTestParams{
-							flagOrSegmentKey:      flagKey,
-							salt:                  salt,
-							overrideExpectedValue: ldvalue.NewOptionalInt(0),
-						}
-						makeContext := func(_ bucketingTestParams, shouldMatchRule bool) ldcontext.Context {
-							b := ldcontext.NewBuilder("arbitrary-key")
-							b.SetValue(bucketBy, value)
-							if shouldMatchRule {
-								b.SetBool(matchRuleAttr, true)
-							}
-							return b.Build()
-						}
-						doTest(t, p, rolloutKind, ldcontext.DefaultKind, ldattr.NewRef(bucketBy), makeContext)
-					}
-				})
-
-				t.Run("attribute not found", func(t *ldtest.T) {
-					bucketBy := "missingAttr"
-
 					makeContext := func(_ bucketingTestParams, shouldMatchRule bool) ldcontext.Context {
 						b := ldcontext.NewBuilder("arbitrary-key")
+						b.SetInt(bucketBy, n)
 						if shouldMatchRule {
 							b.SetBool(matchRuleAttr, true)
 						}
 						return b.Build()
 					}
-					params := []bucketingTestParams{}
-					for _, p := range makeBucketingTestParams() {
-						p1 := p
-						p1.overrideExpectedValue = ldvalue.NewOptionalInt(0)
-						params = append(params, p1)
-					}
-					doTests(t, params, rolloutKind, ldcontext.DefaultKind, ldattr.NewRef(bucketBy), makeContext)
-				})
+					doTest(t, p, ldmodel.RolloutKindRollout, ldcontext.DefaultKind, ldattr.NewRef(bucketBy), makeContext)
+				}
 			})
-		}
+
+			t.Run("invalid value type", func(t *ldtest.T) {
+				// Non-integer numeric values, and any value types other than string and number, are not allowed
+				// and cause the bucket value to be zero.
+				bucketBy := ldattr.NewRef("attr1")
+				flagKey, salt := "hashKey", "saltyA"
+				for _, value := range []ldvalue.Value{
+					ldvalue.Float64(1.5),
+					ldvalue.Bool(true),
+					ldvalue.ArrayOf(ldvalue.String("x")),
+					ldvalue.ObjectBuild().Set("x", ldvalue.String("y")).Build(),
+				} {
+					p := bucketingTestParams{
+						flagOrSegmentKey:      flagKey,
+						salt:                  salt,
+						overrideExpectedValue: ldvalue.NewOptionalInt(0),
+					}
+					makeContext := func(_ bucketingTestParams, shouldMatchRule bool) ldcontext.Context {
+						b := ldcontext.NewBuilder("arbitrary-key")
+						setContextValueForAttrRef(b, bucketBy, value)
+						if shouldMatchRule {
+							b.SetBool(matchRuleAttr, true)
+						}
+						return b.Build()
+					}
+					doTest(t, p, ldmodel.RolloutKindRollout, ldcontext.DefaultKind, bucketBy, makeContext)
+				}
+			})
+
+			t.Run("attribute not found", func(t *ldtest.T) {
+				bucketBy := "missingAttr"
+
+				makeContext := func(_ bucketingTestParams, shouldMatchRule bool) ldcontext.Context {
+					b := ldcontext.NewBuilder("arbitrary-key")
+					if shouldMatchRule {
+						b.SetBool(matchRuleAttr, true)
+					}
+					return b.Build()
+				}
+				params := []bucketingTestParams{}
+				for _, p := range makeBucketingTestParams() {
+					p1 := p
+					p1.overrideExpectedValue = ldvalue.NewOptionalInt(0)
+					params = append(params, p1)
+				}
+				doTests(t, params, ldmodel.RolloutKindRollout, ldcontext.DefaultKind, ldattr.NewRef(bucketBy), makeContext)
+			})
+		})
+
+		t.Run("is ignored in experiments", func(t *ldtest.T) {
+			bucketBy := ldattr.NewRef("attr1")
+			differentValue := ldvalue.String("this should be ignored")
+
+			makeContext := func(p bucketingTestParams, shouldMatchRule bool) ldcontext.Context {
+				// Use p.contextValue as the key. This is what the SDK *should* be using for the computation,
+				// even though we're going to set bucketBy to reference a different attribute; since the
+				// expected value is based on p.contextValue, this proves that bucketBy is being ignored.
+				b := ldcontext.NewBuilder(p.contextValue)
+				setContextValueForAttrRef(b, bucketBy, differentValue)
+				if shouldMatchRule {
+					b.SetBool(matchRuleAttr, true)
+				}
+				return b.Build()
+			}
+
+			doTests(t, makeBucketingTestParamsForExperiments(), ldmodel.RolloutKindExperiment, ldcontext.DefaultKind,
+				bucketBy, makeContext)
+		})
 	})
 }
