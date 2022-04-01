@@ -1,6 +1,12 @@
 ---
 name: rollout or experiment - <NAME>
 
+# The test cases in this file cover very basic behavior of rollouts and experiments in terms of
+# iterating through the variations and returning one of them. We don't care what the exact bucket
+# value is here-- the weights have been set up so that the tests will work as long as the bucket
+# value is not zero. The detailed tests for the bucket value computation are implemented in Go
+# code in server_side_eval_bucketing.go.
+
 constants:
   MATCH_FALLTHROUGH_VARIATION_A:
     value: "a"
