@@ -75,9 +75,15 @@ func doSDKContextBuildTests(t *ldtest.T) {
 			kinds    []servicedef.ContextBuildSingleParams
 			expected string
 		}{
-			{[]servicedef.ContextBuildSingleParams{{Key: "a"}}, `{"kind": "multi", "user": {"key": "a"}}`},
-			{[]servicedef.ContextBuildSingleParams{{Kind: optStr("org"), Key: "a"}, {Key: "b"}},
-				`{"kind": "multi", "org": {"key": "a"}, "user": {"key": "b"}}`},
+			{
+				[]servicedef.ContextBuildSingleParams{{Kind: optStr("org"), Key: "a"}, {Key: "b"}},
+				`{"kind": "multi", "org": {"key": "a"}, "user": {"key": "b"}}`,
+			},
+			{
+				// multi-kind with only one kind becomes single-kind
+				[]servicedef.ContextBuildSingleParams{{Kind: optStr("org"), Key: "a"}},
+				`{"kind": "org", "key": "a"}`,
+			},
 		}
 
 		type testCase struct {
@@ -90,8 +96,7 @@ func doSDKContextBuildTests(t *ldtest.T) {
 			testCases = append(testCases, testCase{servicedef.ContextBuildParams{Single: &params}, c.expected})
 		}
 		for _, c := range multiKindTestCases {
-			testCases = append(testCases, testCase{servicedef.ContextBuildParams{
-				Multi: &servicedef.ContextBuildMultiParams{Kinds: c.kinds}}, c.expected})
+			testCases = append(testCases, testCase{servicedef.ContextBuildParams{Multi: c.kinds}, c.expected})
 		}
 
 		for _, p := range testCases {
@@ -148,7 +153,8 @@ func doSDKContextConvertTests(t *ldtest.T) {
 
 			// verify that all allowable characters in kind are accepted
 			`{"kind": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ013456789-_.", "key": "x"}`,
-			`{"kind": "multi", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ013456789-_.": {"key": "x"}}`,
+			`{"kind": "multi", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ013456789-_.": {"key": "x"},`+
+				` "other": {"key": "y"}}`,
 		)
 
 		for _, input := range inputs {
@@ -217,6 +223,14 @@ func doSDKContextConvertTests(t *ldtest.T) {
 		}
 	})
 
+	t.Run("multi-kind with only one kind becomes single-kind", func(t *ldtest.T) {
+		singleKindJSON := `{"kind": "org", "key": "a", "name": "b"}`
+		multiKindJSON := `{"kind": "multi", "org": {"key": "a", "name": "b"}}`
+		resp := client.ContextConvert(t, servicedef.ContextConvertParams{Input: multiKindJSON})
+		require.Equal(t, "", resp.Error)
+		m.In(t).Assert(json.RawMessage(resp.Output), m.JSONEqual(json.RawMessage(singleKindJSON)))
+	})
+
 	t.Run("invalid context", func(t *ldtest.T) {
 		inputs := []string{
 			``,
@@ -237,6 +251,8 @@ func doSDKContextConvertTests(t *ldtest.T) {
 
 			`{"kind": "kind", "key": "x"}`, // kind cannot be "kind"
 			`{"kind": "multi"}`,            // multi-kind with no kinds
+			`{"kind": "", "key" : "x"}`,    // kind cannot be empty string
+
 		}
 		for _, input := range inputs {
 			t.Run(input, func(t *ldtest.T) {

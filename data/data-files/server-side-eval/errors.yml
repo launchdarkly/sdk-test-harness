@@ -90,7 +90,7 @@ sdkData:
     clause-with-malformed-attribute-reference-<TYPE_NAME>:
       on: true
       rules:
-        - { "variation": 0, "clauses": [ { "attribute": "///", "op": "in", "values": [""], "negate": true } ] }
+        - { "variation": 0, "clauses": [ { contextKind: "user", "attribute": "///", "op": "in", "values": [""], "negate": true } ] }
         - { "id": "should_not_match_this_rule_because_previous_rule_triggers_error", "variation": 0,
             "clauses": [ { "attribute": "key", "op": "in", "values": [""], "negate": true } ] }
       variations: [ "<TYPE_VALUE>" ]

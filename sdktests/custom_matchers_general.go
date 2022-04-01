@@ -7,6 +7,7 @@ import (
 
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
@@ -14,6 +15,13 @@ import (
 
 // The functions in this file are for convenient use of the matchers API with complex
 // types. For more information, see matchers.Transform.
+
+// EqualReason is a type-safe replacement for m.Equal(EvaluationReason) that also provides better
+// failure output, by treating it as a JSON object-- since the default implementation of String()
+// for EvaluationReason returns a shorter string that doesn't include every property.
+func EqualReason(reason ldreason.EvaluationReason) m.Matcher {
+	return m.JSONEqual(reason)
+}
 
 func EvalResponseValue() m.MatcherTransform {
 	return m.Transform(
