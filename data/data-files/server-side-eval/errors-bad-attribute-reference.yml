@@ -1,0 +1,55 @@
+---
+name: bad attribute reference errors - <NAME>
+
+parameters:
+  - NAME: clause with no attribute
+    CLAUSE: { "op": "in", "values": [""] }
+    CONTEXT: { kind: "user", key: "user-key" }
+  
+  - NAME: empty path component
+    CLAUSE: { contextKind: "user", "attribute": "///", "op": "in", "values": [""] }
+    CONTEXT: { kind: "user", key: "user-key" }
+  
+  - NAME: tilde followed by invalid escape character
+    # The SDK should reject this attribute reference as malformed. If it instead treats the tilde as a
+    # literal character and matches the attribute "a~b", that's wrong.
+    CLAUSE: { contextKind: "user", "attribute": "/a~b", "op": "in", "values": [true] }
+    CONTEXT: { kind: "user", key: "user-key", "a~b": true }
+  
+  - NAME: tilde followed by nothing
+    # The SDK should reject this attribute reference as malformed. If it instead treats the tilde as a
+    # literal character and matches the attribute "a~", that's wrong.
+    CLAUSE: { contextKind: "user", "attribute": "/a~", "op": "in", "values": [true] }
+    CONTEXT: { kind: "user", key: "user-key", "a~": true }
+
+sdkData:
+  flags:
+    test-flag:
+      variations:
+        - "WRONG! flag returned off variation, this definitely shouldn't be possible"
+        - "WRONG! flag returned fallthrough, this definitely shouldn't be possible"
+        - "WRONG! the malformed clause somehow matched"
+        - "WRONG! the malformed clause was treated as a regular non-match, so the next rule matched"
+      on: true
+      offVariation: 0
+      fallthrough: { variation: 1 }
+      rules:
+        - id: rule-with-malformed-clause
+          variation: 2
+          clauses:
+            - <CLAUSE>
+        - id: rule-that-always-matches
+          variation: 3
+          clauses:
+            - attribute: "key"
+              op: "in"
+              values: [""]
+              negate: true
+
+evaluations:
+  - flagKey: test-flag
+    context: <CONTEXT>
+    default: "default"
+    expect:
+      value: "default"
+      reason: { kind: "ERROR", errorKind: "MALFORMED_FLAG" }
