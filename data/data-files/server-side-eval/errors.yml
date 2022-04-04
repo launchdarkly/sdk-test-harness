@@ -7,6 +7,9 @@ constants:
     value: <TYPE_DEFAULT>
     reason: { "kind": "ERROR", "errorKind": "MALFORMED_FLAG" }
 
+# Here we iterate through several variation types to prove that the Variation methods correctly
+# handle returning the default value in an error condition regardless of the type.
+
 parameters:
   - TYPE_NAME: bool
     TYPE_VALUE: true
@@ -76,23 +79,6 @@ sdkData:
       on: true
       rules:
         - { "variation": 1, "clauses": [ { "attribute": "key", "op": "in", "values": [""], "negate": true }] }
-      variations: [ "<TYPE_VALUE>" ]
-
-    clause-with-no-attribute-reference-<TYPE_NAME>:
-      on: true
-      rules:
-        - { "variation": 0, "clauses": [ { "op": "in", "values": [""], "negate": true } ] }
-        # second rule here would normally be a match, but we want to prove that we bail out immediately on the first bad rule
-        - { "id": "should_not_match_this_rule_because_previous_rule_triggers_error", "variation": 0,
-            "clauses": [ { "attribute": "key", "op": "in", "values": [""], "negate": true } ] }
-      variations: [ "<TYPE_VALUE>" ]
-
-    clause-with-malformed-attribute-reference-<TYPE_NAME>:
-      on: true
-      rules:
-        - { "variation": 0, "clauses": [ { contextKind: "user", "attribute": "///", "op": "in", "values": [""], "negate": true } ] }
-        - { "id": "should_not_match_this_rule_because_previous_rule_triggers_error", "variation": 0,
-            "clauses": [ { "attribute": "key", "op": "in", "values": [""], "negate": true } ] }
       variations: [ "<TYPE_VALUE>" ]
 
 evaluations:
@@ -165,20 +151,6 @@ evaluations:
 
   - name: rule variation too high
     flagKey: rule-match-variation-too-high-<TYPE_NAME>
-    context: <CONTEXT>
-    valueType: <TYPE_NAME>
-    default: <TYPE_DEFAULT>
-    expect: <MALFORMED_FLAG_RESULT>
-
-  - name: clause with no attribute reference
-    flagKey: clause-with-no-attribute-reference-<TYPE_NAME>
-    context: <CONTEXT>
-    valueType: <TYPE_NAME>
-    default: <TYPE_DEFAULT>
-    expect: <MALFORMED_FLAG_RESULT>
-
-  - name: clause with malformed attribute reference
-    flagKey: clause-with-malformed-attribute-reference-<TYPE_NAME>
     context: <CONTEXT>
     valueType: <TYPE_NAME>
     default: <TYPE_DEFAULT>
