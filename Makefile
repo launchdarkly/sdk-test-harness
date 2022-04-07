@@ -32,7 +32,7 @@ $(GORELEASER):
 build-release: $(GORELEASER)
 	$(GORELEASER) --snapshot --skip-publish --skip-validate
 
-publish-release:
+publish-release: $(GORELEASER)
 	$(GORELEASER)
 
 $(LINTER_VERSION_FILE):
