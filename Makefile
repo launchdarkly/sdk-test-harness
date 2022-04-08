@@ -1,6 +1,7 @@
 
-GORELEASER_VERSION=v0.141.0
-GORELEASER_CMD=curl -sL https://git.io/goreleaser | GOPATH=$(mktemp -d) VERSION=$(GORELEASER_VERSION) bash -s -- --rm-dist
+GORELEASER_VERSION=v1.7.0
+GORELEASER_DOWNLOAD_URL=https://github.com/goreleaser/goreleaser/releases/download/v1.7.0/goreleaser_$(shell uname)_$(shell uname -m).tar.gz
+GORELEASER=./bin/goreleaser/goreleaser
 
 GOLANGCI_LINT_VERSION=v1.44.0
 
@@ -24,11 +25,15 @@ test:
 	go test -run=not-a-real-test ./...  # just ensures that the tests compile
 	go test ./...
 
-build-release:
-	$(GORELEASER_CMD) --snapshot --skip-publish --skip-validate
+$(GORELEASER):
+	mkdir -p ./bin/goreleaser
+	curl -qL $(GORELEASER_DOWNLOAD_URL) | tar xvz -C ./bin/goreleaser
 
-publish-release:
-	$(GORELEASER_CMD)
+build-release: $(GORELEASER)
+	$(GORELEASER) --snapshot --skip-publish --skip-validate
+
+publish-release: $(GORELEASER)
+	$(GORELEASER)
 
 $(LINTER_VERSION_FILE):
 	rm -f $(LINTER)
