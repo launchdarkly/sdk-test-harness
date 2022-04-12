@@ -2,6 +2,10 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [1.4.0] - 2022-04-12
+### Added:
+- Tests for basic HTTP behavior of analytics event posts (request path, headers, etc.).
+
 ## [1.3.0] - 2022-03-08
 ### Added:
 - Tests for new SDK application metadata properties, enabled by the "tags" capability.
