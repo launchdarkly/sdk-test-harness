@@ -62,6 +62,7 @@ func doServerSideDataStoreTests(t *ldtest.T) {
 }
 
 func doServerSideEventTests(t *ldtest.T) {
+	t.Run("requests", doServerSideEventRequestTests)
 	t.Run("summary events", doServerSideSummaryEventTests)
 	t.Run("feature events", doServerSideFeatureEventTests)
 	t.Run("debug events", doServerSideDebugEventTests)
