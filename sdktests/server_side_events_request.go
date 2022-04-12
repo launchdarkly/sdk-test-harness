@@ -39,6 +39,33 @@ func doServerSideEventRequestTests(t *ldtest.T) {
 		assert.Equal(t, "3", request.Headers.Get("X-LaunchDarkly-Event-Schema"))
 	})
 
+	t.Run("new payload ID for each post", func(t *ldtest.T) {
+		sdkKey := "my-sdk-key"
+		events := NewSDKEventSink(t)
+		client := NewSDKClient(t,
+			WithConfig(servicedef.SDKConfigParams{
+				Credential: sdkKey,
+			}),
+			dataSource,
+			events,
+		)
+
+		numPayloads := 3
+		for i := 0; i < numPayloads; i++ {
+			client.SendIdentifyEvent(t, user)
+			client.FlushEvents(t)
+		}
+
+		seenIDs := make(map[string]bool)
+		for i := 0; i < numPayloads; i++ {
+			request := expectRequest(t, events.Endpoint(), time.Second)
+			id := request.Headers.Get("X-LaunchDarkly-Payload-Id")
+			assert.NotEqual(t, "", id)
+			assert.False(t, seenIDs[id], "saw payload ID %q twice", id)
+			seenIDs[id] = true
+		}
+	})
+
 	t.Run("URL path is correct when base URI has a trailing slash", func(t *ldtest.T) {
 		events := NewSDKEventSink(t)
 		client := NewSDKClient(t, dataSource, WithEventsConfig(servicedef.SDKConfigEventParams{
