@@ -3,6 +3,7 @@ package servicedef
 import "github.com/launchdarkly/sdk-test-harness/framework/harness"
 
 const (
+	CapabilityClientSide    = "client-side"
 	CapabilityServerSide    = "server-side"
 	CapabilityStronglyTyped = "strongly-typed"
 
