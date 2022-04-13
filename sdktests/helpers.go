@@ -204,13 +204,6 @@ func optionalIntFrom(m o.Maybe[int]) ldvalue.OptionalInt {
 	return ldvalue.OptionalInt{}
 }
 
-func optionalIntToMaybe(oi ldvalue.OptionalInt) o.Maybe[int] {
-	if oi.IsDefined() {
-		return o.Some(oi.IntValue())
-	}
-	return o.None[int]()
-}
-
 func pollUntilFlagValueUpdated(
 	t *ldtest.T,
 	client *SDKClient,
