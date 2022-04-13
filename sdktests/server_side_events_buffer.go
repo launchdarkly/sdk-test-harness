@@ -2,6 +2,7 @@ package sdktests
 
 import (
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
@@ -17,7 +18,7 @@ func doServerSideEventBufferTests(t *ldtest.T) {
 	capacity := 20
 	extraItemsOverCapacity := 3 // arbitrary non-zero value for how many events to try to add past the limit
 	eventsConfig := baseEventsConfig()
-	eventsConfig.Capacity = ldvalue.NewOptionalInt(capacity)
+	eventsConfig.Capacity = o.Some(capacity)
 
 	userFactory := NewUserFactory("doServerSideEventCapacityTests",
 		func(b lduser.UserBuilder) { b.Name("my favorite user") })
@@ -76,7 +77,7 @@ func doServerSideEventBufferTests(t *ldtest.T) {
 
 		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 			FlagKey:      flag.Key,
-			User:         users[0],
+			User:         o.Some(users[0]),
 			ValueType:    servicedef.ValueTypeBool,
 			DefaultValue: ldvalue.Bool(false),
 		})

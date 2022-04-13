@@ -5,6 +5,7 @@ import (
 
 	"github.com/launchdarkly/sdk-test-harness/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 )
@@ -62,11 +63,7 @@ func (d *SDKDataSource) ApplyConfiguration(config *servicedef.SDKConfigParams) {
 	if d.streamingEndpoint == nil {
 		panic("Tried to use an SDKDataSource without its own endpoint as a parameter to NewSDKClient")
 	}
-	if config.Streaming == nil {
-		config.Streaming = &servicedef.SDKConfigStreamingParams{}
-	} else {
-		sc := *config.Streaming
-		config.Streaming = &sc // copy to avoid side effects
-	}
-	config.Streaming.BaseURI = d.streamingEndpoint.BaseURL()
+	newState := config.Streaming.Value()
+	newState.BaseURI = d.streamingEndpoint.BaseURL()
+	config.Streaming = o.Some(newState)
 }

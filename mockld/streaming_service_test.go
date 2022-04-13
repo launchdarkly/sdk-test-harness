@@ -10,6 +10,7 @@ import (
 	"github.com/launchdarkly/eventsource"
 	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
+	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldlog"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldlogtest"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
@@ -55,13 +56,7 @@ func TestStreamingServiceServerSide(t *testing.T) {
 }
 
 func requireEvent(t *testing.T, stream *eventsource.Stream) eventsource.Event {
-	select {
-	case e := <-stream.Events:
-		return e
-	case <-time.After(time.Second * 5):
-		require.Fail(t, "timed out waiting for event")
-		return nil
-	}
+	return helpers.RequireValueWithMessage(t, stream.Events, time.Second*5, "timed out waiting for event")
 }
 
 func expectedPutData(sdkData SDKData) string {

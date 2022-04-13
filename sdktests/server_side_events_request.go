@@ -31,7 +31,7 @@ func doServerSideEventRequestTests(t *ldtest.T) {
 		client.SendIdentifyEvent(t, user)
 		client.FlushEvents(t)
 
-		request := expectRequest(t, events.Endpoint(), time.Second)
+		request := events.Endpoint().RequireConnection(t, time.Second)
 
 		assert.Equal(t, "POST", request.Method)
 		assert.Equal(t, sdkKey, request.Headers.Get("Authorization"))
@@ -58,7 +58,7 @@ func doServerSideEventRequestTests(t *ldtest.T) {
 
 		seenIDs := make(map[string]bool)
 		for i := 0; i < numPayloads; i++ {
-			request := expectRequest(t, events.Endpoint(), time.Second)
+			request := events.Endpoint().RequireConnection(t, time.Second)
 			id := request.Headers.Get("X-LaunchDarkly-Payload-Id")
 			assert.NotEqual(t, "", id)
 			assert.False(t, seenIDs[id], "saw payload ID %q twice", id)
@@ -75,7 +75,7 @@ func doServerSideEventRequestTests(t *ldtest.T) {
 		client.SendIdentifyEvent(t, user)
 		client.FlushEvents(t)
 
-		request := expectRequest(t, events.Endpoint(), time.Second)
+		request := events.Endpoint().RequireConnection(t, time.Second)
 		assert.Equal(t, "/bulk", request.URL.Path)
 	})
 
@@ -88,7 +88,7 @@ func doServerSideEventRequestTests(t *ldtest.T) {
 		client.SendIdentifyEvent(t, user)
 		client.FlushEvents(t)
 
-		request := expectRequest(t, events.Endpoint(), time.Second)
+		request := events.Endpoint().RequireConnection(t, time.Second)
 		assert.Equal(t, "/bulk", request.URL.Path)
 	})
 }

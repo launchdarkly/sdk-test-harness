@@ -1,7 +1,9 @@
 package sdktests
 
 import (
+	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
@@ -30,7 +32,7 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 		client := NewSDKClient(t, dataSource, events)
 
 		for _, isAnonymousUser := range []bool{false, true} {
-			t.Run(selectString(isAnonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
+			t.Run(h.IfElse(isAnonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
 				user := users.NextUniqueUserMaybeAnonymous(isAnonymousUser)
 
 				basicEvaluateFlag(t, client, "arbitrary-flag-key", user, ldvalue.Null())
@@ -79,8 +81,8 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 
 			user1 := users.NextUniqueUser()
 			user2 := users.NextUniqueUser()
-			params1 := servicedef.CustomEventParams{EventKey: "event1", User: user1}
-			params2 := servicedef.CustomEventParams{EventKey: "event1", User: user2}
+			params1 := servicedef.CustomEventParams{EventKey: "event1", User: o.Some(user1)}
+			params2 := servicedef.CustomEventParams{EventKey: "event1", User: o.Some(user2)}
 
 			client.SendCustomEvent(t, params1)
 			client.SendCustomEvent(t, params1)

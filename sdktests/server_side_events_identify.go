@@ -3,7 +3,9 @@ package sdktests
 import (
 	"time"
 
+	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
@@ -23,7 +25,7 @@ func doServerSideIdentifyEventTests(t *ldtest.T) {
 
 	t.Run("basic properties", func(t *ldtest.T) {
 		for _, isAnonymousUser := range []bool{false, true} {
-			t.Run(selectString(isAnonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
+			t.Run(h.IfElse(isAnonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
 				user := users.NextUniqueUserMaybeAnonymous(isAnonymousUser)
 				client.SendIdentifyEvent(t, user)
 				client.FlushEvents(t)
@@ -51,7 +53,7 @@ func doServerSideIdentifyEventTests(t *ldtest.T) {
 		client.SendIdentifyEvent(t, user)
 		client.SendCustomEvent(t, servicedef.CustomEventParams{
 			EventKey: "event-key",
-			User:     user,
+			User:     o.Some(user),
 		})
 		// Sending a custom event would also generate an index event for the user,
 		// if we hadn't already seen that user

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
+
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"

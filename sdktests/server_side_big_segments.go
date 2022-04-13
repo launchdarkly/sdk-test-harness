@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
@@ -244,9 +245,9 @@ func doBigSegmentsMembershipCachingTests(t *ldtest.T) {
 	t.Run("user cache expiration (cache time)", func(t *ldtest.T) {
 		bigSegmentStore := NewBigSegmentStore(t, ldreason.BigSegmentsHealthy)
 		client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
-			BigSegments: &servicedef.SDKConfigBigSegmentsParams{
-				UserCacheTimeMS: 10,
-			},
+			BigSegments: o.Some(servicedef.SDKConfigBigSegmentsParams{
+				UserCacheTimeMS: o.Some(ldtime.UnixMillisecondTime(10)),
+			}),
 		}), dataSource, bigSegmentStore)
 
 		bigSegmentStore.SetupMemberships(t, map[string]map[string]bool{
@@ -278,9 +279,9 @@ func doBigSegmentsMembershipCachingTests(t *ldtest.T) {
 	t.Run("user cache eviction (cache size)", func(t *ldtest.T) {
 		bigSegmentStore := NewBigSegmentStore(t, ldreason.BigSegmentsHealthy)
 		client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
-			BigSegments: &servicedef.SDKConfigBigSegmentsParams{
-				UserCacheSize: ldvalue.NewOptionalInt(2),
-			},
+			BigSegments: o.Some(servicedef.SDKConfigBigSegmentsParams{
+				UserCacheSize: o.Some(2),
+			}),
 		}), dataSource, bigSegmentStore)
 
 		bigSegmentStore.SetupMemberships(t, map[string]map[string]bool{
@@ -323,9 +324,9 @@ func doBigSegmentsStatusPollingTests(t *ldtest.T) {
 		bigSegmentStore := NewBigSegmentStore(t, ldreason.BigSegmentsHealthy)
 
 		_ = NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
-			BigSegments: &servicedef.SDKConfigBigSegmentsParams{
-				StatusPollIntervalMS: ldtime.UnixMillisecondTime(10),
-			},
+			BigSegments: o.Some(servicedef.SDKConfigBigSegmentsParams{
+				StatusPollIntervalMS: o.Some(ldtime.UnixMillisecondTime(10)),
+			}),
 		}), dataSource, bigSegmentStore)
 
 		for i := 0; i < 3; i++ {
@@ -340,9 +341,9 @@ func doBigSegmentsStatusPollingTests(t *ldtest.T) {
 		bigSegmentStore := NewBigSegmentStore(t, ldreason.BigSegmentsHealthy)
 
 		client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
-			BigSegments: &servicedef.SDKConfigBigSegmentsParams{
-				StatusPollIntervalMS: ldtime.UnixMillisecondTime(10000),
-			},
+			BigSegments: o.Some(servicedef.SDKConfigBigSegmentsParams{
+				StatusPollIntervalMS: o.Some(ldtime.UnixMillisecondTime(10000)),
+			}),
 		}), dataSource, bigSegmentStore)
 
 		initialStatus := client.GetBigSegmentStoreStatus(t)
@@ -357,9 +358,9 @@ func doBigSegmentsStatusPollingTests(t *ldtest.T) {
 			bigSegmentStore := NewBigSegmentStore(t, oldStatus)
 
 			client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
-				BigSegments: &servicedef.SDKConfigBigSegmentsParams{
-					StatusPollIntervalMS: ldtime.UnixMillisecondTime(10),
-				},
+				BigSegments: o.Some(servicedef.SDKConfigBigSegmentsParams{
+					StatusPollIntervalMS: o.Some(ldtime.UnixMillisecondTime(10)),
+				}),
 			}), dataSource, bigSegmentStore)
 
 			initialStatus := client.GetBigSegmentStoreStatus(t)
@@ -403,9 +404,9 @@ func doBigSegmentsStatusPollingTests(t *ldtest.T) {
 		bigSegmentStore := NewBigSegmentStore(t, ldreason.BigSegmentsHealthy)
 
 		client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
-			BigSegments: &servicedef.SDKConfigBigSegmentsParams{
-				StatusPollIntervalMS: ldtime.UnixMillisecondTime(10000),
-			},
+			BigSegments: o.Some(servicedef.SDKConfigBigSegmentsParams{
+				StatusPollIntervalMS: o.Some(ldtime.UnixMillisecondTime(10000)),
+			}),
 		}), dataSource, bigSegmentStore)
 
 		initialStatus := client.GetBigSegmentStoreStatus(t)

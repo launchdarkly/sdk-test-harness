@@ -11,13 +11,11 @@ import (
 	"strings"
 	"time"
 
-	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"github.com/launchdarkly/sdk-test-harness/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldbuilders"
@@ -39,7 +37,7 @@ func basicEvaluateFlag(
 ) ldvalue.Value {
 	result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 		FlagKey:      flagKey,
-		User:         user,
+		User:         o.Some(user),
 		ValueType:    servicedef.ValueTypeAny,
 		DefaultValue: defaultValue,
 	})
@@ -53,19 +51,19 @@ func basicEvaluateFlag(
 func computeExpectedBucketValue(
 	userValue string,
 	flagOrSegmentKey, salt string,
-	secondary ldvalue.OptionalString,
-	seed ldvalue.OptionalInt,
+	secondary o.Maybe[string],
+	seed o.Maybe[int],
 ) int {
 	hashInput := ""
 
 	if seed.IsDefined() {
-		hashInput += strconv.Itoa(seed.IntValue())
+		hashInput += strconv.Itoa(seed.Value())
 	} else {
 		hashInput += flagOrSegmentKey + "." + salt
 	}
 	hashInput += "." + userValue
 	if secondary.IsDefined() {
-		hashInput += "." + secondary.StringValue()
+		hashInput += "." + secondary.Value()
 	}
 
 	hashOutputBytes := sha1.Sum([]byte(hashInput)) //nolint:gosec // this isn't for authentication
@@ -80,13 +78,6 @@ func computeExpectedBucketValue(
 	return int(result.Int64())
 }
 
-func conditionalMatcher(isTrue bool, matcherIfTrue, matcherIfFalse m.Matcher) m.Matcher {
-	if isTrue {
-		return matcherIfTrue
-	}
-	return matcherIfFalse
-}
-
 func evaluateFlagDetail(
 	t *ldtest.T,
 	client *SDKClient,
@@ -96,22 +87,11 @@ func evaluateFlagDetail(
 ) servicedef.EvaluateFlagResponse {
 	return client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 		FlagKey:      flagKey,
-		User:         user,
+		User:         o.Some(user),
 		ValueType:    servicedef.ValueTypeAny,
 		DefaultValue: defaultValue,
 		Detail:       true,
 	})
-}
-
-func expectNoMoreRequests(t *ldtest.T, endpoint *harness.MockEndpoint) {
-	_, err := endpoint.AwaitConnection(time.Millisecond * 100)
-	require.Error(t, err, "did not expect another request, but got one")
-}
-
-func expectRequest(t *ldtest.T, endpoint *harness.MockEndpoint, timeout time.Duration) harness.IncomingRequestInfo {
-	request, err := endpoint.AwaitConnection(timeout)
-	require.NoError(t, err, "timed out waiting for request")
-	return request
 }
 
 func getValueTypesToTest(t *ldtest.T) []servicedef.ValueType {
@@ -217,6 +197,13 @@ func checkForUpdatedValue(
 	}
 }
 
+func optionalIntFrom(m o.Maybe[int]) ldvalue.OptionalInt {
+	if m.IsDefined() {
+		return ldvalue.NewOptionalInt(m.Value())
+	}
+	return ldvalue.OptionalInt{}
+}
+
 func pollUntilFlagValueUpdated(
 	t *ldtest.T,
 	client *SDKClient,
@@ -234,30 +221,10 @@ func pollUntilFlagValueUpdated(
 		time.Second, time.Millisecond*50, "timed out without seeing updated flag value")
 }
 
-func selectString(boolValue bool, valueIfTrue, valueIfFalse string) string {
-	if boolValue {
-		return valueIfTrue
-	}
-	return valueIfFalse
-}
-
 func sortedStrings(ss []string) []string {
 	ret := append([]string(nil), ss...)
 	sort.Strings(ret)
 	return ret
-}
-
-func stringInSlice(value string, slice []string) bool {
-	for _, s := range slice {
-		if s == value {
-			return true
-		}
-	}
-	return false
-}
-
-func timeValueAsPointer(value ldtime.UnixMillisecondTime) *ldtime.UnixMillisecondTime {
-	return &value
 }
 
 func testDescFromType(valueType servicedef.ValueType) string {

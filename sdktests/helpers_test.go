@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
+	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
+	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -15,20 +16,20 @@ func TestComputeExpectedBucketValue(t *testing.T) {
 	// used in unit tests for some of the SDKs.
 	for _, p := range []struct {
 		flagOrSegmentKey, salt, userValue string
-		seed                              ldvalue.OptionalInt
+		seed                              o.Maybe[int]
 		expectedValue                     int
 	}{
-		{"hashKey", "saltyA", "userKeyA", ldvalue.OptionalInt{}, 42157},
-		{"hashKey", "saltyA", "userKeyB", ldvalue.OptionalInt{}, 67084},
-		{"hashKey", "saltyA", "userKeyC", ldvalue.OptionalInt{}, 10343},
-		{"hashKey", "saltyA", "userKeyA", ldvalue.NewOptionalInt(61), 9801},
+		{"hashKey", "saltyA", "userKeyA", o.None[int](), 42157},
+		{"hashKey", "saltyA", "userKeyB", o.None[int](), 67084},
+		{"hashKey", "saltyA", "userKeyC", o.None[int](), 10343},
+		{"hashKey", "saltyA", "userKeyA", o.Some(61), 9801},
 	} {
 		t.Run(fmt.Sprintf("%+v", p), func(t *testing.T) {
 			computedValue := computeExpectedBucketValue(
 				p.userValue,
 				p.flagOrSegmentKey,
 				p.salt,
-				ldvalue.OptionalString{},
+				o.None[string](),
 				p.seed,
 			)
 			assert.Equal(t, p.expectedValue, computedValue, "computed value did not match expected value")
@@ -38,10 +39,10 @@ func TestComputeExpectedBucketValue(t *testing.T) {
 					p.userValue,
 					p.flagOrSegmentKey,
 					p.salt,
-					ldvalue.NewOptionalString(secondary),
+					o.Some(secondary),
 					p.seed,
 				)
-				failureDesc := selectString(secondary == "", "empty secondary key", "empty-but-not-undefined secondary key") +
+				failureDesc := h.IfElse(secondary == "", "empty secondary key", "empty-but-not-undefined secondary key") +
 					" should have changed result, but did not"
 				assert.NotEqual(t, p.expectedValue, valueWithSecondaryKey, failureDesc)
 			}

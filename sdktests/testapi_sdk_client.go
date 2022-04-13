@@ -5,6 +5,7 @@ import (
 
 	"github.com/launchdarkly/sdk-test-harness/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
 	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
@@ -33,14 +34,14 @@ func WithConfig(config servicedef.SDKConfigParams) SDKConfigurer {
 // WithEventsConfig is used with StartSDKClient to specify a non-default events configuration.
 func WithEventsConfig(eventsConfig servicedef.SDKConfigEventParams) SDKConfigurer {
 	return sdkConfigurerFunc(func(configOut *servicedef.SDKConfigParams) {
-		configOut.Events = &eventsConfig
+		configOut.Events = o.Some(eventsConfig)
 	})
 }
 
 // WithStreamingConfig is used with StartSDKClient to specify a non-default streaming configuration.
 func WithStreamingConfig(streamingConfig servicedef.SDKConfigStreamingParams) SDKConfigurer {
 	return sdkConfigurerFunc(func(configOut *servicedef.SDKConfigParams) {
-		configOut.Streaming = &streamingConfig
+		configOut.Streaming = o.Some(streamingConfig)
 	})
 }
 
@@ -112,10 +113,10 @@ func TryNewSDKClient(t *ldtest.T, configurer SDKConfigurer, moreConfigurers ...S
 }
 
 func validateSDKConfig(config servicedef.SDKConfigParams) error {
-	if config.Streaming == nil || config.Streaming.BaseURI == "" {
+	if !config.Streaming.IsDefined() || config.Streaming.Value().BaseURI == "" {
 		return errors.New("streaming base URI was not set-- did you forget to include the SDKDataSource as a parameter?")
 	}
-	if config.Events != nil && config.Events.BaseURI == "" {
+	if config.Events.IsDefined() && config.Events.Value().BaseURI == "" {
 		return errors.New("events were enabled but base URI was not set--" +
 			" did you forget to include the SDKEventSink as a parameter?")
 	}
@@ -140,7 +141,7 @@ func (c *SDKClient) EvaluateFlag(t *ldtest.T, params servicedef.EvaluateFlagPara
 	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
 		servicedef.CommandParams{
 			Command:  servicedef.CommandEvaluateFlag,
-			Evaluate: &params,
+			Evaluate: o.Some(params),
 		},
 		t.DebugLogger(),
 		&resp,
@@ -160,7 +161,7 @@ func (c *SDKClient) EvaluateAllFlags(
 	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
 		servicedef.CommandParams{
 			Command:     servicedef.CommandEvaluateAllFlags,
-			EvaluateAll: &params,
+			EvaluateAll: o.Some(params),
 		},
 		t.DebugLogger(),
 		&resp,
@@ -175,7 +176,7 @@ func (c *SDKClient) SendIdentifyEvent(t *ldtest.T, user lduser.User) {
 	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
 		servicedef.CommandParams{
 			Command:       servicedef.CommandIdentifyEvent,
-			IdentifyEvent: &servicedef.IdentifyEventParams{User: user},
+			IdentifyEvent: o.Some(servicedef.IdentifyEventParams{User: user}),
 		},
 		t.DebugLogger(),
 		nil,
@@ -189,7 +190,7 @@ func (c *SDKClient) SendCustomEvent(t *ldtest.T, params servicedef.CustomEventPa
 	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
 		servicedef.CommandParams{
 			Command:     servicedef.CommandCustomEvent,
-			CustomEvent: &params,
+			CustomEvent: o.Some(params),
 		},
 		t.DebugLogger(),
 		nil,
@@ -203,7 +204,7 @@ func (c *SDKClient) SendAliasEvent(t *ldtest.T, params servicedef.AliasEventPara
 	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
 		servicedef.CommandParams{
 			Command:    servicedef.CommandAliasEvent,
-			AliasEvent: &params,
+			AliasEvent: o.Some(params),
 		},
 		t.DebugLogger(),
 		nil,
