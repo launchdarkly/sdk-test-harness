@@ -1,12 +1,6 @@
 ---
 name: rollout or experiment - <NAME>
 
-# The test cases in this file cover very basic behavior of rollouts and experiments in terms of
-# iterating through the variations and returning one of them. We don't care what the exact bucket
-# value is here-- the weights have been set up so that the tests will work as long as the bucket
-# value is not zero. The detailed tests for the bucket value computation are implemented in Go
-# code in server_side_eval_bucketing.go.
-
 constants:
   MATCH_FALLTHROUGH_VARIATION_A:
     value: "a"
@@ -45,21 +39,21 @@ constants:
     reason: { kind: "ERROR", errorKind: "MALFORMED_FLAG" }
 
 parameters:
-  - NAME: context matches first bucket in rollout
+  - NAME: user matches first bucket in rollout
     ROLLOUT:
       variations:
         - { variation: 2, weight: 99999 }
         - { variation: 3, weight: 1 }
-    CONTEXT: { key: "user-key" }
+    USER: { key: "user-key" }
     EXPECT_FOR_FALLTHROUGH: <MATCH_FALLTHROUGH_VARIATION_A>
     EXPECT_FOR_RULE: <MATCH_RULE_VARIATION_A>
 
-  - NAME: context matches second bucket in rollout
+  - NAME: user matches second bucket in rollout
     ROLLOUT:
       variations:
         - { variation: 2, weight: 1 }
         - { variation: 3, weight: 99999 }
-    CONTEXT: { key: "user-key" }
+    USER: { key: "user-key" }
     EXPECT_FOR_FALLTHROUGH: <MATCH_FALLTHROUGH_VARIATION_B>
     EXPECT_FOR_RULE: <MATCH_RULE_VARIATION_B>
 
@@ -68,37 +62,37 @@ parameters:
       variations:
         - { variation: 2, weight: 1 }
         - { variation: 3, weight: 1 }
-    CONTEXT: { key: "user-key" }
+    USER: { key: "user-key" }
     EXPECT_FOR_FALLTHROUGH: <MATCH_FALLTHROUGH_VARIATION_B>
     EXPECT_FOR_RULE: <MATCH_RULE_VARIATION_B>
 
-  - NAME: context matches first bucket in experiment
+  - NAME: user matches first bucket in experiment
     ROLLOUT:
       kind: experiment
       variations:
         - { variation: 2, weight: 99999 }
         - { variation: 3, weight: 1 }
-    CONTEXT: { key: "user-key" }
+    USER: { key: "user-key" }
     EXPECT_FOR_FALLTHROUGH: <MATCH_FALLTHROUGH_VARIATION_A_EXPERIMENT>
     EXPECT_FOR_RULE: <MATCH_RULE_VARIATION_A_EXPERIMENT>
 
-  - NAME: context matches second bucket in experiment
+  - NAME: user matches second bucket in experiment
     ROLLOUT:
       kind: experiment
       variations:
         - { variation: 2, weight: 1 }
         - { variation: 3, weight: 99999 }
-    CONTEXT: { key: "user-key" }
+    USER: { key: "user-key" }
     EXPECT_FOR_FALLTHROUGH: <MATCH_FALLTHROUGH_VARIATION_B_EXPERIMENT>
     EXPECT_FOR_RULE: <MATCH_RULE_VARIATION_B_EXPERIMENT>
 
-  - NAME: context matches untracked bucket in experiment
+  - NAME: user matches untracked bucket in experiment
     ROLLOUT:
       kind: experiment
       variations:
         - { variation: 2, weight: 99999, untracked: true }
         - { variation: 3, weight: 1 }
-    CONTEXT: { key: "user-key" }
+    USER: { key: "user-key" }
     EXPECT_FOR_FALLTHROUGH: <MATCH_FALLTHROUGH_VARIATION_A>
     EXPECT_FOR_RULE: <MATCH_RULE_VARIATION_A>
 
@@ -108,14 +102,14 @@ parameters:
       variations:
         - { variation: 2, weight: 1 }
         - { variation: 3, weight: 1 }
-    CONTEXT: { key: "user-key" }
+    USER: { key: "user-key" }
     EXPECT_FOR_FALLTHROUGH: <MATCH_FALLTHROUGH_VARIATION_B_EXPERIMENT>
     EXPECT_FOR_RULE: <MATCH_RULE_VARIATION_B_EXPERIMENT>
 
   - NAME: error for empty variations list in rollout
     ROLLOUT:
       variations: []
-    CONTEXT: { key: "user-key" }
+    USER: { key: "user-key" }
     EXPECT_FOR_FALLTHROUGH: <MALFORMED_FLAG_ERROR_RESULT>
     EXPECT_FOR_RULE: <MALFORMED_FLAG_ERROR_RESULT>
 
@@ -143,12 +137,12 @@ sdkData:
 evaluations:
   - name: fallthrough rollout
     flagKey: flag-with-fallthrough-rollout
-    context: <CONTEXT>
+    user: <USER>
     default: "default"
     expect: <EXPECT_FOR_FALLTHROUGH>
 
   - name: rule rollout
     flagKey: flag-with-rule-rollout
-    context: <CONTEXT>
+    user: <USER>
     default: "default"
     expect: <EXPECT_FOR_RULE>
