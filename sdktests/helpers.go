@@ -51,19 +51,19 @@ func basicEvaluateFlag(
 func computeExpectedBucketValue(
 	userValue string,
 	flagOrSegmentKey, salt string,
-	secondary ldvalue.OptionalString,
-	seed ldvalue.OptionalInt,
+	secondary o.Maybe[string],
+	seed o.Maybe[int],
 ) int {
 	hashInput := ""
 
 	if seed.IsDefined() {
-		hashInput += strconv.Itoa(seed.IntValue())
+		hashInput += strconv.Itoa(seed.Value())
 	} else {
 		hashInput += flagOrSegmentKey + "." + salt
 	}
 	hashInput += "." + userValue
 	if secondary.IsDefined() {
-		hashInput += "." + secondary.StringValue()
+		hashInput += "." + secondary.Value()
 	}
 
 	hashOutputBytes := sha1.Sum([]byte(hashInput)) //nolint:gosec // this isn't for authentication
@@ -195,6 +195,20 @@ func checkForUpdatedValue(
 		}
 		return false
 	}
+}
+
+func optionalIntFrom(m o.Maybe[int]) ldvalue.OptionalInt {
+	if m.IsDefined() {
+		return ldvalue.NewOptionalInt(m.Value())
+	}
+	return ldvalue.OptionalInt{}
+}
+
+func optionalIntToMaybe(oi ldvalue.OptionalInt) o.Maybe[int] {
+	if oi.IsDefined() {
+		return o.Some(oi.IntValue())
+	}
+	return o.None[int]()
 }
 
 func pollUntilFlagValueUpdated(

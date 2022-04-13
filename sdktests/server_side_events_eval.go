@@ -94,11 +94,11 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 			t.Run(testDescFromType(valueType), func(t *ldtest.T) {
 				flag := trackedFlags.ForType(valueType)
 				expectedValue := flagValues(valueType)
-				expectedVariation := ldvalue.NewOptionalInt(0)
+				expectedVariation := o.Some(0)
 				if isBadFlag {
 					flag = malformedFlag
 					expectedValue = defaultValues(valueType)
-					expectedVariation = ldvalue.OptionalInt{}
+					expectedVariation = o.None[int]()
 				}
 				user := users.NextUniqueUserMaybeAnonymous(isAnonymousUser)
 				resp := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
