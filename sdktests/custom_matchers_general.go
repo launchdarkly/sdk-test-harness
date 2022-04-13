@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
@@ -38,7 +40,7 @@ func EvalResponseVariation() m.MatcherTransform {
 		"result variation index",
 		func(value interface{}) (interface{}, error) {
 			r := value.(servicedef.EvaluateFlagResponse)
-			return ldvalue.NewOptionalIntFromPointer(r.VariationIndex), nil
+			return r.VariationIndex, nil
 		}).
 		EnsureInputValueType(servicedef.EvaluateFlagResponse{})
 }
@@ -48,10 +50,10 @@ func EvalResponseReason() m.MatcherTransform {
 		"result reason",
 		func(value interface{}) (interface{}, error) {
 			r := value.(servicedef.EvaluateFlagResponse)
-			if r.Reason == nil {
-				return nil, nil
+			if r.Reason.IsDefined() {
+				return o.Some(r.Reason), nil
 			}
-			return *r.Reason, nil
+			return o.None[ldreason.EvaluationReason](), nil
 		}).
 		EnsureInputValueType(servicedef.EvaluateFlagResponse{})
 }
@@ -76,7 +78,7 @@ func JSONPropertyKeysCanOnlyBe(keys ...string) m.Matcher {
 	return m.New(
 		func(value interface{}) bool {
 			for _, key := range jsonKeys(value) {
-				if !stringInSlice(key, keys) {
+				if !h.SliceContains(key, keys) {
 					return false
 				}
 			}
@@ -88,7 +90,7 @@ func JSONPropertyKeysCanOnlyBe(keys ...string) m.Matcher {
 		func(value interface{}) string {
 			var badKeys []string
 			for _, key := range jsonKeys(value) {
-				if !stringInSlice(key, keys) {
+				if !h.SliceContains(key, keys) {
 					badKeys = append(badKeys, key)
 				}
 			}

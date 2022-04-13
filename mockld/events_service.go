@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 )
 
 // Somewhat arbitrary buffer size for the channel that we use as a queue for received events. We
@@ -53,12 +54,8 @@ func (s *EventsService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *EventsService) AwaitAnalyticsEventPayload(timeout time.Duration) (Events, bool) {
-	select {
-	case ep := <-s.AnalyticsEventPayloads:
-		return ep, true
-	case <-time.After(timeout):
-		return nil, false
-	}
+	ep := helpers.TryReceive(s.AnalyticsEventPayloads, timeout)
+	return ep.Value(), ep.IsDefined()
 }
 
 func (s *EventsService) SetHostTimeOverride(t time.Time) {

@@ -6,11 +6,13 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/data/testmodel"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 
@@ -100,7 +102,7 @@ func runParameterizedTestEval(t *ldtest.T, suite testmodel.EvalTestSuite, test t
 	if !suite.SkipEvaluateAllFlags {
 		t.Run("evaluate all flags", func(t *ldtest.T) {
 			result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
-				Context: test.Context,
+				Context: o.Some(test.Context),
 			})
 			if test.Expect.VariationIndex.IsDefined() {
 				require.Contains(t, result.State, test.FlagKey)
@@ -122,7 +124,8 @@ func RunParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
 
 	dataSource := NewSDKDataSource(t, mockld.BlockingUnavailableSDKData(mockld.ServerSideSDK))
 	client := NewSDKClient(t,
-		WithConfig(servicedef.SDKConfigParams{StartWaitTimeMS: 1, InitCanFail: true}),
+		WithConfig(servicedef.SDKConfigParams{StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(1)),
+			InitCanFail: true}),
 		dataSource)
 
 	for _, valueType := range getValueTypesToTest(t) {
@@ -132,7 +135,7 @@ func RunParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
 			t.Run("evaluate flag without detail", func(t *ldtest.T) {
 				result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 					FlagKey:      flagKey,
-					Context:      context,
+					Context:      o.Some(context),
 					ValueType:    valueType,
 					DefaultValue: defaultValue,
 				})
@@ -142,14 +145,14 @@ func RunParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
 			t.Run("evaluate flag with detail", func(t *ldtest.T) {
 				result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 					FlagKey:      flagKey,
-					Context:      context,
+					Context:      o.Some(context),
 					ValueType:    valueType,
 					DefaultValue: defaultValue,
 					Detail:       true,
 				})
 				m.In(t).Assert(result, m.AllOf(
 					EvalResponseValue().Should(m.Equal(defaultValue)),
-					EvalResponseVariation().Should(m.Equal(ldvalue.OptionalInt{})),
+					EvalResponseVariation().Should(m.Equal(o.None[int]())),
 					EvalResponseReason().Should(EqualReason(expectedReason)),
 				))
 			})
@@ -192,7 +195,7 @@ func parseServerSideEvalTestSuite(t *ldtest.T, source data.SourceInfo) testmodel
 func makeEvalFlagParams(test testmodel.EvalTest, sdkData mockld.ServerSDKData) servicedef.EvaluateFlagParams {
 	p := servicedef.EvaluateFlagParams{
 		FlagKey:      test.FlagKey,
-		Context:      test.Context,
+		Context:      o.Some(test.Context),
 		ValueType:    test.ValueType,
 		DefaultValue: test.Default,
 	}

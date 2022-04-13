@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
@@ -30,9 +32,9 @@ func doServerSideCustomEventTests(t *ldtest.T) {
 
 				client.SendCustomEvent(t, servicedef.CustomEventParams{
 					EventKey:    "event-key",
-					Context:     context,
+					Context:     o.Some(context),
 					Data:        ldvalue.Bool(true),
-					MetricValue: &metricValue,
+					MetricValue: o.Some(metricValue),
 				})
 
 				client.FlushEvents(t)
@@ -72,8 +74,7 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 			EventKey: "event-key",
 		}
 		if metricValue != omitMetricValue {
-			m := metricValue
-			baseParams.MetricValue = &m
+			baseParams.MetricValue = o.Some(metricValue)
 		}
 
 		for _, dataValue := range []ldvalue.Value{
@@ -90,7 +91,7 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 		} {
 			params := baseParams
 			params.Data = dataValue
-			params.Context = contexts.NextUniqueContext()
+			params.Context = o.Some(contexts.NextUniqueContext())
 			allParams = append(allParams, params)
 		}
 
@@ -99,7 +100,7 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 		// data which may be null", to make sure we're covering both methods.
 		params := baseParams
 		params.OmitNullData = true
-		params.Context = contexts.NextUniqueContext()
+		params.Context = o.Some(contexts.NextUniqueContext())
 		allParams = append(allParams, params)
 	}
 
@@ -108,8 +109,8 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 		if params.OmitNullData {
 			desc += ", omitNullData"
 		}
-		if params.MetricValue != nil {
-			desc += fmt.Sprintf(", metricValue=%f", *params.MetricValue)
+		if params.MetricValue.IsDefined() {
+			desc += fmt.Sprintf(", metricValue=%f", params.MetricValue.Value())
 		}
 
 		t.Run(desc, func(t *ldtest.T) {
@@ -120,12 +121,12 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 				IsIndexEvent(), // we don't care about the index event
 				m.AllOf(
 					IsCustomEventForEventKey(params.EventKey),
-					conditionalMatcher(params.OmitNullData && params.Data.IsNull(),
+					h.IfElse(params.OmitNullData && params.Data.IsNull(),
 						JSONPropertyNullOrAbsent("data"),
 						m.JSONOptProperty("data").Should(m.JSONEqual(params.Data)),
 						// we use JSONOptProperty for "data" here because the SDK is allowed to omit a null value
 					),
-					conditionalMatcher(params.MetricValue == nil,
+					h.IfElse(!params.MetricValue.IsDefined(),
 						JSONPropertyNullOrAbsent("metricValue"),
 						m.JSONProperty("metricValue").Should(m.JSONEqual(params.MetricValue)),
 					),

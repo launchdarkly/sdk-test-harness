@@ -3,12 +3,14 @@ package sdktests
 import (
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldbuilders"
+
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 
 	"github.com/stretchr/testify/assert"
@@ -18,7 +20,7 @@ func doServerSideEventBufferTests(t *ldtest.T) {
 	capacity := 20
 	extraItemsOverCapacity := 3 // arbitrary non-zero value for how many events to try to add past the limit
 	eventsConfig := baseEventsConfig()
-	eventsConfig.Capacity = ldvalue.NewOptionalInt(capacity)
+	eventsConfig.Capacity = o.Some(capacity)
 
 	contextFactory := data.NewContextFactory(
 		"doServerSideEventBufferTests",
@@ -79,7 +81,7 @@ func doServerSideEventBufferTests(t *ldtest.T) {
 
 		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 			FlagKey:      flag.Key,
-			Context:      contexts[0],
+			Context:      o.Some(contexts[0]),
 			ValueType:    servicedef.ValueTypeBool,
 			DefaultValue: ldvalue.Bool(false),
 		})

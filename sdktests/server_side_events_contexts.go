@@ -5,6 +5,7 @@ import (
 
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
@@ -187,7 +188,7 @@ func doServerSideEventContextTests(t *ldtest.T) {
 				context := contexts.NextUniqueContext()
 				client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 					FlagKey:      debugFlag.Key,
-					Context:      context,
+					Context:      o.Some(context),
 					ValueType:    servicedef.ValueTypeAny,
 					DefaultValue: defaultValue,
 				})

@@ -20,7 +20,7 @@ func doServerSideStreamRequestTests(t *ldtest.T) {
 			Credential: sdkKey,
 		}), dataSource)
 
-		request := expectRequest(t, dataSource.Endpoint(), time.Second)
+		request := dataSource.Endpoint().RequireConnection(t, time.Second)
 
 		assert.Equal(t, sdkKey, request.Headers.Get("Authorization"))
 		assert.NotEqual(t, sdkKey, request.Headers.Get("User-Agent"))
@@ -32,7 +32,7 @@ func doServerSideStreamRequestTests(t *ldtest.T) {
 			BaseURI: strings.TrimSuffix(dataSource.Endpoint().BaseURL(), "/") + "/",
 		}))
 
-		request := expectRequest(t, dataSource.Endpoint(), time.Second)
+		request := dataSource.Endpoint().RequireConnection(t, time.Second)
 		assert.Equal(t, "/all", request.URL.Path)
 	})
 
@@ -42,7 +42,7 @@ func doServerSideStreamRequestTests(t *ldtest.T) {
 			BaseURI: strings.TrimSuffix(dataSource.Endpoint().BaseURL(), "/"),
 		}))
 
-		request := expectRequest(t, dataSource.Endpoint(), time.Second)
+		request := dataSource.Endpoint().RequireConnection(t, time.Second)
 		assert.Equal(t, "/all", request.URL.Path)
 	})
 }

@@ -1,6 +1,7 @@
 package sdktests
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,6 +13,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
+
+const currentEventSchemaVersion = 4
 
 func doServerSideEventRequestTests(t *ldtest.T) {
 	context := ldcontext.New("user-key")
@@ -31,12 +34,12 @@ func doServerSideEventRequestTests(t *ldtest.T) {
 		client.SendIdentifyEvent(t, context)
 		client.FlushEvents(t)
 
-		request := expectRequest(t, events.Endpoint(), time.Second)
+		request := events.Endpoint().RequireConnection(t, time.Second)
 
 		assert.Equal(t, "POST", request.Method)
 		assert.Equal(t, sdkKey, request.Headers.Get("Authorization"))
 		assert.NotEqual(t, "", request.Headers.Get("X-LaunchDarkly-Payload-Id"))
-		assert.Equal(t, "3", request.Headers.Get("X-LaunchDarkly-Event-Schema"))
+		assert.Equal(t, strconv.Itoa(currentEventSchemaVersion), request.Headers.Get("X-LaunchDarkly-Event-Schema"))
 	})
 
 	t.Run("new payload ID for each post", func(t *ldtest.T) {
@@ -58,7 +61,7 @@ func doServerSideEventRequestTests(t *ldtest.T) {
 
 		seenIDs := make(map[string]bool)
 		for i := 0; i < numPayloads; i++ {
-			request := expectRequest(t, events.Endpoint(), time.Second)
+			request := events.Endpoint().RequireConnection(t, time.Second)
 			id := request.Headers.Get("X-LaunchDarkly-Payload-Id")
 			assert.NotEqual(t, "", id)
 			assert.False(t, seenIDs[id], "saw payload ID %q twice", id)
@@ -75,7 +78,7 @@ func doServerSideEventRequestTests(t *ldtest.T) {
 		client.SendIdentifyEvent(t, context)
 		client.FlushEvents(t)
 
-		request := expectRequest(t, events.Endpoint(), time.Second)
+		request := events.Endpoint().RequireConnection(t, time.Second)
 		assert.Equal(t, "/bulk", request.URL.Path)
 	})
 
@@ -88,7 +91,7 @@ func doServerSideEventRequestTests(t *ldtest.T) {
 		client.SendIdentifyEvent(t, context)
 		client.FlushEvents(t)
 
-		request := expectRequest(t, events.Endpoint(), time.Second)
+		request := events.Endpoint().RequireConnection(t, time.Second)
 		assert.Equal(t, "/bulk", request.URL.Path)
 	})
 }

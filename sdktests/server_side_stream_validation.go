@@ -10,6 +10,7 @@ import (
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 )
@@ -34,17 +35,17 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 		t.Defer(streamEndpoint.Close)
 
 		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: context})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get & discard the request info for the first request
-		_ = expectRequest(t, streamEndpoint, time.Second*5)
+		_ = streamEndpoint.RequireConnection(t, time.Second*5)
 
 		// Send the bad event; this should cause the SDK to drop the first stream
 		stream1.Service().PushEvent(badEventName, badEventData)
 
 		// Expect the second request; it succeeds and gets the second stream data
-		_ = expectRequest(t, streamEndpoint, time.Millisecond*100)
+		_ = streamEndpoint.RequireConnection(t, time.Millisecond*100)
 
 		// Check that the client got the new data from the second stream
 		pollUntilFlagValueUpdated(t, client, flagKey, context, expectedValueV1, expectedValueV2, ldvalue.Null())
@@ -81,14 +82,14 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 	shouldIgnoreEvent := func(t *ldtest.T, eventName string, eventData json.RawMessage) {
 		dataSource := NewSDKDataSource(t, dataV1)
 		client := NewSDKClient(t, WithStreamingConfig(servicedef.SDKConfigStreamingParams{
-			InitialRetryDelayMs: timeValueAsPointer(briefDelay), // brief delay so we can easily detect if it reconnects
+			InitialRetryDelayMs: o.Some(briefDelay), // brief delay so we can easily detect if it reconnects
 		}), dataSource)
 
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: context})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get & discard the request info for the first request
-		_ = expectRequest(t, dataSource.Endpoint(), time.Second*5)
+		_ = dataSource.Endpoint().RequireConnection(t, time.Second*5)
 
 		// Push an event that isn't recognized, but isn't bad enough to cause any problems
 		dataSource.Service().PushEvent(eventName, eventData)
@@ -100,7 +101,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 		pollUntilFlagValueUpdated(t, client, flagKey, context, expectedValueV1, expectedValueV2, ldvalue.Null())
 
 		// Verify that it did not reconnect
-		expectNoMoreRequests(t, dataSource.Endpoint())
+		dataSource.Endpoint().RequireNoMoreConnections(t, time.Millisecond*100)
 	}
 
 	t.Run("unrecognized data that can be safely ignored", func(t *ldtest.T) {

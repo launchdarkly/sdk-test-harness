@@ -1,6 +1,8 @@
 package servicedef
 
 import (
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
@@ -29,34 +31,34 @@ const (
 )
 
 type CommandParams struct {
-	Command        string                  `json:"command"`
-	Evaluate       *EvaluateFlagParams     `json:"evaluate,omitempty"`
-	EvaluateAll    *EvaluateAllFlagsParams `json:"evaluateAll,omitempty"`
-	CustomEvent    *CustomEventParams      `json:"customEvent,omitempty"`
-	IdentifyEvent  *IdentifyEventParams    `json:"identifyEvent,omitempty"`
-	ContextBuild   *ContextBuildParams     `json:"contextBuild,omitempty"`
-	ContextConvert *ContextConvertParams   `json:"contextConvert,omitempty"`
+	Command        string                          `json:"command"`
+	Evaluate       o.Maybe[EvaluateFlagParams]     `json:"evaluate,omitempty"`
+	EvaluateAll    o.Maybe[EvaluateAllFlagsParams] `json:"evaluateAll,omitempty"`
+	CustomEvent    o.Maybe[CustomEventParams]      `json:"customEvent,omitempty"`
+	IdentifyEvent  o.Maybe[IdentifyEventParams]    `json:"identifyEvent,omitempty"`
+	ContextBuild   o.Maybe[ContextBuildParams]     `json:"contextBuild,omitempty"`
+	ContextConvert o.Maybe[ContextConvertParams]   `json:"contextConvert,omitempty"`
 }
 
 type EvaluateFlagParams struct {
-	FlagKey      string            `json:"flagKey"`
-	Context      ldcontext.Context `json:"context"`
-	ValueType    ValueType         `json:"valueType"`
-	DefaultValue ldvalue.Value     `json:"defaultValue"`
-	Detail       bool              `json:"detail"`
+	FlagKey      string                     `json:"flagKey"`
+	Context      o.Maybe[ldcontext.Context] `json:"context,omitempty"`
+	ValueType    ValueType                  `json:"valueType"`
+	DefaultValue ldvalue.Value              `json:"defaultValue"`
+	Detail       bool                       `json:"detail"`
 }
 
 type EvaluateFlagResponse struct {
-	Value          ldvalue.Value              `json:"value"`
-	VariationIndex *int                       `json:"variationIndex,omitempty"`
-	Reason         *ldreason.EvaluationReason `json:"reason,omitempty"`
+	Value          ldvalue.Value                      `json:"value"`
+	VariationIndex o.Maybe[int]                       `json:"variationIndex,omitempty"`
+	Reason         o.Maybe[ldreason.EvaluationReason] `json:"reason,omitempty"`
 }
 
 type EvaluateAllFlagsParams struct {
-	Context                    ldcontext.Context `json:"context"`
-	WithReasons                bool              `json:"withReasons"`
-	ClientSideOnly             bool              `json:"clientSideOnly"`
-	DetailsOnlyForTrackedFlags bool              `json:"detailsOnlyForTrackedFlags"`
+	Context                    o.Maybe[ldcontext.Context] `json:"context,omitempty"`
+	WithReasons                bool                       `json:"withReasons"`
+	ClientSideOnly             bool                       `json:"clientSideOnly"`
+	DetailsOnlyForTrackedFlags bool                       `json:"detailsOnlyForTrackedFlags"`
 }
 
 type EvaluateAllFlagsResponse struct {
@@ -64,11 +66,11 @@ type EvaluateAllFlagsResponse struct {
 }
 
 type CustomEventParams struct {
-	EventKey     string            `json:"eventKey"`
-	Context      ldcontext.Context `json:"context"`
-	Data         ldvalue.Value     `json:"data,omitempty"`
-	OmitNullData bool              `json:"omitNullData"`
-	MetricValue  *float64          `json:"metricValue,omitempty"`
+	EventKey     string                     `json:"eventKey"`
+	Context      o.Maybe[ldcontext.Context] `json:"context,omitempty"`
+	Data         ldvalue.Value              `json:"data,omitempty"`
+	OmitNullData bool                       `json:"omitNullData"`
+	MetricValue  o.Maybe[float64]           `json:"metricValue,omitempty"`
 }
 
 type IdentifyEventParams struct {

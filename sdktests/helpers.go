@@ -11,15 +11,13 @@ import (
 	"strings"
 	"time"
 
-	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldattr"
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
-	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldbuilders"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldmodel"
@@ -41,7 +39,7 @@ func basicEvaluateFlag(
 ) ldvalue.Value {
 	result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 		FlagKey:      flagKey,
-		Context:      context,
+		Context:      o.Some(context),
 		ValueType:    servicedef.ValueTypeAny,
 		DefaultValue: defaultValue,
 	})
@@ -55,19 +53,19 @@ func basicEvaluateFlag(
 func computeExpectedBucketValue(
 	userValue string,
 	flagOrSegmentKey, salt string,
-	secondary ldvalue.OptionalString,
-	seed ldvalue.OptionalInt,
+	secondary o.Maybe[string],
+	seed o.Maybe[int],
 ) int {
 	hashInput := ""
 
 	if seed.IsDefined() {
-		hashInput += strconv.Itoa(seed.IntValue())
+		hashInput += strconv.Itoa(seed.Value())
 	} else {
 		hashInput += flagOrSegmentKey + "." + salt
 	}
 	hashInput += "." + userValue
 	if secondary.IsDefined() {
-		hashInput += "." + secondary.StringValue()
+		hashInput += "." + secondary.Value()
 	}
 
 	hashOutputBytes := sha1.Sum([]byte(hashInput)) //nolint:gosec // this isn't for authentication
@@ -82,15 +80,6 @@ func computeExpectedBucketValue(
 	return int(result.Int64())
 }
 
-// Returns matcherIfTrue or matcherIfFalse depending on isTrue.
-func conditionalMatcher(isTrue bool, matcherIfTrue, matcherIfFalse m.Matcher) m.Matcher {
-	if isTrue {
-		return matcherIfTrue
-	}
-	return matcherIfFalse
-}
-
-// Helper for constructing the parameters for an evaluation request and returning the full response.
 func evaluateFlagDetail(
 	t *ldtest.T,
 	client *SDKClient,
@@ -100,28 +89,13 @@ func evaluateFlagDetail(
 ) servicedef.EvaluateFlagResponse {
 	return client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 		FlagKey:      flagKey,
-		Context:      context,
+		Context:      o.Some(context),
 		ValueType:    servicedef.ValueTypeAny,
 		DefaultValue: defaultValue,
 		Detail:       true,
 	})
 }
 
-// Causes the test to fail and exit if any more requests are received at the endpoint.
-func expectNoMoreRequests(t *ldtest.T, endpoint *harness.MockEndpoint) {
-	_, err := endpoint.AwaitConnection(time.Millisecond * 100)
-	require.Error(t, err, "did not expect another request, but got one")
-}
-
-// Expects a request to be received at the endpoint within the timeout (or already have been received and
-// not yet consumed). Causes the test to fail and exit on timeout.
-func expectRequest(t *ldtest.T, endpoint *harness.MockEndpoint, timeout time.Duration) harness.IncomingRequestInfo {
-	request, err := endpoint.AwaitConnection(timeout)
-	require.NoError(t, err, "timed out waiting for request")
-	return request
-}
-
-// Returns a list of all applicable SDK value types if it is a strongly-typed SDK, or ValueTypeAny if not.
 func getValueTypesToTest(t *ldtest.T) []servicedef.ValueType {
 	// For strongly-typed SDKs, make sure we test each of the typed Variation methods to prove
 	// that they all correctly copy the flag value and default value into the event data. For
@@ -232,6 +206,13 @@ func checkForUpdatedValue(
 	}
 }
 
+func optionalIntFrom(m o.Maybe[int]) ldvalue.OptionalInt {
+	if m.IsDefined() {
+		return ldvalue.NewOptionalInt(m.Value())
+	}
+	return ldvalue.OptionalInt{}
+}
+
 // Polls the client repeatedly until the flag's value has changed. Causes the test to fail if the
 // timeout elapses without a change, or if an unexpected value is returned.
 func pollUntilFlagValueUpdated(
@@ -249,14 +230,6 @@ func pollUntilFlagValueUpdated(
 		t,
 		checkForUpdatedValue(t, client, flagKey, context, previousValue, updatedValue, defaultValue),
 		time.Second, time.Millisecond*50, "timed out without seeing updated flag value")
-}
-
-// Returns valueIfTrue or valueIfFalse.
-func selectString(boolValue bool, valueIfTrue, valueIfFalse string) string {
-	if boolValue {
-		return valueIfTrue
-	}
-	return valueIfFalse
 }
 
 // Configures a (single-kind) context to have the specified value for a particular attribute-- or, if the
@@ -288,22 +261,6 @@ func sortedStrings(ss []string) []string {
 	return ret
 }
 
-// Returns true if a slice element matches the string.
-func stringInSlice(value string, slice []string) bool {
-	for _, s := range slice {
-		if s == value {
-			return true
-		}
-	}
-	return false
-}
-
-// Shortcut for converting a millisecond time value to a pointer.
-func timeValueAsPointer(value ldtime.UnixMillisecondTime) *ldtime.UnixMillisecondTime {
-	return &value
-}
-
-// Shortcut for formatting a test description based on a value type.
 func testDescFromType(valueType servicedef.ValueType) string {
 	return fmt.Sprintf("type: %s", valueType)
 }

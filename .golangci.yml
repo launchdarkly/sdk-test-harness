@@ -24,7 +24,9 @@ linters:
     - megacheck
     - misspell
     - nakedret
-    - nolintlint
+    #- nolintlint
+    # nolintlint is currently disabled because some linters don't yet work with Go 1.18, but we may have nolint
+    # directives that would be needed to suppress those linters if they did work.
     - prealloc
     - staticcheck
     - structcheck

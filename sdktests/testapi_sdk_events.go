@@ -5,8 +5,11 @@ import (
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 
 	"github.com/stretchr/testify/require"
 )
@@ -14,7 +17,7 @@ import (
 func baseEventsConfig() servicedef.SDKConfigEventParams {
 	return servicedef.SDKConfigEventParams{
 		// Set a very long flush interval so event payloads will only be flushed when we force a flush
-		FlushIntervalMS: 1000000,
+		FlushIntervalMS: o.Some(ldtime.UnixMillisecondTime(1000000)),
 	}
 }
 
@@ -45,14 +48,9 @@ func NewSDKEventSink(t *ldtest.T) *SDKEventSink {
 // ApplyConfiguration updates the SDK client configuration for NewSDKClient, causing the SDK
 // to connect to the appropriate base URI for the test fixture.
 func (e *SDKEventSink) ApplyConfiguration(config *servicedef.SDKConfigParams) {
-	if config.Events != nil {
-		ec := *config.Events
-		config.Events = &ec // copy to avoid side effects
-	} else {
-		ec := baseEventsConfig()
-		config.Events = &ec
-	}
-	config.Events.BaseURI = e.eventsEndpoint.BaseURL()
+	newState := config.Events.Value()
+	newState.BaseURI = e.eventsEndpoint.BaseURL()
+	config.Events = o.Some(newState)
 }
 
 // Endpoint returns the low-level object that manages incoming requests.

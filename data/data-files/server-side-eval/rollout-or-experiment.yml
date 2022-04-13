@@ -137,12 +137,12 @@ sdkData:
 evaluations:
   - name: fallthrough rollout
     flagKey: flag-with-fallthrough-rollout
-    user: <USER>
+    context: <USER>
     default: "default"
     expect: <EXPECT_FOR_FALLTHROUGH>
 
   - name: rule rollout
     flagKey: flag-with-rule-rollout
-    user: <USER>
+    context: <USER>
     default: "default"
     expect: <EXPECT_FOR_RULE>

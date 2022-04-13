@@ -3,6 +3,7 @@ package sdktests
 import (
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
@@ -110,7 +111,7 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 			uniqueContexts, matchers := makeContextsAndIndexEventMatchers(t)
 			for i := 0; i < 3; i++ { // 3 = arbitrary number of repetitions to prove we're deduplicating
 				for _, c := range uniqueContexts {
-					client.SendCustomEvent(t, servicedef.CustomEventParams{EventKey: "event1", Context: c})
+					client.SendCustomEvent(t, servicedef.CustomEventParams{EventKey: "event1", Context: o.Some(c)})
 					matchers = append(matchers, IsCustomEvent())
 				}
 			}

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 )
 
 const endpointPathPrefix = "/endpoints/"
@@ -181,14 +182,25 @@ func (e *MockEndpoint) BaseURL() string {
 
 // AwaitConnection waits for an incoming request to the endpoint.
 func (e *MockEndpoint) AwaitConnection(timeout time.Duration) (IncomingRequestInfo, error) {
-	deadline := time.NewTimer(timeout)
-	defer deadline.Stop()
-	select {
-	case cxn := <-e.newConns:
-		return cxn, nil
-	case <-deadline.C:
-		return IncomingRequestInfo{}, fmt.Errorf("timed out waiting for an incoming request to %s", e.description)
+	maybeCxn := helpers.TryReceive(e.newConns, timeout)
+	if maybeCxn.IsDefined() {
+		return maybeCxn.Value(), nil
 	}
+	return IncomingRequestInfo{}, fmt.Errorf("timed out waiting for an incoming request to %s", e.description)
+}
+
+// RequireConnection waits for an incoming request to the endpoint, and causes the test to fail
+// and terminate if it timed out.
+func (e *MockEndpoint) RequireConnection(t helpers.TestContext, timeout time.Duration) IncomingRequestInfo {
+	return helpers.RequireValueWithMessage(t, e.newConns, timeout, "timed out waiting for request to %s (%s)",
+		e.description, e.basePath)
+}
+
+// RequireNoMoreConnections causes the test to fail and terminate if there is another incoming request
+// within the timeout.
+func (e *MockEndpoint) RequireNoMoreConnections(t helpers.TestContext, timeout time.Duration) {
+	helpers.RequireNoMoreValuesWithMessage(t, e.newConns, timeout,
+		"did not expect another request to %s (%s), but got one", e.description, e.basePath)
 }
 
 func (e *MockEndpoint) ActiveConnection() *IncomingRequestInfo {

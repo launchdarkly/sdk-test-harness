@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
@@ -14,7 +16,6 @@ import (
 	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // BigSegmentStore is a test fixture that provides callback endpoints for SDK clients to connect to,
@@ -54,13 +55,9 @@ func NewBigSegmentStore(t *ldtest.T, initialStatus ldreason.BigSegmentsStatus) *
 // ApplyConfiguration updates the SDK client configuration for NewSDKClient, causing the SDK
 // to connect to the appropriate base URI for the big segments test fixture.
 func (b *BigSegmentStore) ApplyConfiguration(config *servicedef.SDKConfigParams) {
-	if config.BigSegments == nil {
-		config.BigSegments = &servicedef.SDKConfigBigSegmentsParams{}
-	} else {
-		bc := *config.BigSegments
-		config.BigSegments = &bc // copy to avoid side effects
-	}
-	config.BigSegments.CallbackURI = b.endpoint.BaseURL()
+	newState := config.BigSegments.Value()
+	newState.CallbackURI = b.endpoint.BaseURL()
+	config.BigSegments = o.Some(newState)
 }
 
 // SetupGetMetadata causes the specified function to be called whenever the SDK calls the "get
@@ -115,22 +112,14 @@ func (b *BigSegmentStore) SetupMemberships(t *ldtest.T, memberships map[string]m
 
 // ExpectMetadataQuery blocks until the Big Segment store has received a metadata query.
 func (b *BigSegmentStore) ExpectMetadataQuery(t *ldtest.T, timeout time.Duration) {
-	select {
-	case <-b.metadataQueries:
-		return
-	case <-time.After(timeout):
-		require.Fail(t, "timed out waiting for big segments metadata query")
-	}
+	_ = helpers.RequireValueWithMessage(t, b.metadataQueries, timeout,
+		"timed out waiting for big segments metadata query")
 }
 
 // ExpectNoMoreMetadataQueries causes a test failure if the Big Segment store receives a
 // metadata query.
 func (b *BigSegmentStore) ExpectNoMoreMetadataQueries(t *ldtest.T, timeout time.Duration) {
-	select {
-	case <-b.metadataQueries:
-		require.Fail(t, "got an unexpected big segments metadata query")
-	case <-time.After(timeout):
-	}
+	helpers.RequireNoMoreValues(t, b.metadataQueries, timeout)
 }
 
 // GetMembershipQueries returns the context hashes of all membership queries that have been

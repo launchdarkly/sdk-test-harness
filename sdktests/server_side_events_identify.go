@@ -3,6 +3,7 @@ package sdktests
 import (
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
@@ -43,7 +44,7 @@ func doServerSideIdentifyEventTests(t *ldtest.T) {
 				client.SendIdentifyEvent(t, context)
 				client.SendCustomEvent(t, servicedef.CustomEventParams{
 					EventKey: "event-key",
-					Context:  context,
+					Context:  o.Some(context),
 				})
 				// Sending a custom event would also generate an index event for the context,
 				// if we hadn't already seen that context
