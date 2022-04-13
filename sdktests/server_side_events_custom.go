@@ -3,7 +3,9 @@ package sdktests
 import (
 	"fmt"
 
+	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
@@ -22,9 +24,9 @@ func doServerSideCustomEventTests(t *ldtest.T) {
 		metricValue := 1.0
 
 		for _, inlineUser := range []bool{false, true} {
-			t.Run(selectString(inlineUser, "inline user", "non-inline user"), func(t *ldtest.T) {
+			t.Run(h.IfElse(inlineUser, "inline user", "non-inline user"), func(t *ldtest.T) {
 				for _, anonymousUser := range []bool{false, true} {
-					t.Run(selectString(anonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
+					t.Run(h.IfElse(anonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
 						eventsConfig := servicedef.SDKConfigEventParams{InlineUsers: inlineUser}
 						user := users.NextUniqueUserMaybeAnonymous(anonymousUser)
 
@@ -34,9 +36,9 @@ func doServerSideCustomEventTests(t *ldtest.T) {
 
 						client.SendCustomEvent(t, servicedef.CustomEventParams{
 							EventKey:    "event-key",
-							User:        user,
+							User:        o.Some(user),
 							Data:        ldvalue.Bool(true),
-							MetricValue: &metricValue,
+							MetricValue: o.Some(metricValue),
 						})
 
 						client.FlushEvents(t)
@@ -95,8 +97,7 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 			EventKey: "event-key",
 		}
 		if metricValue != omitMetricValue {
-			m := metricValue
-			baseParams.MetricValue = &m
+			baseParams.MetricValue = o.Some(metricValue)
 		}
 
 		for _, dataValue := range []ldvalue.Value{
@@ -113,7 +114,7 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 		} {
 			params := baseParams
 			params.Data = dataValue
-			params.User = users.NextUniqueUser()
+			params.User = o.Some(users.NextUniqueUser())
 			allParams = append(allParams, params)
 		}
 
@@ -122,7 +123,7 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 		// data which may be null", to make sure we're covering both methods.
 		params := baseParams
 		params.OmitNullData = true
-		params.User = users.NextUniqueUser()
+		params.User = o.Some(users.NextUniqueUser())
 		allParams = append(allParams, params)
 	}
 
@@ -131,8 +132,8 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 		if params.OmitNullData {
 			desc += ", omitNullData"
 		}
-		if params.MetricValue != nil {
-			desc += fmt.Sprintf(", metricValue=%f", *params.MetricValue)
+		if params.MetricValue.IsDefined() {
+			desc += fmt.Sprintf(", metricValue=%f", params.MetricValue.Value())
 		}
 
 		t.Run(desc, func(t *ldtest.T) {
@@ -142,12 +143,12 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 			m.In(t).Assert(payload, m.Items(
 				m.AllOf(
 					IsCustomEventForEventKey(params.EventKey),
-					conditionalMatcher(params.OmitNullData && params.Data.IsNull(),
+					h.IfElse(params.OmitNullData && params.Data.IsNull(),
 						JSONPropertyNullOrAbsent("data"),
 						m.JSONOptProperty("data").Should(m.JSONEqual(params.Data)),
 						// we use JSONOptProperty for "data" here because the SDK is allowed to omit a null value
 					),
-					conditionalMatcher(params.MetricValue == nil,
+					h.IfElse(!params.MetricValue.IsDefined(),
 						JSONPropertyNullOrAbsent("metricValue"),
 						m.JSONProperty("metricValue").Should(m.JSONEqual(params.MetricValue)),
 					),

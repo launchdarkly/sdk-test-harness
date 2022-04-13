@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
+
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 
 	"github.com/stretchr/testify/assert"
@@ -41,7 +43,7 @@ func TestComputeExpectedBucketValue(t *testing.T) {
 					ldvalue.NewOptionalString(secondary),
 					p.seed,
 				)
-				failureDesc := selectString(secondary == "", "empty secondary key", "empty-but-not-undefined secondary key") +
+				failureDesc := h.IfElse(secondary == "", "empty secondary key", "empty-but-not-undefined secondary key") +
 					" should have changed result, but did not"
 				assert.NotEqual(t, p.expectedValue, valueWithSecondaryKey, failureDesc)
 			}

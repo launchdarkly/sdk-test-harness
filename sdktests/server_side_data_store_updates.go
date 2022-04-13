@@ -7,6 +7,7 @@ import (
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
@@ -96,7 +97,7 @@ func doServerSideDataStoreStreamUpdateTests(t *ldtest.T) {
 					)
 				}
 
-				allFlags := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
+				allFlags := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: o.Some(user)})
 				if shouldApply {
 					if isDelete {
 						assert.NotContains(t, allFlags.State, flagKey)

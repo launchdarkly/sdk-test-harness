@@ -3,7 +3,9 @@ package sdktests
 import (
 	"time"
 
+	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
@@ -51,7 +53,7 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 
 	t.Run("only index + summary event for untracked flag", func(t *ldtest.T) {
 		for _, withReason := range []bool{false, true} {
-			t.Run(selectString(withReason, "with reasons", "without reasons"), func(t *ldtest.T) {
+			t.Run(h.IfElse(withReason, "with reasons", "without reasons"), func(t *ldtest.T) {
 				for _, valueType := range getValueTypesToTest(t) {
 					t.Run(testDescFromType(valueType), func(t *ldtest.T) {
 						flag := untrackedFlags.ForType(valueType)
@@ -59,7 +61,7 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 
 						resp := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 							FlagKey:      flag.Key,
-							User:         user,
+							User:         o.Some(user),
 							ValueType:    valueType,
 							DefaultValue: defaultValues(valueType),
 							Detail:       withReason,
@@ -101,7 +103,7 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 				user := users.NextUniqueUserMaybeAnonymous(isAnonymousUser)
 				resp := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 					FlagKey:      flag.Key,
-					User:         user,
+					User:         o.Some(user),
 					ValueType:    valueType,
 					DefaultValue: defaultValues(valueType),
 					Detail:       withReason,
@@ -142,11 +144,11 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 
 	t.Run("full feature event for tracked flag", func(t *ldtest.T) {
 		for _, withReason := range []bool{false, true} {
-			t.Run(selectString(withReason, "with reason", "without reason"), func(t *ldtest.T) {
+			t.Run(h.IfElse(withReason, "with reason", "without reason"), func(t *ldtest.T) {
 				for _, isAnonymousUser := range []bool{false, true} {
-					t.Run(selectString(isAnonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
+					t.Run(h.IfElse(isAnonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
 						for _, isBadFlag := range []bool{false, true} {
-							t.Run(selectString(isBadFlag, "malformed flag", "valid flag"), func(t *ldtest.T) {
+							t.Run(h.IfElse(isBadFlag, "malformed flag", "valid flag"), func(t *ldtest.T) {
 								doFeatureEventTest(t, withReason, isAnonymousUser, isBadFlag)
 							})
 						}
@@ -209,14 +211,14 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 		}
 
 		for _, withReasons := range []bool{false, true} {
-			t.Run(selectString(withReasons, "with reasons", "without reasons"), func(t *ldtest.T) {
+			t.Run(h.IfElse(withReasons, "with reasons", "without reasons"), func(t *ldtest.T) {
 				for _, valueType := range getValueTypesToTest(t) {
 					t.Run(testDescFromType(valueType), func(t *ldtest.T) {
 						user := users.NextUniqueUser()
 						flag := flags.ForType(valueType)
 						result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 							FlagKey:      flag.Key,
-							User:         user,
+							User:         o.Some(user),
 							ValueType:    valueType,
 							DefaultValue: defaultValues(valueType),
 							Detail:       withReasons,
@@ -326,7 +328,7 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 		Build()
 
 	for _, withReason := range []bool{false, true} {
-		t.Run(selectString(withReason, "with reasons", "without reasons"), func(t *ldtest.T) {
+		t.Run(h.IfElse(withReason, "with reasons", "without reasons"), func(t *ldtest.T) {
 			dataBuilder := mockld.NewServerSDKDataBuilder()
 			dataBuilder.Flag(flag1, flag2, flag3)
 
@@ -336,7 +338,7 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 
 			result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 				FlagKey:      flag1.Key,
-				User:         user,
+				User:         o.Some(user),
 				ValueType:    servicedef.ValueTypeString,
 				DefaultValue: ldvalue.String("default"),
 				Detail:       withReason,
@@ -387,7 +389,7 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 }
 
 func maybeReason(withReason bool, reason ldreason.EvaluationReason) m.Matcher {
-	return conditionalMatcher(withReason,
+	return h.IfElse(withReason,
 		m.JSONProperty("reason").Should(m.JSONEqual(reason)),
 		JSONPropertyNullOrAbsent("reason"))
 }

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
@@ -51,12 +52,16 @@ func doServerSideSummaryEventBasicTest(t *ldtest.T) {
 	client := NewSDKClient(t, dataSource, events)
 
 	// evaluations for flag1: two for userA producing value1a, one for userB producing value1b
-	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1.Key, User: userA, DefaultValue: default1})
-	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1.Key, User: userB, DefaultValue: default1})
-	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1.Key, User: userA, DefaultValue: default1})
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1.Key,
+		User: o.Some(userA), DefaultValue: default1})
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1.Key,
+		User: o.Some(userB), DefaultValue: default1})
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1.Key,
+		User: o.Some(userA), DefaultValue: default1})
 
 	// evaluations for flag2: one for userA producing value2a
-	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag2.Key, User: userA, DefaultValue: default2})
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag2.Key,
+		User: o.Some(userA), DefaultValue: default2})
 
 	client.FlushEvents(t)
 	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
@@ -94,8 +99,10 @@ func doServerSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 	client := NewSDKClient(t, dataSource, events)
 
 	// evaluate the unknown flag twice
-	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: unknownKey, User: user, DefaultValue: default1})
-	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: unknownKey, User: user, DefaultValue: default1})
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: unknownKey,
+		User: o.Some(user), DefaultValue: default1})
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: unknownKey,
+		User: o.Some(user), DefaultValue: default1})
 
 	client.FlushEvents(t)
 	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
@@ -133,10 +140,12 @@ func doServerSideSummaryEventResetTest(t *ldtest.T) {
 
 	// evaluate flag 10 times for userA producing value-a, 3 times for userB producing value-b
 	for i := 0; i < 10; i++ {
-		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag.Key, User: userA, DefaultValue: defaultValue})
+		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag.Key,
+			User: o.Some(userA), DefaultValue: defaultValue})
 	}
 	for i := 0; i < 3; i++ {
-		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag.Key, User: userB, DefaultValue: defaultValue})
+		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag.Key,
+			User: o.Some(userB), DefaultValue: defaultValue})
 	}
 
 	client.FlushEvents(t)
@@ -158,7 +167,8 @@ func doServerSideSummaryEventResetTest(t *ldtest.T) {
 
 	// Now do 2 evaluations for value-b and verify that the summary shows only those, not the previous counts
 	for i := 0; i < 2; i++ {
-		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag.Key, User: userB, DefaultValue: defaultValue})
+		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag.Key,
+			User: o.Some(userB), DefaultValue: defaultValue})
 	}
 
 	client.FlushEvents(t)
@@ -207,7 +217,8 @@ func doServerSideSummaryEventPrerequisitesTest(t *ldtest.T) {
 
 	// evaluate flag1 3 times, which should cause flag2 and flag3 to also be evaluated 3 times
 	for i := 0; i < 3; i++ {
-		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1.Key, User: user, DefaultValue: defaultValue})
+		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1.Key,
+			User: o.Some(user), DefaultValue: defaultValue})
 	}
 
 	client.FlushEvents(t)

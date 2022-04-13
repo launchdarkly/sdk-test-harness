@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 
@@ -272,13 +273,13 @@ func RunServerSideEvalBucketingTests(t *ldtest.T) {
 				return b.Build()
 			}
 
-			desc := selectString(secondary == "", "secondary key is an empty string", "secondary key is a non-empty string")
+			desc := h.IfElse(secondary == "", "secondary key is an empty string", "secondary key is a non-empty string")
 			t.Run(desc, func(t *ldtest.T) {
 				for _, isExperiment := range []bool{false, true} {
 					// Note: in the SDK versions that this version of sdk-test-harness is for, the defined behavior
 					// was that the secondary key could be used for either a rollout or an experiment. In later
 					// versions, the secondary key is ignored in experiments and this test logic is changed.
-					desc := fmt.Sprintf("affects bucketing calculation in %s", selectString(isExperiment, "experiments", "rollouts"))
+					desc := fmt.Sprintf("affects bucketing calculation in %s", h.IfElse(isExperiment, "experiments", "rollouts"))
 					t.Run(desc, func(t *ldtest.T) {
 						if secondary == "" {
 							t.NonCritical(
@@ -328,7 +329,7 @@ func RunServerSideEvalBucketingTests(t *ldtest.T) {
 		// versions, bucketBy is ignored in experiments and this test logic is changed.
 
 		for _, isExperiment := range []bool{false, true} {
-			t.Run(selectString(isExperiment, "experiments", "rollouts"), func(t *ldtest.T) {
+			t.Run(h.IfElse(isExperiment, "experiments", "rollouts"), func(t *ldtest.T) {
 				rolloutKind := ldmodel.RolloutKindRollout
 				if isExperiment {
 					rolloutKind = ldmodel.RolloutKindExperiment

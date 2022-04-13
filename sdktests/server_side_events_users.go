@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
@@ -95,7 +96,7 @@ func doServerSideEventUserTests(t *ldtest.T) {
 				user := scenario.MakeUser(users.NextUniqueUser())
 				client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 					FlagKey:      flag.Key,
-					User:         user,
+					User:         o.Some(user),
 					ValueType:    servicedef.ValueTypeAny,
 					DefaultValue: defaultValue,
 				})
@@ -132,10 +133,10 @@ func doServerSideEventUserTests(t *ldtest.T) {
 				eventData := ldvalue.Bool(true)
 				metricValue := float64(10)
 				client.SendCustomEvent(t, servicedef.CustomEventParams{
-					User:        user,
+					User:        o.Some(user),
 					EventKey:    "event-key",
 					Data:        eventData,
-					MetricValue: &metricValue,
+					MetricValue: o.Some(metricValue),
 				})
 				client.FlushEvents(t)
 
