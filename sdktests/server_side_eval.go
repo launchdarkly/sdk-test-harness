@@ -54,7 +54,7 @@ func RunParameterizedServerSideEvalTests(t *ldtest.T) {
 						result := client.EvaluateFlag(t, params)
 						m.In(t).Assert(result, m.AllOf(
 							EvalResponseValue().Should(m.Equal(test.Expect.Value)),
-							EvalResponseVariation().Should(m.Equal(optionalIntToMaybe(test.Expect.VariationIndex))),
+							EvalResponseVariation().Should(m.Equal(test.Expect.VariationIndex)),
 							EvalResponseReason().Should(EqualReason(test.Expect.Reason)),
 						))
 					})
