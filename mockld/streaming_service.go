@@ -80,25 +80,23 @@ func (s *StreamingService) SetInitialData(data SDKData) {
 }
 
 func (s *StreamingService) RefreshAll() {
-	event := s.makePutEvent()
+	s.lock.RLock()
+	var data []byte
+	if s.initialData != nil {
+		data = s.initialData.Serialize()
+	}
+	s.lock.RUnlock()
+
+	event := s.makePutEvent(data)
 	if event != nil {
 		s.logEvent(event)
 		s.streams.Publish([]string{allDataChannel}, event)
 	}
 }
 
-func (s *StreamingService) makePutEvent() eventsource.Event {
-	s.lock.RLock()
-	var data []byte
-	if s.initialData == nil {
-		data = []byte("{}")
-	} else {
-		data = s.initialData.Serialize()
-	}
-	s.lock.RUnlock()
-
+func (s *StreamingService) makePutEvent(data []byte) eventsource.Event {
 	if data == nil {
-		return nil
+		data = []byte("{}")
 	}
 	return eventImpl{
 		name: "put",
@@ -115,6 +113,10 @@ func (s *StreamingService) PushEvent(eventName string, eventData interface{}) {
 	}
 	s.logEvent(event)
 	s.streams.Publish([]string{allDataChannel}, event)
+}
+
+func (s *StreamingService) PushInit(data SDKData) {
+	s.PushEvent("put", json.RawMessage(s.makePutEvent(data.Serialize()).Data()))
 }
 
 func (s *StreamingService) PushUpdate(namespace, key string, data json.RawMessage) {
@@ -134,7 +136,14 @@ func (s *StreamingService) PushDelete(namespace, key string, version int) {
 }
 
 func (s *StreamingService) Replay(channel, id string) chan eventsource.Event {
-	e := s.makePutEvent()
+	s.lock.RLock()
+	var data []byte
+	if s.initialData != nil {
+		data = s.initialData.Serialize()
+	}
+	s.lock.RUnlock()
+
+	e := s.makePutEvent(data)
 
 	// The use of a channel here is just part of how the eventsource server API works-- the Replay
 	// method is expected to return a channel, which could be either pre-populated or pushed to

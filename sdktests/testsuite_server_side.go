@@ -43,6 +43,7 @@ func RunServerSideTestSuite(
 		t.Run("evaluation", DoServerSideEvalTests)
 		t.Run("events", doServerSideEventTests)
 		t.Run("streaming", doServerSideStreamTests)
+		t.Run("persistent store", doServerSidePersistentDataStoreTests)
 		t.Run("big segments", doServerSideBigSegmentsTests)
 		t.Run("tags", doServerSideTagsTests)
 	})

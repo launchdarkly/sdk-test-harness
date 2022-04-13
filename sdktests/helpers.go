@@ -234,6 +234,30 @@ func pollUntilFlagValueUpdated(
 		time.Second, time.Millisecond*50, "timed out without seeing updated flag value")
 }
 
+func requireValue[V any](t *ldtest.T, ch <-chan V, timeout time.Duration) V {
+	t.Helper()
+	select {
+	case v := <-ch:
+		return v
+	case <-time.After(timeout):
+		t.Errorf("timed out waiting for value on channel")
+		t.FailNow()
+		var empty V
+		return empty // this is never reached
+	}
+}
+
+func requireNoMoreValues[V any](t *ldtest.T, ch <-chan V, timeout time.Duration) {
+	t.Helper()
+	select {
+	case <-ch:
+		t.Errorf("received unexpected extra value on channel")
+		t.FailNow()
+	case <-time.After(timeout):
+		return
+	}
+}
+
 func selectString(boolValue bool, valueIfTrue, valueIfFalse string) string {
 	if boolValue {
 		return valueIfTrue

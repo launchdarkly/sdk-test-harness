@@ -33,7 +33,8 @@ type SDKConfigEventParams struct {
 }
 
 type SDKConfigPersistentDataStoreParams struct {
-	CallbackURI string `json:"callbackURI"`
+	CallbackURI string              `json:"callbackURI"`
+	CacheTimeMS ldvalue.OptionalInt `json:"cacheTimeMs,omitempty"`
 }
 
 type SDKConfigBigSegmentsParams struct {

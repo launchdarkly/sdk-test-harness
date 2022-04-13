@@ -37,6 +37,13 @@ func WithEventsConfig(eventsConfig servicedef.SDKConfigEventParams) SDKConfigure
 	})
 }
 
+// WithPersistentDataStoreConfig is used with StartSDKClient to specify a non-default data store configuration.
+func WithPersistentDataStoreConfig(storeConfig servicedef.SDKConfigPersistentDataStoreParams) SDKConfigurer {
+	return sdkConfigurerFunc(func(configOut *servicedef.SDKConfigParams) {
+		configOut.PersistentDataStore = &storeConfig
+	})
+}
+
 // WithStreamingConfig is used with StartSDKClient to specify a non-default streaming configuration.
 func WithStreamingConfig(streamingConfig servicedef.SDKConfigStreamingParams) SDKConfigurer {
 	return sdkConfigurerFunc(func(configOut *servicedef.SDKConfigParams) {
