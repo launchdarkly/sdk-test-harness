@@ -2,31 +2,36 @@ package helpers
 
 import (
 	"errors"
-	"fmt"
-	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-// TestRecorder is a stub implementation of TestContext for testing test logic.
-type TestRecorder struct {
-	Errors           []string
-	Terminated       bool
-	PanicOnTerminate bool
-}
+func TestTestRecorder(t *testing.T) {
+	t.Run("Errorf", func(t *testing.T) {
+		var tr TestRecorder
+		tr.Errorf("hello %s", "there")
+		tr.Errorf("bye")
+		assert.Equal(t, []string{"hello there", "bye"}, tr.Errors)
+		assert.False(t, tr.Terminated)
+	})
 
-func (t *TestRecorder) Errorf(format string, args ...interface{}) {
-	t.Errors = append(t.Errors, fmt.Sprintf(format, args...))
-}
+	t.Run("FailNow", func(t *testing.T) {
+		var tr1 TestRecorder
+		tr1.FailNow()
+		assert.True(t, tr1.Terminated)
 
-func (t *TestRecorder) FailNow() {
-	t.Terminated = true
-	if t.PanicOnTerminate {
-		panic(t)
-	}
-}
+		tr2 := TestRecorder{PanicOnTerminate: true}
+		assert.Panics(t, func() { tr2.FailNow() })
+		assert.True(t, tr2.Terminated)
+	})
 
-func (t *TestRecorder) Err() error {
-	if len(t.Errors) == 0 {
-		return nil
-	}
-	return errors.New(strings.Join(t.Errors, ", "))
+	t.Run("Err", func(t *testing.T) {
+		var tr TestRecorder
+		assert.Nil(t, tr.Err())
+
+		tr.Errorf("hello %s", "there")
+		tr.Errorf("bye")
+		assert.Equal(t, errors.New("hello there, bye"), tr.Err())
+	})
 }
