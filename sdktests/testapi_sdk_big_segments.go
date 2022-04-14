@@ -53,12 +53,13 @@ func NewBigSegmentStore(t *ldtest.T, initialStatus ldreason.BigSegmentsStatus) *
 	return b
 }
 
-// ApplyConfiguration updates the SDK client configuration for NewSDKClient, causing the SDK
+// Configure updates the SDK client configuration for NewSDKClient, causing the SDK
 // to connect to the appropriate base URI for the big segments test fixture.
-func (b *BigSegmentStore) ApplyConfiguration(config *servicedef.SDKConfigParams) {
+func (b *BigSegmentStore) Configure(config *servicedef.SDKConfigParams) error {
 	newState := config.BigSegments.Value()
 	newState.CallbackURI = b.endpoint.BaseURL()
 	config.BigSegments = o.Some(newState)
+	return nil
 }
 
 // SetupGetMetadata causes the specified function to be called whenever the SDK calls the "get

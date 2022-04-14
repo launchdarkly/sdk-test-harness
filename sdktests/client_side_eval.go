@@ -3,6 +3,7 @@ package sdktests
 import (
 	"fmt"
 
+	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
@@ -48,6 +49,8 @@ func runParameterizedClientSideEvalTestsWithOrWithoutReasons(
 	allTestSuites []testmodel.ClientSideEvalTestSuite,
 	withReasons bool,
 ) {
+	sdkKind := helpers.IfElse(t.Capabilities().Has(servicedef.CapabilityMobile), mockld.MobileSDK, mockld.JSClientSDK)
+
 	for _, suite := range allTestSuites {
 		t.Run(suite.Name, func(t *ldtest.T) {
 			if suite.RequireCapability != "" {
@@ -67,11 +70,7 @@ func runParameterizedClientSideEvalTestsWithOrWithoutReasons(
 			if !withReasons {
 				filteredData = filteredData.WithoutReasons()
 			}
-			var initialData mockld.SDKData = filteredData
-			if t.Capabilities().Has(servicedef.CapabilityMobile) {
-				initialData = mockld.MobileSDKData(filteredData) // this type makes the data source enable the mobile endpoints
-			}
-			dataSource = NewSDKDataSource(t, initialData, DataSourceOptionPolling)
+			dataSource = NewSDKDataSource(t, filteredData, DataSourceOptionPolling(), DataSourceOptionSDKKind(sdkKind))
 			client := NewSDKClient(
 				t,
 				WithClientSideConfig(servicedef.SDKConfigClientSideParams{

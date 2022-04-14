@@ -45,6 +45,7 @@ const (
 
 func NewStreamingService(
 	initialData SDKData,
+	sdkKind SDKKind,
 	debugLogger framework.Logger,
 ) *StreamingService {
 	streams := eventsource.NewServer()
@@ -52,7 +53,7 @@ func NewStreamingService(
 	streams.Logger = eventSourceDebugLogger{debugLogger}
 
 	s := &StreamingService{
-		sdkKind:     initialData.SDKKind(),
+		sdkKind:     sdkKind,
 		initialData: initialData,
 		streams:     streams,
 		debugLogger: debugLogger,
@@ -60,7 +61,7 @@ func NewStreamingService(
 
 	streamHandler := streams.Handler(allDataChannel)
 	router := mux.NewRouter()
-	switch initialData.SDKKind() {
+	switch sdkKind {
 	case ServerSideSDK:
 		router.HandleFunc("/all", streamHandler).Methods("GET")
 	case MobileSDK:

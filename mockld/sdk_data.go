@@ -25,7 +25,6 @@ const (
 type DataItemKind string
 
 type SDKData interface {
-	SDKKind() SDKKind
 	Serialize() []byte
 }
 
@@ -52,9 +51,6 @@ type ServerSDKData map[DataItemKind]map[string]json.RawMessage
 // ClientSDKData contains simulated LaunchDarkly environment data for a client-side SDK.
 //
 // This does not include flag or segment configurations, but only flag evaluation results for a specific user.
-//
-// This type will report its SDKKind as JSClientSDK, causing StreamingService to enable its JS client
-// endpoints. If you want to enable the mobile endpoints instead, use MobileSDKData.
 type ClientSDKData map[string]ClientSDKFlag
 
 // ClientSDKFlag contains the flag evaluation results for a single flag in ClientSDKData.
@@ -69,16 +65,8 @@ type ClientSDKFlag struct {
 	DebugEventsUntilDate o.Maybe[ldtime.UnixMillisecondTime] `json:"debugEventsUntilDate"`
 }
 
-// MobileSDKData is a specialization of ClientSDKData that reports its SDKKind as MobileSDK.
-// StreamingService will enable its mobile endpoints when used with this type.
-type MobileSDKData ClientSDKData
-
 func EmptyServerSDKData() ServerSDKData {
 	return NewServerSDKDataBuilder().Build() // ensures that "flags" and "segments" properties are present, but empty
-}
-
-func (d ServerSDKData) SDKKind() SDKKind {
-	return ServerSideSDK
 }
 
 func (d ServerSDKData) Serialize() []byte {
@@ -198,10 +186,6 @@ func (b *ServerSDKDataBuilder) Segment(segments ...ldmodel.Segment) *ServerSDKDa
 	return b
 }
 
-func (d ClientSDKData) SDKKind() SDKKind {
-	return JSClientSDK
-}
-
 func (d ClientSDKData) Serialize() []byte {
 	return jsonhelpers.ToJSON(d)
 }
@@ -219,16 +203,8 @@ func (d ClientSDKData) WithoutReasons() ClientSDKData {
 	return ret
 }
 
-func (d MobileSDKData) SDKKind() SDKKind {
-	return MobileSDK
-}
-
-func (d MobileSDKData) Serialize() []byte {
-	return jsonhelpers.ToJSON(d)
-}
-
-func (d MobileSDKData) JSONString() string {
-	return jsonhelpers.ToJSONString(d)
+func EmptyClientSDKData() ClientSDKData {
+	return NewClientSDKDataBuilder().Build()
 }
 
 type ClientSDKDataBuilder struct {

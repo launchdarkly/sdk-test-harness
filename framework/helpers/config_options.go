@@ -6,6 +6,13 @@ type ConfigOption[T any] interface {
 	Configure(*T) error
 }
 
+// ConfigOptionFunc is a decorator for a function being used as a ConfigOption.
+type ConfigOptionFunc[T any] func(*T) error
+
+func (f ConfigOptionFunc[T]) Configure(target *T) error {
+	return f(target)
+}
+
 // ApplyOptions calls any number of ConfigOption implementations against the target value.
 // If any returns an error, it immediately stops and returns that error.
 func ApplyOptions[T any, U ConfigOption[T]](target *T, options ...U) error {

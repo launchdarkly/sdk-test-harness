@@ -20,17 +20,18 @@ type PollingService struct {
 
 func NewPollingService(
 	initialData SDKData,
+	sdkKind SDKKind,
 	debugLogger framework.Logger,
 ) *PollingService {
 	p := &PollingService{
-		sdkKind:     initialData.SDKKind(),
+		sdkKind:     sdkKind,
 		currentData: initialData,
 		debugLogger: debugLogger,
 	}
 
 	pollHandler := p.servePollRequest
 	router := mux.NewRouter()
-	switch initialData.SDKKind() {
+	switch sdkKind {
 	case ServerSideSDK:
 		router.HandleFunc("/sdk/flags/latest-all", pollHandler).Methods("GET")
 	case MobileSDK:

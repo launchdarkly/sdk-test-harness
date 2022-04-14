@@ -46,12 +46,13 @@ func NewSDKEventSink(t *ldtest.T) *SDKEventSink {
 	}
 }
 
-// ApplyConfiguration updates the SDK client configuration for NewSDKClient, causing the SDK
+// Configure updates the SDK client configuration for NewSDKClient, causing the SDK
 // to connect to the appropriate base URI for the test fixture.
-func (e *SDKEventSink) ApplyConfiguration(config *servicedef.SDKConfigParams) {
+func (e *SDKEventSink) Configure(config *servicedef.SDKConfigParams) error {
 	newState := config.Events.Value()
 	newState.BaseURI = e.eventsEndpoint.BaseURL()
 	config.Events = o.Some(newState)
+	return nil
 }
 
 // Endpoint returns the low-level object that manages incoming requests.

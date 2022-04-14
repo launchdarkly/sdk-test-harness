@@ -1,9 +1,11 @@
 package sdktests
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/launchdarkly/sdk-test-harness/framework/harness"
+	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
@@ -18,20 +20,34 @@ type SDKDataSource struct {
 	endpoint         *harness.MockEndpoint
 }
 
-// SDKDataSourceOption is the interface for options to NewSDKDataSource.
-type SDKDataSourceOption interface {
-	isDataSourceOption() // arbitrary method - this is just a marker interface currently
+type sdkDataSourceConfig struct {
+	polling bool
+	sdkKind mockld.SDKKind
 }
 
-type dataSourceOptionPolling struct{}
-
-func (o dataSourceOptionPolling) isDataSourceOption() {}
+// SDKDataSourceOption is the interface for options to NewSDKDataSource.
+type SDKDataSourceOption helpers.ConfigOption[sdkDataSourceConfig]
 
 // DataSourceOptionPolling makes an SDKDataSource simulate the polling service instead of the streaming service.
-var DataSourceOptionPolling dataSourceOptionPolling //nolint:gochecknoglobals
+func DataSourceOptionPolling() SDKDataSourceOption {
+	return helpers.ConfigOptionFunc[sdkDataSourceConfig](func(c *sdkDataSourceConfig) error {
+		c.polling = true
+		return nil
+	})
+}
+
+// DataSourceOptionSDKKind configures the service to support the right endpoints for a particular category of
+// SDKs. The default is ServerSideSDK.
+func DataSourceOptionSDKKind(sdkKind mockld.SDKKind) SDKDataSourceOption {
+	return helpers.ConfigOptionFunc[sdkDataSourceConfig](func(c *sdkDataSourceConfig) error {
+		c.sdkKind = sdkKind
+		return nil
+	})
+}
 
 // NewSDKDataSource creates a new SDKDataSource with the specified initial data set. By default, it
-// is a streaming data source. For polling mode, add the DataSourceOptionPolling option.
+// is a streaming data source for use with server-side SDKs. For polling mode, add the
+// DataSourceOptionPolling option. For client-side SDKs, add the DataSourceOptionSDKKind option.
 //
 // The object's lifecycle is tied to the test scope that created it; it will be automatically closed
 // when this test scope exits. It can be reused by subtests until then. Debug output related to the
@@ -39,15 +55,10 @@ var DataSourceOptionPolling dataSourceOptionPolling //nolint:gochecknoglobals
 func NewSDKDataSource(t *ldtest.T, data mockld.SDKData, options ...SDKDataSourceOption) *SDKDataSource {
 	d := NewSDKDataSourceWithoutEndpoint(t, data, options...)
 
-	var handler http.Handler
-	var description string
-	if d.pollingService != nil {
-		handler = d.pollingService
-		description = "polling service"
-	} else {
-		handler = d.streamingService
-		description = "streaming service"
-	}
+	isPolling := d.pollingService != nil
+	handler := helpers.IfElse[http.Handler](isPolling, d.pollingService, d.streamingService)
+	description := helpers.IfElse(isPolling, "polling service", "streaming service")
+
 	d.endpoint = requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
 		harness.MockEndpointDescription(description))
 	t.Defer(d.endpoint.Close)
@@ -60,18 +71,14 @@ func NewSDKDataSource(t *ldtest.T, data mockld.SDKData, options ...SDKDataSource
 // for instance if you want it to delegate some requests to the data source but return an error
 // for some other requests.
 func NewSDKDataSourceWithoutEndpoint(t *ldtest.T, data mockld.SDKData, options ...SDKDataSourceOption) *SDKDataSource {
-	isPolling := false
-	for _, o := range options {
-		if o == DataSourceOptionPolling {
-			isPolling = true
-		}
-	}
+	config := sdkDataSourceConfig{sdkKind: mockld.ServerSideSDK}
+	_ = helpers.ApplyOptions(&config, options...)
 
 	d := &SDKDataSource{}
-	if isPolling {
-		d.pollingService = mockld.NewPollingService(data, t.DebugLogger())
+	if config.polling {
+		d.pollingService = mockld.NewPollingService(data, config.sdkKind, t.DebugLogger())
 	} else {
-		d.streamingService = mockld.NewStreamingService(data, t.DebugLogger())
+		d.streamingService = mockld.NewStreamingService(data, config.sdkKind, t.DebugLogger())
 	}
 
 	t.Debug("setting SDK data to: %s", string(data.Serialize()))
@@ -94,14 +101,17 @@ func (d *SDKDataSource) PollingService() *mockld.PollingService { return d.polli
 // already, this is the same as Service() but makes the purpose clearer.
 func (d *SDKDataSource) Handler() http.Handler { return d.streamingService }
 
-// ApplyConfiguration updates the SDK client configuration for NewSDKClient, causing the SDK
+// Configure updates the SDK client configuration for NewSDKClient, causing the SDK
 // to connect to the appropriate base URI for the data source test fixture. This only works if
 // the data source was created along with its own endpoint, with NewSDKDataSource; if it was
 // created as a handler to be used in a separately configured endpoint, you have to set the
 // base URI in the test logic rather than using this shortcut.
-func (d *SDKDataSource) ApplyConfiguration(config *servicedef.SDKConfigParams) {
+func (d *SDKDataSource) Configure(config *servicedef.SDKConfigParams) error {
 	if d.endpoint == nil {
-		panic("Tried to use an SDKDataSource without its own endpoint as a parameter to NewSDKClient")
+		return errors.New("tried to use an SDKDataSource without its own endpoint as a parameter to NewSDKClient")
+	}
+	if d.streamingService == nil && d.pollingService == nil {
+		return errors.New("tried to use an SDKDataSource that has neither streaming nor polling configured")
 	}
 	if d.streamingService != nil {
 		newState := config.Streaming.Value()
@@ -113,4 +123,5 @@ func (d *SDKDataSource) ApplyConfiguration(config *servicedef.SDKConfigParams) {
 		newState.BaseURI = d.endpoint.BaseURL()
 		config.Polling = o.Some(newState)
 	}
+	return nil
 }
