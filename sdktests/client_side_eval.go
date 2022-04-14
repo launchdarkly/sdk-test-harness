@@ -3,7 +3,6 @@ package sdktests
 import (
 	"fmt"
 
-	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
@@ -49,8 +48,6 @@ func runParameterizedClientSideEvalTestsWithOrWithoutReasons(
 	allTestSuites []testmodel.ClientSideEvalTestSuite,
 	withReasons bool,
 ) {
-	sdkKind := helpers.IfElse(t.Capabilities().Has(servicedef.CapabilityMobile), mockld.MobileSDK, mockld.JSClientSDK)
-
 	for _, suite := range allTestSuites {
 		t.Run(suite.Name, func(t *ldtest.T) {
 			if suite.RequireCapability != "" {
@@ -70,7 +67,7 @@ func runParameterizedClientSideEvalTestsWithOrWithoutReasons(
 			if !withReasons {
 				filteredData = filteredData.WithoutReasons()
 			}
-			dataSource = NewSDKDataSource(t, filteredData, DataSourceOptionPolling(), DataSourceOptionSDKKind(sdkKind))
+			dataSource = NewSDKDataSource(t, filteredData, DataSourceOptionPolling())
 			client := NewSDKClient(
 				t,
 				WithClientSideConfig(servicedef.SDKConfigClientSideParams{

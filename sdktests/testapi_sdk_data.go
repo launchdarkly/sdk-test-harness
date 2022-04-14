@@ -22,7 +22,6 @@ type SDKDataSource struct {
 
 type sdkDataSourceConfig struct {
 	polling bool
-	sdkKind mockld.SDKKind
 }
 
 // SDKDataSourceOption is the interface for options to NewSDKDataSource.
@@ -36,18 +35,11 @@ func DataSourceOptionPolling() SDKDataSourceOption {
 	})
 }
 
-// DataSourceOptionSDKKind configures the service to support the right endpoints for a particular category of
-// SDKs. The default is ServerSideSDK.
-func DataSourceOptionSDKKind(sdkKind mockld.SDKKind) SDKDataSourceOption {
-	return helpers.ConfigOptionFunc[sdkDataSourceConfig](func(c *sdkDataSourceConfig) error {
-		c.sdkKind = sdkKind
-		return nil
-	})
-}
-
 // NewSDKDataSource creates a new SDKDataSource with the specified initial data set. By default, it
-// is a streaming data source for use with server-side SDKs. For polling mode, add the
-// DataSourceOptionPolling option. For client-side SDKs, add the DataSourceOptionSDKKind option.
+// is a streaming data source; for polling mode, add the DataSourceOptionPolling option.
+//
+// It automatically detects (from the ldtest.T properties) whether we are testing a server-side, mobile,
+// or JS-based client-side SDK, and configures the endpoint behavior as appropriate.
 //
 // The object's lifecycle is tied to the test scope that created it; it will be automatically closed
 // when this test scope exits. It can be reused by subtests until then. Debug output related to the
@@ -71,14 +63,15 @@ func NewSDKDataSource(t *ldtest.T, data mockld.SDKData, options ...SDKDataSource
 // for instance if you want it to delegate some requests to the data source but return an error
 // for some other requests.
 func NewSDKDataSourceWithoutEndpoint(t *ldtest.T, data mockld.SDKData, options ...SDKDataSourceOption) *SDKDataSource {
-	config := sdkDataSourceConfig{sdkKind: mockld.ServerSideSDK}
+	var config sdkDataSourceConfig
 	_ = helpers.ApplyOptions(&config, options...)
 
+	sdkKind := requireContext(t).sdkKind
 	d := &SDKDataSource{}
 	if config.polling {
-		d.pollingService = mockld.NewPollingService(data, config.sdkKind, t.DebugLogger())
+		d.pollingService = mockld.NewPollingService(data, sdkKind, t.DebugLogger())
 	} else {
-		d.streamingService = mockld.NewStreamingService(data, config.sdkKind, t.DebugLogger())
+		d.streamingService = mockld.NewStreamingService(data, sdkKind, t.DebugLogger())
 	}
 
 	t.Debug("setting SDK data to: %s", string(data.Serialize()))
