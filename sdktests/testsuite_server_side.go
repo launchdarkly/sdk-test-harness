@@ -31,6 +31,12 @@ func doServerSideDataStoreTests(t *ldtest.T) {
 	t.Run("updates from stream", doServerSideDataStoreStreamUpdateTests)
 }
 
+func doServerSideStreamTests(t *ldtest.T) {
+	t.Run("requests", doServerSideStreamRequestTests)
+	t.Run("retry behavior", doServerSideStreamRetryTests)
+	t.Run("validation", doServerSideStreamValidationTests)
+}
+
 func doServerSideEventTests(t *ldtest.T) {
 	t.Run("requests", doServerSideEventRequestTests)
 	t.Run("summary events", doServerSideSummaryEventTests)
@@ -44,10 +50,5 @@ func doServerSideEventTests(t *ldtest.T) {
 	t.Run("index events", doServerSideIndexEventTests)
 	t.Run("user properties", doServerSideEventUserTests)
 	t.Run("event capacity", doServerSideEventBufferTests)
-}
-
-func doServerSideStreamTests(t *ldtest.T) {
-	t.Run("requests", doServerSideStreamRequestTests)
-	t.Run("retry behavior", doServerSideStreamRetryTests)
-	t.Run("validation", doServerSideStreamValidationTests)
+	t.Run("disabling", doServerSideEventDisableTest)
 }

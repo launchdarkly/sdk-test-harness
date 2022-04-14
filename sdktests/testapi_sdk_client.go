@@ -46,6 +46,14 @@ func WithEventsConfig(eventsConfig servicedef.SDKConfigEventParams) SDKConfigure
 	})
 }
 
+// WithServiceEndpointsConfig is used with StartSDKClient to specify non-default service endpoints.
+// This will only work if the test service has the "service-endpoints" capability.
+func WithServiceEndpointsConfig(endpointsConfig servicedef.SDKConfigServiceEndpointsParams) SDKConfigurer {
+	return sdkConfigurerFunc(func(configOut *servicedef.SDKConfigParams) {
+		configOut.ServiceEndpoints = o.Some(endpointsConfig)
+	})
+}
+
 // WithStreamingConfig is used with StartSDKClient to specify a non-default streaming configuration.
 func WithStreamingConfig(streamingConfig servicedef.SDKConfigStreamingParams) SDKConfigurer {
 	return sdkConfigurerFunc(func(configOut *servicedef.SDKConfigParams) {

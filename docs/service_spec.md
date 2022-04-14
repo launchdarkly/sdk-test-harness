@@ -56,6 +56,14 @@ This means that the SDK supports Big Segments and can be configured with a custo
 
 For tests that involve Big Segments, the test harness will provide parameters in the `bigSegments` property of the configuration object, including a `callbackUri` that points to one of the test harness's callback services (see [Callback endpoints](#callback-endpoints)). The test service should configure the SDK with its own implementation of a Big Segment store, where every method of the store delegates to a corresponding endpoint in the callback service.
 
+#### Capability `"service-endpoints"`
+
+This means that the SDK supports setting the base URIs for the streaming, polling, and events services separately from whether those services are enabled.
+
+Certain tests are only possible to do if the SDK's configuration API works in this way. For instance, to test whether events can be disabled, the test harness has to be able to create a mock endpoint that _would_ receive events if they were sent, and then configure the SDK to know the base URI of that endpoint, while also telling the SDK not to send events. Such tests will use the `serviceEndpoints` part of the configuration object. They will be skipped if the capability is not present.
+
+Note that even if this capability is present, the test harness may still choose to use the other method of setting base URIs per service (that is, specifying a `baseUri` property within `streaming` or `events`) since that is guaranteed to work for all test service implementations.
+
 #### Capability `"tags"`
 
 This means that the SDK supports the "tags" configuration option and will send the `X-LaunchDarkly-Tags` header in HTTP requests if tags are defined.
@@ -75,13 +83,15 @@ A `POST` request indicates that the test harness wants to start an instance of t
   * `credential` (string, required): The SDK key for server-side SDKs, mobile key for mobile SDKs, or environment ID for JS-based SDKs.
   * `startWaitTimeMs` (number, optional): The initialization timeout in milliseconds. If omitted or zero, the default is 5000 (5 seconds).
   * `initCanFail` (boolean, optional): If true, the test service should _not_ return an error for client initialization failing in a way that still makes the client instance available (for instance, due to a timeout or a 401 error). See discussion of error handling below.
-  * `streaming` (object, optional): Enables streaming mode and provides streaming configuration. Properties are:
-    * `baseUri` (string, optional): The base URI for the streaming service. For contract testing, this will be the URI of a simulated streaming endpoint that the test harness provides. If it is null or an empty string, the SDK should connect to the real LaunchDarkly streaming service.
+  * `serviceEndpoints` (object, optional): See notes on the `"service-endpoints"` capability. If this object is present, the test service should use it to set the corresponding service URIs in the SDK.
+    * `streaming`, `polling`, `events` (string, optional): Each of these, if set, is the base URI for the corresponding service.
+  * `streaming` (object, optional): Enables streaming mode and provides streaming configuration. Currently the test harness only supports streaming mode, so this will be inferred if it is omitted. Properties are
+    * `baseUri` (string, optional): The base URI for the streaming service. For contract testing, this will be the URI of a simulated streaming endpoint that the test harness provides. If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.streaming` if any, or if that is not set either, connect to the real LaunchDarkly streaming service.
     * `initialRetryDelayMs` (number, optional): The initial stream retry delay in milliseconds. If omitted, use the SDK's default value.
   * `polling` (object, optional): Enables polling mode and provides polling configuration. Properties are:
-    * `baseUri` (string, optional): The base URI for the polling service. For contract testing, this will be the URI of a simulated polling endpoint that the test harness provides. If it is null or an empty string, the SDK should connect to the real LaunchDarkly polling service.
+    * `baseUri` (string, optional): The base URI for the polling service. For contract testing, this will be the URI of a simulated polling endpoint that the test harness provides. If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.polling` if any, or if that is not set either, connect to the real LaunchDarkly polling service.
   * `events` (object, optional): Enables events and provides events configuration, or disables events if it is omitted or null. Properties are:
-    * `baseUri` (string, optional): The base URI for the events service. For contract testing, this will be the URI of a simulated event-recorder endpoint that the test harness provides. If it is null or an empty string, the SDK should connect to the real LaunchDarkly events service.
+    * `baseUri` (string, optional): The base URI for the events service. For contract testing, this will be the URI of a simulated event-recorder endpoint that the test harness provides.  If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.events` if any, or if that is not set either, connect to the real LaunchDarkly events service.
     * `capacity` (number, optional): If specified and greater than zero, the event buffer capacity should be set to this value.
     * `enableDiagnostics` (boolean, optional): If true, diagnostic events should be enabled. Otherwise they should be disabled.
     * `allAttributesPrivate` (boolean, optional): Corresponds to the SDK configuration property of the same name.
