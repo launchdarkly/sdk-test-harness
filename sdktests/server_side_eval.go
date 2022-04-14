@@ -22,59 +22,6 @@ func doServerSideEvalTests(t *ldtest.T) {
 func runParameterizedServerSideEvalTests(t *ldtest.T) {
 	parameterizedTests := CommonEvalParameterizedTestRunner[mockld.ServerSDKData]{}
 	parameterizedTests.RunAll(t, "server-side-eval")
-
-	// testSuites := testdata.LoadAndParseAllTestSuites[testmodel.ServerSideEvalTestSuite](t, "server-side-eval")
-	// for _, suite := range testSuites {
-	// 	t.Run(suite.Name, func(t *ldtest.T) {
-	// 		if suite.RequireCapability != "" {
-	// 			t.RequireCapability(suite.RequireCapability)
-	// 		}
-
-	// 		dataSource := NewSDKDataSource(t, suite.SDKData)
-	// 		client := NewSDKClient(t, dataSource)
-
-	// 		for _, test := range suite.Evaluations {
-	// 			name := test.Name
-	// 			if name == "" {
-	// 				name = test.FlagKey
-	// 			}
-	// 			t.Run(name, func(t *ldtest.T) {
-	// 				t.Run("evaluate flag without detail", func(t *ldtest.T) {
-	// 					params := makeEvalFlagParams(test, suite.SDKData)
-	// 					result := client.EvaluateFlag(t, params)
-	// 					m.In(t).Assert(result, EvalResponseValue().Should(m.Equal(test.Expect.Value)))
-	// 				})
-
-	// 				t.Run("evaluate flag with detail", func(t *ldtest.T) {
-	// 					params := makeEvalFlagParams(test, suite.SDKData)
-	// 					params.Detail = true
-	// 					result := client.EvaluateFlag(t, params)
-	// 					m.In(t).Assert(result, m.AllOf(
-	// 						EvalResponseValue().Should(m.Equal(test.Expect.Value)),
-	// 						EvalResponseVariation().Should(m.Equal(test.Expect.VariationIndex)),
-	// 						EvalResponseReason().Should(EqualReason(test.Expect.Reason)),
-	// 					))
-	// 				})
-
-	// 				if !suite.SkipEvaluateAllFlags {
-	// 					t.Run("evaluate all flags", func(t *ldtest.T) {
-	// 						result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
-	// 							User: o.Some(test.User),
-	// 						})
-	// 						if test.Expect.VariationIndex.IsDefined() {
-	// 							require.Contains(t, result.State, test.FlagKey)
-	// 						}
-	// 						expectedValue := test.Expect.Value
-	// 						if !test.Expect.VariationIndex.IsDefined() {
-	// 							expectedValue = ldvalue.Null()
-	// 						}
-	// 						m.In(t).Assert(result.State[test.FlagKey], m.Equal(expectedValue))
-	// 					})
-	// 				}
-	// 			})
-	// 		}
-	// 	})
-	// }
 }
 
 func runParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
