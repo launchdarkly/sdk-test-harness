@@ -31,6 +31,14 @@ func WithConfig(config servicedef.SDKConfigParams) SDKConfigurer {
 	})
 }
 
+// WithClientSideConfig is used with StartSDKClient to specify a non-default client-side SDK
+// configuration.
+func WithClientSideConfig(clientSideConfig servicedef.SDKConfigClientSideParams) SDKConfigurer {
+	return sdkConfigurerFunc(func(configOut *servicedef.SDKConfigParams) {
+		configOut.ClientSide = o.Some(clientSideConfig)
+	})
+}
+
 // WithEventsConfig is used with StartSDKClient to specify a non-default events configuration.
 func WithEventsConfig(eventsConfig servicedef.SDKConfigEventParams) SDKConfigurer {
 	return sdkConfigurerFunc(func(configOut *servicedef.SDKConfigParams) {
@@ -113,8 +121,15 @@ func TryNewSDKClient(t *ldtest.T, configurer SDKConfigurer, moreConfigurers ...S
 }
 
 func validateSDKConfig(config servicedef.SDKConfigParams) error {
-	if !config.Streaming.IsDefined() || config.Streaming.Value().BaseURI == "" {
-		return errors.New("streaming base URI was not set-- did you forget to include the SDKDataSource as a parameter?")
+	if !config.Streaming.IsDefined() && !config.Polling.IsDefined() {
+		return errors.New(
+			"neither streaing nor polling was enabled-- did you forget to include the SDKDataSource as a parameter?")
+	}
+	if config.Streaming.IsDefined() && config.Streaming.Value().BaseURI == "" {
+		return errors.New("streaming was enabled but base URI was not set")
+	}
+	if config.Polling.IsDefined() && config.Polling.Value().BaseURI == "" {
+		return errors.New("polling was enabled but base URI was not set")
 	}
 	if config.Events.IsDefined() && config.Events.Value().BaseURI == "" {
 		return errors.New("events were enabled but base URI was not set--" +

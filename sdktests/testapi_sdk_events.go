@@ -35,7 +35,8 @@ type SDKEventSink struct {
 // sink will be attached to this test scope.
 func NewSDKEventSink(t *ldtest.T) *SDKEventSink {
 	eventsService := mockld.NewEventsService(requireContext(t).sdkKind, defaultSDKKey, t.DebugLogger())
-	eventsEndpoint := requireContext(t).harness.NewMockEndpoint(eventsService, nil, t.DebugLogger())
+	eventsEndpoint := requireContext(t).harness.NewMockEndpoint(eventsService, t.DebugLogger(),
+		harness.MockEndpointDescription("events service"))
 
 	t.Defer(eventsEndpoint.Close)
 

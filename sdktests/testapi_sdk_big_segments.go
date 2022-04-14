@@ -42,7 +42,8 @@ func NewBigSegmentStore(t *ldtest.T, initialStatus ldreason.BigSegmentsStatus) *
 		b.doGetUserMembership,
 		t.DebugLogger(),
 	)
-	b.endpoint = requireContext(t).harness.NewMockEndpoint(b.service, nil, t.DebugLogger())
+	b.endpoint = requireContext(t).harness.NewMockEndpoint(b.service, t.DebugLogger(),
+		harness.MockEndpointDescription("big segment store fixture"))
 	t.Defer(b.endpoint.Close)
 
 	b.metadataQueries = make(chan struct{}, 20) // arbitrary capacity that's more than our tests care about

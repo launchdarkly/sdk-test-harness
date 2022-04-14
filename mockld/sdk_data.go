@@ -4,8 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 
+	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
+
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	"gopkg.in/launchdarkly/go-jsonstream.v1/jreader"
+	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
+	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
+	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldmodel"
 )
 
@@ -43,6 +48,30 @@ func (b blockingUnavailableSDKData) Serialize() []byte { return nil }
 // This includes the full JSON configuration of every flag and segment, in the same format that is used in
 // streaming and polling responses.
 type ServerSDKData map[DataItemKind]map[string]json.RawMessage
+
+// ClientSDKData contains simulated LaunchDarkly environment data for a client-side SDK.
+//
+// This does not include flag or segment configurations, but only flag evaluation results for a specific user.
+//
+// This type will report its SDKKind as JSClientSDK, causing StreamingService to enable its JS client
+// endpoints. If you want to enable the mobile endpoints instead, use MobileSDKData.
+type ClientSDKData map[string]ClientSDKFlag
+
+// ClientSDKFlag contains the flag evaluation results for a single flag in ClientSDKData.
+type ClientSDKFlag struct {
+	Value                ldvalue.Value                       `json:"value"`
+	Variation            o.Maybe[int]                        `json:"variation"`
+	Reason               o.Maybe[ldreason.EvaluationReason]  `json:"reason"`
+	Version              int                                 `json:"version"`
+	FlagVersion          o.Maybe[int]                        `json:"flagVersion"`
+	TrackEvents          bool                                `json:"trackEvents"`
+	TrackReason          bool                                `json:"trackReason"`
+	DebugEventsUntilDate o.Maybe[ldtime.UnixMillisecondTime] `json:"debugEventsUntilDate"`
+}
+
+// MobileSDKData is a specialization of ClientSDKData that reports its SDKKind as MobileSDK.
+// StreamingService will enable its mobile endpoints when used with this type.
+type MobileSDKData ClientSDKData
 
 func EmptyServerSDKData() ServerSDKData {
 	return NewServerSDKDataBuilder().Build() // ensures that "flags" and "segments" properties are present, but empty
@@ -167,4 +196,69 @@ func (b *ServerSDKDataBuilder) Segment(segments ...ldmodel.Segment) *ServerSDKDa
 		b = b.RawSegment(segment.Key, jsonhelpers.ToJSON(segment))
 	}
 	return b
+}
+
+func (d ClientSDKData) SDKKind() SDKKind {
+	return JSClientSDK
+}
+
+func (d ClientSDKData) Serialize() []byte {
+	return jsonhelpers.ToJSON(d)
+}
+
+func (d ClientSDKData) JSONString() string {
+	return jsonhelpers.ToJSONString(d)
+}
+
+func (d ClientSDKData) WithoutReasons() ClientSDKData {
+	ret := make(ClientSDKData)
+	for k, v := range d {
+		v.Reason = o.None[ldreason.EvaluationReason]()
+		ret[k] = v
+	}
+	return ret
+}
+
+func (d MobileSDKData) SDKKind() SDKKind {
+	return MobileSDK
+}
+
+func (d MobileSDKData) Serialize() []byte {
+	return jsonhelpers.ToJSON(d)
+}
+
+func (d MobileSDKData) JSONString() string {
+	return jsonhelpers.ToJSONString(d)
+}
+
+type ClientSDKDataBuilder struct {
+	flags map[string]ClientSDKFlag
+}
+
+func NewClientSDKDataBuilder() *ClientSDKDataBuilder {
+	return &ClientSDKDataBuilder{
+		flags: make(map[string]ClientSDKFlag),
+	}
+}
+
+func (b *ClientSDKDataBuilder) Build() ClientSDKData {
+	ret := make(ClientSDKData)
+	for k, v := range b.flags {
+		b.flags[k] = v
+	}
+	return ret
+}
+
+func (b *ClientSDKDataBuilder) Flag(key string, props ClientSDKFlag) *ClientSDKDataBuilder {
+	b.flags[key] = props
+	return b
+}
+
+func (b *ClientSDKDataBuilder) FlagWithValue(
+	key string,
+	version int,
+	value ldvalue.Value,
+	variationIndex int,
+) *ClientSDKDataBuilder {
+	return b.Flag(key, ClientSDKFlag{Version: version, Value: value, Variation: o.Some(variationIndex)})
 }

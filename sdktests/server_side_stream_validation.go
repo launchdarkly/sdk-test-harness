@@ -7,6 +7,7 @@ import (
 	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
+	"github.com/launchdarkly/sdk-test-harness/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
@@ -32,7 +33,8 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 			stream1.Handler(), // first request gets the first stream data
 			stream2.Handler(), // second request gets the second stream data
 		)
-		streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, nil, t.DebugLogger())
+		streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
+			harness.MockEndpointDescription("streaming service"))
 		t.Defer(streamEndpoint.Close)
 
 		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
@@ -43,7 +45,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 		_ = streamEndpoint.RequireConnection(t, time.Second*5)
 
 		// Send the bad event; this should cause the SDK to drop the first stream
-		stream1.Service().PushEvent(badEventName, badEventData)
+		stream1.StreamingService().PushEvent(badEventName, badEventData)
 
 		// Expect the second request; it succeeds and gets the second stream data
 		_ = streamEndpoint.RequireConnection(t, time.Millisecond*100)
@@ -93,10 +95,10 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 		_ = dataSource.Endpoint().RequireConnection(t, time.Second*5)
 
 		// Push an event that isn't recognized, but isn't bad enough to cause any problems
-		dataSource.Service().PushEvent(eventName, eventData)
+		dataSource.StreamingService().PushEvent(eventName, eventData)
 
 		// Then, push a patch event, so we can detect if the SDK continued processing the stream as it should
-		dataSource.Service().PushUpdate("flags", flagKey, jsonhelpers.ToJSON(flagV2))
+		dataSource.StreamingService().PushUpdate("flags", flagKey, jsonhelpers.ToJSON(flagV2))
 
 		// Check that the client got the new data
 		pollUntilFlagValueUpdated(t, client, flagKey, user, expectedValueV1, expectedValueV2, ldvalue.Null())

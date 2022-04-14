@@ -9,6 +9,8 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/framework"
 
 	"github.com/launchdarkly/eventsource"
+
+	"github.com/gorilla/mux"
 )
 
 type eventSourceDebugLogger struct {
@@ -27,6 +29,7 @@ type StreamingService struct {
 	sdkKind     SDKKind
 	initialData SDKData
 	streams     *eventsource.Server
+	handler     http.Handler
 	debugLogger framework.Logger
 	lock        sync.RWMutex
 }
@@ -54,23 +57,28 @@ func NewStreamingService(
 		streams:     streams,
 		debugLogger: debugLogger,
 	}
+
+	streamHandler := streams.Handler(allDataChannel)
+	router := mux.NewRouter()
+	switch initialData.SDKKind() {
+	case ServerSideSDK:
+		router.HandleFunc("/all", streamHandler).Methods("GET")
+	case MobileSDK:
+		router.HandleFunc("/meval/{user}", streamHandler).Methods("GET")
+		router.HandleFunc("/meval", streamHandler).Methods("REPORT")
+	case JSClientSDK:
+		router.HandleFunc("/eval/{env}/{user}", streamHandler).Methods("GET")
+		router.HandleFunc("/eval/{env}", streamHandler).Methods("REPORT")
+	}
+	s.handler = router
+
 	streams.Register(allDataChannel, s)
 
 	return s
 }
 
 func (s *StreamingService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch {
-	case r.URL.Path == "/all" && s.sdkKind == ServerSideSDK:
-		if r.Method != "GET" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-		s.streams.Handler(allDataChannel)(w, r)
-		s.debugLogger.Printf("End of stream request")
-	default:
-		w.WriteHeader(http.StatusNotFound)
-	}
+	s.handler.ServeHTTP(w, r)
 }
 
 func (s *StreamingService) SetInitialData(data SDKData) {
@@ -100,11 +108,17 @@ func (s *StreamingService) makePutEvent() eventsource.Event {
 	if data == nil {
 		return nil
 	}
+	var eventData interface{} = json.RawMessage(data)
+	if s.sdkKind == ServerSideSDK {
+		// the schema of this message is slightly different for server-side vs. client-side
+		eventData = map[string]interface{}{
+			"data": eventData,
+		}
+	}
+
 	return eventImpl{
 		name: "put",
-		data: map[string]interface{}{
-			"data": json.RawMessage(data),
-		},
+		data: eventData,
 	}
 }
 

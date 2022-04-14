@@ -149,9 +149,9 @@ func TestTestScopeSkippedResult(t *testing.T) {
 }
 
 func TestTestScopeFilter(t *testing.T) {
-	filter := func(id TestID) bool {
+	filter := FilterFunc(func(id TestID) bool {
 		return len(id) == 0 || id[0] == "b"
-	}
+	})
 
 	result := Run(TestConfiguration{Filter: filter}, func(ldt *T) {
 		ldt.Run("a", func(ldt0 *T) {

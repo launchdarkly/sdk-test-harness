@@ -19,14 +19,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func DoServerSideEvalTests(t *ldtest.T) {
-	t.Run("parameterized", RunParameterizedServerSideEvalTests)
-	t.Run("bucketing", RunServerSideEvalBucketingTests)
-	t.Run("all flags state", RunServerSideEvalAllFlagsTests)
-	t.Run("client not ready", RunParameterizedServerSideClientNotReadyEvalTests)
+func doServerSideEvalTests(t *ldtest.T) {
+	t.Run("parameterized", runParameterizedServerSideEvalTests)
+	t.Run("bucketing", runServerSideEvalBucketingTests)
+	t.Run("all flags state", runServerSideEvalAllFlagsTests)
+	t.Run("client not ready", runParameterizedServerSideClientNotReadyEvalTests)
 }
 
-func RunParameterizedServerSideEvalTests(t *ldtest.T) {
+func runParameterizedServerSideEvalTests(t *ldtest.T) {
 	for _, suite := range getAllServerSideEvalTestSuites(t, "server-side-eval") {
 		t.Run(suite.Name, func(t *ldtest.T) {
 			if suite.RequireCapability != "" {
@@ -80,7 +80,7 @@ func RunParameterizedServerSideEvalTests(t *ldtest.T) {
 	}
 }
 
-func RunParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
+func runParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
 	defaultValues := DefaultValueByTypeFactory()
 	flagKey := "some-flag"
 	user := lduser.NewUser("user-key")
@@ -124,11 +124,11 @@ func RunParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
 	}
 }
 
-func getAllServerSideEvalTestSuites(t *ldtest.T, dirName string) []testmodel.EvalTestSuite {
+func getAllServerSideEvalTestSuites(t *ldtest.T, dirName string) []testmodel.ServerSideEvalTestSuite {
 	sources, err := testdata.LoadAllDataFiles(dirName)
 	require.NoError(t, err)
 
-	ret := make([]testmodel.EvalTestSuite, 0, len(sources))
+	ret := make([]testmodel.ServerSideEvalTestSuite, 0, len(sources))
 	for _, source := range sources {
 		suite := parseServerSideEvalTestSuite(t, source)
 		ret = append(ret, suite)
@@ -136,15 +136,15 @@ func getAllServerSideEvalTestSuites(t *ldtest.T, dirName string) []testmodel.Eva
 	return ret
 }
 
-func parseServerSideEvalTestSuite(t *ldtest.T, source testdata.SourceInfo) testmodel.EvalTestSuite {
-	var suite testmodel.EvalTestSuite
+func parseServerSideEvalTestSuite(t *ldtest.T, source testdata.SourceInfo) testmodel.ServerSideEvalTestSuite {
+	var suite testmodel.ServerSideEvalTestSuite
 	if err := testdata.ParseJSONOrYAML(source.Data, &suite); err != nil {
 		require.NoError(t, fmt.Errorf("error parsing %q %s: %w", source.BaseName, source.ParamsString(), err))
 	}
 	return suite
 }
 
-func makeEvalFlagParams(test testmodel.EvalTest, sdkData mockld.ServerSDKData) servicedef.EvaluateFlagParams {
+func makeEvalFlagParams(test testmodel.ServerSideEvalTest, sdkData mockld.ServerSDKData) servicedef.EvaluateFlagParams {
 	p := servicedef.EvaluateFlagParams{
 		FlagKey:      test.FlagKey,
 		User:         o.Some(test.User),

@@ -12,15 +12,21 @@ type SDKConfigParams struct {
 	StartWaitTimeMS     o.Maybe[ldtime.UnixMillisecondTime]         `json:"startWaitTimeMs,omitempty"`
 	InitCanFail         bool                                        `json:"initCanFail,omitempty"`
 	Streaming           o.Maybe[SDKConfigStreamingParams]           `json:"streaming,omitempty"`
+	Polling             o.Maybe[SDKConfigPollingParams]             `json:"polling,omitempty"`
 	Events              o.Maybe[SDKConfigEventParams]               `json:"events,omitempty"`
 	PersistentDataStore o.Maybe[SDKConfigPersistentDataStoreParams] `json:"persistentDataStore,omitempty"`
 	BigSegments         o.Maybe[SDKConfigBigSegmentsParams]         `json:"bigSegments,omitempty"`
 	Tags                o.Maybe[SDKConfigTagsParams]                `json:"tags,omitempty"`
+	ClientSide          o.Maybe[SDKConfigClientSideParams]          `json:"clientSide,omitempty"`
 }
 
 type SDKConfigStreamingParams struct {
 	BaseURI             string                              `json:"baseUri,omitempty"`
 	InitialRetryDelayMs o.Maybe[ldtime.UnixMillisecondTime] `json:"initialRetryDelayMs,omitempty"`
+}
+
+type SDKConfigPollingParams struct {
+	BaseURI string `json:"baseUri,omitempty"`
 }
 
 type SDKConfigEventParams struct {
@@ -48,4 +54,11 @@ type SDKConfigBigSegmentsParams struct {
 type SDKConfigTagsParams struct {
 	ApplicationID      o.Maybe[string] `json:"applicationId,omitempty"`
 	ApplicationVersion o.Maybe[string] `json:"applicationVersion,omitempty"`
+}
+
+type SDKConfigClientSideParams struct {
+	InitialUser        lduser.User   `json:"initialUser"`
+	AutoAliasingOptOut o.Maybe[bool] `json:"autoAliasingOptOut,omitempty"`
+	EvaluationReasons  o.Maybe[bool] `json:"evaluationReasons,omitempty"`
+	UseReport          o.Maybe[bool] `json:"useReport,omitempty"`
 }

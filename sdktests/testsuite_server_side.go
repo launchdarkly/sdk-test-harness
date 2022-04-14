@@ -3,7 +3,6 @@ package sdktests
 import (
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/framework"
 	"github.com/launchdarkly/sdk-test-harness/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
@@ -11,17 +10,6 @@ import (
 )
 
 const defaultEventTimeout = time.Second * 5
-
-func AllImportantServerSideCapabilities() framework.Capabilities {
-	return framework.Capabilities{
-		servicedef.CapabilityAllFlagsClientSideOnly,
-		servicedef.CapabilityAllFlagsDetailsOnlyForTrackedFlags,
-		servicedef.CapabilityAllFlagsWithReasons,
-		servicedef.CapabilityBigSegments,
-	}
-	// We don't include the "strongly-typed" capability here because it's not unusual for an SDK
-	// to not have it - that's just an inherent characteristic of the SDK, not a missing feature
-}
 
 func RunServerSideTestSuite(
 	harness *harness.TestHarness,
@@ -39,13 +27,17 @@ func RunServerSideTestSuite(
 	}
 
 	return ldtest.Run(config, func(t *ldtest.T) {
-		t.Run("data store", doServerSideDataStoreTests)
-		t.Run("evaluation", DoServerSideEvalTests)
-		t.Run("events", doServerSideEventTests)
-		t.Run("streaming", doServerSideStreamTests)
-		t.Run("big segments", doServerSideBigSegmentsTests)
-		t.Run("tags", doServerSideTagsTests)
+		doAllServerSideTests(t)
 	})
+}
+
+func doAllServerSideTests(t *ldtest.T) {
+	t.Run("data store", doServerSideDataStoreTests)
+	t.Run("evaluation", doServerSideEvalTests)
+	t.Run("events", doServerSideEventTests)
+	t.Run("streaming", doServerSideStreamTests)
+	t.Run("big segments", doServerSideBigSegmentsTests)
+	t.Run("tags", doServerSideTagsTests)
 }
 
 func doServerSideBigSegmentsTests(t *ldtest.T) {
