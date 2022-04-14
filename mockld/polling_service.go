@@ -36,7 +36,7 @@ func NewPollingService(
 		router.HandleFunc("/sdk/flags/latest-all", pollHandler).Methods("GET")
 	case MobileSDK:
 		router.HandleFunc("/msdk/evalx/users/{user}", pollHandler).Methods("GET")
-		router.HandleFunc("/msdx/evalx/user", pollHandler).Methods("REPORT")
+		router.HandleFunc("/msdk/evalx/user", pollHandler).Methods("REPORT")
 		// Note that we only support the "evalx", not the older "eval" which is used only by old unsupported SDKs
 	case JSClientSDK:
 		router.HandleFunc("/sdk/evalx/{env}/users/{user}", pollHandler).Methods("GET")

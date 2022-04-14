@@ -33,6 +33,7 @@ func TryReceive[V any](ch <-chan V, timeout time.Duration) opt.Maybe[V] {
 // RequireValue tries to receive a value and returns it if successful, or causes the test
 // to fail and terminate immediately if it timed out.
 func RequireValue[V any](t TestContext, ch <-chan V, timeout time.Duration) V {
+	t.Helper()
 	var empty V
 	return RequireValueWithMessage(t, ch, timeout, "timed out waiting for value of type %T", empty)
 }
@@ -45,6 +46,7 @@ func RequireValueWithMessage[V any](
 	msgFormat string,
 	msgArgs ...interface{},
 ) V {
+	t.Helper()
 	maybeValue := TryReceive(ch, timeout)
 	if !maybeValue.IsDefined() {
 		t.Errorf(msgFormat, msgArgs...)
@@ -56,6 +58,7 @@ func RequireValueWithMessage[V any](
 // RequireNoMoreValues tries to receive a value within the given timeout, and causes the test
 // to fail and terminate immediately if a value was received.
 func RequireNoMoreValues[V any](t TestContext, ch <-chan V, timeout time.Duration) {
+	t.Helper()
 	var empty V
 	RequireNoMoreValuesWithMessage(t, ch, timeout, "received unexpected extra value of type %T", empty)
 }
@@ -69,6 +72,7 @@ func RequireNoMoreValuesWithMessage[V any](
 	msgFormat string,
 	msgArgs ...interface{},
 ) {
+	t.Helper()
 	maybeValue := TryReceive(ch, timeout)
 	if maybeValue.IsDefined() {
 		t.Errorf(msgFormat, msgArgs...)

@@ -8,10 +8,10 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/testdata/testmodel"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-
-	"github.com/stretchr/testify/require"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
+
+	"github.com/stretchr/testify/require"
 )
 
 type CommonEvalParameterizedTestRunner[SDKDataType mockld.SDKData] struct {
