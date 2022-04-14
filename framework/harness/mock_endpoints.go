@@ -47,6 +47,7 @@ type MockEndpoint struct {
 	closing     sync.Once
 }
 
+// MockEndpointOption is the interface for options to NewMockEndpoint.
 type MockEndpointOption helpers.ConfigOption[MockEndpoint]
 
 type mockEndpointOptionContextFn struct {
@@ -58,6 +59,10 @@ func (o mockEndpointOptionContextFn) Configure(m *MockEndpoint) error {
 	return nil
 }
 
+// MockEndpointContextFn is an option to set a context transformation function for the endpoint that will be
+// called for each request. This can be used if the test logic managing the endpoint needs to be able to
+// share some kind of state between the endpoint's HTTP handler and code elsewhere, by embedding a value in
+// the context.
 func MockEndpointContextFn(fn func(context.Context) context.Context) MockEndpointOption {
 	return mockEndpointOptionContextFn{fn}
 }
@@ -71,6 +76,7 @@ func (o mockEndpointOptionDescription) Configure(m *MockEndpoint) error {
 	return nil
 }
 
+// MockEndpointDescription is an option to set a descriptive name for the endpoint, such as "streaming service".
 func MockEndpointDescription(description string) MockEndpointOption {
 	return mockEndpointOptionDescription{description}
 }
