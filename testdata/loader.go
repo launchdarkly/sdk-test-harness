@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
 
@@ -89,4 +91,21 @@ func LoadAllDataFiles(path string) ([]SourceInfo, error) {
 		ret = append(ret, sources...)
 	}
 	return ret, nil
+}
+
+// LoadAndParseAllTestSuites calls LoadAllDataFiles and then parses each of the resulting SourceInfos
+// as JSON or YAML into the specified type.
+func LoadAndParseAllTestSuites[V any](t *ldtest.T, dirName string) []V {
+	sources, err := LoadAllDataFiles(dirName)
+	require.NoError(t, err)
+
+	ret := make([]V, 0, len(sources))
+	for _, source := range sources {
+		var suite V
+		if err := ParseJSONOrYAML(source.Data, &suite); err != nil {
+			require.NoError(t, fmt.Errorf("error parsing %q %s: %w", source.BaseName, source.ParamsString(), err))
+		}
+		ret = append(ret, suite)
+	}
+	return ret
 }

@@ -21,22 +21,33 @@ type SDKDataSource struct {
 }
 
 type sdkDataSourceConfig struct {
-	polling bool
+	polling o.Maybe[bool] // true, false, or "undefined, use the default"
 }
 
 // SDKDataSourceOption is the interface for options to NewSDKDataSource.
 type SDKDataSourceOption helpers.ConfigOption[sdkDataSourceConfig]
 
-// DataSourceOptionPolling makes an SDKDataSource simulate the polling service instead of the streaming service.
+// DataSourceOptionPolling makes an SDKDataSource simulate the polling service.
 func DataSourceOptionPolling() SDKDataSourceOption {
 	return helpers.ConfigOptionFunc[sdkDataSourceConfig](func(c *sdkDataSourceConfig) error {
-		c.polling = true
+		c.polling = o.Some(true)
 		return nil
 	})
 }
 
-// NewSDKDataSource creates a new SDKDataSource with the specified initial data set. By default, it
-// is a streaming data source; for polling mode, add the DataSourceOptionPolling option.
+// DataSourceOptionStreaming makes an SDKDataSource simulate the streaming service.
+func DataSourceOptionStreaming() SDKDataSourceOption {
+	return helpers.ConfigOptionFunc[sdkDataSourceConfig](func(c *sdkDataSourceConfig) error {
+		c.polling = o.Some(false)
+		return nil
+	})
+}
+
+// NewSDKDataSource creates a new SDKDataSource with the specified initial data set.
+//
+// It can simulate either the streaming service or the polling service. If you don't explicitly specify
+// DataSourceOptionPolling or DataSourceOptionStreaming, the default depends on what kind of SDK is being
+// tested: server-side and mobile SDKs default to streaming, JS-based client-side SDKs default to polling.
 //
 // It automatically detects (from the ldtest.T properties) whether we are testing a server-side, mobile,
 // or JS-based client-side SDK, and configures the endpoint behavior as appropriate.
@@ -67,8 +78,13 @@ func NewSDKDataSourceWithoutEndpoint(t *ldtest.T, data mockld.SDKData, options .
 	_ = helpers.ApplyOptions(&config, options...)
 
 	sdkKind := requireContext(t).sdkKind
+	if data == nil {
+		data = mockld.EmptyData(sdkKind)
+	}
+
+	defaultIsPolling := sdkKind == mockld.JSClientSDK
 	d := &SDKDataSource{}
-	if config.polling {
+	if config.polling.Value() || (!config.polling.IsDefined() && defaultIsPolling) {
 		d.pollingService = mockld.NewPollingService(data, sdkKind, t.DebugLogger())
 	} else {
 		d.streamingService = mockld.NewStreamingService(data, sdkKind, t.DebugLogger())

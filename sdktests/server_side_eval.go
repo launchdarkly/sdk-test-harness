@@ -1,22 +1,15 @@
 package sdktests
 
 import (
-	"fmt"
-
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
-	"github.com/launchdarkly/sdk-test-harness/testdata"
-	"github.com/launchdarkly/sdk-test-harness/testdata/testmodel"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
-
-	"github.com/stretchr/testify/require"
 )
 
 func doServerSideEvalTests(t *ldtest.T) {
@@ -27,57 +20,61 @@ func doServerSideEvalTests(t *ldtest.T) {
 }
 
 func runParameterizedServerSideEvalTests(t *ldtest.T) {
-	for _, suite := range getAllServerSideEvalTestSuites(t, "server-side-eval") {
-		t.Run(suite.Name, func(t *ldtest.T) {
-			if suite.RequireCapability != "" {
-				t.RequireCapability(suite.RequireCapability)
-			}
+	parameterizedTests := CommonEvalParameterizedTestRunner[mockld.ServerSDKData]{}
+	parameterizedTests.RunAll(t, "server-side-eval")
 
-			dataSource := NewSDKDataSource(t, suite.SDKData)
-			client := NewSDKClient(t, dataSource)
+	// testSuites := testdata.LoadAndParseAllTestSuites[testmodel.ServerSideEvalTestSuite](t, "server-side-eval")
+	// for _, suite := range testSuites {
+	// 	t.Run(suite.Name, func(t *ldtest.T) {
+	// 		if suite.RequireCapability != "" {
+	// 			t.RequireCapability(suite.RequireCapability)
+	// 		}
 
-			for _, test := range suite.Evaluations {
-				name := test.Name
-				if name == "" {
-					name = test.FlagKey
-				}
-				t.Run(name, func(t *ldtest.T) {
-					t.Run("evaluate flag without detail", func(t *ldtest.T) {
-						params := makeEvalFlagParams(test, suite.SDKData)
-						result := client.EvaluateFlag(t, params)
-						m.In(t).Assert(result, EvalResponseValue().Should(m.Equal(test.Expect.Value)))
-					})
+	// 		dataSource := NewSDKDataSource(t, suite.SDKData)
+	// 		client := NewSDKClient(t, dataSource)
 
-					t.Run("evaluate flag with detail", func(t *ldtest.T) {
-						params := makeEvalFlagParams(test, suite.SDKData)
-						params.Detail = true
-						result := client.EvaluateFlag(t, params)
-						m.In(t).Assert(result, m.AllOf(
-							EvalResponseValue().Should(m.Equal(test.Expect.Value)),
-							EvalResponseVariation().Should(m.Equal(test.Expect.VariationIndex)),
-							EvalResponseReason().Should(EqualReason(test.Expect.Reason)),
-						))
-					})
+	// 		for _, test := range suite.Evaluations {
+	// 			name := test.Name
+	// 			if name == "" {
+	// 				name = test.FlagKey
+	// 			}
+	// 			t.Run(name, func(t *ldtest.T) {
+	// 				t.Run("evaluate flag without detail", func(t *ldtest.T) {
+	// 					params := makeEvalFlagParams(test, suite.SDKData)
+	// 					result := client.EvaluateFlag(t, params)
+	// 					m.In(t).Assert(result, EvalResponseValue().Should(m.Equal(test.Expect.Value)))
+	// 				})
 
-					if !suite.SkipEvaluateAllFlags {
-						t.Run("evaluate all flags", func(t *ldtest.T) {
-							result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
-								User: o.Some(test.User),
-							})
-							if test.Expect.VariationIndex.IsDefined() {
-								require.Contains(t, result.State, test.FlagKey)
-							}
-							expectedValue := test.Expect.Value
-							if !test.Expect.VariationIndex.IsDefined() {
-								expectedValue = ldvalue.Null()
-							}
-							m.In(t).Assert(result.State[test.FlagKey], m.Equal(expectedValue))
-						})
-					}
-				})
-			}
-		})
-	}
+	// 				t.Run("evaluate flag with detail", func(t *ldtest.T) {
+	// 					params := makeEvalFlagParams(test, suite.SDKData)
+	// 					params.Detail = true
+	// 					result := client.EvaluateFlag(t, params)
+	// 					m.In(t).Assert(result, m.AllOf(
+	// 						EvalResponseValue().Should(m.Equal(test.Expect.Value)),
+	// 						EvalResponseVariation().Should(m.Equal(test.Expect.VariationIndex)),
+	// 						EvalResponseReason().Should(EqualReason(test.Expect.Reason)),
+	// 					))
+	// 				})
+
+	// 				if !suite.SkipEvaluateAllFlags {
+	// 					t.Run("evaluate all flags", func(t *ldtest.T) {
+	// 						result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
+	// 							User: o.Some(test.User),
+	// 						})
+	// 						if test.Expect.VariationIndex.IsDefined() {
+	// 							require.Contains(t, result.State, test.FlagKey)
+	// 						}
+	// 						expectedValue := test.Expect.Value
+	// 						if !test.Expect.VariationIndex.IsDefined() {
+	// 							expectedValue = ldvalue.Null()
+	// 						}
+	// 						m.In(t).Assert(result.State[test.FlagKey], m.Equal(expectedValue))
+	// 					})
+	// 				}
+	// 			})
+	// 		}
+	// 	})
+	// }
 }
 
 func runParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
@@ -122,53 +119,4 @@ func runParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
 			})
 		})
 	}
-}
-
-func getAllServerSideEvalTestSuites(t *ldtest.T, dirName string) []testmodel.ServerSideEvalTestSuite {
-	sources, err := testdata.LoadAllDataFiles(dirName)
-	require.NoError(t, err)
-
-	ret := make([]testmodel.ServerSideEvalTestSuite, 0, len(sources))
-	for _, source := range sources {
-		suite := parseServerSideEvalTestSuite(t, source)
-		ret = append(ret, suite)
-	}
-	return ret
-}
-
-func parseServerSideEvalTestSuite(t *ldtest.T, source testdata.SourceInfo) testmodel.ServerSideEvalTestSuite {
-	var suite testmodel.ServerSideEvalTestSuite
-	if err := testdata.ParseJSONOrYAML(source.Data, &suite); err != nil {
-		require.NoError(t, fmt.Errorf("error parsing %q %s: %w", source.BaseName, source.ParamsString(), err))
-	}
-	return suite
-}
-
-func makeEvalFlagParams(test testmodel.ServerSideEvalTest, sdkData mockld.ServerSDKData) servicedef.EvaluateFlagParams {
-	p := servicedef.EvaluateFlagParams{
-		FlagKey:      test.FlagKey,
-		User:         o.Some(test.User),
-		ValueType:    test.ValueType,
-		DefaultValue: test.Default,
-	}
-	if p.DefaultValue.IsNull() {
-		p.DefaultValue = inferDefaultFromFlag(sdkData, test.FlagKey)
-	}
-	if test.ValueType == "" {
-		switch p.DefaultValue.Type() {
-		case ldvalue.BoolType:
-			p.ValueType = servicedef.ValueTypeBool
-		case ldvalue.NumberType:
-			if test.Default.IsInt() {
-				p.ValueType = servicedef.ValueTypeInt
-			} else {
-				p.ValueType = servicedef.ValueTypeDouble
-			}
-		case ldvalue.StringType:
-			p.ValueType = servicedef.ValueTypeString
-		default:
-			p.ValueType = servicedef.ValueTypeAny
-		}
-	}
-	return p
 }

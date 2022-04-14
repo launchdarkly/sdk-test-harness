@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
@@ -67,6 +68,14 @@ type ClientSDKFlag struct {
 
 func EmptyServerSDKData() ServerSDKData {
 	return NewServerSDKDataBuilder().Build() // ensures that "flags" and "segments" properties are present, but empty
+}
+
+func EmptyClientSDKData() ClientSDKData {
+	return NewClientSDKDataBuilder().Build()
+}
+
+func EmptyData(sdkKind SDKKind) SDKData {
+	return h.IfElse[SDKData](sdkKind == ServerSideSDK, EmptyServerSDKData(), EmptyClientSDKData())
 }
 
 func (d ServerSDKData) Serialize() []byte {
@@ -201,10 +210,6 @@ func (d ClientSDKData) WithoutReasons() ClientSDKData {
 		ret[k] = v
 	}
 	return ret
-}
-
-func EmptyClientSDKData() ClientSDKData {
-	return NewClientSDKDataBuilder().Build()
 }
 
 type ClientSDKDataBuilder struct {
