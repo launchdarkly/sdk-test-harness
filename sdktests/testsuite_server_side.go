@@ -15,6 +15,7 @@ func doAllServerSideTests(t *ldtest.T) {
 	t.Run("events", doServerSideEventTests)
 	t.Run("streaming", doServerSideStreamTests)
 	t.Run("big segments", doServerSideBigSegmentsTests)
+	t.Run("service endpoints", doServerSideServiceEndpointsTests)
 	t.Run("tags", doServerSideTagsTests)
 }
 
