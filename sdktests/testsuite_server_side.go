@@ -44,6 +44,7 @@ func RunServerSideTestSuite(
 		t.Run("events", doServerSideEventTests)
 		t.Run("streaming", doServerSideStreamTests)
 		t.Run("big segments", doServerSideBigSegmentsTests)
+		t.Run("service endpoints", doServerSideServiceEndpointsTests)
 		t.Run("tags", doServerSideTagsTests)
 		t.Run("context type", doSDKContextTypeTests)
 	})
@@ -62,6 +63,12 @@ func doServerSideDataStoreTests(t *ldtest.T) {
 	t.Run("updates from stream", doServerSideDataStoreStreamUpdateTests)
 }
 
+func doServerSideStreamTests(t *ldtest.T) {
+	t.Run("requests", doServerSideStreamRequestTests)
+	t.Run("retry behavior", doServerSideStreamRetryTests)
+	t.Run("validation", doServerSideStreamValidationTests)
+}
+
 func doServerSideEventTests(t *ldtest.T) {
 	t.Run("requests", doServerSideEventRequestTests)
 	t.Run("summary events", doServerSideSummaryEventTests)
@@ -74,10 +81,5 @@ func doServerSideEventTests(t *ldtest.T) {
 	t.Run("index events", doServerSideIndexEventTests)
 	t.Run("context properties", doServerSideEventContextTests)
 	t.Run("event capacity", doServerSideEventBufferTests)
-}
-
-func doServerSideStreamTests(t *ldtest.T) {
-	t.Run("requests", doServerSideStreamRequestTests)
-	t.Run("retry behavior", doServerSideStreamRetryTests)
-	t.Run("validation", doServerSideStreamValidationTests)
+	t.Run("disabling", doServerSideEventDisableTest)
 }

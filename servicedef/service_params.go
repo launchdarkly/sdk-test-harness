@@ -11,8 +11,9 @@ const (
 	CapabilityAllFlagsClientSideOnly             = "all-flags-client-side-only"
 	CapabilityAllFlagsDetailsOnlyForTrackedFlags = "all-flags-details-only-for-tracked-flags"
 
-	CapabilityBigSegments = "big-segments"
-	CapabilityTags        = "tags"
+	CapabilityBigSegments      = "big-segments"
+	CapabilityServiceEndpoints = "service-endpoints"
+	CapabilityTags             = "tags"
 )
 
 type StatusRep struct {

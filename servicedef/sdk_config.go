@@ -10,11 +10,18 @@ type SDKConfigParams struct {
 	Credential          string                                      `json:"credential"`
 	StartWaitTimeMS     o.Maybe[ldtime.UnixMillisecondTime]         `json:"startWaitTimeMs,omitempty"`
 	InitCanFail         bool                                        `json:"initCanFail,omitempty"`
+	ServiceEndpoints    o.Maybe[SDKConfigServiceEndpointsParams]    `json:"serviceEndpoints,omitempty"`
 	Streaming           o.Maybe[SDKConfigStreamingParams]           `json:"streaming,omitempty"`
 	Events              o.Maybe[SDKConfigEventParams]               `json:"events,omitempty"`
 	PersistentDataStore o.Maybe[SDKConfigPersistentDataStoreParams] `json:"persistentDataStore,omitempty"`
 	BigSegments         o.Maybe[SDKConfigBigSegmentsParams]         `json:"bigSegments,omitempty"`
 	Tags                o.Maybe[SDKConfigTagsParams]                `json:"tags,omitempty"`
+}
+
+type SDKConfigServiceEndpointsParams struct {
+	Streaming string `json:"streaming,omitempty"`
+	Polling   string `json:"polling,omitempty"`
+	Events    string `json:"events,omitempty"`
 }
 
 type SDKConfigStreamingParams struct {
