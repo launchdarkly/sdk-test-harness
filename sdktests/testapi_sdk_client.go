@@ -121,10 +121,12 @@ func TryNewSDKClient(t *ldtest.T, configurer SDKConfigurer, moreConfigurers ...S
 }
 
 func validateSDKConfig(config servicedef.SDKConfigParams) error {
-	if !config.Streaming.IsDefined() || config.Streaming.Value().BaseURI == "" {
+	if (!config.Streaming.IsDefined() || config.Streaming.Value().BaseURI == "") &&
+		(!config.ServiceEndpoints.IsDefined() || config.ServiceEndpoints.Value().Streaming == "") {
 		return errors.New("streaming base URI was not set-- did you forget to include the SDKDataSource as a parameter?")
 	}
-	if config.Events.IsDefined() && config.Events.Value().BaseURI == "" {
+	if config.Events.IsDefined() && config.Events.Value().BaseURI == "" &&
+		(!config.ServiceEndpoints.IsDefined() || config.ServiceEndpoints.Value().Events == "") {
 		return errors.New("events were enabled but base URI was not set--" +
 			" did you forget to include the SDKEventSink as a parameter?")
 	}
