@@ -2,6 +2,15 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [1.5.0] - 2022-04-14
+### Added:
+- Each release now includes binaries for the `arm64` architecture (these were added manually to the 1.4.0 release, but they will now be added automatically).
+- Added a test for disabling events.
+- Added opt-in "service endpoints" capability for SDKs that support this mechanism.
+
+### Changed:
+- The tool is now built with Go 1.18.
+
 ## [1.4.0] - 2022-04-12
 ### Added:
 - Tests for basic HTTP behavior of analytics event posts (request path, headers, etc.).
