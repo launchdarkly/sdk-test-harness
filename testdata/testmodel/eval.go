@@ -12,35 +12,23 @@ import (
 
 const DefaultForAllTypes servicedef.ValueType = "allDefaults"
 
-type ServerSideEvalTestSuite struct {
+type EvalTestSuite[SDKDataType any] struct {
 	Name                 string               `json:"name"`
 	RequireCapability    string               `json:"requireCapability"`
 	SkipEvaluateAllFlags bool                 `json:"skipEvaluateAllFlags"`
-	SDKData              mockld.ServerSDKData `json:"sdkData"`
-	Evaluations          []ServerSideEvalTest `json:"evaluations"`
+	SDKData              SDKDataType          `json:"sdkData"`
+	User                 o.Maybe[lduser.User] `json:"user"` // used only for client-side tests
+	Evaluations          []EvalTest           `json:"evaluations"`
 }
 
-type ServerSideEvalTest struct {
+type ServerSideEvalTestSuite EvalTestSuite[mockld.ServerSDKData]
+
+type ClientSideEvalTestSuite EvalTestSuite[mockld.ClientSDKData]
+
+type EvalTest struct {
 	Name      string               `json:"name"`
 	FlagKey   string               `json:"flagKey"`
-	User      lduser.User          `json:"user"`
-	ValueType servicedef.ValueType `json:"valueType"`
-	Default   ldvalue.Value        `json:"default"`
-	Expect    ValueDetail          `json:"expect"`
-}
-
-type ClientSideEvalTestSuite struct {
-	Name                 string               `json:"name"`
-	RequireCapability    string               `json:"requireCapability"`
-	SkipEvaluateAllFlags bool                 `json:"skipEvaluateAllFlags"`
-	SDKData              mockld.ClientSDKData `json:"sdkData"`
-	User                 lduser.User          `json:"user"`
-	Evaluations          []ClientSideEvalTest `json:"evaluations"`
-}
-
-type ClientSideEvalTest struct {
-	Name      string               `json:"name"`
-	FlagKey   string               `json:"flagKey"`
+	User      o.Maybe[lduser.User] `json:"user"` // used only for server-side tests
 	ValueType servicedef.ValueType `json:"valueType"`
 	Default   ldvalue.Value        `json:"default"`
 	Expect    ValueDetail          `json:"expect"`

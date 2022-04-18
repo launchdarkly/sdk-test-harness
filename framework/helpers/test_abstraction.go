@@ -11,6 +11,7 @@ import (
 type TestContext interface {
 	Errorf(msgFormat string, msgArgs ...interface{})
 	FailNow()
+	Helper()
 }
 
 // TestRecorder is a stub implementation of TestContext for testing test logic.
@@ -42,3 +43,5 @@ func (t *TestRecorder) Err() error {
 	}
 	return errors.New(strings.Join(t.Errors, ", "))
 }
+
+func (t *TestRecorder) Helper() {}

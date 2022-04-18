@@ -89,19 +89,19 @@ type SDKClient struct {
 //
 // The object's lifecycle is tied to the test scope that created it; it will be automatically closed
 // when this test scope exits. It can be reused by subtests until then.
-func NewSDKClient(t *ldtest.T, configurer SDKConfigurer, moreConfigurers ...SDKConfigurer) *SDKClient {
-	client, err := TryNewSDKClient(t, configurer, moreConfigurers...)
+func NewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) *SDKClient {
+	client, err := TryNewSDKClient(t, configurers...)
 	require.NoError(t, err)
 	return client
 }
 
-func TryNewSDKClient(t *ldtest.T, configurer SDKConfigurer, moreConfigurers ...SDKConfigurer) (*SDKClient, error) {
-	config := servicedef.SDKConfigParams{}
-	err := configurer.Configure(&config)
-	if err == nil {
-		err = helpers.ApplyOptions(&config, moreConfigurers...)
+func TryNewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) (*SDKClient, error) {
+	if len(configurers) == 0 {
+		return nil, errors.New("tried to create an SDK client without any custom configuration")
 	}
-	if err != nil {
+
+	config := servicedef.SDKConfigParams{}
+	if err := helpers.ApplyOptions(&config, configurers...); err != nil {
 		return nil, err
 	}
 	if config.Credential == "" {
