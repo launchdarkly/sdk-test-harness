@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func (c CommonEventTests) BufferBehavior(t *ldtest.T, userFactory *UserFactory) {
+func (c CommonEventTests) BufferBehavior(t *ldtest.T) {
 	capacity := 20
 	extraItemsOverCapacity := 3 // arbitrary non-zero value for how many events to try to add past the limit
 	eventsConfig := baseEventsConfig()
@@ -21,18 +21,14 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T, userFactory *UserFactory) 
 
 	users := make([]lduser.User, 0)
 	for i := 0; i < capacity+extraItemsOverCapacity; i++ {
-		users = append(users, userFactory.NextUniqueUser())
+		users = append(users, c.userFactory.NextUniqueUser())
 	}
 
 	// We use identify events for this test because they do not cause any other events (such as
 	// index or summary) to be generated.
 	makeIdentifyEventExpectations := func(count int) []m.Matcher {
-		ret := make([]m.Matcher, 0, count)
-		if t.Capabilities().Has(servicedef.CapabilityClientSide) {
-			// Client-side SDK always sends initial identify event
-			ret = append(ret, IsIdentifyEvent())
-			count--
-		}
+		ret := c.initialEventPayloadExpectations()
+		count -= len(ret)
 		for i := 0; i < count; i++ {
 			ret = append(ret, IsIdentifyEventForUserKey(users[i].GetKey()))
 		}
@@ -43,11 +39,10 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T, userFactory *UserFactory) 
 
 	t.Run("capacity is enforced", func(t *ldtest.T) {
 		events := NewSDKEventSink(t)
-		client := NewSDKClient(t,
-			append(c.SDKConfigurers,
-				WithEventsConfig(eventsConfig),
-				dataSource,
-				events)...)
+		client := NewSDKClient(t, c.baseSDKConfigurationPlus(
+			WithEventsConfig(eventsConfig),
+			dataSource,
+			events)...)
 
 		for _, user := range users {
 			client.SendIdentifyEvent(t, user)
@@ -60,11 +55,10 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T, userFactory *UserFactory) 
 
 	t.Run("buffer is reset after flush", func(t *ldtest.T) {
 		events := NewSDKEventSink(t)
-		client := NewSDKClient(t,
-			append(c.SDKConfigurers,
-				WithEventsConfig(eventsConfig),
-				dataSource,
-				events)...)
+		client := NewSDKClient(t, c.baseSDKConfigurationPlus(
+			WithEventsConfig(eventsConfig),
+			dataSource,
+			events)...)
 
 		for _, user := range users {
 			client.SendIdentifyEvent(t, user)
@@ -74,7 +68,7 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T, userFactory *UserFactory) 
 
 		assert.Len(t, payload1, capacity)
 
-		anotherUser := userFactory.NextUniqueUser()
+		anotherUser := c.userFactory.NextUniqueUser()
 		client.SendIdentifyEvent(t, anotherUser)
 		client.FlushEvents(t)
 		payload2 := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
@@ -85,14 +79,13 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T, userFactory *UserFactory) 
 	t.Run("summary event is still included even if buffer was full", func(t *ldtest.T) {
 		// Don't need to create an actual flag, because a "flag not found" evaluation still causes a summary event
 		events := NewSDKEventSink(t)
-		client := NewSDKClient(t,
-			append(c.SDKConfigurers,
-				WithEventsConfig(eventsConfig),
-				dataSource,
-				events)...)
+		client := NewSDKClient(t, c.baseSDKConfigurationPlus(
+			WithEventsConfig(eventsConfig),
+			dataSource,
+			events)...)
 
 		usersToSend := users
-		if t.Capabilities().Has(servicedef.CapabilityClientSide) {
+		if c.isClientSide {
 			// Client-side SDK always sends initial identify event, so we need to send one less identify event
 			usersToSend = usersToSend[0 : len(usersToSend)-1]
 		}

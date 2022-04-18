@@ -4,7 +4,6 @@ import (
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 )
 
 func doServerSideEventTests(t *ldtest.T) {
@@ -26,42 +25,30 @@ func doServerSideEventTests(t *ldtest.T) {
 func doServerSideEventRequestTests(t *ldtest.T) {
 	sdkKey := "my-sdk-key"
 
-	commonTests := CommonEventTests{
-		SDKConfigurers: []SDKConfigurer{
-			WithConfig(servicedef.SDKConfigParams{
-				Credential: sdkKey,
-			}),
-		},
-	}
+	eventTests := NewServerSideEventTests("doServerSideEventRequestTests",
+		WithConfig(servicedef.SDKConfigParams{
+			Credential: sdkKey,
+		}))
 
-	commonTests.RequestMethodAndHeaders(t,
+	eventTests.RequestMethodAndHeaders(t,
 		Header("Authorization").Should(m.Equal(sdkKey)))
 
-	commonTests.RequestURLPath(t, m.Equal("/bulk"))
+	eventTests.RequestURLPath(t, m.Equal("/bulk"))
 
-	commonTests.UniquePayloadIDs(t)
+	eventTests.UniquePayloadIDs(t)
 }
 
 func doServerSideIdentifyEventTests(t *ldtest.T) {
-	commonTests := CommonEventTests{}
-
-	userFactory := NewUserFactory("doServerSideIdentifyEventTests",
-		func(b lduser.UserBuilder) { b.Name("my favorite user") })
-
-	commonTests.IdentifyEvents(t, userFactory)
+	NewServerSideEventTests("doServerSideIdentifyEventTests").
+		IdentifyEvents(t)
 }
 
 func doServerSideEventBufferTests(t *ldtest.T) {
-	commonTests := CommonEventTests{}
-
-	userFactory := NewUserFactory("doServerSideEventCapacityTests",
-		func(b lduser.UserBuilder) { b.Name("my favorite user") })
-
-	commonTests.BufferBehavior(t, userFactory)
+	NewServerSideEventTests("doServerSideEventCapacityTests").
+		BufferBehavior(t)
 }
 
 func doServerSideEventDisableTest(t *ldtest.T) {
-	commonTests := CommonEventTests{}
-
-	commonTests.DisablingEvents(t)
+	NewServerSideEventTests("doServerSideEventDisableTest").
+		DisablingEvents(t)
 }

@@ -4,10 +4,8 @@ import (
 	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 )
 
 func doClientSideEventTests(t *ldtest.T) {
@@ -19,24 +17,14 @@ func doClientSideEventTests(t *ldtest.T) {
 
 func doClientSideEventRequestTests(t *ldtest.T) {
 	sdkKind := requireContext(t).sdkKind
-	users := NewUserFactory("doClientSideEventRequestTests")
 	envIDOrMobileKey := "my-credential"
 
-	commonTests := CommonEventTests{
-		SDKConfigurers: []SDKConfigurer{
-			WithConfig(servicedef.SDKConfigParams{
-				Credential: envIDOrMobileKey,
-			}),
-			WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-				InitialUser: users.NextUniqueUser(),
-			}),
-		},
-	}
+	eventTests := NewClientSideEventTests("doClientSideEventRequestTests.MethodAndHeaders",
+		WithCredential(envIDOrMobileKey))
 
-	commonTests.RequestMethodAndHeaders(t,
-		Header("Authorization").Should(m.Equal(
-			h.IfElse(sdkKind == mockld.MobileSDK, envIDOrMobileKey, ""),
-		)))
+	authHeaderMatcher := Header("Authorization").Should(m.Equal(
+		h.IfElse(sdkKind == mockld.MobileSDK, envIDOrMobileKey, "")))
+	eventTests.RequestMethodAndHeaders(t, authHeaderMatcher)
 
 	requestPathMatcher := h.IfElse(
 		sdkKind == mockld.JSClientSDK,
@@ -48,50 +36,22 @@ func doClientSideEventRequestTests(t *ldtest.T) {
 			m.Equal("/mobile/events/bulk"),
 		),
 	)
-	commonTests.RequestURLPath(t, requestPathMatcher)
+	eventTests.RequestURLPath(t, requestPathMatcher)
 
-	commonTests.UniquePayloadIDs(t)
+	eventTests.UniquePayloadIDs(t)
 }
 
 func doClientSideEventIdentifyTests(t *ldtest.T) {
-	users := NewUserFactory("doClientSideEventIdentifyTests")
-
-	commonTests := CommonEventTests{
-		SDKConfigurers: []SDKConfigurer{
-			WithConfig(servicedef.SDKConfigParams{
-				Credential: "my-credential",
-			}),
-			WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-				InitialUser: users.NextUniqueUser(),
-			}),
-		},
-	}
-
-	commonTests.IdentifyEvents(t, users)
+	NewClientSideEventTests("doClientSideEventIdentifyTests").
+		IdentifyEvents(t)
 }
 
 func doClientSideEventBufferTests(t *ldtest.T) {
-	users := NewUserFactory("doClientSideEventBufferTests")
-
-	commonTests := CommonEventTests{
-		SDKConfigurers: []SDKConfigurer{
-			WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-				InitialUser: users.NextUniqueUser(),
-			}),
-		},
-	}
-
-	commonTests.BufferBehavior(t, users)
+	NewClientSideEventTests("doClientSideEventBufferTests").
+		BufferBehavior(t)
 }
 
 func doClientSideEventDisableTests(t *ldtest.T) {
-	commonTests := CommonEventTests{
-		SDKConfigurers: []SDKConfigurer{
-			WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-				InitialUser: lduser.NewUser("initial-user"),
-			}),
-		},
-	}
-
-	commonTests.DisablingEvents(t)
+	NewClientSideEventTests("doClientSideEventDisableTests").
+		DisablingEvents(t)
 }

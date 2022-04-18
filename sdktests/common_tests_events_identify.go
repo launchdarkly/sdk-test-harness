@@ -12,31 +12,24 @@ import (
 	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 )
 
-func (c CommonEventTests) IdentifyEvents(t *ldtest.T, userFactory *UserFactory) {
+func (c CommonEventTests) IdentifyEvents(t *ldtest.T) {
 	// These do not include detailed tests of the encoding of user attributes in identify events,
 	// which are in server_side_events_users.go.
 
 	dataSource := NewSDKDataSource(t, nil)
 
-	var initialEventExpectations []m.Matcher
-	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
-		// Client-side SDK always sends an initial identify event
-		initialEventExpectations = append(initialEventExpectations, IsIdentifyEvent())
-	}
-
 	t.Run("basic properties", func(t *ldtest.T) {
 		for _, isAnonymousUser := range []bool{false, true} {
 			t.Run(h.IfElse(isAnonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
 				events := NewSDKEventSink(t)
-				client := NewSDKClient(t,
-					append(c.SDKConfigurers, dataSource, events)...)
+				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 
-				user := userFactory.NextUniqueUserMaybeAnonymous(isAnonymousUser)
+				user := c.userFactory.NextUniqueUserMaybeAnonymous(isAnonymousUser)
 				client.SendIdentifyEvent(t, user)
 				client.FlushEvents(t)
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-				m.In(t).Assert(payload, m.ItemsInAnyOrder(
-					append(initialEventExpectations,
+				m.In(t).Assert(payload, m.Items(
+					append(c.initialEventPayloadExpectations(),
 						m.AllOf(
 							JSONPropertyKeysCanOnlyBe("kind", "creationDate", "key", "user"),
 							IsIdentifyEventForUserKey(user.GetKey()),
@@ -48,12 +41,11 @@ func (c CommonEventTests) IdentifyEvents(t *ldtest.T, userFactory *UserFactory) 
 		}
 	})
 
-	if t.Capabilities().Has(servicedef.CapabilityServerSide) {
+	if !c.isClientSide {
 		t.Run("user with empty key generates no event", func(t *ldtest.T) {
 			// This test is only done for server-side SDKs because in client-side ones, an empty is an error.
 			events := NewSDKEventSink(t)
-			client := NewSDKClient(t,
-				append(c.SDKConfigurers, dataSource, events)...)
+			client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 
 			keylessUser := lduser.NewUserBuilder("").Name("has a name but not a key").Build()
 			client.SendIdentifyEvent(t, keylessUser)
@@ -64,10 +56,9 @@ func (c CommonEventTests) IdentifyEvents(t *ldtest.T, userFactory *UserFactory) 
 		t.Run("identify event makes index event for same user unnecessary", func(t *ldtest.T) {
 			// This test is only done for server-side SDKs because client-side ones do not do index events.
 			events := NewSDKEventSink(t)
-			client := NewSDKClient(t,
-				append(c.SDKConfigurers, dataSource, events)...)
+			client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 
-			user := userFactory.NextUniqueUser()
+			user := c.userFactory.NextUniqueUser()
 			client.SendIdentifyEvent(t, user)
 			client.SendCustomEvent(t, servicedef.CustomEventParams{
 				EventKey: "event-key",

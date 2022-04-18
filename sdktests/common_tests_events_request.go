@@ -19,7 +19,7 @@ func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, headersMatcher m.
 	t.Run("method and headers", func(t *ldtest.T) {
 		dataSource := NewSDKDataSource(t, nil)
 		events := NewSDKEventSink(t)
-		client := NewSDKClient(t, append(c.SDKConfigurers, dataSource, events)...)
+		client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 
 		client.SendIdentifyEvent(t, lduser.NewUser("user-key"))
 		client.FlushEvents(t)
@@ -50,8 +50,9 @@ func (c CommonEventTests) RequestURLPath(t *ldtest.T, pathMatcher m.Matcher) {
 					eventsURI += "/"
 				}
 
-				client := NewSDKClient(t,
-					append(c.SDKConfigurers, dataSource, WithEventsConfig(servicedef.SDKConfigEventParams{
+				client := NewSDKClient(t, c.baseSDKConfigurationPlus(
+					dataSource,
+					WithEventsConfig(servicedef.SDKConfigEventParams{
 						BaseURI: eventsURI,
 					}))...)
 
@@ -69,8 +70,7 @@ func (c CommonEventTests) UniquePayloadIDs(t *ldtest.T) {
 	t.Run("new payload ID for each post", func(t *ldtest.T) {
 		dataSource := NewSDKDataSource(t, nil)
 		events := NewSDKEventSink(t)
-		client := NewSDKClient(t,
-			append(c.SDKConfigurers, dataSource, events)...,
+		client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...,
 		)
 		users := NewUserFactory("UniquePayloadIDs")
 

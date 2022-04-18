@@ -27,6 +27,15 @@ func WithConfig(config servicedef.SDKConfigParams) SDKConfigurer {
 	})
 }
 
+// WithCredential is used with StartSDKClient to set only the credential (SDK key, mobile key, or
+// environment ID).
+func WithCredential(credential string) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		configOut.Credential = credential
+		return nil
+	})
+}
+
 // WithClientSideConfig is used with StartSDKClient to specify a non-default client-side SDK
 // configuration.
 func WithClientSideConfig(clientSideConfig servicedef.SDKConfigClientSideParams) SDKConfigurer {
