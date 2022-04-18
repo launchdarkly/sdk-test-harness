@@ -110,6 +110,23 @@ func getValueTypesToTest(t *ldtest.T) []servicedef.ValueType {
 	return append(ret, servicedef.ValueTypeAny)
 }
 
+func inferDefaultFromClientSideFlag(sdkData mockld.ClientSDKData, flagKey string) ldvalue.Value {
+	flagData, ok := sdkData[flagKey]
+	if !ok {
+		return ldvalue.Null()
+	}
+	switch flagData.Value.Type() {
+	case ldvalue.BoolType:
+		return ldvalue.Bool(false)
+	case ldvalue.NumberType:
+		return ldvalue.Int(0)
+	case ldvalue.StringType:
+		return ldvalue.String("")
+	default:
+		return ldvalue.Null()
+	}
+}
+
 func inferDefaultFromFlag(sdkData mockld.ServerSDKData, flagKey string) ldvalue.Value {
 	flagData := sdkData["flags"][flagKey]
 	if flagData == nil {

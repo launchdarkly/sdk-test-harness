@@ -91,7 +91,7 @@ func makeBucketingTestParamsForExperiments() []bucketingTestParams {
 	return ret
 }
 
-func RunServerSideEvalBucketingTests(t *ldtest.T) {
+func runServerSideEvalBucketingTests(t *ldtest.T) {
 	// These tests check for consistent computation of bucket values for rollouts/experiments across SDKs.
 	// They use the hash algorithm defined in computeExpectedBucketValue rather than relying on any hard-
 	// coded expected values, except in cases where we expect a specific edge-case result such as zero.

@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/launchdarkly/sdk-test-harness/framework/harness"
+	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
@@ -15,41 +16,48 @@ import (
 
 // SDKConfigurer is an interface for objects that can modify the configuration for StartSDKClient.
 // It is implemented by types such as SDKDataSource.
-type SDKConfigurer interface {
-	ApplyConfiguration(*servicedef.SDKConfigParams)
-}
-
-type sdkConfigurerFunc func(*servicedef.SDKConfigParams)
-
-func (f sdkConfigurerFunc) ApplyConfiguration(configOut *servicedef.SDKConfigParams) { f(configOut) }
+type SDKConfigurer helpers.ConfigOption[servicedef.SDKConfigParams]
 
 // WithConfig is used with StartSDKClient to specify a non-default SDK configuration. Use this
 // before any other SDKConfigurers or it will overwrite their effects.
 func WithConfig(config servicedef.SDKConfigParams) SDKConfigurer {
-	return sdkConfigurerFunc(func(configOut *servicedef.SDKConfigParams) {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
 		*configOut = config
+		return nil
+	})
+}
+
+// WithClientSideConfig is used with StartSDKClient to specify a non-default client-side SDK
+// configuration.
+func WithClientSideConfig(clientSideConfig servicedef.SDKConfigClientSideParams) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		configOut.ClientSide = o.Some(clientSideConfig)
+		return nil
 	})
 }
 
 // WithEventsConfig is used with StartSDKClient to specify a non-default events configuration.
 func WithEventsConfig(eventsConfig servicedef.SDKConfigEventParams) SDKConfigurer {
-	return sdkConfigurerFunc(func(configOut *servicedef.SDKConfigParams) {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
 		configOut.Events = o.Some(eventsConfig)
+		return nil
 	})
 }
 
 // WithServiceEndpointsConfig is used with StartSDKClient to specify non-default service endpoints.
 // This will only work if the test service has the "service-endpoints" capability.
 func WithServiceEndpointsConfig(endpointsConfig servicedef.SDKConfigServiceEndpointsParams) SDKConfigurer {
-	return sdkConfigurerFunc(func(configOut *servicedef.SDKConfigParams) {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
 		configOut.ServiceEndpoints = o.Some(endpointsConfig)
+		return nil
 	})
 }
 
 // WithStreamingConfig is used with StartSDKClient to specify a non-default streaming configuration.
 func WithStreamingConfig(streamingConfig servicedef.SDKConfigStreamingParams) SDKConfigurer {
-	return sdkConfigurerFunc(func(configOut *servicedef.SDKConfigParams) {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
 		configOut.Streaming = o.Some(streamingConfig)
+		return nil
 	})
 }
 
@@ -89,9 +97,12 @@ func NewSDKClient(t *ldtest.T, configurer SDKConfigurer, moreConfigurers ...SDKC
 
 func TryNewSDKClient(t *ldtest.T, configurer SDKConfigurer, moreConfigurers ...SDKConfigurer) (*SDKClient, error) {
 	config := servicedef.SDKConfigParams{}
-	configurer.ApplyConfiguration(&config)
-	for _, c := range moreConfigurers {
-		c.ApplyConfiguration(&config)
+	err := configurer.Configure(&config)
+	if err == nil {
+		err = helpers.ApplyOptions(&config, moreConfigurers...)
+	}
+	if err != nil {
+		return nil, err
 	}
 	if config.Credential == "" {
 		config.Credential = defaultSDKKey
@@ -121,9 +132,19 @@ func TryNewSDKClient(t *ldtest.T, configurer SDKConfigurer, moreConfigurers ...S
 }
 
 func validateSDKConfig(config servicedef.SDKConfigParams) error {
-	if (!config.Streaming.IsDefined() || config.Streaming.Value().BaseURI == "") &&
+	if !config.Streaming.IsDefined() && !config.Polling.IsDefined() && config.ServiceEndpoints.Value().Streaming == "" {
+		// Note that the default is streaming, so we don't necessarily need to set config.Streaming if there are
+		// no other customized options and if we used serviceEndpoints.streaming to set the stream URI
+		return errors.New(
+			"neither streaming nor polling was enabled-- did you forget to include the SDKDataSource as a parameter?")
+	}
+	if config.Streaming.IsDefined() && config.Streaming.Value().BaseURI == "" &&
 		(!config.ServiceEndpoints.IsDefined() || config.ServiceEndpoints.Value().Streaming == "") {
-		return errors.New("streaming base URI was not set-- did you forget to include the SDKDataSource as a parameter?")
+		return errors.New("streaming was enabled but base URI was not set")
+	}
+	if config.Polling.IsDefined() && config.Polling.Value().BaseURI == "" &&
+		(!config.ServiceEndpoints.IsDefined() || config.ServiceEndpoints.Value().Polling == "") {
+		return errors.New("polling was enabled but base URI was not set")
 	}
 	if config.Events.IsDefined() && config.Events.Value().BaseURI == "" &&
 		(!config.ServiceEndpoints.IsDefined() || config.ServiceEndpoints.Value().Events == "") {

@@ -2,12 +2,25 @@ package ldtest
 
 import (
 	"fmt"
+	"io"
 	"regexp"
 	"strings"
 )
 
-// Filter is a function that can determine whether to run a specific test or not.
-type Filter func(TestID) bool
+// Filter is an object that can determine whether to run a specific test or not.
+type Filter interface {
+	Match(id TestID) bool
+}
+
+type SelfDescribingFilter interface {
+	Describe(out io.Writer, supportedCapabilities, importantCapabilities []string) string
+}
+
+type FilterFunc func(id TestID) bool
+
+func (f FilterFunc) Match(id TestID) bool {
+	return f(id)
+}
 
 type RegexFilters struct {
 	MustMatch    TestIDPatternList
@@ -91,16 +104,16 @@ func (l TestIDPatternList) AnyMatch(id TestID, includeParents bool) bool {
 	return false
 }
 
-func PrintFilterDescription(filters RegexFilters, allCapabilities []string, supportedCapabilities []string) {
-	if filters.MustMatch.IsDefined() || filters.MustNotMatch.IsDefined() {
-		fmt.Println("Some tests will be skipped based on the filter criteria for this test run:")
-		if filters.MustMatch.IsDefined() {
-			fmt.Printf("  skip any not matching %s\n", filters.MustMatch)
+func (r RegexFilters) Describe(out io.Writer, supportedCapabilities, allCapabilities []string) {
+	if r.MustMatch.IsDefined() || r.MustNotMatch.IsDefined() {
+		fmt.Fprintln(out, "Some tests will be skipped based on the filter criteria for this test run:")
+		if r.MustMatch.IsDefined() {
+			fmt.Fprintf(out, "  skip any not matching %s\n", r.MustMatch)
 		}
-		if filters.MustNotMatch.IsDefined() {
-			fmt.Printf("  skip any matching %s\n", filters.MustNotMatch)
+		if r.MustNotMatch.IsDefined() {
+			fmt.Fprintf(out, "  skip any matching %s\n", r.MustNotMatch)
 		}
-		fmt.Println()
+		fmt.Fprintln(out)
 	}
 
 	if len(supportedCapabilities) != 0 {
@@ -115,25 +128,11 @@ func PrintFilterDescription(filters RegexFilters, allCapabilities []string, supp
 			}
 		}
 		if len(missingCapabilities) > 0 {
-			fmt.Println("Some tests may be skipped because the test service does not support the following capabilities:")
-			fmt.Printf("  %s\n", strings.Join(missingCapabilities, ", "))
-			fmt.Println()
+			fmt.Fprintln(out, "Some tests may be skipped because the test service does not support the following capabilities:")
+			fmt.Fprintf(out, "  %s\n", strings.Join(missingCapabilities, ", "))
+			fmt.Fprintln(out)
 		}
 	}
-}
-
-func BriefFilterDescription(filters RegexFilters) string {
-	var parts []string
-	if filters.MustMatch.IsDefined() {
-		parts = append(parts, fmt.Sprintf("must match %s", filters.MustMatch))
-	}
-	if filters.MustNotMatch.IsDefined() {
-		parts = append(parts, fmt.Sprintf("must not match %s", filters.MustNotMatch))
-	}
-	if len(parts) == 0 {
-		return "none"
-	}
-	return strings.Join(parts, ", ")
 }
 
 func autoEscapeTestRegex(pattern string) string {

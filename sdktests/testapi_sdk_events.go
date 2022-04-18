@@ -35,7 +35,8 @@ type SDKEventSink struct {
 // sink will be attached to this test scope.
 func NewSDKEventSink(t *ldtest.T) *SDKEventSink {
 	eventsService := mockld.NewEventsService(requireContext(t).sdkKind, defaultSDKKey, t.DebugLogger())
-	eventsEndpoint := requireContext(t).harness.NewMockEndpoint(eventsService, nil, t.DebugLogger())
+	eventsEndpoint := requireContext(t).harness.NewMockEndpoint(eventsService, t.DebugLogger(),
+		harness.MockEndpointDescription("events service"))
 
 	t.Defer(eventsEndpoint.Close)
 
@@ -45,12 +46,13 @@ func NewSDKEventSink(t *ldtest.T) *SDKEventSink {
 	}
 }
 
-// ApplyConfiguration updates the SDK client configuration for NewSDKClient, causing the SDK
+// Configure updates the SDK client configuration for NewSDKClient, causing the SDK
 // to connect to the appropriate base URI for the test fixture.
-func (e *SDKEventSink) ApplyConfiguration(config *servicedef.SDKConfigParams) {
+func (e *SDKEventSink) Configure(config *servicedef.SDKConfigParams) error {
 	newState := config.Events.Value()
 	newState.BaseURI = e.eventsEndpoint.BaseURL()
 	config.Events = o.Some(newState)
+	return nil
 }
 
 // Endpoint returns the low-level object that manages incoming requests.

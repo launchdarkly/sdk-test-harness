@@ -75,9 +75,9 @@ func doServerSideDataStoreStreamUpdateTests(t *ldtest.T) {
 				m.In(t).Assert(actualValue1, m.JSONEqual(valueBefore))
 
 				if isDelete {
-					stream.Service().PushDelete("flags", flagKey, versionAfter)
+					stream.StreamingService().PushDelete("flags", flagKey, versionAfter)
 				} else {
-					stream.Service().PushUpdate("flags", flagKey, jsonhelpers.ToJSON(flagAfter))
+					stream.StreamingService().PushUpdate("flags", flagKey, jsonhelpers.ToJSON(flagAfter))
 				}
 
 				expectedValueIfUpdated := valueAfter
@@ -130,9 +130,9 @@ func doServerSideDataStoreStreamUpdateTests(t *ldtest.T) {
 				m.In(t).Assert(actualValue1, m.JSONEqual(valueBefore))
 
 				if isDelete {
-					stream.Service().PushDelete("segments", segmentKey, versionAfter)
+					stream.StreamingService().PushDelete("segments", segmentKey, versionAfter)
 				} else {
-					stream.Service().PushUpdate("segments", segmentKey, jsonhelpers.ToJSON(segmentAfter))
+					stream.StreamingService().PushUpdate("segments", segmentKey, jsonhelpers.ToJSON(segmentAfter))
 				}
 
 				// If we successfully delete the segment, the effect is the same as if we had updated the
@@ -170,11 +170,11 @@ func doServerSideDataStoreStreamUpdateTests(t *ldtest.T) {
 			m.In(t).Assert(actualValue1, m.JSONEqual(defaultValue))
 
 			if isDelete {
-				stream.Service().PushDelete("flags", flagKey, version)
+				stream.StreamingService().PushDelete("flags", flagKey, version)
 
 				// A delete for an unknown flag should be persisted by the SDK so it knows this version was
 				// deleted. A subsequent update for the same flag with an equal or lower version should be ignored.
-				stream.Service().PushUpdate("flags", flagKey, jsonhelpers.ToJSON(flag))
+				stream.StreamingService().PushUpdate("flags", flagKey, jsonhelpers.ToJSON(flag))
 				require.Never(
 					t,
 					checkForUpdatedValue(t, client, flagKey, user, defaultValue, valueAfter, defaultValue),
@@ -183,7 +183,7 @@ func doServerSideDataStoreStreamUpdateTests(t *ldtest.T) {
 					"flag update after deletion should have been ignored due to version; deletion was not persisted",
 				)
 			} else {
-				stream.Service().PushUpdate("flags", flagKey, jsonhelpers.ToJSON(flag))
+				stream.StreamingService().PushUpdate("flags", flagKey, jsonhelpers.ToJSON(flag))
 
 				pollUntilFlagValueUpdated(t, client, flagKey, user, defaultValue, valueAfter, defaultValue)
 			}
@@ -203,11 +203,11 @@ func doServerSideDataStoreStreamUpdateTests(t *ldtest.T) {
 			m.In(t).Assert(actualValue1, m.JSONEqual(valueBefore))
 
 			if isDelete {
-				stream.Service().PushDelete("segments", segmentKey, version)
+				stream.StreamingService().PushDelete("segments", segmentKey, version)
 
 				// A delete for an unknown segment should be persisted by the SDK so it knows this version was
 				// deleted. A subsequent update for the same segment with an equal or lower version should be ignored.
-				stream.Service().PushUpdate("segments", segmentKey, jsonhelpers.ToJSON(segment))
+				stream.StreamingService().PushUpdate("segments", segmentKey, jsonhelpers.ToJSON(segment))
 				require.Never(
 					t,
 					checkForUpdatedValue(t, client, flagKey, user, valueBefore, valueAfter, defaultValue),
@@ -216,7 +216,7 @@ func doServerSideDataStoreStreamUpdateTests(t *ldtest.T) {
 					"segment update after deletion should have been ignored due to version; deletion was not persisted",
 				)
 			} else {
-				stream.Service().PushUpdate("segments", segmentKey, jsonhelpers.ToJSON(segment))
+				stream.StreamingService().PushUpdate("segments", segmentKey, jsonhelpers.ToJSON(segment))
 
 				// Now that the segment exists, the flag should return the "after" value
 				pollUntilFlagValueUpdated(t, client, flagKey, user, valueBefore, valueAfter, defaultValue)

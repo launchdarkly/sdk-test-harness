@@ -21,29 +21,38 @@ This resource should return a 200 status to indicate that the service has starte
 
 The test harness will use the `capabilities` information to decide whether to run optional parts of the test suite that relate to those capabilities.
 
-#### Capability `"server-side"`
+#### SDK type capabilities: `"server-side"`, `"client-side"`, `"mobile"`
 
-This means that the SDK a server-side SDK. The test harness will also support client-side SDKs in the future.
+The most basic decision in this regard is what type of SDK is being tested: server-side, mobile client-side, or JavaScript-based client-side. The server-side test suite is much more detailed, since client-side SDKs do not have their own evaluation logic. In the client-side test suite, the two variants (mobile and JavaScript-based) mostly receive the same tests, but each variant uses somewhat different simulated LaunchDarkly services.
+
+* If `"server-side"` is present, this is a server-side SDK.
+* Otherwise, if `"client-side"` and `"mobile"` are present, this is a mobile client-side SDK.
+* Otherwise, if `"client-side"` is present without `"mobile"`, this is a JavaScript-based client-side SDK.
+* If none of the above are true, no tests can be run.
+
+#### Capability `"singleton"`
+
+This means that the SDK only allows a single client instance to be active at any time.
 
 #### Capability `"strongly-typed"`
 
-This means that the SDK has separate APIs for evaluating flags of specific variation types, such as boolean or string.
+This means that the SDK has separate ___Variation/___VariationDetail APIs for evaluating flags of specific variation types, such as boolean or string. If it is not present, then the SDK has only a single Variation or VariationDetail method which can be used for a flag variation of any type.
 
 #### Capability `"all-flags-with-reasons"`
 
-This means that the SDK's method for evaluating all flags at once has an option for including evaluation reasons.
+This means that the SDK's method for evaluating all flags at once has an option for including evaluation reasons. This is only applicable to server-side SDKs.
 
 #### Capability `"all-flags-client-side-only"`
 
-This means that the SDK's method for evaluating all flags at once has an option for filtering the result to only include flags that are enabled for client-side use.
+This means that the SDK's method for evaluating all flags at once has an option for filtering the result to only include flags that are enabled for client-side use. This is only applicable to server-side SDKs.
 
 #### Capability `"all-flags-details-only-for-tracked-flags"`
 
-This means that the SDK's method for evaluating all flags at once has an option for filtering the result to only include evaluation reason data if the SDK will need it for events (due to event tracking or debugging or an experiment).
+This means that the SDK's method for evaluating all flags at once has an option for filtering the result to only include evaluation reason data if the SDK will need it for events (due to event tracking or debugging or an experiment). This is only applicable to server-side SDKs.
 
 #### Capability `"big-segments"`
 
-This means that the SDK supports Big Segments and can be configured with a custom Big Segment store.
+This means that the SDK supports Big Segments and can be configured with a custom Big Segment store. This is only applicable to server-side SDKs.
 
 For tests that involve Big Segments, the test harness will provide parameters in the `bigSegments` property of the configuration object, including a `callbackUri` that points to one of the test harness's callback services (see [Callback endpoints](#callback-endpoints)). The test service should configure the SDK with its own implementation of a Big Segment store, where every method of the store delegates to a corresponding endpoint in the callback service.
 
@@ -71,7 +80,7 @@ A `POST` request indicates that the test harness wants to start an instance of t
 
 * `tag` (string, required): A string describing the current test, if desired for logging.
 * `configuration` (object, required): SDK configuration. Properties are:
-  * `credential` (string, required): The SDK key.
+  * `credential` (string, required): The SDK key for server-side SDKs, mobile key for mobile SDKs, or environment ID for JS-based SDKs.
   * `startWaitTimeMs` (number, optional): The initialization timeout in milliseconds. If omitted or zero, the default is 5000 (5 seconds).
   * `initCanFail` (boolean, optional): If true, the test service should _not_ return an error for client initialization failing in a way that still makes the client instance available (for instance, due to a timeout or a 401 error). See discussion of error handling below.
   * `serviceEndpoints` (object, optional): See notes on the `"service-endpoints"` capability. If this object is present, the test service should use it to set the corresponding service URIs in the SDK.
@@ -79,6 +88,8 @@ A `POST` request indicates that the test harness wants to start an instance of t
   * `streaming` (object, optional): Enables streaming mode and provides streaming configuration. Currently the test harness only supports streaming mode, so this will be inferred if it is omitted. Properties are
     * `baseUri` (string, optional): The base URI for the streaming service. For contract testing, this will be the URI of a simulated streaming endpoint that the test harness provides. If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.streaming` if any, or if that is not set either, connect to the real LaunchDarkly streaming service.
     * `initialRetryDelayMs` (number, optional): The initial stream retry delay in milliseconds. If omitted, use the SDK's default value.
+  * `polling` (object, optional): Enables polling mode and provides polling configuration. Properties are:
+    * `baseUri` (string, optional): The base URI for the polling service. For contract testing, this will be the URI of a simulated polling endpoint that the test harness provides. If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.polling` if any, or if that is not set either, connect to the real LaunchDarkly polling service.
   * `events` (object, optional): Enables events and provides events configuration, or disables events if it is omitted or null. Properties are:
     * `baseUri` (string, optional): The base URI for the events service. For contract testing, this will be the URI of a simulated event-recorder endpoint that the test harness provides.  If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.events` if any, or if that is not set either, connect to the real LaunchDarkly events service.
     * `capacity` (number, optional): If specified and greater than zero, the event buffer capacity should be set to this value.
@@ -93,6 +104,9 @@ A `POST` request indicates that the test harness wants to start an instance of t
   * `tags` (object, optional): If specified, this has options for metadata/tags (that is, values that are translated into an `X-LaunchDarkly-Tags` header):
     * `applicationId` (string, optional): If present and non-null, the SDK should set the "application ID" property to this string.
     * `applicationVersion` (string, optional): If present and non-null, the SDK should set the "application version" property to this string.
+  * `clientSide` (object): This is omitted for server-side SDKs, and required for client-side SDKs. Properties are:
+    * `initialUser` (object, required): The user properties to initialize the SDK with.
+    * `autoAliasingOptOut`, `evaluationReasons`, `useReport` (boolean, optional): These correspond to the SDK configuration properties of the same names.
 
 The response to a valid request is any HTTP `2xx` status, with a `Location` header whose value is the URL of the test service resource representing this SDK client instance (that is, the one that would be used for "Close client" or "Send command" as described below).
 
@@ -119,7 +133,7 @@ If `command` is `"evaluate"`, the test service should perform a single feature f
 The `evaluate` property in the request body will be a JSON object with these properties:
 
 * `flagKey` (string): The flag key.
-* `user` (object): The user properties.
+* `user` (object): The user properties. This is required for server-side SDKs, and omitted for client-side SDKs.
 * `valueType` (string): For strongly-typed SDKs, this can be `"bool"`, `"int"`, `"double"`, `"string"`, or `"any"`, indicating which typed `Variation` or `VariationDetail` method to use (`any` is called "JSON" in most SDKs). For weakly-typed SDKs, it can be ignored.
 * `defaultValue` (any): A JSON value whose type corresponds to `valueType`. This should be used as the application default/fallback parameter for the `Variation` or `VariationDetail` method.
 * `detail` (boolean): If true, use `VariationDetail`. If false or omitted, use `Variation`.
@@ -136,7 +150,7 @@ If `command` is `"evaluateAll"`, the test service should call the SDK method tha
 
 The `evaluateAll` property in the request body will be a JSON object with these properties:
 
-* `user` (object): The user properties.
+* `user` (object): The user properties. This is required for server-side SDKs, and omitted for client-side SDKs.
 * `withReasons` (boolean, optional): If true, enables the SDK option for including evaluation reasons in the result. The test harness will only set this option if the test service has the capability `"all-flags-with-reasons"`.
 * `clientSideOnly` (boolean, optional): If true, enables the SDK option for filtering the result to only include flags that are enabled for client-side use. The test harness will only set this option if the test service has the capability `"all-flags-client-side-only"`.
 * `detailsOnlyForTrackedFlags` (boolean, optional): If true, enables the SDK option for filtering the result to only include evaluation reason data if the SDK will need it for events (due to event tracking or debugging or an experiment). The test harness will only set this option if the test service has the capability `"all-flags-details-only-for-tracked-flags"`.
@@ -163,7 +177,7 @@ If `command` is `"identifyEvent"`, the test service should call the SDK's `Ident
 
 The `identifyEvent` property in the request body will be a JSON object with these properties:
 
-* `user` (object): The user properties.
+* `user` (object): The user properties. This is always provided for both server-side and client-side SDKs.
 
 The response should be an empty 2xx response.
 
@@ -174,7 +188,7 @@ If `command` is `"customEvent"`, the test service should tell the SDK to send a 
 The `customEvent` property in the request body will be a JSON object with these properties:
 
 * `eventKey` (string): The event key.
-* `user` (object): The user properties.
+* `user` (object): The user properties. This is required for server-side SDKs, and omitted for client-side SDKs.
 * `data` (any): If present, a JSON value for the `data` parameter.
 * `omitNullData` (boolean or null): See below.
 * `metricValue` (number or null): If present, a metric value.

@@ -12,18 +12,35 @@ import (
 
 const DefaultForAllTypes servicedef.ValueType = "allDefaults"
 
-type EvalTestSuite struct {
+type ServerSideEvalTestSuite struct {
 	Name                 string               `json:"name"`
 	RequireCapability    string               `json:"requireCapability"`
 	SkipEvaluateAllFlags bool                 `json:"skipEvaluateAllFlags"`
 	SDKData              mockld.ServerSDKData `json:"sdkData"`
-	Evaluations          []EvalTest           `json:"evaluations"`
+	Evaluations          []ServerSideEvalTest `json:"evaluations"`
 }
 
-type EvalTest struct {
+type ServerSideEvalTest struct {
 	Name      string               `json:"name"`
 	FlagKey   string               `json:"flagKey"`
 	User      lduser.User          `json:"user"`
+	ValueType servicedef.ValueType `json:"valueType"`
+	Default   ldvalue.Value        `json:"default"`
+	Expect    ValueDetail          `json:"expect"`
+}
+
+type ClientSideEvalTestSuite struct {
+	Name                 string               `json:"name"`
+	RequireCapability    string               `json:"requireCapability"`
+	SkipEvaluateAllFlags bool                 `json:"skipEvaluateAllFlags"`
+	SDKData              mockld.ClientSDKData `json:"sdkData"`
+	User                 lduser.User          `json:"user"`
+	Evaluations          []ClientSideEvalTest `json:"evaluations"`
+}
+
+type ClientSideEvalTest struct {
+	Name      string               `json:"name"`
+	FlagKey   string               `json:"flagKey"`
 	ValueType servicedef.ValueType `json:"valueType"`
 	Default   ldvalue.Value        `json:"default"`
 	Expect    ValueDetail          `json:"expect"`

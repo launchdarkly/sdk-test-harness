@@ -1,7 +1,6 @@
 package harness
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -82,13 +81,13 @@ func (h *TestHarness) TestServiceInfo() TestServiceInfo {
 // Done channel will be closed if Close is called on the endpoint.
 func (h *TestHarness) NewMockEndpoint(
 	handler http.Handler,
-	contextFn func(context.Context) context.Context,
 	logger framework.Logger,
+	options ...MockEndpointOption,
 ) *MockEndpoint {
 	if logger == nil {
 		logger = h.logger
 	}
-	return h.mockEndpoints.newMockEndpoint(handler, contextFn, logger)
+	return h.mockEndpoints.newMockEndpoint(handler, logger, options...)
 }
 
 func (h *TestHarness) serveHTTP(w http.ResponseWriter, r *http.Request) {
