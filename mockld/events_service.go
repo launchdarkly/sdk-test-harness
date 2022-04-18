@@ -7,9 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/launchdarkly/sdk-test-harness/framework"
 	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
+
+	"github.com/gorilla/mux"
 )
 
 // Somewhat arbitrary buffer size for the channel that we use as a queue for received events. We
