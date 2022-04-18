@@ -42,6 +42,15 @@ func doServerSideEventRequestTests(t *ldtest.T) {
 	commonTests.UniquePayloadIDs(t)
 }
 
+func doServerSideIdentifyEventTests(t *ldtest.T) {
+	commonTests := CommonEventTests{}
+
+	userFactory := NewUserFactory("doServerSideIdentifyEventTests",
+		func(b lduser.UserBuilder) { b.Name("my favorite user") })
+
+	commonTests.IdentifyEvents(t, userFactory)
+}
+
 func doServerSideEventBufferTests(t *ldtest.T) {
 	commonTests := CommonEventTests{}
 
