@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/launchdarkly/sdk-test-harness/framework"
 	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
 )
@@ -22,35 +23,45 @@ const eventsChannelBufferSize = 100
 type EventsService struct {
 	AnalyticsEventPayloads chan Events
 	sdkKind                SDKKind
-	credential             string
 	ignoreDuplicatePayload bool
 	hostTimeOverride       time.Time
 	payloadIDsSeen         map[string]bool
+	handler                http.Handler
 	logger                 framework.Logger
 	lock                   sync.Mutex
 }
 
-func NewEventsService(sdkKind SDKKind, credential string, logger framework.Logger) *EventsService {
-	return &EventsService{
+func NewEventsService(sdkKind SDKKind, logger framework.Logger) *EventsService {
+	s := &EventsService{
 		AnalyticsEventPayloads: make(chan Events, eventsChannelBufferSize),
 		sdkKind:                sdkKind,
-		credential:             credential,
 		ignoreDuplicatePayload: true,
 		payloadIDsSeen:         make(map[string]bool),
 		logger:                 logger,
 	}
+
+	router := mux.NewRouter()
+	switch sdkKind {
+	case ServerSideSDK:
+		router.HandleFunc("/bulk", s.postEvents).Methods("POST")
+		router.HandleFunc("/diagnostic", s.postDiagnosticEvent).Methods("POST")
+	case MobileSDK:
+		router.HandleFunc("/mobile", s.postEvents).Methods("POST")
+		router.HandleFunc("/mobile/events", s.postEvents).Methods("POST")
+		router.HandleFunc("/mobile/events/bulk", s.postEvents).Methods("POST")
+		router.HandleFunc("/mobile/events/diagnostic", s.postDiagnosticEvent).Methods("POST")
+	case JSClientSDK:
+		router.HandleFunc("/events/bulk/{env}", s.postEvents).Methods("POST")
+		router.HandleFunc("/events/diagnostic/{env}", s.postDiagnosticEvent).Methods("POST")
+	}
+	s.handler = router
+
+	return s
 }
 
 func (s *EventsService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.logger.Printf("Received %s %s", r.Method, r.URL)
-	switch r.URL.Path {
-	case "/bulk":
-		s.postEvents(w, r)
-	case "/diagnostic":
-		s.postDiagnosticEvent(w, r)
-	default:
-		w.WriteHeader(http.StatusNotFound)
-	}
+	s.handler.ServeHTTP(w, r)
 }
 
 func (s *EventsService) AwaitAnalyticsEventPayload(timeout time.Duration) (Events, bool) {

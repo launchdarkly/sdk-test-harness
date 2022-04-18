@@ -132,15 +132,15 @@ func TryNewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) (*SDKClient, err
 }
 
 func validateSDKConfig(config servicedef.SDKConfigParams) error {
-	if !config.Streaming.IsDefined() && !config.Polling.IsDefined() {
+	if !config.Streaming.IsDefined() && !config.Polling.IsDefined() && config.ServiceEndpoints.Value().Streaming == "" {
 		return errors.New(
-			"neither streaing nor polling was enabled-- did you forget to include the SDKDataSource as a parameter?")
+			"neither streaming nor polling was enabled-- did you forget to include the SDKDataSource as a parameter?")
 	}
 	if config.Streaming.IsDefined() && config.Streaming.Value().BaseURI == "" &&
 		(!config.ServiceEndpoints.IsDefined() || config.ServiceEndpoints.Value().Streaming == "") {
 		return errors.New("streaming was enabled but base URI was not set")
 	}
-	if config.Polling.IsDefined() && config.Streaming.Value().BaseURI == "" &&
+	if config.Polling.IsDefined() && config.Polling.Value().BaseURI == "" &&
 		(!config.ServiceEndpoints.IsDefined() || config.ServiceEndpoints.Value().Polling == "") {
 		return errors.New("polling was enabled but base URI was not set")
 	}

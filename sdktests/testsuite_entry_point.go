@@ -69,6 +69,21 @@ func RunSDKTestSuite(
 	})
 }
 
+func doAllServerSideTests(t *ldtest.T) {
+	t.Run("data store", doServerSideDataStoreTests)
+	t.Run("evaluation", doServerSideEvalTests)
+	t.Run("events", doServerSideEventTests)
+	t.Run("streaming", doServerSideStreamTests)
+	t.Run("big segments", doServerSideBigSegmentsTests)
+	t.Run("service endpoints", doServerSideServiceEndpointsTests)
+	t.Run("tags", doServerSideTagsTests)
+}
+
+func doAllClientSideTests(t *ldtest.T) {
+	t.Run("evaluation", doClientSideEvalTests)
+	t.Run("events", doClientSideEventTests)
+}
+
 func allImportantServerSideCapabilities() framework.Capabilities {
 	return framework.Capabilities{
 		servicedef.CapabilityAllFlagsClientSideOnly,

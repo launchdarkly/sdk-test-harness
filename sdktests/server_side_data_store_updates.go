@@ -19,6 +19,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func doServerSideDataStoreTests(t *ldtest.T) {
+	t.Run("updates from stream", doServerSideDataStoreStreamUpdateTests)
+}
+
 func doServerSideDataStoreStreamUpdateTests(t *ldtest.T) {
 	// These tests verify that the SDK's default data store correctly implements updates and
 	// deletes with versioning.

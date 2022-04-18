@@ -5,13 +5,13 @@ import (
 
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
+
 	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
 
-func doServerSideEventDisableTest(t *ldtest.T) {
+func (c CommonEventTests) DisablingEvents(t *ldtest.T) {
 	// We can only do this test if the SDK allows us to say "set the events base URI to ____" and "don't send
 	// events" at the same time; otherwise there would be no way to verify that events were not sent to our
 	// mock endpoint.
@@ -21,13 +21,14 @@ func doServerSideEventDisableTest(t *ldtest.T) {
 
 	doTest := func(t *ldtest.T, name string, actionThatCausesEvent func(*ldtest.T, *SDKClient)) {
 		t.Run(name, func(t *ldtest.T) {
-			dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+			dataSource := NewSDKDataSource(t, nil)
 			events := NewSDKEventSink(t)
 			client := NewSDKClient(t,
-				WithServiceEndpointsConfig(servicedef.SDKConfigServiceEndpointsParams{
-					Events: events.Endpoint().BaseURL(),
-				}),
-				dataSource)
+				append(c.SDKConfigurers,
+					WithServiceEndpointsConfig(servicedef.SDKConfigServiceEndpointsParams{
+						Events: events.Endpoint().BaseURL(),
+					}),
+					dataSource)...)
 
 			actionThatCausesEvent(t, client)
 			client.FlushEvents(t)
