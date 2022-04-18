@@ -10,7 +10,7 @@ import (
 
 func doClientSideEventTests(t *ldtest.T) {
 	t.Run("requests", doClientSideEventRequestTests)
-	t.Run("identify events", doClientSideEventIdentifyTests)
+	t.Run("identify events", doClientSideIdentifyEventTests)
 	t.Run("event capacity", doClientSideEventBufferTests)
 	t.Run("disabling", doClientSideEventDisableTests)
 }
@@ -41,8 +41,8 @@ func doClientSideEventRequestTests(t *ldtest.T) {
 	eventTests.UniquePayloadIDs(t)
 }
 
-func doClientSideEventIdentifyTests(t *ldtest.T) {
-	NewClientSideEventTests("doClientSideEventIdentifyTests").
+func doClientSideIdentifyEventTests(t *ldtest.T) {
+	NewClientSideEventTests("doClientSideIdentifyEventTests").
 		IdentifyEvents(t)
 }
 
