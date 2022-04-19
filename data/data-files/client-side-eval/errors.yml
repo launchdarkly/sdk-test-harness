@@ -1,0 +1,35 @@
+---
+name: errors - <TYPE_NAME>
+
+skipEvaluateAllFlags: true
+
+parameters:
+  - TYPE_NAME: bool
+    TYPE_DEFAULT: false
+
+  - TYPE_NAME: int
+    TYPE_DEFAULT: -1
+
+  - TYPE_NAME: double
+    TYPE_DEFAULT: 0.5
+
+  - TYPE_NAME: string
+    TYPE_DEFAULT: "x"
+
+  - TYPE_NAME: any
+    TYPE_DEFAULT: false
+
+sdkData: {}
+
+context:
+  kind: user
+  key: user-key
+
+evaluations:
+  - name: flag not found
+    flagKey: unknown-flag
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect:
+      value: <TYPE_DEFAULT>
+      reason: { kind: "ERROR", errorKind: "FLAG_NOT_FOUND" }

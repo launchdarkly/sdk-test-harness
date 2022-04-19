@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	_ "embed" // this is required in order for go:embed to work
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -15,7 +14,6 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/sdktests"
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 )
 
 const defaultPort = 8111
@@ -82,22 +80,7 @@ func run(params commandParams) (*ldtest.Results, error) {
 		}}
 	}
 
-	enabledCapabilities := harness.TestServiceInfo().Capabilities
-	var allCapabilities framework.Capabilities
-	switch {
-	case enabledCapabilities.Has(servicedef.CapabilityServerSide):
-		fmt.Println("Running server-side SDK test suite")
-		allCapabilities = sdktests.AllImportantServerSideCapabilities()
-	case enabledCapabilities.Has(servicedef.CapabilityClientSide):
-		return nil, errors.New("client-side SDK tests are not yet implemented")
-	default:
-		return nil, errors.New(`test service has neither "client-side" nor "server-side" capability`)
-	}
-
-	fmt.Println()
-	ldtest.PrintFilterDescription(params.filters, allCapabilities, enabledCapabilities)
-
-	results := sdktests.RunServerSideTestSuite(harness, params.filters.Match, testLogger)
+	results := sdktests.RunSDKTestSuite(harness, params.filters, testLogger)
 
 	fmt.Println()
 	logErr := testLogger.EndLog(results)

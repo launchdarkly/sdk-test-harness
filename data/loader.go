@@ -5,13 +5,21 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
+
+	"github.com/stretchr/testify/require"
 )
 
 //go:embed data-files
 var dataFilesRoot embed.FS
 
 const dataBasePath = "data-files"
+
+type HasName interface {
+	GetName() string
+}
 
 // SourceInfo represents JSON or YAML data that was read from a file, after post-processing to expand
 // constants and parameters. For non-parameterized tests, you will get one SourceInfo per file. For
@@ -88,4 +96,42 @@ func LoadAllDataFiles(path string) ([]SourceInfo, error) {
 		ret = append(ret, sources...)
 	}
 	return ret, nil
+}
+
+// LoadAndParseAllTestSuites calls LoadAllDataFiles and then parses each of the resulting SourceInfos
+// as JSON or YAML into the specified type.
+func LoadAndParseAllTestSuites[V any](t *ldtest.T, dirName string) []V {
+	sources, err := LoadAllDataFiles(dirName)
+	require.NoError(t, err)
+
+	ret := make([]V, 0, len(sources))
+	for _, source := range sources {
+		var suite V
+		if err := ParseJSONOrYAML(source.Data, &suite); err != nil {
+			require.NoError(t, fmt.Errorf("error parsing %q %s: %w", source.BaseName, source.ParamsString(), err))
+		}
+		ret = append(ret, suite)
+	}
+	return ret
+}
+
+// GroupTestSuitesByName converts a list of test suites to a list of lists, grouped by their name property.
+//
+// See comments in common_tests_eval.go for an example of why we may want to do this.
+func GroupTestSuitesByName[V HasName](suites []V) [][]V {
+	ret := [][]V{}
+	var curName string
+	curGroup := []V{}
+	for _, suite := range suites {
+		if suite.GetName() != curName {
+			if curName != "" {
+				ret = append(ret, curGroup)
+				curGroup = []V{}
+			}
+			curName = suite.GetName()
+		}
+		curGroup = append(curGroup, suite)
+	}
+	ret = append(ret, curGroup)
+	return ret
 }

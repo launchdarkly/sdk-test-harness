@@ -2,6 +2,7 @@ package opt
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 // Maybe is a simple implementation of an optional value type.
@@ -47,6 +48,21 @@ func (m Maybe[V]) OrElse(valueIfUndefined V) V {
 		return m.value
 	}
 	return valueIfUndefined
+}
+
+// String returns a string representation of the value, or "[none]" if undefined. The string
+// representation of a value is either its own String() if it has such a method, or else the
+// result of fmt.Sprintf with "%v".
+func (m Maybe[V]) String() string {
+	if m.defined {
+		var v interface{}
+		v = m.value
+		if s, ok := v.(fmt.Stringer); ok {
+			return s.String()
+		}
+		return fmt.Sprintf("%v", m.value)
+	}
+	return "[none]"
 }
 
 // MarshalJSON produces whatever JSON representation would normally be produced for the value if

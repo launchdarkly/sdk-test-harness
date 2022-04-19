@@ -70,6 +70,8 @@ func NewMultiContextFactory(
 // NewContextFactoriesForSingleAndMultiKind that provides one.
 func (f *ContextFactory) Description() string { return f.description }
 
+func (f *ContextFactory) Prefix() string { return f.prefix }
+
 // NextUniqueContext creates a Context instance.
 func (f *ContextFactory) NextUniqueContext() ldcontext.Context {
 	f.counter++

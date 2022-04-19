@@ -47,6 +47,40 @@ type MockEndpoint struct {
 	closing     sync.Once
 }
 
+// MockEndpointOption is the interface for options to NewMockEndpoint.
+type MockEndpointOption helpers.ConfigOption[MockEndpoint]
+
+type mockEndpointOptionContextFn struct {
+	contextFn func(context.Context) context.Context
+}
+
+func (o mockEndpointOptionContextFn) Configure(m *MockEndpoint) error {
+	m.contextFn = o.contextFn
+	return nil
+}
+
+// MockEndpointContextFn is an option to set a context transformation function for the endpoint that will be
+// called for each request. This can be used if the test logic managing the endpoint needs to be able to
+// share some kind of state between the endpoint's HTTP handler and code elsewhere, by embedding a value in
+// the context.
+func MockEndpointContextFn(fn func(context.Context) context.Context) MockEndpointOption {
+	return mockEndpointOptionContextFn{fn}
+}
+
+type mockEndpointOptionDescription struct {
+	description string
+}
+
+func (o mockEndpointOptionDescription) Configure(m *MockEndpoint) error {
+	m.description = o.description
+	return nil
+}
+
+// MockEndpointDescription is an option to set a descriptive name for the endpoint, such as "streaming service".
+func MockEndpointDescription(description string) MockEndpointOption {
+	return mockEndpointOptionDescription{description}
+}
+
 // IncomingRequestInfo contains information about an HTTP request sent by the test service
 // to one of the mock endpoints.
 type IncomingRequestInfo struct {
@@ -68,19 +102,19 @@ func newMockEndpointsManager(externalBaseURL string, logger framework.Logger) *m
 
 func (m *mockEndpointsManager) newMockEndpoint(
 	handler http.Handler,
-	contextFn func(context.Context) context.Context,
 	logger framework.Logger,
+	options ...MockEndpointOption,
 ) *MockEndpoint {
 	if logger == nil {
 		logger = m.logger
 	}
 	e := &MockEndpoint{
-		owner:     m,
-		handler:   handler,
-		contextFn: contextFn,
-		newConns:  make(chan IncomingRequestInfo, incomingConnectionChannelBufferSize),
-		logger:    logger,
+		owner:    m,
+		handler:  handler,
+		newConns: make(chan IncomingRequestInfo, incomingConnectionChannelBufferSize),
+		logger:   logger,
 	}
+	_ = helpers.ApplyOptions(e, options...)
 	m.lock.Lock()
 	m.lastEndpointID++
 	e.id = strconv.Itoa(m.lastEndpointID)
@@ -154,16 +188,34 @@ func (m *mockEndpointsManager) serveHTTP(w http.ResponseWriter, r *http.Request)
 	e.activeConn = incoming
 	cancellerPtr := &canceller
 	e.cancels = append(e.cancels, cancellerPtr)
+	newConns := e.newConns
 	e.lock.Unlock()
 
+	if newConns == nil {
+		// the endpoint is already closed
+		m.logger.Printf("Received request to already-closed endpoint %s", r.URL)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	select { // non-blocking push
-	case e.newConns <- *incoming:
+	case newConns <- *incoming:
 		break
 	default:
 		m.logger.Printf("Incoming connection channel was full for %s", r.URL)
 	}
 
-	e.handler.ServeHTTP(w, transformedReq)
+	wrappedWriter := wrappedResponseWriter{w: w}
+	e.handler.ServeHTTP(&wrappedWriter, transformedReq)
+
+	switch wrappedWriter.status {
+	case http.StatusNotFound:
+		e.logger.Printf("Endpoint %q (%s) received %s request for unrecognized path %s", e.description, e.basePath,
+			r.Method, path)
+	case http.StatusMethodNotAllowed:
+		e.logger.Printf("Endpoint %q (%s) received request with unsupported %s method for path %s", e.description,
+			e.basePath, r.Method, path)
+	}
 
 	e.lock.Lock()
 	for i, c := range e.cancels {
@@ -186,13 +238,14 @@ func (e *MockEndpoint) AwaitConnection(timeout time.Duration) (IncomingRequestIn
 	if maybeCxn.IsDefined() {
 		return maybeCxn.Value(), nil
 	}
-	return IncomingRequestInfo{}, fmt.Errorf("timed out waiting for an incoming request to %s", e.description)
+	return IncomingRequestInfo{}, fmt.Errorf("timed out waiting for an incoming request to %q (%s)", e.description,
+		e.basePath)
 }
 
 // RequireConnection waits for an incoming request to the endpoint, and causes the test to fail
 // and terminate if it timed out.
 func (e *MockEndpoint) RequireConnection(t helpers.TestContext, timeout time.Duration) IncomingRequestInfo {
-	return helpers.RequireValueWithMessage(t, e.newConns, timeout, "timed out waiting for request to %s (%s)",
+	return helpers.RequireValueWithMessage(t, e.newConns, timeout, "timed out waiting for request to %q (%s)",
 		e.description, e.basePath)
 }
 
@@ -200,7 +253,7 @@ func (e *MockEndpoint) RequireConnection(t helpers.TestContext, timeout time.Dur
 // within the timeout.
 func (e *MockEndpoint) RequireNoMoreConnections(t helpers.TestContext, timeout time.Duration) {
 	helpers.RequireNoMoreValuesWithMessage(t, e.newConns, timeout,
-		"did not expect another request to %s (%s), but got one", e.description, e.basePath)
+		"did not expect another request to %q (%s), but got one", e.description, e.basePath)
 }
 
 func (e *MockEndpoint) ActiveConnection() *IncomingRequestInfo {
@@ -213,6 +266,7 @@ func (e *MockEndpoint) ActiveConnection() *IncomingRequestInfo {
 // It also cancels the Context for every active request to that endpoint.
 func (e *MockEndpoint) Close() {
 	e.closing.Do(func() {
+		e.logger.Printf("Closing endpoint %q (%s)", e.description, e.basePath)
 		e.owner.lock.Lock()
 		delete(e.owner.endpoints, e.id)
 		e.owner.lock.Unlock()
@@ -221,10 +275,33 @@ func (e *MockEndpoint) Close() {
 		cancellers := e.cancels
 		e.cancels = nil
 		close(e.newConns)
+		e.newConns = nil
 		e.lock.Unlock()
 
 		for _, cancel := range cancellers {
 			(*cancel)()
 		}
 	})
+}
+
+// wrappedResponseWriter is a way for us to monitor the status that is written to a ResponseWriter,
+// so we can add some debug logging for 404 and 405 statuses.
+type wrappedResponseWriter struct {
+	w      http.ResponseWriter
+	status int
+}
+
+func (ww *wrappedResponseWriter) Header() http.Header { return ww.w.Header() }
+
+func (ww *wrappedResponseWriter) WriteHeader(status int) {
+	ww.status = status
+	ww.w.WriteHeader(status)
+}
+
+func (ww *wrappedResponseWriter) Write(data []byte) (int, error) { return ww.w.Write(data) }
+
+func (ww *wrappedResponseWriter) Flush() {
+	if f, ok := ww.w.(http.Flusher); ok {
+		f.Flush()
+	}
 }

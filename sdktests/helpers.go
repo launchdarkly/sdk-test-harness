@@ -112,20 +112,31 @@ func getValueTypesToTest(t *ldtest.T) []servicedef.ValueType {
 	return append(ret, servicedef.ValueTypeAny)
 }
 
-// Generates a default value based on the variation value type used by the flag.
-func inferDefaultFromFlag(sdkData mockld.ServerSDKData, flagKey string) ldvalue.Value {
-	flagData := sdkData["flags"][flagKey]
-	if flagData == nil {
+func inferDefaultFromFlag(sdkData mockld.SDKData, flagKey string) ldvalue.Value {
+	var flagValue ldvalue.Value
+	var flagExists bool
+
+	switch data := sdkData.(type) {
+	case mockld.ClientSDKData:
+		if flagData, ok := data[flagKey]; ok {
+			flagExists = true
+			flagValue = flagData.Value
+		}
+	case mockld.ServerSDKData:
+		if flagData, ok := data["flags"][flagKey]; ok {
+			var flag ldmodel.FeatureFlag
+			if err := json.Unmarshal(flagData, &flag); err == nil {
+				if len(flag.Variations) != 0 {
+					flagValue = flag.Variations[0]
+					flagExists = true
+				}
+			}
+		}
+	}
+	if !flagExists {
 		return ldvalue.Null()
 	}
-	var flag ldmodel.FeatureFlag
-	if err := json.Unmarshal(flagData, &flag); err != nil {
-		return ldvalue.Null() // we should deal with malformed flag data at an earlier point
-	}
-	if len(flag.Variations) == 0 {
-		return ldvalue.Null()
-	}
-	switch flag.Variations[0].Type() {
+	switch flagValue.Type() {
 	case ldvalue.BoolType:
 		return ldvalue.Bool(false)
 	case ldvalue.NumberType:

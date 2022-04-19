@@ -22,7 +22,7 @@ import (
 // representation of the flags state, by omitting all boolean properties that are false, and
 // omitting all nullable properties that are null.
 
-func RunServerSideEvalAllFlagsTests(t *ldtest.T) {
+func runServerSideEvalAllFlagsTests(t *ldtest.T) {
 	t.Run("default behavior", doServerSideAllFlagsBasicTest)
 	t.Run("with reasons", doServerSideAllFlagsWithReasonsTest)
 	t.Run("experimentation", doServerSideAllFlagsExperimentationTest)

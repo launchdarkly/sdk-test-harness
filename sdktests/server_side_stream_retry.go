@@ -40,6 +40,11 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 	dataV2 := mockld.NewServerSDKDataBuilder().Flag(flagV2).Build()
 	context := ldcontext.New("user-key")
 
+	makeStreamEndpoint := func(t *ldtest.T, handler http.Handler) *harness.MockEndpoint {
+		return requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
+			harness.MockEndpointDescription("streaming service"))
+	}
+
 	t.Run("retry after stream is closed", func(t *ldtest.T) {
 		stream1 := NewSDKDataSourceWithoutEndpoint(t, dataV1)
 		stream2 := NewSDKDataSourceWithoutEndpoint(t, dataV2)
@@ -47,7 +52,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 			stream1.Handler(), // first request gets the first stream data
 			stream2.Handler(), // second request gets the second stream data
 		)
-		streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, nil, t.DebugLogger())
+		streamEndpoint := makeStreamEndpoint(t, handler)
 		t.Defer(streamEndpoint.Close)
 
 		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
@@ -110,7 +115,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 			errorHandler,     // second request also gets the error
 			stream.Handler(), // third request succeeds and gets the stream
 		)
-		streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, nil, t.DebugLogger())
+		streamEndpoint := makeStreamEndpoint(t, handler)
 		t.Defer(streamEndpoint.Close)
 
 		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
@@ -145,7 +150,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 			errorHandler,      // third request also gets the error
 			stream2.Handler(), // fourth request gets the second stream data
 		)
-		streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, nil, t.DebugLogger())
+		streamEndpoint := makeStreamEndpoint(t, handler)
 		t.Defer(streamEndpoint.Close)
 
 		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
@@ -191,7 +196,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 					httphelpers.HandlerWithStatus(status), // first request gets the error
 					stream.Handler(),                      // second request would succeed and get the stream, but shouldn't happen
 				)
-				streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, nil, t.DebugLogger())
+				streamEndpoint := makeStreamEndpoint(t, handler)
 				t.Defer(streamEndpoint.Close)
 
 				_ = NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{InitCanFail: true}),
@@ -213,7 +218,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 					httphelpers.HandlerWithStatus(status), // second request gets the error
 					stream.Handler(),                      // third request would get the stream again, but shouldn't happen
 				)
-				streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, nil, t.DebugLogger())
+				streamEndpoint := makeStreamEndpoint(t, handler)
 				t.Defer(streamEndpoint.Close)
 
 				client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))

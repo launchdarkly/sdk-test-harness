@@ -2,6 +2,7 @@ package sdktests
 
 import (
 	"fmt"
+	"net/http"
 	"sort"
 	"strings"
 
@@ -69,6 +70,15 @@ func EvalAllFlagsStateMap() m.MatcherTransform {
 
 func EvalAllFlagsValueForKeyShouldEqual(key string, value ldvalue.Value) m.Matcher {
 	return EvalAllFlagsStateMap().Should(m.ValueForKey(key).Should(m.JSONEqual(value)))
+}
+
+func Header(name string) m.MatcherTransform {
+	return m.Transform(
+		fmt.Sprintf("header %q", name),
+		func(value interface{}) (interface{}, error) {
+			return value.(http.Header).Get(name), nil
+		}).
+		EnsureInputValueType(http.Header{})
 }
 
 func JSONPropertyKeysCanOnlyBe(keys ...string) m.Matcher {

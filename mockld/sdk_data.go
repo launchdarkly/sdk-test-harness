@@ -4,7 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+
 	"github.com/launchdarkly/go-jsonstream/v2/jreader"
+	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldmodel"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 )
@@ -20,7 +26,6 @@ const (
 type DataItemKind string
 
 type SDKData interface {
-	SDKKind() SDKKind
 	Serialize() []byte
 }
 
@@ -44,12 +49,33 @@ func (b blockingUnavailableSDKData) Serialize() []byte { return nil }
 // streaming and polling responses.
 type ServerSDKData map[DataItemKind]map[string]json.RawMessage
 
+// ClientSDKData contains simulated LaunchDarkly environment data for a client-side SDK.
+//
+// This does not include flag or segment configurations, but only flag evaluation results for a specific user.
+type ClientSDKData map[string]ClientSDKFlag
+
+// ClientSDKFlag contains the flag evaluation results for a single flag in ClientSDKData.
+type ClientSDKFlag struct {
+	Value                ldvalue.Value                       `json:"value"`
+	Variation            o.Maybe[int]                        `json:"variation"`
+	Reason               o.Maybe[ldreason.EvaluationReason]  `json:"reason"`
+	Version              int                                 `json:"version"`
+	FlagVersion          o.Maybe[int]                        `json:"flagVersion"`
+	TrackEvents          bool                                `json:"trackEvents"`
+	TrackReason          bool                                `json:"trackReason"`
+	DebugEventsUntilDate o.Maybe[ldtime.UnixMillisecondTime] `json:"debugEventsUntilDate"`
+}
+
 func EmptyServerSDKData() ServerSDKData {
 	return NewServerSDKDataBuilder().Build() // ensures that "flags" and "segments" properties are present, but empty
 }
 
-func (d ServerSDKData) SDKKind() SDKKind {
-	return ServerSideSDK
+func EmptyClientSDKData() ClientSDKData {
+	return NewClientSDKDataBuilder().Build()
+}
+
+func EmptyData(sdkKind SDKKind) SDKData {
+	return h.IfElse[SDKData](sdkKind == ServerSideSDK, EmptyServerSDKData(), EmptyClientSDKData())
 }
 
 func (d ServerSDKData) Serialize() []byte {
@@ -167,4 +193,53 @@ func (b *ServerSDKDataBuilder) Segment(segments ...ldmodel.Segment) *ServerSDKDa
 		b = b.RawSegment(segment.Key, jsonhelpers.ToJSON(segment))
 	}
 	return b
+}
+
+func (d ClientSDKData) Serialize() []byte {
+	return jsonhelpers.ToJSON(d)
+}
+
+func (d ClientSDKData) JSONString() string {
+	return jsonhelpers.ToJSONString(d)
+}
+
+func (d ClientSDKData) WithoutReasons() ClientSDKData {
+	ret := make(ClientSDKData)
+	for k, v := range d {
+		v.Reason = o.None[ldreason.EvaluationReason]()
+		ret[k] = v
+	}
+	return ret
+}
+
+type ClientSDKDataBuilder struct {
+	flags map[string]ClientSDKFlag
+}
+
+func NewClientSDKDataBuilder() *ClientSDKDataBuilder {
+	return &ClientSDKDataBuilder{
+		flags: make(map[string]ClientSDKFlag),
+	}
+}
+
+func (b *ClientSDKDataBuilder) Build() ClientSDKData {
+	ret := make(ClientSDKData)
+	for k, v := range b.flags {
+		b.flags[k] = v
+	}
+	return ret
+}
+
+func (b *ClientSDKDataBuilder) Flag(key string, props ClientSDKFlag) *ClientSDKDataBuilder {
+	b.flags[key] = props
+	return b
+}
+
+func (b *ClientSDKDataBuilder) FlagWithValue(
+	key string,
+	version int,
+	value ldvalue.Value,
+	variationIndex int,
+) *ClientSDKDataBuilder {
+	return b.Flag(key, ClientSDKFlag{Version: version, Value: value, Variation: o.Some(variationIndex)})
 }

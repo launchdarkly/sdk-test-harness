@@ -345,7 +345,7 @@ func doServerSideSummaryEventVersionTest(t *ldtest.T) {
 	initialValue := basicEvaluateFlag(t, client, flagKey, context, defaultValue)
 	m.In(t).Require(initialValue, m.JSONEqual(valueBefore))
 
-	dataSource.Service().PushUpdate("flags", flagKey, jsonhelpers.ToJSON(flagAfter))
+	dataSource.StreamingService().PushUpdate("flags", flagKey, jsonhelpers.ToJSON(flagAfter))
 
 	require.Eventually(
 		t,

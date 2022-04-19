@@ -92,7 +92,26 @@ func makeBucketingTestParamsForExperiments() []bucketingTestParams {
 	return ret
 }
 
-func RunServerSideEvalBucketingTests(t *ldtest.T) {
+func runServerSideEvalBucketingTests(t *ldtest.T) {
+	// These tests check for consistent computation of bucket values for rollouts/experiments across SDKs.
+	// They use the hash algorithm defined in computeExpectedBucketValue rather than relying on any hard-
+	// coded expected values, except in cases where we expect a specific edge-case result such as zero.
+	//
+	// They are very similar to some of the unit tests for the Go evaluation engine (go-server-sdk-evaluation).
+	// In that project, we have access to the low-level bucket value result so we can verify it directly;
+	// here, we can only check indirectly at the level of a bucket/variation. So we will set up the bucket
+	// weights to bracket the expected value.
+	//
+	// The behavior of old-style percentage rollouts is different in some regards to the behavior of
+	// experiments. That's reflected in the structure of these tests.
+	//
+	// The reason for having the tests in both places, instead of relying only on sdk-test-harness, is that
+	// go-server-sdk-evaluation is also used outside of the SDK and is mission-critical logic, so it needs
+	// to have full self-test coverage.
+	//
+	// There are also some parameterized tests for rollouts/experiments in the YAML data files. Those cover
+	// more general aspects of the behavior, rather than checking for specific bucket values.
+
 	unwantedVar, expectedFallthroughVar, expectedRuleVar, expectedSegmentVar := 0, 1, 2, 3
 	expectedFallthroughValue := ldvalue.String("expected-value-for-fallthrough")
 	expectedRuleValue := ldvalue.String("expected-value-for-rule")

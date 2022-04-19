@@ -7,16 +7,20 @@ GOLANGCI_LINT_VERSION=v1.45.2
 
 LINTER=./bin/golangci-lint
 LINTER_VERSION_FILE=./bin/.golangci-lint-version-$(GOLANGCI_LINT_VERSION)
+
 EXECUTABLE=./sdk-test-harness
 
-.PHONY: build pack-files clean test lint build-release publish-release
+SOURCE_FILES=*.go $(shell find . -name '*.go')
+TEST_DATA_FILES=$(shell find . -name '*.go') \
+	$(wildcard testdata/data-files/server-side-eval/*) \
+	$(wildcard testdata/data-files/client-side-eval/*)
+
+.PHONY: build clean test lint build-release publish-release
 
 build: $(EXECUTABLE)
 
-$(EXECUTABLE): *.go $(shell find . -name '*.go') $(wildcard data/data-files/server-side-eval/*)
+$(EXECUTABLE): $(SOURCE_FILES) $(TEST_DATA_FILES)
 	go build
-
-pack-files:
 
 clean:
 	go clean

@@ -30,12 +30,21 @@ type SDKEventSink struct {
 
 // NewSDKEventSink creates a new SDKEventSink.
 //
+// It automatically detects (from the ldtest.T properties) whether we are testing a server-side, mobile,
+// or JS-based client-side SDK, and configures the endpoint behavior as appropriate. The endpoints will
+// enforce that the client only uses supported URL paths and HTTP methods; however, they do not do any
+// validation of credentials (SDK key, mobile key, environment ID) since that would require this component
+// to know more about the overall configuration than it knows. We have specific tests that do verify that
+// the SDKs send appropriate credentials.
+//
 // The object's lifecycle is tied to the test scope that created it; it will be automatically closed
 // when this test scope exits. It can be reused by subtests until then. Debug output related to the event
-// sink will be attached to this test scope.
+// sink will be attached to this test scope, and also to any of its subtests that are active when the
+// output is generated.
 func NewSDKEventSink(t *ldtest.T) *SDKEventSink {
-	eventsService := mockld.NewEventsService(requireContext(t).sdkKind, defaultSDKKey, t.DebugLogger())
-	eventsEndpoint := requireContext(t).harness.NewMockEndpoint(eventsService, nil, t.DebugLogger())
+	eventsService := mockld.NewEventsService(requireContext(t).sdkKind, t.DebugLogger())
+	eventsEndpoint := requireContext(t).harness.NewMockEndpoint(eventsService, t.DebugLogger(),
+		harness.MockEndpointDescription("events service"))
 
 	t.Defer(eventsEndpoint.Close)
 
@@ -45,12 +54,13 @@ func NewSDKEventSink(t *ldtest.T) *SDKEventSink {
 	}
 }
 
-// ApplyConfiguration updates the SDK client configuration for NewSDKClient, causing the SDK
+// Configure updates the SDK client configuration for NewSDKClient, causing the SDK
 // to connect to the appropriate base URI for the test fixture.
-func (e *SDKEventSink) ApplyConfiguration(config *servicedef.SDKConfigParams) {
+func (e *SDKEventSink) Configure(config *servicedef.SDKConfigParams) error {
 	newState := config.Events.Value()
 	newState.BaseURI = e.eventsEndpoint.BaseURL()
 	config.Events = o.Some(newState)
+	return nil
 }
 
 // Endpoint returns the low-level object that manages incoming requests.
