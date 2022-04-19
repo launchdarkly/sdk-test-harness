@@ -25,6 +25,15 @@ import (
 var bigSegmentsUser = lduser.NewUser("user-key")                                 //nolint:gochecknoglobals
 var bigSegmentsExpectedUserHash = "CEXjZY7cHJG/ydFy7q4+YEFwVrG3/pkJwA4FAjrbfx0=" //nolint:gochecknoglobals
 
+func doServerSideBigSegmentsTests(t *ldtest.T) {
+	t.RequireCapability(servicedef.CapabilityBigSegments)
+
+	t.Run("evaluation", doBigSegmentsEvaluateSegment)
+	t.Run("membership caching", doBigSegmentsMembershipCachingTests)
+	t.Run("status polling", doBigSegmentsStatusPollingTests)
+	t.Run("error handling", doBigSegmentsErrorHandlingTests)
+}
+
 func doBigSegmentsEvaluateSegment(t *ldtest.T) {
 	otherUser := lduser.NewUser("other-user-key")
 
