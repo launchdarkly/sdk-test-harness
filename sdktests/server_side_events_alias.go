@@ -16,14 +16,6 @@ type aliasEventTestScenario struct {
 	eventMatcher m.Matcher
 }
 
-func JSONPropertyOrAbsent(name string, required bool, matcher m.Matcher) m.Matcher {
-	if required {
-		return m.JSONProperty(name).Should(matcher)
-	} else {
-		return m.JSONOptProperty(name).Should(m.BeNil())
-	}
-}
-
 func doServerSideAliasEventTests(t *ldtest.T) {
 	userFactory := NewUserFactory("doServerSideAliasEventTests")
 
@@ -35,18 +27,15 @@ func doServerSideAliasEventTests(t *ldtest.T) {
 	for _, user1IsAnon := range []bool{false, true} {
 		for _, user2IsAnon := range []bool{false, true} {
 			var scenario aliasEventTestScenario
-			var newContextKind, previousContextKind = "user", "user"
 			user1 := lduser.NewUserBuilderFromUser(userFactory.NextUniqueUser())
 			user2 := lduser.NewUserBuilderFromUser(userFactory.NextUniqueUser())
 			if user1IsAnon {
 				user1.Anonymous(true)
-				previousContextKind = "anonymousUser"
 			} else {
 				user1.Name("Mina")
 			}
 			if user2IsAnon {
 				user2.Anonymous(true)
-				newContextKind = "anonymousUser"
 			} else {
 				user2.Name("Lucy")
 			}
@@ -58,8 +47,8 @@ func doServerSideAliasEventTests(t *ldtest.T) {
 				HasAnyCreationDate(),
 				m.JSONProperty("key").Should(m.Equal(scenario.params.User.GetKey())),
 				m.JSONProperty("previousKey").Should(m.Equal(scenario.params.PreviousUser.GetKey())),
-				JSONPropertyOrAbsent("contextKind", user2IsAnon, m.Equal(newContextKind)),
-				JSONPropertyOrAbsent("previousContextKind", user1IsAnon, m.Equal(previousContextKind)),
+				HasContextKind(scenario.params.User),
+				HasPreviousContextKind(scenario.params.PreviousUser),
 			)
 			scenarios = append(scenarios, scenario)
 		}

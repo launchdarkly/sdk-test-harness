@@ -30,6 +30,13 @@ func HasContextKind(user lduser.User) m.Matcher {
 	return JSONPropertyNullOrAbsent("contextKind")
 }
 
+func HasPreviousContextKind(user lduser.User) m.Matcher {
+	if user.GetAnonymous() {
+		return m.JSONProperty("previousContextKind").Should(m.Equal("anonymousUser"))
+	}
+	return JSONPropertyNullOrAbsent("previousContextKind")
+}
+
 func HasAnyCreationDate() m.Matcher {
 	return m.JSONProperty("creationDate").Should(ValueIsPositiveNonZeroInteger())
 }
