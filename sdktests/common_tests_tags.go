@@ -4,14 +4,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
-	"github.com/stretchr/testify/assert"
+
+	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type tagsTestParams struct {
