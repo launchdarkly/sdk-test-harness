@@ -13,6 +13,10 @@ import (
 )
 
 func doServerSideIndexEventTests(t *ldtest.T) {
+	// These tests only apply to server-side SDKs. Client-side SDKs do not send index events, because
+	// they are guaranteed to always send the user properties in an identify event whenever the
+	// current user is changed.
+
 	// These do not include detailed tests of the properties within the user object, which are in
 	// server_side_events_users.go.
 
