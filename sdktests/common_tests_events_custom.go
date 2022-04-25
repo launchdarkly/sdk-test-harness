@@ -2,38 +2,51 @@ package sdktests
 
 import (
 	"fmt"
+	"time"
 
 	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
 
-func doServerSideCustomEventTests(t *ldtest.T) {
+func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 	// These do not include detailed tests of the encoding of user attributes in custom events,
-	// which are in server_side_events_users.go.
+	// which are in common_tests_events_users.go.
 
-	t.Run("data and metricValue parameters", doServerSideParameterizedCustomEventTests)
+	t.Run("data and metricValue parameters", c.customEventsParameterizedTests)
 
 	t.Run("basic properties", func(t *ldtest.T) {
-		users := NewUserFactory("doServerSideCustomEventTests-")
 		metricValue := 1.0
+
+		baseCustomEventProperties := []string{
+			"kind", "contextKind", "creationDate", "key", "data", "metricValue",
+		}
+		if t.Capabilities().Has(servicedef.CapabilityClientSide) &&
+			!t.Capabilities().Has(servicedef.CapabilityMobile) {
+			// this is a JS-based client-side SDK, so custom events may have an additional property
+			baseCustomEventProperties = append(baseCustomEventProperties, "url")
+		}
 
 		for _, inlineUser := range []bool{false, true} {
 			t.Run(h.IfElse(inlineUser, "inline user", "non-inline user"), func(t *ldtest.T) {
 				for _, anonymousUser := range []bool{false, true} {
 					t.Run(h.IfElse(anonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
 						eventsConfig := servicedef.SDKConfigEventParams{InlineUsers: inlineUser}
-						user := users.NextUniqueUserMaybeAnonymous(anonymousUser)
+						user := c.userFactory.NextUniqueUserMaybeAnonymous(anonymousUser)
 
-						dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+						dataSource := NewSDKDataSource(t, nil)
 						events := NewSDKEventSink(t)
-						client := NewSDKClient(t, WithEventsConfig(eventsConfig), dataSource, events)
+						client := NewSDKClient(t, c.baseSDKConfigurationPlus(WithEventsConfig(eventsConfig), dataSource, events)...)
 
+						if c.isClientSide {
+							client.SendIdentifyEvent(t, user)
+							client.FlushEvents(t)
+							_ = events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+						}
 						client.SendCustomEvent(t, servicedef.CustomEventParams{
 							EventKey:    "event-key",
 							User:        o.Some(user),
@@ -45,26 +58,25 @@ func doServerSideCustomEventTests(t *ldtest.T) {
 						payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
 						if inlineUser {
-							m.In(t).Assert(payload, m.Items(
-								m.AllOf(
-									JSONPropertyKeysCanOnlyBe("kind", "creationDate", "key", "user", "contextKind",
-										"data", "metricValue"),
-									IsCustomEvent(),
-									HasUserObjectWithKey(user.GetKey()),
-									HasContextKind(user),
-								),
-							))
+							expectedEvent := m.AllOf(
+								JSONPropertyKeysCanOnlyBe(append(baseCustomEventProperties, "user")...),
+								IsCustomEvent(),
+								HasUserObjectWithKey(user.GetKey()),
+								HasContextKind(user),
+							)
+							m.In(t).Assert(payload, m.Items(expectedEvent))
 						} else {
-							m.In(t).Assert(payload, m.ItemsInAnyOrder(
-								IsIndexEvent(),
-								m.AllOf(
-									JSONPropertyKeysCanOnlyBe("kind", "creationDate", "key", "userKey", "contextKind",
-										"data", "metricValue"),
-									IsCustomEvent(),
-									HasUserKeyProperty(user.GetKey()),
-									HasContextKind(user),
-								),
+							expectedEvents := []m.Matcher{}
+							if !c.isClientSide {
+								expectedEvents = append(expectedEvents, IsIndexEvent())
+							}
+							expectedEvents = append(expectedEvents, m.AllOf(
+								JSONPropertyKeysCanOnlyBe(append(baseCustomEventProperties, "userKey")...),
+								IsCustomEvent(),
+								HasUserKeyProperty(user.GetKey()),
+								HasContextKind(user),
 							))
+							m.In(t).Assert(payload, m.ItemsInAnyOrder(expectedEvents...))
 						}
 					})
 				}
@@ -73,15 +85,19 @@ func doServerSideCustomEventTests(t *ldtest.T) {
 	})
 }
 
-func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
+func (c CommonEventTests) customEventsParameterizedTests(t *ldtest.T) {
 	eventsConfig := baseEventsConfig()
 	eventsConfig.InlineUsers = true // so we don't get index events in the output
 
-	dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+	dataSource := NewSDKDataSource(t, nil)
 	events := NewSDKEventSink(t)
-	client := NewSDKClient(t, WithEventsConfig(eventsConfig), dataSource, events)
+	client := NewSDKClient(t, c.baseSDKConfigurationPlus(WithEventsConfig(eventsConfig), dataSource, events)...)
 
-	users := NewUserFactory("doServerSideParameterizedCustomEventTests")
+	if c.isClientSide {
+		// ignore the initial identify event
+		client.FlushEvents(t)
+		_ = events.ExpectAnalyticsEvents(t, time.Second)
+	}
 
 	// Generate many permutations of 1. data types that can be used for the data parameter, if any, and
 	// 2. metric value parameter, if any.
@@ -114,7 +130,7 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 		} {
 			params := baseParams
 			params.Data = dataValue
-			params.User = o.Some(users.NextUniqueUser())
+			params.User = o.Some(c.userFactory.NextUniqueUser())
 			allParams = append(allParams, params)
 		}
 
@@ -123,7 +139,7 @@ func doServerSideParameterizedCustomEventTests(t *ldtest.T) {
 		// data which may be null", to make sure we're covering both methods.
 		params := baseParams
 		params.OmitNullData = true
-		params.User = o.Some(users.NextUniqueUser())
+		params.User = o.Some(c.userFactory.NextUniqueUser())
 		allParams = append(allParams, params)
 	}
 
