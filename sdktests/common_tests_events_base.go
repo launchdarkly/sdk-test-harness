@@ -3,6 +3,7 @@ package sdktests
 import (
 	"time"
 
+	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
@@ -44,6 +45,14 @@ func NewServerSideEventTests(testName string, baseSDKConfigurers ...SDKConfigure
 
 func (c CommonEventTests) baseSDKConfigurationPlus(configurers ...SDKConfigurer) []SDKConfigurer {
 	return append(c.sdkConfigurers, configurers...)
+}
+
+func (c CommonEventTests) discardIdentifyEventIfClientSide(t *ldtest.T, client *SDKClient, events *SDKEventSink) {
+	if c.isClientSide {
+		client.FlushEvents(t)
+		payload := events.ExpectAnalyticsEvents(t, time.Second)
+		m.In(t).Assert(payload, m.Items(IsIdentifyEvent()))
+	}
 }
 
 func (c CommonEventTests) initialEventPayloadExpectations() []m.Matcher {
