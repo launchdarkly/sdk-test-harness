@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [1.6.0] - 2022-04-25
+### Added:
+- The test harness now supports testing client-side LaunchDarkly SDKs as well as server-side ones. The client-side test suite includes evaluation and event behavior, but is still missing test cases for some areas such as summary events, experimentation evaluations, and streaming updates.
+
+### Fixed:
+- Fixed a race condition in the test "`events/requests/new payload ID for each post`".
+
 ## [1.5.0] - 2022-04-14
 ### Added:
 - Each release now includes binaries for the `arm64` architecture (these were added manually to the 1.4.0 release, but they will now be added automatically).
