@@ -12,6 +12,7 @@ func doClientSideEventTests(t *ldtest.T) {
 	t.Run("requests", doClientSideEventRequestTests)
 	t.Run("identify events", doClientSideIdentifyEventTests)
 	t.Run("custom events", doClientSideCustomEventTests)
+	t.Run("context properties", doClientSideEventContextTests)
 	t.Run("event capacity", doClientSideEventBufferTests)
 	t.Run("disabling", doClientSideEventDisableTests)
 }
@@ -50,6 +51,11 @@ func doClientSideIdentifyEventTests(t *ldtest.T) {
 func doClientSideCustomEventTests(t *ldtest.T) {
 	NewClientSideEventTests("doClientSideCustomEventTests").
 		CustomEvents(t)
+}
+
+func doClientSideEventContextTests(t *ldtest.T) {
+	NewClientSideEventTests("doClientSideEventContextTests").
+		EventContexts(t)
 }
 
 func doClientSideEventBufferTests(t *ldtest.T) {

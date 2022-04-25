@@ -1,9 +1,10 @@
 package sdktests
 
 import (
-	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
 
 func doServerSideEventTests(t *ldtest.T) {
@@ -45,6 +46,11 @@ func doServerSideIdentifyEventTests(t *ldtest.T) {
 func doServerSideCustomEventTests(t *ldtest.T) {
 	NewServerSideEventTests("doServerSideCustomEventTests").
 		CustomEvents(t)
+}
+
+func doServerSideEventContextTests(t *ldtest.T) {
+	NewServerSideEventTests("doServerSideEventContextTests").
+		EventContexts(t)
 }
 
 func doServerSideEventBufferTests(t *ldtest.T) {

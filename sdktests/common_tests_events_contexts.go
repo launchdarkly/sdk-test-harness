@@ -10,6 +10,7 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
@@ -162,55 +163,55 @@ func makeEventContextTestParams() []eventContextTestParams {
 	return ret
 }
 
-func doServerSideEventContextTests(t *ldtest.T) {
-	flagValue := ldvalue.String("value")
-	defaultValue := ldvalue.String("default")
-	flags := data.NewFlagFactory(
-		"ServerSideEvalEventContextFlag",
-		data.SingleValueForAllSDKValueTypes(flagValue),
-	)
-	debugFlags := data.NewFlagFactory(
-		"ServerSideEvalEventContextDebugFlag",
-		data.SingleValueForAllSDKValueTypes(flagValue),
-		data.FlagShouldAlwaysHaveDebuggingEnabled,
-	)
-	flag := flags.MakeFlag()
-	debugFlag := debugFlags.MakeFlag()
-	dataSource := NewSDKDataSource(t, mockld.NewServerSDKDataBuilder().Flag(flag, debugFlag).Build())
-	events := NewSDKEventSink(t)
+func (c CommonEventTests) EventContexts(t *ldtest.T) {
+	debuggedFlagKey := "debugged-flag"
+	data := c.makeSDKDataWithDebuggedFlag(debuggedFlagKey)
+	dataSource := NewSDKDataSource(t, data)
 
 	for _, p := range makeEventContextTestParams() {
 		t.Run(p.name, func(t *ldtest.T) {
 			contexts := p.contextFactory("doServerSideEventContextTests")
+			events := NewSDKEventSink(t)
 			client := NewSDKClient(t, WithEventsConfig(p.eventsConfig), dataSource, events)
+
+			c.discardIdentifyEventIfClientSide(t, client, events) // client-side SDKs always send an initial identify
+
+			maybeWithIndexEvent := func(matchers ...m.Matcher) []m.Matcher {
+				// Server-side SDKs send an index event for each never-before-seen user. Client-side SDKs do not.
+				if c.isClientSide {
+					return matchers
+				}
+				return append([]m.Matcher{IsIndexEvent()}, matchers...)
+			}
 
 			t.Run("debug event", func(t *ldtest.T) {
 				context := contexts.NextUniqueContext()
 				client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
-					FlagKey:      debugFlag.Key,
+					FlagKey:      debuggedFlagKey,
 					Context:      o.Some(context),
 					ValueType:    servicedef.ValueTypeAny,
-					DefaultValue: defaultValue,
+					DefaultValue: ldvalue.String("default"),
 				})
 				client.FlushEvents(t)
 
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 				m.In(t).Assert(payload, m.ItemsInAnyOrder(
-					IsIndexEvent(),
-					m.AllOf(
-						IsDebugEvent(),
-						HasContextObjectWithMatchingKeys(context),
-						m.JSONProperty("context").Should(p.outputMatcher),
-					),
-					IsSummaryEvent(),
+					maybeWithIndexEvent(
+						m.AllOf(
+							IsDebugEvent(),
+							HasContextObjectWithMatchingKeys(context),
+							m.JSONProperty("context").Should(p.outputMatcher),
+						),
+						IsSummaryEvent(),
+					)...,
 				))
 			})
 
 			t.Run("identify event", func(t *ldtest.T) {
 				context := contexts.NextUniqueContext()
 				client.SendIdentifyEvent(t, context)
-				client.FlushEvents(t)
 
+				client.FlushEvents(t)
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 				m.In(t).Assert(payload, m.Items(
 					m.AllOf(
@@ -221,21 +222,51 @@ func doServerSideEventContextTests(t *ldtest.T) {
 				))
 			})
 
-			t.Run("index event", func(t *ldtest.T) {
-				context := contexts.NextUniqueContext()
-				basicEvaluateFlag(t, client, "arbitrary-flag-key", context, ldvalue.Null())
-				client.FlushEvents(t)
+			if !c.isClientSide {
+				t.Run("index event", func(t *ldtest.T) {
+					// Doing an evaluation for a never-before-seen user will generate an index event. We don't
+					// care about the evaluation result or the summary data, we're just looking at the user
+					// properties in the index event itself.
+					context := contexts.NextUniqueContext()
+					basicEvaluateFlag(t, client, "arbitrary-flag-key", context, ldvalue.Null())
+					client.FlushEvents(t)
 
-				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-				m.In(t).Assert(payload, m.ItemsInAnyOrder(
-					m.AllOf(
-						IsIndexEvent(),
-						HasContextObjectWithMatchingKeys(context),
-						m.JSONProperty("context").Should(p.outputMatcher),
-					),
-					IsSummaryEvent(),
-				))
-			})
+					payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+					m.In(t).Assert(payload, m.ItemsInAnyOrder(
+						m.AllOf(
+							IsIndexEvent(),
+							HasContextObjectWithMatchingKeys(context),
+							m.JSONProperty("context").Should(p.outputMatcher),
+						),
+						IsSummaryEvent(),
+					))
+				})
+			}
 		})
 	}
+}
+
+func (c CommonEventTests) makeSDKDataWithDebuggedFlag(debuggedFlagKey string) mockld.SDKData {
+	// This sets up the SDK data so that evaluating this flags will produce a debug event.
+	// The flag variation/value is irrelevant.
+	flagValue := ldvalue.String("value")
+
+	if c.isClientSide {
+		return mockld.NewClientSDKDataBuilder().
+			Flag(debuggedFlagKey, mockld.ClientSDKFlag{
+				Value:                flagValue,
+				Variation:            o.Some(0),
+				DebugEventsUntilDate: o.Some(ldtime.UnixMillisNow() + 1000000),
+			}).
+			Build()
+	}
+
+	debugFlags := data.NewFlagFactory(
+		"EventContextDebugFlag",
+		data.SingleValueForAllSDKValueTypes(flagValue),
+		data.FlagShouldAlwaysHaveDebuggingEnabled,
+	)
+	flag := debugFlags.MakeFlag()
+	flag.Key = debuggedFlagKey
+	return mockld.NewServerSDKDataBuilder().Flag(flag).Build()
 }

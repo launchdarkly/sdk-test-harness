@@ -225,7 +225,7 @@ func NewClientSDKDataBuilder() *ClientSDKDataBuilder {
 func (b *ClientSDKDataBuilder) Build() ClientSDKData {
 	ret := make(ClientSDKData)
 	for k, v := range b.flags {
-		b.flags[k] = v
+		ret[k] = v
 	}
 	return ret
 }
