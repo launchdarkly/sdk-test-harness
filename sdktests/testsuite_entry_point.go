@@ -82,6 +82,7 @@ func doAllServerSideTests(t *ldtest.T) {
 func doAllClientSideTests(t *ldtest.T) {
 	t.Run("evaluation", doClientSideEvalTests)
 	t.Run("events", doClientSideEventTests)
+	t.Run("tags", doClientSideTagsTests)
 }
 
 func allImportantServerSideCapabilities() framework.Capabilities {
