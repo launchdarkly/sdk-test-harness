@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
@@ -73,14 +74,16 @@ func (c CommonEventTests) UniquePayloadIDs(t *ldtest.T) {
 		client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 
 		numPayloads := 3
+		requests := make([]harness.IncomingRequestInfo, 0, numPayloads)
+
 		for i := 0; i < numPayloads; i++ {
 			client.SendIdentifyEvent(t, c.contextFactory.NextUniqueContext())
 			client.FlushEvents(t)
+			requests = append(requests, events.Endpoint().RequireConnection(t, time.Second))
 		}
 
 		seenIDs := make(map[string]bool)
-		for i := 0; i < numPayloads; i++ {
-			request := events.Endpoint().RequireConnection(t, time.Second)
+		for _, request := range requests {
 			id := request.Headers.Get("X-LaunchDarkly-Payload-Id")
 			m.In(t).For("payload ID").Assert(id, m.Not(m.Equal("")))
 			if seenIDs[id] {
