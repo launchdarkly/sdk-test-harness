@@ -42,6 +42,11 @@ func doServerSideIdentifyEventTests(t *ldtest.T) {
 		IdentifyEvents(t)
 }
 
+func doServerSideCustomEventTests(t *ldtest.T) {
+	NewServerSideEventTests("doServerSideCustomEventTests").
+		CustomEvents(t)
+}
+
 func doServerSideEventBufferTests(t *ldtest.T) {
 	NewServerSideEventTests("doServerSideEventCapacityTests").
 		BufferBehavior(t)
