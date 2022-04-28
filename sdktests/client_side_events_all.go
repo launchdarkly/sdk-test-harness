@@ -10,6 +10,7 @@ import (
 
 func doClientSideEventTests(t *ldtest.T) {
 	t.Run("requests", doClientSideEventRequestTests)
+	t.Run("experimentation", doClientSideExperimentationEventTests)
 	t.Run("identify events", doClientSideIdentifyEventTests)
 	t.Run("custom events", doClientSideCustomEventTests)
 	t.Run("context properties", doClientSideEventContextTests)
