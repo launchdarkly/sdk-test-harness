@@ -70,7 +70,6 @@ func RunSDKTestSuite(
 }
 
 func doAllServerSideTests(t *ldtest.T) {
-	t.Run("data store", doServerSideDataStoreTests)
 	t.Run("evaluation", doServerSideEvalTests)
 	t.Run("events", doServerSideEventTests)
 	t.Run("streaming", doServerSideStreamTests)
@@ -82,6 +81,7 @@ func doAllServerSideTests(t *ldtest.T) {
 func doAllClientSideTests(t *ldtest.T) {
 	t.Run("evaluation", doClientSideEvalTests)
 	t.Run("events", doClientSideEventTests)
+	t.Run("streaming", doClientSideStreamTests)
 	t.Run("tags", doClientSideTagsTests)
 }
 

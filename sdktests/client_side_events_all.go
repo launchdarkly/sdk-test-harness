@@ -23,7 +23,7 @@ func doClientSideEventRequestTests(t *ldtest.T) {
 	sdkKind := requireContext(t).sdkKind
 	envIDOrMobileKey := "my-credential"
 
-	eventTests := NewClientSideEventTests("doClientSideEventRequestTests.MethodAndHeaders",
+	eventTests := NewCommonEventTests(t, "doClientSideEventRequestTests",
 		WithCredential(envIDOrMobileKey))
 
 	authHeaderMatcher := Header("Authorization").Should(m.Equal(
@@ -46,31 +46,31 @@ func doClientSideEventRequestTests(t *ldtest.T) {
 }
 
 func doClientSideIdentifyEventTests(t *ldtest.T) {
-	NewClientSideEventTests("doClientSideIdentifyEventTests").
+	NewCommonEventTests(t, "doClientSideIdentifyEventTests").
 		IdentifyEvents(t)
 }
 
 func doClientSideCustomEventTests(t *ldtest.T) {
-	NewClientSideEventTests("doClientSideCustomEventTests").
+	NewCommonEventTests(t, "doClientSideCustomEventTests").
 		CustomEvents(t)
 }
 
 func doClientSideAliasEventTests(t *ldtest.T) {
-	NewClientSideEventTests("doClientSideAliasEventTests").
+	NewCommonEventTests(t, "doClientSideAliasEventTests").
 		AliasEvents(t)
 }
 
 func doClientSideEventUserTests(t *ldtest.T) {
-	NewClientSideEventTests("doClientSideEventUserTests").
+	NewCommonEventTests(t, "doClientSideEventUserTests").
 		EventUsers(t)
 }
 
 func doClientSideEventBufferTests(t *ldtest.T) {
-	NewClientSideEventTests("doClientSideEventBufferTests").
+	NewCommonEventTests(t, "doClientSideEventBufferTests").
 		BufferBehavior(t)
 }
 
 func doClientSideEventDisableTests(t *ldtest.T) {
-	NewClientSideEventTests("doClientSideEventDisableTests").
+	NewCommonEventTests(t, "doClientSideEventDisableTests").
 		DisablingEvents(t)
 }

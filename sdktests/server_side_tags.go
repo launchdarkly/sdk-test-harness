@@ -5,5 +5,5 @@ import (
 )
 
 func doServerSideTagsTests(t *ldtest.T) {
-	NewServerSideTagsTests("doServerSideTagsTests").Run(t)
+	NewCommonTagsTests(t, "doServerSideTagsTests").Run(t)
 }

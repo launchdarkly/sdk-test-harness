@@ -13,6 +13,10 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const errClientSideStreamCanOnlyUseFlags = `A client-side test attempted to reference a namespace other than` +
+	` "flags" in the mock streaming service.` +
+	` This is a test logic error, since client-side streams have nowhere to put any data other than flag data.`
+
 type eventSourceDebugLogger struct {
 	logger framework.Logger
 }
@@ -26,12 +30,14 @@ func (l eventSourceDebugLogger) Printf(fmt string, args ...interface{}) {
 }
 
 type StreamingService struct {
-	sdkKind     SDKKind
-	initialData SDKData
-	streams     *eventsource.Server
-	handler     http.Handler
-	debugLogger framework.Logger
-	lock        sync.RWMutex
+	sdkKind      SDKKind
+	initialData  SDKData
+	streams      *eventsource.Server
+	queuedEvents []eventsource.Event
+	started      bool
+	handler      http.Handler
+	debugLogger  framework.Logger
+	lock         sync.RWMutex
 }
 
 type eventImpl struct {
@@ -110,7 +116,7 @@ func (s *StreamingService) makePutEvent() eventsource.Event {
 		return nil
 	}
 	var eventData interface{} = json.RawMessage(data)
-	if s.sdkKind == ServerSideSDK {
+	if s.sdkKind.IsServerSide() {
 		// the schema of this message is slightly different for server-side vs. client-side
 		eventData = map[string]interface{}{
 			"data": eventData,
@@ -123,29 +129,66 @@ func (s *StreamingService) makePutEvent() eventsource.Event {
 	}
 }
 
+// Sends on SSE event to all clients that are currently connected to the stream-- or, if no client
+// has connected yet, queues the event so that it will be sent (after the initial data) to the
+// first client that connects. (The latter is necessary to avoid race conditions, since even after
+// a connection is received on the stream endpoint, it is hard for the test logic to know when the
+// HTTP handler has actually created a stream subscription for that connection. If we called
+// the eventsource Publish method before a subscription existed, the event would be lost.)
 func (s *StreamingService) PushEvent(eventName string, eventData interface{}) {
 	event := eventImpl{
 		name: eventName,
 		data: eventData,
 	}
-	s.logEvent(event)
-	s.streams.Publish([]string{allDataChannel}, event)
+
+	s.lock.Lock()
+	alreadyStarted := s.started
+	if !alreadyStarted {
+		s.queuedEvents = append(s.queuedEvents, event)
+	}
+	s.lock.Unlock()
+
+	if alreadyStarted {
+		s.logEvent(event)
+		s.streams.Publish([]string{allDataChannel}, event)
+	} else {
+		s.debugLogger.Printf("Will send %q event after connection has started", eventName)
+	}
 }
 
 func (s *StreamingService) PushUpdate(namespace, key string, data json.RawMessage) {
-	s.PushEvent("patch",
-		map[string]interface{}{
+	var eventData interface{}
+	if s.sdkKind.IsServerSide() {
+		eventData = map[string]interface{}{
 			"path": fmt.Sprintf("/%s/%s", namespace, key),
 			"data": data,
-		})
+		}
+	} else {
+		if namespace != "flags" {
+			panic(errClientSideStreamCanOnlyUseFlags)
+		}
+		eventData = data
+	}
+	s.PushEvent("patch", eventData)
 }
 
 func (s *StreamingService) PushDelete(namespace, key string, version int) {
-	s.PushEvent("delete",
-		map[string]interface{}{
+	var eventData interface{}
+	if s.sdkKind.IsServerSide() {
+		eventData = map[string]interface{}{
 			"path":    fmt.Sprintf("/%s/%s", namespace, key),
 			"version": version,
-		})
+		}
+	} else {
+		if namespace != "flags" {
+			panic(errClientSideStreamCanOnlyUseFlags)
+		}
+		eventData = map[string]interface{}{
+			"key":     key,
+			"version": version,
+		}
+	}
+	s.PushEvent("delete", eventData)
 }
 
 func (s *StreamingService) Replay(channel, id string) chan eventsource.Event {
@@ -154,12 +197,27 @@ func (s *StreamingService) Replay(channel, id string) chan eventsource.Event {
 	// The use of a channel here is just part of how the eventsource server API works-- the Replay
 	// method is expected to return a channel, which could be either pre-populated or pushed to
 	// by another goroutine. In this case we're just pre-populating it with the same initial data
-	// that we provide to every incoming connection.
-	eventsCh := make(chan eventsource.Event, 1)
+	// that we provide to every incoming connection, plus any events that were queued by test logic
+	// before the connection actually started.
+
+	s.lock.Lock()
+	queued := s.queuedEvents
+	eventsCh := make(chan eventsource.Event, len(queued)+1)
+	if !s.started {
+		s.started = true
+		s.queuedEvents = nil
+	}
+	s.lock.Unlock()
+
 	if e != nil {
 		s.logEvent(e)
 		eventsCh <- e
 	}
+	for _, qe := range queued {
+		s.logEvent(qe)
+		eventsCh <- qe
+	}
+
 	close(eventsCh)
 	return eventsCh
 }
