@@ -61,7 +61,8 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 			t.Run(flagTestDesc, func(t *ldtest.T) {
 				dataBefore := c.makeSDKDataWithFlag(flagKey, versionBefore, valueBefore)
 
-				client, stream := c.setupClientWithInitialDataAndStream(t, dataBefore)
+				stream, configurers := c.setupDataSources(t, dataBefore)
+				client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 
 				actualValue1 := basicEvaluateFlag(t, client, flagKey, user, defaultValue)
 				m.In(t).Assert(actualValue1, m.JSONEqual(valueBefore))
@@ -159,7 +160,8 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 			version := 100
 			updateData := c.makeFlagData(flagKey, 100, valueAfter)
 
-			client, stream := c.setupClientWithInitialDataAndStream(t, nil)
+			stream, configurers := c.setupDataSources(t, nil)
+			client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 
 			actualValue1 := basicEvaluateFlag(t, client, flagKey, user, defaultValue)
 			m.In(t).Assert(actualValue1, m.JSONEqual(defaultValue))

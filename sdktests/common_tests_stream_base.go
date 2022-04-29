@@ -15,7 +15,8 @@ func NewCommonStreamingTests(t *ldtest.T, testName string, baseSDKConfigurers ..
 	return CommonStreamingTests{newCommonTestsBase(t, testName, baseSDKConfigurers...)}
 }
 
-// Set up an SDK client that has the specified initial data, and a stream that can be used to push updates.
+// Create a stream that can be used to push updates, and return the necessary configuration actions for
+// creating an SDK client.
 //
 // This behavior differs between SDK types as follows:
 //
@@ -27,17 +28,10 @@ func NewCommonStreamingTests(t *ldtest.T, testName string, baseSDKConfigurers ..
 //
 // - JS-based client-side SDKs in streaming mode always connect to the *polling* service first for their
 // initial data, and then connect to the streaming service for updates.
-func (c CommonStreamingTests) setupClientWithInitialDataAndStream(
+func (c CommonStreamingTests) setupDataSources(
 	t *ldtest.T,
 	initialData mockld.SDKData,
-	moreConfigurers ...SDKConfigurer,
-) (*SDKClient, *SDKDataSource) {
-	streamingDataSource, configurers := c.setupDataSources(t, initialData)
-	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
-	return client, streamingDataSource
-}
-
-func (c CommonStreamingTests) setupDataSources(t *ldtest.T, initialData mockld.SDKData) (*SDKDataSource, []SDKConfigurer) {
+) (*SDKDataSource, []SDKConfigurer) {
 	var configurers []SDKConfigurer
 
 	streamingDataSource := NewSDKDataSource(t, initialData, DataSourceOptionStreaming())
