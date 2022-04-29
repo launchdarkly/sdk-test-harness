@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [1.6.1] - 2022-04-29
+### Changed:
+- Tests for application tag behavior now include a non-critical test of the 64-character length limit.
+
+### Fixed:
+- Expectations about the `Authorization` header now allow the optional `api_key` scheme identifier that some SDKs include.
+
 ## [1.6.0] - 2022-04-25
 ### Added:
 - The test harness now supports testing client-side LaunchDarkly SDKs as well as server-side ones. The client-side test suite includes evaluation and event behavior, but is still missing test cases for some areas such as summary events, experimentation evaluations, and streaming updates.

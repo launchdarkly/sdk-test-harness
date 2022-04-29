@@ -7,6 +7,7 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
@@ -15,6 +16,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
+
+const maxTagValueLength = 64
 
 type tagsTestParams struct {
 	description         string
@@ -132,25 +135,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 		}
 	})
 
-	t.Run("disallowed characters", func(t *ldtest.T) {
-		params := []tagsTestParams{}
-		badStrings := c.makeTagStringsWithDisallowedCharacters()
-		for _, badString := range badStrings {
-			params = append(params, tagsTestParams{
-				tags: servicedef.SDKConfigTagsParams{
-					ApplicationID:      o.Some("ok"),
-					ApplicationVersion: o.Some(badString),
-				},
-				expectedHeaderValue: tagNameAppID + "/ok",
-			})
-			params = append(params, tagsTestParams{
-				tags: servicedef.SDKConfigTagsParams{
-					ApplicationID:      o.Some(badString),
-					ApplicationVersion: o.Some("ok"),
-				},
-				expectedHeaderValue: tagNameAppVersion + "/ok",
-			})
-		}
+	runPermutations := func(t *ldtest.T, params []tagsTestParams) {
 		for _, p := range params {
 			// We're not using t.Run to make a subtest here because there would be so many. We'll
 			// just print details of any failures we see.
@@ -171,6 +156,61 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 			}
 			_ = client.Close()
 		}
+	}
+
+	t.Run("disallowed characters", func(t *ldtest.T) {
+		params := []tagsTestParams{}
+		badStrings := c.makeTagStringsWithDisallowedCharacters()
+		for _, badString := range badStrings {
+			params = append(params, tagsTestParams{
+				tags: servicedef.SDKConfigTagsParams{
+					ApplicationID:      o.Some("ok"),
+					ApplicationVersion: o.Some(badString),
+				},
+				expectedHeaderValue: tagNameAppID + "/ok",
+			})
+			params = append(params, tagsTestParams{
+				tags: servicedef.SDKConfigTagsParams{
+					ApplicationID:      o.Some(badString),
+					ApplicationVersion: o.Some("ok"),
+				},
+				expectedHeaderValue: tagNameAppVersion + "/ok",
+			})
+		}
+		runPermutations(t, params)
+	})
+
+	t.Run("length limit", func(t *ldtest.T) {
+		t.NonCritical("not all SDKs have tag length validation yet")
+
+		makeStringOfLength := func(n int) string {
+			// makes nice strings that look like "12345678901234" etc. so it's easier to see when one is longer than another
+			b := make([]byte, n, n)
+			for i := 0; i < n; i++ {
+				b[i] = byte('0' + ((i + 1) % 10))
+			}
+			return string(b)
+		}
+
+		goodString := makeStringOfLength(maxTagValueLength)
+		badString := makeStringOfLength(maxTagValueLength + 1)
+		params := []tagsTestParams{
+			{
+				tags: servicedef.SDKConfigTagsParams{
+					ApplicationID:      o.Some(goodString),
+					ApplicationVersion: o.Some(badString),
+				},
+				expectedHeaderValue: tagNameAppID + "/" + goodString,
+			},
+			{
+				tags: servicedef.SDKConfigTagsParams{
+					ApplicationID:      o.Some(badString),
+					ApplicationVersion: o.Some(goodString),
+				},
+				expectedHeaderValue: tagNameAppVersion + "/" + goodString,
+			},
+		}
+		runPermutations(t, params)
 	})
 }
 
@@ -181,7 +221,10 @@ func (c CommonTagsTests) makeValidTagsTestParams() []tagsTestParams {
 		// We test both, to ensure that empty strings are correctly ignored in terms of the header.
 		o.None[string](),
 		o.Some(""), // empty string
-		o.Some(allAllowedTagChars),
+	}
+	for i := 0; i < len(allAllowedTagChars); i += maxTagValueLength {
+		j := h.IfElse(i > len(allAllowedTagChars), len(allAllowedTagChars), i)
+		values = append(values, o.Some(allAllowedTagChars[i:j]))
 	}
 	for _, appID := range values {
 		for _, appVersion := range values {

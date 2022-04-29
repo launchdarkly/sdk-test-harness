@@ -58,7 +58,9 @@ func runParameterizedClientSideEvalTests(t *ldtest.T) {
 					// If the client wasn't configured to request evaluation reasons, then there won't be
 					// any reasons that would have had to come from LD - but we can still get an error reason
 					// that is due to invalid SDK parameters.
-					if reason == ldreason.NewEvalReasonError(ldreason.EvalErrorFlagNotFound) {
+					switch reason {
+					case ldreason.NewEvalReasonError(ldreason.EvalErrorFlagNotFound),
+						ldreason.NewEvalReasonError(ldreason.EvalErrorWrongType):
 						return reason
 					}
 					return ldreason.EvaluationReason{}

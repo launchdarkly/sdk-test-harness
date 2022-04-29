@@ -25,8 +25,11 @@ func doClientSideEventRequestTests(t *ldtest.T) {
 	eventTests := NewClientSideEventTests("doClientSideEventRequestTests.MethodAndHeaders",
 		WithCredential(envIDOrMobileKey))
 
-	authHeaderMatcher := Header("Authorization").Should(m.Equal(
-		h.IfElse(sdkKind == mockld.MobileSDK, envIDOrMobileKey, "")))
+	authHeaderMatcher := h.IfElse(
+		sdkKind == mockld.MobileSDK,
+		HasAuthorizationHeader(envIDOrMobileKey), // mobile SDKs send Authorization header
+		HasNoAuthorizationHeader(),               // JS-based SDKs do not
+	)
 	eventTests.RequestMethodAndHeaders(t, authHeaderMatcher)
 
 	requestPathMatcher := h.IfElse(
