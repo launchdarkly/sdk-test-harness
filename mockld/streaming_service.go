@@ -129,7 +129,7 @@ func (s *StreamingService) makePutEvent() eventsource.Event {
 	}
 }
 
-// Sends on SSE event to all clients that are currently connected to the stream-- or, if no client
+// Sends an SSE event to all clients that are currently connected to the stream-- or, if no client
 // has connected yet, queues the event so that it will be sent (after the initial data) to the
 // first client that connects. (The latter is necessary to avoid race conditions, since even after
 // a connection is received on the stream endpoint, it is hard for the test logic to know when the
