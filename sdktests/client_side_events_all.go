@@ -26,9 +26,7 @@ func doClientSideEventRequestTests(t *ldtest.T) {
 	eventTests := NewCommonEventTests(t, "doClientSideEventRequestTests",
 		WithCredential(envIDOrMobileKey))
 
-	authHeaderMatcher := Header("Authorization").Should(m.Equal(
-		h.IfElse(sdkKind == mockld.MobileSDK, envIDOrMobileKey, "")))
-	eventTests.RequestMethodAndHeaders(t, authHeaderMatcher)
+	eventTests.RequestMethodAndHeaders(t, envIDOrMobileKey)
 
 	requestPathMatcher := h.IfElse(
 		sdkKind == mockld.JSClientSDK,

@@ -16,7 +16,7 @@ import (
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
 
-func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, headersMatcher m.Matcher) {
+func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, credential string) {
 	t.Run("method and headers", func(t *ldtest.T) {
 		for _, method := range c.availableFlagRequestMethods() {
 			t.Run(string(method), func(t *ldtest.T) {
@@ -29,7 +29,7 @@ func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, headersMatche
 
 				request := dataSource.Endpoint().RequireConnection(t, time.Second)
 				m.In(t).For("request method").Assert(request.Method, m.Equal(string(method)))
-				m.In(t).For("request headers").Assert(request.Headers, headersMatcher)
+				m.In(t).For("request headers").Assert(request.Headers, c.authorizationHeaderMatcher(credential))
 			})
 		}
 	})

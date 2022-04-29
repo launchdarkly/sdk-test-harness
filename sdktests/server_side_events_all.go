@@ -31,8 +31,7 @@ func doServerSideEventRequestTests(t *ldtest.T) {
 			Credential: sdkKey,
 		}))
 
-	eventTests.RequestMethodAndHeaders(t,
-		Header("Authorization").Should(m.Equal(sdkKey)))
+	eventTests.RequestMethodAndHeaders(t, sdkKey)
 
 	eventTests.RequestURLPath(t, m.Equal("/bulk"))
 

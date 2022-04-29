@@ -1,6 +1,7 @@
 package sdktests
 
 import (
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
@@ -45,6 +46,13 @@ func newCommonTestsBase(t *ldtest.T, testName string, baseSDKConfigurers ...SDKC
 
 func (c commonTestsBase) baseSDKConfigurationPlus(configurers ...SDKConfigurer) []SDKConfigurer {
 	return append(c.sdkConfigurers, configurers...)
+}
+
+func (c commonTestsBase) authorizationHeaderMatcher(credential string) m.Matcher {
+	if c.sdkKind == mockld.JSClientSDK {
+		return HasNoAuthorizationHeader()
+	}
+	return HasAuthorizationHeader(credential)
 }
 
 func (c commonTestsBase) availableFlagRequestMethods() []flagRequestMethod {

@@ -20,9 +20,7 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 	streamTests := NewCommonStreamingTests(t, "doClientSideStreamRequestTest",
 		WithCredential(envIDOrMobileKey))
 
-	authHeaderMatcher := Header("Authorization").Should(m.Equal(
-		h.IfElse(sdkKind == mockld.MobileSDK, envIDOrMobileKey, "")))
-	streamTests.RequestMethodAndHeaders(t, authHeaderMatcher)
+	streamTests.RequestMethodAndHeaders(t, envIDOrMobileKey)
 
 	requestPathMatcher := func(method flagRequestMethod) m.Matcher {
 		switch sdkKind {

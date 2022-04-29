@@ -21,8 +21,7 @@ func doServerSideStreamRequestTests(t *ldtest.T) {
 			Credential: sdkKey,
 		}))
 
-	streamTests.RequestMethodAndHeaders(t,
-		Header("Authorization").Should(m.Equal(sdkKey)))
+	streamTests.RequestMethodAndHeaders(t, sdkKey)
 
 	streamTests.RequestURLPath(t, func(flagRequestMethod) m.Matcher {
 		return m.Equal("/all")
