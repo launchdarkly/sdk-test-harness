@@ -1,11 +1,13 @@
 package sdktests
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
 	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
@@ -61,6 +63,48 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 			})
 		}
 	})
+
+	if c.isClientSide {
+		t.Run("query parameters", func(t *ldtest.T) {
+			for _, withReasons := range []o.Maybe[bool]{o.None[bool](), o.Some(false), o.Some(true)} {
+				// The reason we use 3 states here instead of 2 is to verify that the SDK uses a default
+				// of false if we *don't* set the property.
+
+				t.Run(fmt.Sprintf("evaluationReasons set to %s", withReasons), func(t *ldtest.T) {
+					for _, method := range c.availableFlagRequestMethods() {
+						t.Run(string(method), func(t *ldtest.T) {
+							dataSource, configurers := c.setupDataSources(t, nil)
+
+							_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
+								append(configurers,
+									WithClientSideConfig(servicedef.SDKConfigClientSideParams{
+										EvaluationReasons: withReasons,
+									}),
+									c.withFlagRequestMethod(method),
+								)...)...)
+
+							request := dataSource.Endpoint().RequireConnection(t, time.Second)
+
+							var queryMatcher m.Matcher
+							if withReasons.Value() {
+								queryMatcher = m.MapOf(
+									m.KV("withReasons", m.Items(m.Equal("true"))),
+								)
+							} else {
+								queryMatcher = m.AnyOf(
+									m.MapOf(
+										m.KV("withReasons", m.Items(m.Equal("false"))),
+									),
+									m.MapOf(),
+								)
+							}
+							m.In(t).For("query string").Assert(request.URL.Query(), queryMatcher)
+						})
+					}
+				})
+			}
+		})
+	}
 }
 
 func (c CommonStreamingTests) RequestUserProperties(t *ldtest.T) {
