@@ -8,6 +8,8 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,8 +24,7 @@ func doServerSideStreamRequestTests(t *ldtest.T) {
 
 		request := dataSource.Endpoint().RequireConnection(t, time.Second)
 
-		assert.Equal(t, sdkKey, request.Headers.Get("Authorization"))
-		assert.NotEqual(t, sdkKey, request.Headers.Get("User-Agent"))
+		m.In(t).For("request headers").Assert(request.Headers, HasAuthorizationHeader(sdkKey))
 	})
 
 	t.Run("URL path is correct when base URI has a trailing slash", func(t *ldtest.T) {

@@ -72,6 +72,24 @@ func EvalAllFlagsValueForKeyShouldEqual(key string, value ldvalue.Value) m.Match
 	return EvalAllFlagsStateMap().Should(m.ValueForKey(key).Should(m.JSONEqual(value)))
 }
 
+// HasAuthorizationHeader is a matcher for an http.Header map that verifies that the Authorization
+// header is present and contains the specified key. Some SDKs send just the raw key, while others
+// prefix it with an "api_key" scheme identifier; the latter is more technically correct, but we
+// need to allow both since LD allows both.
+func HasAuthorizationHeader(authKey string) m.Matcher {
+	return Header("Authorization").Should(
+		m.AnyOf(
+			m.Equal(authKey),
+			m.Equal("api_key "+authKey),
+		))
+}
+
+func HasNoAuthorizationHeader() m.Matcher {
+	return Header("Authorization").Should(m.Equal(""))
+}
+
+// Header allows matchers to be applied to a specific named header from an http.Header map. It
+// assumes that there is just one value for that name (i.e. it calls Header.Get()).
 func Header(name string) m.MatcherTransform {
 	return m.Transform(
 		fmt.Sprintf("header %q", name),
