@@ -13,6 +13,16 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const (
+	StreamingPathServerSide      = "/all"
+	StreamingPathMobileGet       = "/meval/{user}"
+	StreamingPathMobileReport    = "/meval"
+	StreamingPathJSClientGet     = "/eval/{env}/{user}"
+	StreamingPathJSClientReport  = "/eval/{env}"
+	StreamingPathUserBase64Param = "{user}"
+	StreamingPathEnvIDParam      = "{env}"
+)
+
 const errClientSideStreamCanOnlyUseFlags = `A client-side test attempted to reference a namespace other than` +
 	` "flags" in the mock streaming service.` +
 	` This is a test logic error, since client-side streams have nowhere to put any data other than flag data.`
@@ -69,13 +79,13 @@ func NewStreamingService(
 	router := mux.NewRouter()
 	switch sdkKind {
 	case ServerSideSDK:
-		router.HandleFunc("/all", streamHandler).Methods("GET")
+		router.HandleFunc(StreamingPathServerSide, streamHandler).Methods("GET")
 	case MobileSDK:
-		router.HandleFunc("/meval/{user}", streamHandler).Methods("GET")
-		router.HandleFunc("/meval", streamHandler).Methods("REPORT")
+		router.HandleFunc(StreamingPathMobileGet, streamHandler).Methods("GET")
+		router.HandleFunc(StreamingPathMobileReport, streamHandler).Methods("REPORT")
 	case JSClientSDK:
-		router.HandleFunc("/eval/{env}/{user}", streamHandler).Methods("GET")
-		router.HandleFunc("/eval/{env}", streamHandler).Methods("REPORT")
+		router.HandleFunc(StreamingPathJSClientGet, streamHandler).Methods("GET")
+		router.HandleFunc(StreamingPathJSClientReport, streamHandler).Methods("REPORT")
 	}
 	s.handler = router
 

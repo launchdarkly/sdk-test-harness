@@ -53,6 +53,14 @@ func WithEventsConfig(eventsConfig servicedef.SDKConfigEventParams) SDKConfigure
 	})
 }
 
+// WithPollingConfig is used with StartSDKClient to specify a non-default polling configuration.
+func WithPollingConfig(pollingConfig servicedef.SDKConfigPollingParams) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		configOut.Polling = o.Some(pollingConfig)
+		return nil
+	})
+}
+
 // WithServiceEndpointsConfig is used with StartSDKClient to specify non-default service endpoints.
 // This will only work if the test service has the "service-endpoints" capability.
 func WithServiceEndpointsConfig(endpointsConfig servicedef.SDKConfigServiceEndpointsParams) SDKConfigurer {

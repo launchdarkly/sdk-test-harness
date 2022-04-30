@@ -14,6 +14,7 @@ import (
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
+	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
 
@@ -153,6 +154,46 @@ func JSONPropertyKeysCanOnlyBe(keys ...string) m.Matcher {
 
 func JSONPropertyNullOrAbsent(name string) m.Matcher {
 	return m.JSONOptProperty(name).Should(m.BeNil())
+}
+
+func JSONMatchesUser(user lduser.User) m.Matcher {
+	var ms []m.Matcher
+	keys := make([]string, 0)
+	private := make([]string, 0)
+	for _, attr := range []lduser.UserAttribute{
+		lduser.KeyAttribute, lduser.NameAttribute, lduser.FirstNameAttribute, lduser.LastNameAttribute,
+		lduser.EmailAttribute, lduser.CountryAttribute, lduser.IPAttribute, lduser.AvatarAttribute,
+		lduser.AnonymousAttribute, lduser.SecondaryKeyAttribute,
+	} {
+		keys = append(keys, string(attr))
+		if value := user.GetAttribute(attr); value.IsDefined() {
+			ms = append(ms, m.JSONProperty(string(attr)).Should(m.JSONEqual(value)))
+		} else {
+			ms = append(ms, JSONPropertyNullOrAbsent(string(attr)))
+		}
+		if user.IsPrivateAttribute(attr) {
+			private = append(private, string(attr))
+		}
+	}
+	keys = append(keys, "custom", "privateAttributeNames")
+	custom := user.GetAllCustomMap().AsMap()
+	if len(custom) == 0 {
+		ms = append(ms, m.JSONOptProperty("custom").Should(m.AnyOf(m.BeNil(), m.JSONStrEqual("{}"))))
+	} else {
+		ms = append(ms, m.JSONProperty("custom").Should(m.JSONStrEqual(jsonhelpers.ToJSONString(custom))))
+	}
+	if len(private) == 0 {
+		ms = append(ms, m.JSONOptProperty("privateAttributeNames").Should(m.AnyOf(m.BeNil(), m.JSONStrEqual("[]"))))
+	} else {
+		var nameMatchers []m.Matcher
+		for _, p := range private {
+			nameMatchers = append(nameMatchers, m.Equal(p))
+		}
+		ms = append(ms, m.JSONProperty("privateAttributeNames").Should(
+			m.JSONArray().Should(m.ItemsInAnyOrder(nameMatchers...))))
+	}
+	ms = append(ms, JSONPropertyKeysCanOnlyBe(keys...))
+	return m.AllOf(ms...)
 }
 
 func SortedStrings() m.MatcherTransform {
