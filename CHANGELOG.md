@@ -2,6 +2,10 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [1.6.2] - 2022-04-29
+### Fixed:
+- Fixed client-side SDK test expectations for "wrong type" errors.
+
 ## [1.6.1] - 2022-04-29
 ### Changed:
 - Tests for application tag behavior now include a non-critical test of the 64-character length limit.
