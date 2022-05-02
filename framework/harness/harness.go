@@ -3,13 +3,23 @@ package harness
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"os"
+	"regexp"
 	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/framework"
 )
 
 const httpListenerTimeout = time.Second * 10
+
+var excludeHTTPServerLogPatterns = []*regexp.Regexp{ //nolint:gochecknoglobals
+	// httphelpers.BrokenConnectionHandler may be used by tests to force a connection failure on an HTTP
+	// request. The Go HTTP framework provides no way to do this other than by triggering a panic, which
+	// will be caught and logged by the http.Server; we don't want such logging to appear in test output.
+	regexp.MustCompile("panic.*httphelpers.BrokenConnectionHandler"),
+}
 
 // TestHarness is the main component that manages communication with test services.
 //
@@ -108,6 +118,12 @@ func startServer(port int, handler http.Handler) error {
 			}
 			handler.ServeHTTP(w, r)
 		}),
+		// Provide a custom error logger so we can filter out some irrelevant output from the http.Server,
+		// while still letting it log any other unusual conditions that might be related to a test failure.
+		// Note that it is OK to filter messages with a custom Writer in this way because log.Printf and
+		// log.Println always make one individual Write call for each log item-- messages aren't batched.
+		ErrorLog: log.New(newFilteredWriter(os.Stderr, excludeHTTPServerLogPatterns),
+			"TestHarnessHTTPServer: ", log.LstdFlags),
 	}
 	go func() {
 		if err := server.ListenAndServe(); err != nil {
