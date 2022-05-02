@@ -25,7 +25,7 @@ func TestPollingServiceServerSide(t *testing.T) {
 		EmptyServerSDKData(),
 		NewServerSDKDataBuilder().RawFlag("flag1", json.RawMessage(`{"key": "flag1"}`)).Build(),
 		"GET",
-		"/sdk/flags/latest-all",
+		"/sdk/latest-all",
 	)
 }
 
@@ -55,7 +55,7 @@ func TestPollingServiceJSClient(t *testing.T) {
 				EmptyClientSDKData(),
 				NewClientSDKDataBuilder().FlagWithValue("flag1", 1, ldvalue.String("yes"), 0).Build(),
 				method,
-				h.IfElse(useReport, "/sdk/evalx/fakeid/users", "/sdk/evalx/fakeid/users/fakeuserdata"),
+				h.IfElse(useReport, "/sdk/evalx/fakeid/user", "/sdk/evalx/fakeid/users/fakeuserdata"),
 			)
 		})
 	}

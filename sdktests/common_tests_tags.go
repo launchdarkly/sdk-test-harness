@@ -4,7 +4,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
@@ -27,38 +26,11 @@ type tagsTestParams struct {
 
 // CommonTagsTests groups together event-related test methods that are shared between server-side and client-side.
 type CommonTagsTests struct {
-	isClientSide   bool
-	sdkConfigurers []SDKConfigurer
-	contextFactory *data.ContextFactory
+	commonTestsBase
 }
 
-func NewClientSideTagsTests(testName string, baseSDKConfigurers ...SDKConfigurer) CommonTagsTests {
-	contextFactory := data.NewContextFactory(testName)
-	return CommonTagsTests{
-		isClientSide: true,
-		sdkConfigurers: append(
-			[]SDKConfigurer{
-				WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-					InitialContext: contextFactory.NextUniqueContext(),
-				}),
-			},
-			baseSDKConfigurers...,
-		),
-		contextFactory: contextFactory,
-	}
-}
-
-func NewServerSideTagsTests(testName string, baseSDKConfigurers ...SDKConfigurer) CommonTagsTests {
-	contextFactory := data.NewContextFactory(testName)
-	return CommonTagsTests{
-		isClientSide:   false,
-		sdkConfigurers: append([]SDKConfigurer(nil), baseSDKConfigurers...),
-		contextFactory: contextFactory,
-	}
-}
-
-func (c CommonTagsTests) baseSDKConfigurationPlus(configurers ...SDKConfigurer) []SDKConfigurer {
-	return append(c.sdkConfigurers, configurers...)
+func NewCommonTagsTests(t *ldtest.T, testName string, baseSDKConfigurers ...SDKConfigurer) CommonTagsTests {
+	return CommonTagsTests{newCommonTestsBase(t, testName, baseSDKConfigurers...)}
 }
 
 func (c CommonTagsTests) Run(t *ldtest.T) {

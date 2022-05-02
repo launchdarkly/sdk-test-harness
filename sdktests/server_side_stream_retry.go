@@ -24,7 +24,7 @@ const briefDelay ldtime.UnixMillisecondTime = 1
 func baseStreamConfig(endpoint *harness.MockEndpoint) servicedef.SDKConfigStreamingParams {
 	return servicedef.SDKConfigStreamingParams{
 		BaseURI:             endpoint.BaseURL(),
-		InitialRetryDelayMs: o.Some(briefDelay),
+		InitialRetryDelayMS: o.Some(briefDelay),
 	}
 }
 
@@ -81,7 +81,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		stream := NewSDKDataSource(t, dataV1)
 		client := NewSDKClient(t,
 			WithStreamingConfig(servicedef.SDKConfigStreamingParams{
-				InitialRetryDelayMs: o.Some(ldtime.UnixMillisecondTime(10000)),
+				InitialRetryDelayMS: o.Some(ldtime.UnixMillisecondTime(10000)),
 			}),
 			stream,
 		)

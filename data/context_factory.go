@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 )
 
 var contextRandomizer = rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gochecknoglobals,gosec
@@ -114,6 +115,54 @@ func NewContextFactoriesForSingleAndMultiKind(
 	})...)
 	f2.description = "single kind non-default"
 	f3 := NewMultiContextFactory(prefix, []ldcontext.Kind{"org", "other"}, builderActions...)
+	f3.description = "multi-kind"
+	return []*ContextFactory{f1, f2, f3}
+}
+
+// NewContextFactoriesForExercisingAllAttributes produces a list of ContextFactory instances that use
+// different subsets of the context schema, to verify that context attributes are encoded correctly
+// when they are sent to evaluation endpoints.
+//
+// The returned list will include factories for 1. single-kind Contexts with no attributes other than
+// kind and key, 2. single-kind Contexts with every possible kind of attribute, 3. multi-kind Contexts
+// that combine 1 and 2.
+//
+// Each will have an appropriate Description, so the logic for running a test against each one can look
+// like this:
+//
+//     for _, contexts := range data.NewContextFactoriesForExercisingAllAttributes("NameOfTest") {
+//         t.Run(contexts.Description(), func(t *testing.T) {
+//             context := contexts.NextUniqueContext() // do something with this
+//         })
+//     }
+func NewContextFactoriesForExercisingAllAttributes(
+	prefix string,
+) []*ContextFactory {
+	setAllAttributes := func(b *ldcontext.Builder) {
+		b.Name("a").
+			Secondary("b").
+			Transient(true).
+			SetBool("c", true).
+			SetInt("d", 1).
+			SetFloat64("e", 1.5).
+			SetString("f", "g").
+			SetValue("h", ldvalue.ArrayOf(ldvalue.Int(2))).
+			SetValue("i", ldvalue.ObjectBuild().SetBool("j", true).Build())
+		b.Private("a", "c")
+	}
+
+	f1 := NewContextFactory(prefix)
+	f1.description = "single kind minimal"
+
+	f2 := NewContextFactory(prefix, setAllAttributes)
+	f2.description = "single kind with all attributes"
+
+	f3 := NewMultiContextFactory(prefix, []ldcontext.Kind{"org", "other"},
+		func(b *ldcontext.Builder) {
+			b.Name("x")
+		},
+		setAllAttributes,
+	)
 	f3.description = "multi-kind"
 	return []*ContextFactory{f1, f2, f3}
 }

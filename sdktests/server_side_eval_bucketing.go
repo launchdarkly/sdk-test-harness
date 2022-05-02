@@ -386,7 +386,7 @@ func runServerSideEvalBucketingTests(t *ldtest.T) {
 				// test groups ("integer value", etc.") because the logic for *getting* the attribute is always the same
 				// regardless of what the value of the attribute is.
 
-				for _, bucketBy := range []ldattr.Ref{ldattr.NewNameRef("attr1"), ldattr.NewRef("/attr1/subprop")} {
+				for _, bucketBy := range []ldattr.Ref{ldattr.NewLiteralRef("attr1"), ldattr.NewRef("/attr1/subprop")} {
 					desc := h.IfElse(bucketBy.Depth() == 1, "simple attribute name", "complex attribute reference")
 
 					makeContext := func(p bucketingTestParams, shouldMatchRule bool) ldcontext.Context {

@@ -85,7 +85,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 	shouldIgnoreEvent := func(t *ldtest.T, eventName string, eventData json.RawMessage) {
 		dataSource := NewSDKDataSource(t, dataV1)
 		client := NewSDKClient(t, WithStreamingConfig(servicedef.SDKConfigStreamingParams{
-			InitialRetryDelayMs: o.Some(briefDelay), // brief delay so we can easily detect if it reconnects
+			InitialRetryDelayMS: o.Some(briefDelay), // brief delay so we can easily detect if it reconnects
 		}), dataSource)
 
 		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})

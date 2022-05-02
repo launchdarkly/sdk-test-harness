@@ -23,6 +23,14 @@ const (
 	JSClientSDK   SDKKind = "jsclient"
 )
 
+func (k SDKKind) IsServerSide() bool {
+	return k == ServerSideSDK
+}
+
+func (k SDKKind) IsClientSide() bool {
+	return !k.IsServerSide()
+}
+
 type DataItemKind string
 
 type SDKData interface {
@@ -64,6 +72,12 @@ type ClientSDKFlag struct {
 	TrackEvents          bool                                `json:"trackEvents"`
 	TrackReason          bool                                `json:"trackReason"`
 	DebugEventsUntilDate o.Maybe[ldtime.UnixMillisecondTime] `json:"debugEventsUntilDate"`
+}
+
+// ClientSDKFlagWithKey is used only in stream updates, where the key is within the same object.
+type ClientSDKFlagWithKey struct {
+	ClientSDKFlag
+	Key string `json:"key"`
 }
 
 func EmptyServerSDKData() ServerSDKData {

@@ -56,6 +56,12 @@ This means that the SDK supports Big Segments and can be configured with a custo
 
 For tests that involve Big Segments, the test harness will provide parameters in the `bigSegments` property of the configuration object, including a `callbackUri` that points to one of the test harness's callback services (see [Callback endpoints](#callback-endpoints)). The test service should configure the SDK with its own implementation of a Big Segment store, where every method of the store delegates to a corresponding endpoint in the callback service.
 
+#### Capability `"server-side-polling"`
+
+For a server-side SDK, this means that the SDK can be configured to use polling mode instead of streaming mode.
+
+All server-side SDKs do support polling mode, but since it was not included in the original test service specification, it is an opt-in capability to indicate that the test service understands the `polling` configuration options.
+
 #### Capability `"service-endpoints"`
 
 This means that the SDK supports setting the base URIs for the streaming, polling, and events services separately from whether those services are enabled.
@@ -85,11 +91,12 @@ A `POST` request indicates that the test harness wants to start an instance of t
   * `initCanFail` (boolean, optional): If true, the test service should _not_ return an error for client initialization failing in a way that still makes the client instance available (for instance, due to a timeout or a 401 error). See discussion of error handling below.
   * `serviceEndpoints` (object, optional): See notes on the `"service-endpoints"` capability. If this object is present, the test service should use it to set the corresponding service URIs in the SDK.
     * `streaming`, `polling`, `events` (string, optional): Each of these, if set, is the base URI for the corresponding service.
-  * `streaming` (object, optional): Enables streaming mode and provides streaming configuration. Currently the test harness only supports streaming mode, so this will be inferred if it is omitted. Properties are
+  * `streaming` (object, optional): Enables streaming mode and provides streaming configuration. If this is omitted _and_ `polling` is also omitted, then the test service can use streaming as a default; but if `streaming` is omitted and `polling` is provided, then streaming should be disabled. Properties are:
     * `baseUri` (string, optional): The base URI for the streaming service. For contract testing, this will be the URI of a simulated streaming endpoint that the test harness provides. If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.streaming` if any, or if that is not set either, connect to the real LaunchDarkly streaming service.
     * `initialRetryDelayMs` (number, optional): The initial stream retry delay in milliseconds. If omitted, use the SDK's default value.
   * `polling` (object, optional): Enables polling mode and provides polling configuration. Properties are:
     * `baseUri` (string, optional): The base URI for the polling service. For contract testing, this will be the URI of a simulated polling endpoint that the test harness provides. If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.polling` if any, or if that is not set either, connect to the real LaunchDarkly polling service.
+    * `pollIntervalMs` (number, optional): The polling interval in milliseconds. If omitted, use the SDK's default value. For mobile SDKs that are configured with both streaming and polling enabled, this should be interpreted as the _background_ polling interval.
   * `events` (object, optional): Enables events and provides events configuration, or disables events if it is omitted or null. Properties are:
     * `baseUri` (string, optional): The base URI for the events service. For contract testing, this will be the URI of a simulated event-recorder endpoint that the test harness provides.  If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.events` if any, or if that is not set either, connect to the real LaunchDarkly events service.
     * `capacity` (number, optional): If specified and greater than zero, the event buffer capacity should be set to this value.

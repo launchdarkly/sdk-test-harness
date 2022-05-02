@@ -16,7 +16,7 @@ import (
 
 const currentEventSchema = 4
 
-func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, headersMatcher m.Matcher) {
+func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string) {
 	t.Run("method and headers", func(t *ldtest.T) {
 		dataSource := NewSDKDataSource(t, nil)
 		events := NewSDKEventSink(t)
@@ -33,7 +33,7 @@ func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, headersMatcher m.
 			m.AllOf(
 				Header("X-LaunchDarkly-Event-Schema").Should(m.Equal(strconv.Itoa(currentEventSchema))),
 				Header("X-LaunchDarkly-Payload-Id").Should(m.Not(m.Equal(""))),
-				headersMatcher,
+				c.authorizationHeaderMatcher(credential),
 			),
 		)
 	})
