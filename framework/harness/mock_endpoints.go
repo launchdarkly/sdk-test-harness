@@ -1,10 +1,13 @@
 package harness
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -300,8 +303,21 @@ func (ww *wrappedResponseWriter) WriteHeader(status int) {
 
 func (ww *wrappedResponseWriter) Write(data []byte) (int, error) { return ww.w.Write(data) }
 
+// Flush is not a http.ResponseWriter interface method, but is implemented by the real ResponseWriter
+// implementation in http.Server, so we need to be able to delegate to it.
 func (ww *wrappedResponseWriter) Flush() {
 	if f, ok := ww.w.(http.Flusher); ok {
 		f.Flush()
 	}
+}
+
+// Hijack is not a http.ResponseWriter interface method, but is implemented by the real ResponseWriter
+// implementation in http.Server, so we need to be able to delegate to it. If we don't implement this,
+// then the mechanism used by httphelpers.BrokenConnectionHandler to break a connection doesn't work
+// quite right and will cause a panic stacktrace.
+func (ww *wrappedResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if h, ok := ww.w.(http.Hijacker); ok {
+		return h.Hijack()
+	}
+	return nil, nil, errors.New("Hijack was called when the underlying ResponseWriter did not support it")
 }
