@@ -9,6 +9,16 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const (
+	PollingPathServerSide      = "/sdk/latest-all"
+	PollingPathMobileGet       = "/msdk/evalx/users/{user}"
+	PollingPathMobileReport    = "/msdk/evalx/user"
+	PollingPathJSClientGet     = "/sdk/evalx/{env}/users/{user}"
+	PollingPathJSClientReport  = "/sdk/evalx/{env}/user"
+	PollingPathUserBase64Param = "{user}"
+	PollingPathEnvIDParam      = "{env}"
+)
+
 type PollingService struct {
 	sdkKind     SDKKind
 	currentData SDKData
@@ -33,14 +43,14 @@ func NewPollingService(
 	router := mux.NewRouter()
 	switch sdkKind {
 	case ServerSideSDK:
-		router.HandleFunc("/sdk/flags/latest-all", pollHandler).Methods("GET")
+		router.HandleFunc(PollingPathServerSide, pollHandler).Methods("GET")
 	case MobileSDK:
-		router.HandleFunc("/msdk/evalx/users/{user}", pollHandler).Methods("GET")
-		router.HandleFunc("/msdk/evalx/user", pollHandler).Methods("REPORT")
+		router.HandleFunc(PollingPathMobileGet, pollHandler).Methods("GET")
+		router.HandleFunc(PollingPathMobileReport, pollHandler).Methods("REPORT")
 		// Note that we only support the "evalx", not the older "eval" which is used only by old unsupported SDKs
 	case JSClientSDK:
-		router.HandleFunc("/sdk/evalx/{env}/users/{user}", pollHandler).Methods("GET")
-		router.HandleFunc("/sdk/evalx/{env}/user", pollHandler).Methods("REPORT")
+		router.HandleFunc(PollingPathJSClientGet, pollHandler).Methods("GET")
+		router.HandleFunc(PollingPathJSClientReport, pollHandler).Methods("REPORT")
 	}
 	p.handler = router
 

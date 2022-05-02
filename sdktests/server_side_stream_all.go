@@ -1,9 +1,11 @@
 package sdktests
 
 import (
-	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
+
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
 
 func doServerSideStreamTests(t *ldtest.T) {
@@ -24,7 +26,7 @@ func doServerSideStreamRequestTests(t *ldtest.T) {
 	streamTests.RequestMethodAndHeaders(t, sdkKey)
 
 	streamTests.RequestURLPath(t, func(flagRequestMethod) m.Matcher {
-		return m.Equal("/all")
+		return m.Equal(mockld.StreamingPathServerSide)
 	})
 }
 

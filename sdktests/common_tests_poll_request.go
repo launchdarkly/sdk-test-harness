@@ -16,16 +16,14 @@ import (
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
 
-func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, credential string) {
+func (c CommonPollingTests) RequestMethodAndHeaders(t *ldtest.T, credential string) {
 	t.Run("method and headers", func(t *ldtest.T) {
 		for _, method := range c.availableFlagRequestMethods() {
 			t.Run(string(method), func(t *ldtest.T) {
-				dataSource, configurers := c.setupDataSources(t, nil)
-
+				dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
 				_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
-					append(configurers,
-						c.withFlagRequestMethod(method),
-					)...)...)
+					c.withFlagRequestMethod(method),
+					dataSource)...)
 
 				request := dataSource.Endpoint().RequireConnection(t, time.Second)
 				m.In(t).For("request method").Assert(request.Method, m.Equal(string(method)))
@@ -35,26 +33,25 @@ func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, credential st
 	})
 }
 
-func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagRequestMethod) m.Matcher) {
+func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagRequestMethod) m.Matcher) {
 	t.Run("URL path is computed correctly", func(t *ldtest.T) {
 		for _, trailingSlash := range []bool{false, true} {
 			t.Run(h.IfElse(trailingSlash, "base URI has a trailing slash", "base URI has no trailing slash"), func(t *ldtest.T) {
 				for _, method := range c.availableFlagRequestMethods() {
 					t.Run(string(method), func(t *ldtest.T) {
-						dataSource, configurers := c.setupDataSources(t, nil)
+						dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
 
-						streamURI := strings.TrimSuffix(dataSource.Endpoint().BaseURL(), "/")
+						pollURI := strings.TrimSuffix(dataSource.Endpoint().BaseURL(), "/")
 						if trailingSlash {
-							streamURI += "/"
+							pollURI += "/"
 						}
 
 						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
-							append(configurers,
-								WithStreamingConfig(servicedef.SDKConfigStreamingParams{
-									BaseURI: streamURI,
-								}),
-								c.withFlagRequestMethod(method),
-							)...)...)
+							c.withFlagRequestMethod(method),
+							WithPollingConfig(servicedef.SDKConfigPollingParams{
+								BaseURI: pollURI,
+							}),
+						)...)
 
 						request := dataSource.Endpoint().RequireConnection(t, time.Second)
 						m.In(t).For("request path").Assert(request.URL.Path, pathMatcher(method))
@@ -73,15 +70,15 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 				t.Run(fmt.Sprintf("evaluationReasons set to %s", withReasons), func(t *ldtest.T) {
 					for _, method := range c.availableFlagRequestMethods() {
 						t.Run(string(method), func(t *ldtest.T) {
-							dataSource, configurers := c.setupDataSources(t, nil)
+							dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
 
 							_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
-								append(configurers,
-									WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-										EvaluationReasons: withReasons,
-									}),
-									c.withFlagRequestMethod(method),
-								)...)...)
+								c.withFlagRequestMethod(method),
+								WithClientSideConfig(servicedef.SDKConfigClientSideParams{
+									EvaluationReasons: withReasons,
+								}),
+								dataSource,
+							)...)
 
 							request := dataSource.Endpoint().RequireConnection(t, time.Second)
 
@@ -107,13 +104,13 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 	}
 }
 
-func (c CommonStreamingTests) RequestUserProperties(t *ldtest.T, getPath string) {
+func (c CommonPollingTests) RequestUserProperties(t *ldtest.T, getPath string) {
 	t.RequireCapability(servicedef.CapabilityClientSide) // server-side SDKs do not send user properties in stream requests
 
 	t.Run("user properties", func(t *ldtest.T) {
 		for _, method := range c.availableFlagRequestMethods() {
 			t.Run(string(method), func(t *ldtest.T) {
-				dataSource, configurers := c.setupDataSources(t, nil)
+				dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
 
 				user := lduser.NewUserBuilder(c.userFactory.NextUniqueUser().GetKey()).
 					Name("a").
@@ -123,12 +120,12 @@ func (c CommonStreamingTests) RequestUserProperties(t *ldtest.T, getPath string)
 				userJSONMatcher := JSONMatchesUser(user)
 
 				_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
-					append(configurers,
-						WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-							InitialUser: user,
-						}),
-						c.withFlagRequestMethod(method),
-					)...)...)
+					WithClientSideConfig(servicedef.SDKConfigClientSideParams{
+						InitialUser: user,
+					}),
+					c.withFlagRequestMethod(method),
+					dataSource,
+				)...)
 
 				request := dataSource.Endpoint().RequireConnection(t, time.Second)
 

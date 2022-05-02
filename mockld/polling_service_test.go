@@ -24,7 +24,7 @@ func TestPollingServiceServerSide(t *testing.T) {
 		EmptyServerSDKData(),
 		NewServerSDKDataBuilder().RawFlag("flag1", json.RawMessage(`{"key": "flag1"}`)).Build(),
 		"GET",
-		"/sdk/flags/latest-all",
+		"/sdk/latest-all",
 	)
 }
 

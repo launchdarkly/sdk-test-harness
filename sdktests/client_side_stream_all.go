@@ -1,6 +1,8 @@
 package sdktests
 
 import (
+	"strings"
+
 	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
@@ -24,26 +26,34 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 
 	requestPathMatcher := func(method flagRequestMethod) m.Matcher {
 		switch sdkKind {
-		case mockld.ServerSideSDK:
-			return m.Equal("/all")
-
 		case mockld.MobileSDK:
+			mobileGetPathPrefix := strings.TrimSuffix(mockld.StreamingPathMobileGet, mockld.StreamingPathUserBase64Param)
 			return h.IfElse(method == flagRequestREPORT,
 				m.Equal("/meval"),
-				m.StringHasPrefix("/meval/")) // details of base64-encoded user data are tested separately
+				m.StringHasPrefix(mobileGetPathPrefix))
+			// details of base64-encoded user data are tested separately
 
 		case mockld.JSClientSDK:
+			jsGetPathPrefix := strings.TrimSuffix(
+				strings.ReplaceAll(mockld.StreamingPathJSClientGet, mockld.StreamingPathEnvIDParam, envIDOrMobileKey),
+				mockld.StreamingPathUserBase64Param, // details of base64-encoded user data are tested separately
+			)
+			jsReportPath := strings.ReplaceAll(mockld.StreamingPathJSClientReport,
+				mockld.StreamingPathEnvIDParam, envIDOrMobileKey)
 			return h.IfElse(method == flagRequestREPORT,
-				m.Equal("/eval/"+envIDOrMobileKey),
-				m.StringHasPrefix("/eval/"+envIDOrMobileKey+"/")) // details of base64-encoded user data are tested separately
+				m.Equal(jsReportPath),
+				m.StringHasPrefix(jsGetPathPrefix))
 
 		default:
-			panic("unknown SDK kind")
+			panic("invalid SDK kind")
 		}
 	}
 	streamTests.RequestURLPath(t, requestPathMatcher)
 
-	streamTests.RequestUserProperties(t)
+	getPath := h.IfElse(sdkKind == mockld.MobileSDK,
+		mockld.StreamingPathMobileGet,
+		strings.ReplaceAll(mockld.StreamingPathJSClientGet, mockld.PollingPathEnvIDParam, envIDOrMobileKey))
+	streamTests.RequestUserProperties(t, getPath)
 }
 
 func doClientSideStreamUpdateTests(t *ldtest.T) {
