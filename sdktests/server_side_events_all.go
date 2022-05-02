@@ -26,12 +26,12 @@ func doServerSideEventTests(t *ldtest.T) {
 func doServerSideEventRequestTests(t *ldtest.T) {
 	sdkKey := "my-sdk-key"
 
-	eventTests := NewServerSideEventTests("doServerSideEventRequestTests",
+	eventTests := NewCommonEventTests(t, "doServerSideEventRequestTests",
 		WithConfig(servicedef.SDKConfigParams{
 			Credential: sdkKey,
 		}))
 
-	eventTests.RequestMethodAndHeaders(t, HasAuthorizationHeader(sdkKey))
+	eventTests.RequestMethodAndHeaders(t, sdkKey)
 
 	eventTests.RequestURLPath(t, m.Equal("/bulk"))
 
@@ -39,31 +39,31 @@ func doServerSideEventRequestTests(t *ldtest.T) {
 }
 
 func doServerSideIdentifyEventTests(t *ldtest.T) {
-	NewServerSideEventTests("doServerSideIdentifyEventTests").
+	NewCommonEventTests(t, "doServerSideIdentifyEventTests").
 		IdentifyEvents(t)
 }
 
 func doServerSideCustomEventTests(t *ldtest.T) {
-	NewServerSideEventTests("doServerSideCustomEventTests").
+	NewCommonEventTests(t, "doServerSideCustomEventTests").
 		CustomEvents(t)
 }
 
 func doServerSideAliasEventTests(t *ldtest.T) {
-	NewServerSideEventTests("doServerSideAliasEventTests").
+	NewCommonEventTests(t, "doServerSideAliasEventTests").
 		AliasEvents(t)
 }
 
 func doServerSideEventUserTests(t *ldtest.T) {
-	NewServerSideEventTests("doServerSideEventUserTests").
+	NewCommonEventTests(t, "doServerSideEventUserTests").
 		EventUsers(t)
 }
 
 func doServerSideEventBufferTests(t *ldtest.T) {
-	NewServerSideEventTests("doServerSideEventCapacityTests").
+	NewCommonEventTests(t, "doServerSideEventCapacityTests").
 		BufferBehavior(t)
 }
 
 func doServerSideEventDisableTest(t *ldtest.T) {
-	NewServerSideEventTests("doServerSideEventDisableTest").
+	NewCommonEventTests(t, "doServerSideEventDisableTest").
 		DisablingEvents(t)
 }

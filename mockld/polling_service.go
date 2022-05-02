@@ -40,7 +40,7 @@ func NewPollingService(
 		// Note that we only support the "evalx", not the older "eval" which is used only by old unsupported SDKs
 	case JSClientSDK:
 		router.HandleFunc("/sdk/evalx/{env}/users/{user}", pollHandler).Methods("GET")
-		router.HandleFunc("/sdk/evalx/{env}/users", pollHandler).Methods("REPORT")
+		router.HandleFunc("/sdk/evalx/{env}/user", pollHandler).Methods("REPORT")
 	}
 	p.handler = router
 

@@ -54,7 +54,7 @@ func TestPollingServiceJSClient(t *testing.T) {
 				EmptyClientSDKData(),
 				NewClientSDKDataBuilder().FlagWithValue("flag1", 1, ldvalue.String("yes"), 0).Build(),
 				method,
-				h.IfElse(useReport, "/sdk/evalx/fakeid/users", "/sdk/evalx/fakeid/users/fakeuserdata"),
+				h.IfElse(useReport, "/sdk/evalx/fakeid/user", "/sdk/evalx/fakeid/users/fakeuserdata"),
 			)
 		})
 	}

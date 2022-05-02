@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
@@ -13,38 +12,11 @@ const defaultEventTimeout = time.Second * 5
 
 // CommonEventTests groups together event-related test methods that are shared between server-side and client-side.
 type CommonEventTests struct {
-	isClientSide   bool
-	sdkConfigurers []SDKConfigurer
-	userFactory    *UserFactory
+	commonTestsBase
 }
 
-func NewClientSideEventTests(testName string, baseSDKConfigurers ...SDKConfigurer) CommonEventTests {
-	userFactory := NewUserFactory(testName)
-	return CommonEventTests{
-		isClientSide: true,
-		sdkConfigurers: append(
-			[]SDKConfigurer{
-				WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-					InitialUser: userFactory.NextUniqueUser(),
-				}),
-			},
-			baseSDKConfigurers...,
-		),
-		userFactory: userFactory,
-	}
-}
-
-func NewServerSideEventTests(testName string, baseSDKConfigurers ...SDKConfigurer) CommonEventTests {
-	userFactory := NewUserFactory(testName)
-	return CommonEventTests{
-		isClientSide:   false,
-		sdkConfigurers: baseSDKConfigurers,
-		userFactory:    userFactory,
-	}
-}
-
-func (c CommonEventTests) baseSDKConfigurationPlus(configurers ...SDKConfigurer) []SDKConfigurer {
-	return append(c.sdkConfigurers, configurers...)
+func NewCommonEventTests(t *ldtest.T, testName string, baseSDKConfigurers ...SDKConfigurer) CommonEventTests {
+	return CommonEventTests{newCommonTestsBase(t, testName, baseSDKConfigurers...)}
 }
 
 func (c CommonEventTests) discardIdentifyEventIfClientSide(t *ldtest.T, client *SDKClient, events *SDKEventSink) {

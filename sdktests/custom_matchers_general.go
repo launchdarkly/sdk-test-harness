@@ -1,6 +1,7 @@
 package sdktests
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"sort"
@@ -18,6 +19,27 @@ import (
 
 // The functions in this file are for convenient use of the matchers API with complex
 // types. For more information, see matchers.Transform.
+
+func Base64DecodedData() m.MatcherTransform {
+	return m.Transform(
+		"base64-decoded data",
+		func(value interface{}) (interface{}, error) {
+			data := value.(string)
+			// Some of our SDKs use base64 with padding, others omit the padding; LD accepts both.
+			// First try decoding without padding.
+			decoded, err := base64.RawURLEncoding.DecodeString(data)
+			if err != nil {
+				// Try decoding with padding.
+				decoded, err = base64.URLEncoding.DecodeString(data)
+				if err == nil {
+					return decoded, nil
+				}
+				return nil, fmt.Errorf("not a valid base64-encoded string (%w)", err)
+			}
+			return decoded, nil
+		}).
+		EnsureInputValueType("")
+}
 
 func EvalResponseValue() m.MatcherTransform {
 	return m.Transform(

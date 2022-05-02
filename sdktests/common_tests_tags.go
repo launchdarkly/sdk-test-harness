@@ -27,38 +27,11 @@ type tagsTestParams struct {
 
 // CommonTagsTests groups together event-related test methods that are shared between server-side and client-side.
 type CommonTagsTests struct {
-	isClientSide   bool
-	sdkConfigurers []SDKConfigurer
-	userFactory    *UserFactory
+	commonTestsBase
 }
 
-func NewClientSideTagsTests(testName string, baseSDKConfigurers ...SDKConfigurer) CommonTagsTests {
-	userFactory := NewUserFactory(testName)
-	return CommonTagsTests{
-		isClientSide: true,
-		sdkConfigurers: append(
-			[]SDKConfigurer{
-				WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-					InitialUser: userFactory.NextUniqueUser(),
-				}),
-			},
-			baseSDKConfigurers...,
-		),
-		userFactory: userFactory,
-	}
-}
-
-func NewServerSideTagsTests(testName string, baseSDKConfigurers ...SDKConfigurer) CommonTagsTests {
-	userFactory := NewUserFactory(testName)
-	return CommonTagsTests{
-		isClientSide:   false,
-		sdkConfigurers: append([]SDKConfigurer(nil), baseSDKConfigurers...),
-		userFactory:    userFactory,
-	}
-}
-
-func (c CommonTagsTests) baseSDKConfigurationPlus(configurers ...SDKConfigurer) []SDKConfigurer {
-	return append(c.sdkConfigurers, configurers...)
+func NewCommonTagsTests(t *ldtest.T, testName string, baseSDKConfigurers ...SDKConfigurer) CommonTagsTests {
+	return CommonTagsTests{newCommonTestsBase(t, testName, baseSDKConfigurers...)}
 }
 
 func (c CommonTagsTests) Run(t *ldtest.T) {
