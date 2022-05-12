@@ -16,6 +16,7 @@ type SDKConfigParams struct {
 	ServiceEndpoints    o.Maybe[SDKConfigServiceEndpointsParams]    `json:"serviceEndpoints,omitempty"`
 	Streaming           o.Maybe[SDKConfigStreamingParams]           `json:"streaming,omitempty"`
 	Polling             o.Maybe[SDKConfigPollingParams]             `json:"polling,omitempty"`
+	ExternalUpdatesOnly bool                                        `json:"externalUpdatesOnly,omitempty"`
 	Events              o.Maybe[SDKConfigEventParams]               `json:"events,omitempty"`
 	PersistentDataStore o.Maybe[SDKConfigPersistentDataStoreParams] `json:"persistentDataStore,omitempty"`
 	BigSegments         o.Maybe[SDKConfigBigSegmentsParams]         `json:"bigSegments,omitempty"`
@@ -57,7 +58,9 @@ type SDKConfigPersistentDataStoreParams struct {
 }
 
 type SDKConfigBigSegmentsParams struct {
-	CallbackURI          string                              `json:"callbackUri"`
+	IntegrationType   string          `json:"integrationType,omitempty"`
+	IntegrationParams json.RawMessage `json:"integrationParams,omitempty"`
+	// IntegrationParams is really SDKConfigRedisDataStoreParams, etc.
 	UserCacheSize        o.Maybe[int]                        `json:"userCacheSize,omitempty"`
 	UserCacheTimeMS      o.Maybe[ldtime.UnixMillisecondTime] `json:"userCacheTimeMs,omitempty"`
 	StatusPollIntervalMS o.Maybe[ldtime.UnixMillisecondTime] `json:"statusPollIntervalMs,omitempty"`
@@ -80,17 +83,21 @@ type SDKConfigDataStoreCallbackParams struct {
 	CallbackURI string `json:"callbackUri"`
 }
 
-type SDKConfigDataStoreRedisParams struct {
+type SDKConfigRedisDataStoreParams struct {
 	RedisURL string `json:"redisUrl"`
 	Prefix   string `json:"prefix"`
 }
 
-type SDKConfigDBDataStoreDynamoParams struct {
+type SDKConfigDynamoDBDataStoreParams struct {
 	Table  string `json:"table"`
 	Prefix string `json:"prefix"`
 }
 
-type SDKConfigDataStoreConsulParams struct {
+type SDKConfigConsulDataStoreParams struct {
 	Address string `json:"address"`
 	Prefix  string `json:"prefix"`
+}
+
+type SDKConfigBigSegmentStoreCallbackParams struct {
+	CallbackURI string `json:"callbackUri"`
 }
