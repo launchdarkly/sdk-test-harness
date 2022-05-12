@@ -1,6 +1,8 @@
 package servicedef
 
 import (
+	"encoding/json"
+
 	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
@@ -48,7 +50,10 @@ type SDKConfigEventParams struct {
 }
 
 type SDKConfigPersistentDataStoreParams struct {
-	CallbackURI string `json:"callbackURI"`
+	IntegrationType   string          `json:"integrationType,omitempty"`
+	IntegrationParams json.RawMessage `json:"integrationParams,omitempty"`
+	// IntegrationParams is really SDKConfigRedisDataStoreParams, etc.
+	CacheTime o.Maybe[ldtime.UnixMillisecondTime] `json:"cacheTimeMs"`
 }
 
 type SDKConfigBigSegmentsParams struct {
@@ -69,4 +74,23 @@ type SDKConfigClientSideParams struct {
 	AutoAliasingOptOut o.Maybe[bool] `json:"autoAliasingOptOut,omitempty"`
 	EvaluationReasons  o.Maybe[bool] `json:"evaluationReasons,omitempty"`
 	UseReport          o.Maybe[bool] `json:"useReport,omitempty"`
+}
+
+type SDKConfigDataStoreCallbackParams struct {
+	CallbackURI string `json:"callbackUri"`
+}
+
+type SDKConfigDataStoreRedisParams struct {
+	RedisURL string `json:"redisUrl"`
+	Prefix   string `json:"prefix"`
+}
+
+type SDKConfigDBDataStoreDynamoParams struct {
+	Table  string `json:"table"`
+	Prefix string `json:"prefix"`
+}
+
+type SDKConfigDataStoreConsulParams struct {
+	Address string `json:"address"`
+	Prefix  string `json:"prefix"`
 }
