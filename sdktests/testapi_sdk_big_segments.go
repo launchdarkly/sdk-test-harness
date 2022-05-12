@@ -57,7 +57,10 @@ func NewBigSegmentStore(t *ldtest.T, initialStatus ldreason.BigSegmentsStatus) *
 // to connect to the appropriate base URI for the big segments test fixture.
 func (b *BigSegmentStore) Configure(config *servicedef.SDKConfigParams) error {
 	newState := config.BigSegments.Value()
-	newState.CallbackURI = b.endpoint.BaseURL()
+	newState.Integration = servicedef.SDKConfigStoreIntegrationParams{
+		Type:    "fixture",
+		Fixture: &servicedef.SDKConfigFixtureParams{URI: b.endpoint.BaseURL()},
+	}
 	config.BigSegments = o.Some(newState)
 	return nil
 }

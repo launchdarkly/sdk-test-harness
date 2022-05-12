@@ -1,8 +1,6 @@
 package servicedef
 
 import (
-	"encoding/json"
-
 	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
@@ -51,16 +49,13 @@ type SDKConfigEventParams struct {
 }
 
 type SDKConfigPersistentDataStoreParams struct {
-	IntegrationType   string          `json:"integrationType,omitempty"`
-	IntegrationParams json.RawMessage `json:"integrationParams,omitempty"`
-	// IntegrationParams is really SDKConfigRedisDataStoreParams, etc.
-	CacheTime o.Maybe[ldtime.UnixMillisecondTime] `json:"cacheTimeMs"`
+	Integration SDKConfigStoreIntegrationParams     `json:"integration"`
+	CacheTime   o.Maybe[ldtime.UnixMillisecondTime] `json:"cacheTimeMs"`
 }
 
 type SDKConfigBigSegmentsParams struct {
-	IntegrationType   string          `json:"integrationType,omitempty"`
-	IntegrationParams json.RawMessage `json:"integrationParams,omitempty"`
-	// IntegrationParams is really SDKConfigRedisDataStoreParams, etc.
+	CallbackURI          string                              `json:"callbackUri"` // deprecated, use "fixture" instead
+	Integration          SDKConfigStoreIntegrationParams     `json:"integration"`
 	UserCacheSize        o.Maybe[int]                        `json:"userCacheSize,omitempty"`
 	UserCacheTimeMS      o.Maybe[ldtime.UnixMillisecondTime] `json:"userCacheTimeMs,omitempty"`
 	StatusPollIntervalMS o.Maybe[ldtime.UnixMillisecondTime] `json:"statusPollIntervalMs,omitempty"`
@@ -79,25 +74,29 @@ type SDKConfigClientSideParams struct {
 	UseReport          o.Maybe[bool] `json:"useReport,omitempty"`
 }
 
-type SDKConfigDataStoreCallbackParams struct {
-	CallbackURI string `json:"callbackUri"`
+type SDKConfigStoreIntegrationParams struct {
+	Type     string                        `json:"type"`
+	Fixture  *SDKConfigFixtureParams       `json:"fixture"`
+	Redis    *SDKConfigRedisStoreParams    `json:"redis"`
+	DynamoDB *SDKConfigDynamoDBStoreParams `json:"dynamoDb"`
+	Consul   *SDKConfigConsulStoreParams   `json:"consul"`
 }
 
-type SDKConfigRedisDataStoreParams struct {
-	RedisURL string `json:"redisUrl"`
-	Prefix   string `json:"prefix"`
+type SDKConfigFixtureParams struct {
+	URI string `json:"uri"`
 }
 
-type SDKConfigDynamoDBDataStoreParams struct {
+type SDKConfigRedisStoreParams struct {
+	URL    string `json:"url"`
+	Prefix string `json:"prefix"`
+}
+
+type SDKConfigDynamoDBStoreParams struct {
 	Table  string `json:"table"`
 	Prefix string `json:"prefix"`
 }
 
-type SDKConfigConsulDataStoreParams struct {
+type SDKConfigConsulStoreParams struct {
 	Address string `json:"address"`
 	Prefix  string `json:"prefix"`
-}
-
-type SDKConfigBigSegmentStoreCallbackParams struct {
-	CallbackURI string `json:"callbackUri"`
 }
