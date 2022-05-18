@@ -64,8 +64,7 @@ type SDKConfigTagsParams struct {
 }
 
 type SDKConfigClientSideParams struct {
-	InitialContext     ldcontext.Context `json:"initialUser"`
-	AutoAliasingOptOut o.Maybe[bool]     `json:"autoAliasingOptOut,omitempty"`
-	EvaluationReasons  o.Maybe[bool]     `json:"evaluationReasons,omitempty"`
-	UseReport          o.Maybe[bool]     `json:"useReport,omitempty"`
+	InitialContext    ldcontext.Context `json:"initialContext"`
+	EvaluationReasons o.Maybe[bool]     `json:"evaluationReasons,omitempty"`
+	UseReport         o.Maybe[bool]     `json:"useReport,omitempty"`
 }
