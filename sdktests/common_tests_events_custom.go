@@ -39,7 +39,7 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 
 				dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
 				events := NewSDKEventSink(t)
-				client := NewSDKClient(t, dataSource, events)
+				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 
 				if c.isClientSide {
 					client.SendIdentifyEvent(t, context)
@@ -57,14 +57,16 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 				client.FlushEvents(t)
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
-				m.In(t).Assert(payload, m.ItemsInAnyOrder(
-					IsIndexEvent(),
-					m.AllOf(
-						JSONPropertyKeysCanOnlyBe(customEventProperties...),
-						IsCustomEvent(),
-						HasContextKeys(context),
-					),
+				expectedEvents := []m.Matcher{}
+				if !c.isClientSide {
+					expectedEvents = append(expectedEvents, IsIndexEvent())
+				}
+				expectedEvents = append(expectedEvents, m.AllOf(
+					JSONPropertyKeysCanOnlyBe(customEventProperties...),
+					IsCustomEvent(),
+					HasContextKeys(context),
 				))
+				m.In(t).Assert(payload, m.ItemsInAnyOrder(expectedEvents...))
 			})
 		}
 	})
@@ -138,8 +140,12 @@ func (c CommonEventTests) customEventsParameterizedTests(t *ldtest.T) {
 			client.SendCustomEvent(t, params)
 			client.FlushEvents(t)
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				IsIndexEvent(), // we don't care about the index event
+
+			expectedEvents := []m.Matcher{}
+			if !c.isClientSide {
+				expectedEvents = append(expectedEvents, IsIndexEvent())
+			}
+			expectedEvents = append(expectedEvents,
 				m.AllOf(
 					IsCustomEventForEventKey(params.EventKey),
 					h.IfElse(params.OmitNullData && params.Data.IsNull(),
@@ -152,7 +158,8 @@ func (c CommonEventTests) customEventsParameterizedTests(t *ldtest.T) {
 						m.JSONProperty("metricValue").Should(m.JSONEqual(params.MetricValue)),
 					),
 				),
-			))
+			)
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(expectedEvents...))
 		})
 	}
 }

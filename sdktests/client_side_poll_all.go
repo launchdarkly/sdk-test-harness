@@ -51,5 +51,5 @@ func doClientSidePollRequestTest(t *ldtest.T) {
 	getPath := h.IfElse(sdkKind == mockld.MobileSDK,
 		mockld.PollingPathMobileGet,
 		strings.ReplaceAll(mockld.PollingPathJSClientGet, mockld.PollingPathEnvIDParam, envIDOrMobileKey))
-	pollTests.RequestUserProperties(t, getPath)
+	pollTests.RequestContextProperties(t, getPath)
 }

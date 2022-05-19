@@ -17,3 +17,11 @@ func SliceContains[V comparable](value V, slice []V) bool {
 	}
 	return false
 }
+
+func TransformSlice[V any, W any](slice []V, fn func(V) W) []W {
+	ret := make([]W, 0, len(slice))
+	for _, element := range slice {
+		ret = append(ret, fn(element))
+	}
+	return ret
+}

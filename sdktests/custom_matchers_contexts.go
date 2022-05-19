@@ -1,0 +1,109 @@
+package sdktests
+
+import (
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
+)
+
+// JSONMatchesContext builds a Matcher to verify that the input JSON is a valid representation of the
+// specified context. This is using the regular context schema (i.e. what would be sent to evaluation
+// endpoints), not the event schema.
+//
+// The matcher should be tolerant of all allowable variants: for instance, it is legal to include
+// `"transient": false` in the representation rather than omitting transient.
+func JSONMatchesContext(context ldcontext.Context) m.Matcher {
+	return jsonMatchesContext(context, false, nil)
+}
+
+// JSONMatchesEventContext builds a Matcher to verify that the input JSON is a valid representation of
+// the specified context within event data. The context should represent the attributes *after* any
+// private attribute redaction; redactedShouldBe specifies what we expect to see in redactedAttributes.
+//
+// The matcher should be tolerant of all allowable variants: for instance, it is legal to include
+// `"transient": false` in the representation rather than omitting transient.
+func JSONMatchesEventContext(context ldcontext.Context, redactedShouldBe []string) m.Matcher {
+	return jsonMatchesContext(context, true, redactedShouldBe)
+}
+
+func jsonMatchesContext(topLevelContext ldcontext.Context, isEventContext bool, redactedShouldBe []string) m.Matcher {
+	matchSingleKind := func(c ldcontext.Context, kindIsKnown bool) m.Matcher {
+		var keys []string
+		var ms []m.Matcher
+		if !kindIsKnown {
+			keys = append(keys, "kind")
+			ms = append(ms, m.JSONProperty("kind").Should(m.Equal(string(c.Kind()))))
+		}
+		keys = append(keys, "key", "transient", "_meta")
+		ms = append(ms, m.JSONProperty("key").Should(m.Equal(c.Key())))
+		if c.Transient() {
+			ms = append(ms, m.JSONProperty("transient").Should(m.Equal(true)))
+		} else {
+			ms = append(ms, JSONPropertyNullOrAbsentOrEqualTo("transient", false))
+		}
+		for _, attr := range c.GetOptionalAttributeNames(nil) {
+			if value := c.GetValue(attr); value.IsDefined() {
+				keys = append(keys, attr)
+				ms = append(ms, m.JSONProperty(attr).Should(m.JSONEqual(value)))
+			}
+		}
+
+		var meta []m.Matcher
+		requireMeta := false
+		if c.Secondary().IsDefined() {
+			meta = append(meta, m.JSONProperty("secondary").Should(m.Equal(c.Secondary().String())))
+			requireMeta = true
+		} else {
+			meta = append(meta, m.JSONOptProperty("secondary").Should(m.BeNil()))
+		}
+		if isEventContext {
+			if len(redactedShouldBe) != 0 {
+				itemMatchers := h.TransformSlice(redactedShouldBe, func(s string) m.Matcher { return m.Equal(s) })
+				meta = append(meta, m.JSONProperty("redactedAttributes").Should(m.ItemsInAnyOrder(itemMatchers...)))
+				requireMeta = true
+			} else {
+				meta = append(meta, JSONPropertyNullOrAbsentOrEqualTo("redactedAttributes", ldvalue.ArrayOf()))
+			}
+		} else {
+			if c.PrivateAttributeCount() != 0 {
+				var pa []m.Matcher
+				for i := 0; i < c.PrivateAttributeCount(); i++ {
+					if attr, ok := c.PrivateAttributeByIndex(i); ok {
+						pa = append(pa, m.Equal(attr.String()))
+					}
+				}
+				meta = append(meta, m.JSONProperty("privateAttributes").Should(m.ItemsInAnyOrder(pa...)))
+				requireMeta = true
+			} else {
+				meta = append(meta, JSONPropertyNullOrAbsentOrEqualTo("privateAttributes", ldvalue.ArrayOf()))
+			}
+		}
+
+		if requireMeta {
+			ms = append(ms, m.JSONProperty("_meta").Should(m.AllOf(meta...)))
+		} else {
+			ms = append(ms, m.JSONOptProperty("_meta").Should(m.AnyOf(m.BeNil(), m.AllOf(meta...))))
+		}
+
+		ms = append(ms, JSONPropertyKeysCanOnlyBe(keys...))
+		return m.AllOf(ms...)
+	}
+
+	if topLevelContext.Multiple() {
+		var ms []m.Matcher
+		keys := make([]string, 0)
+		keys = append(keys, "kind")
+		ms = append(ms, m.JSONProperty("kind").Should(m.Equal("multi")))
+		for i := 0; i < topLevelContext.MultiKindCount(); i++ {
+			if mc, ok := topLevelContext.MultiKindByIndex(i); ok {
+				ms = append(ms, m.JSONProperty(string(mc.Kind())).Should(matchSingleKind(mc, true)))
+				keys = append(keys, string(mc.Kind()))
+			}
+		}
+		ms = append(ms, JSONPropertyKeysCanOnlyBe(keys...))
+		return m.AllOf(ms...)
+	}
+	return matchSingleKind(topLevelContext, false)
+}

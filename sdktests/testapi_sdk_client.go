@@ -2,6 +2,7 @@ package sdktests
 
 import (
 	"errors"
+	"sync/atomic"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
@@ -13,6 +14,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
+
+var currentlyExistingClientInstances int32 //nolint:gochecknoglobals
 
 // SDKConfigurer is an interface for objects that can modify the configuration for StartSDKClient.
 // It is implemented by types such as SDKDataSource.
@@ -107,7 +110,16 @@ type SDKClient struct {
 // The object's lifecycle is tied to the test scope that created it; it will be automatically closed
 // when this test scope exits. It can be reused by subtests until then.
 func NewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) *SDKClient {
+	count := atomic.AddInt32(&currentlyExistingClientInstances, 1)
+	if count == 2 && t.Capabilities().Has(servicedef.CapabilitySingleton) {
+		atomic.AddInt32(&currentlyExistingClientInstances, -1)
+		t.Errorf("Test tried to create an SDK client instance when one already existed, and this SDK is a singleton")
+		t.FailNow()
+	}
 	client, err := TryNewSDKClient(t, configurers...)
+	if err != nil {
+		atomic.AddInt32(&currentlyExistingClientInstances, -1)
+	}
 	require.NoError(t, err)
 	return client
 }
@@ -174,6 +186,7 @@ func validateSDKConfig(config servicedef.SDKConfigParams) error {
 // Close tells the test service to shut down the client instance. Normally this happens automatically at
 // the end of a test.
 func (c *SDKClient) Close() error {
+	atomic.AddInt32(&currentlyExistingClientInstances, -1)
 	return c.sdkClientEntity.Close()
 }
 
