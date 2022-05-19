@@ -78,7 +78,9 @@ func (c CommonEvalParameterizedTestRunner[SDKDataType]) runTestSuite(
 
 	// We can't rely on the test framework's usual auto-closing of the client, because this method could
 	// be called multiple times for a single value of t.
-	defer client.Close()
+	defer func() {
+		_ = client.Close()
+	}()
 
 	if len(suite.Evaluations) == 1 && suite.Evaluations[0].Name == "" {
 		c.runTestEval(t, suite, suite.Evaluations[0], sdkData, client)
