@@ -1,7 +1,7 @@
 package sdktests
 
 import (
-	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	"strings"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
@@ -23,7 +23,8 @@ func JSONMatchesContext(context ldcontext.Context) m.Matcher {
 // private attribute redaction; redactedShouldBe specifies what we expect to see in redactedAttributes.
 //
 // The matcher should be tolerant of all allowable variants: for instance, it is legal to include
-// `"transient": false` in the representation rather than omitting transient.
+// `"transient": false` in the representation rather than omitting transient, and attribute names that
+// appear in redactedAttributes could either use the literal syntax or the slash syntax.
 func JSONMatchesEventContext(context ldcontext.Context, redactedShouldBe []string) m.Matcher {
 	return jsonMatchesContext(context, true, redactedShouldBe)
 }
@@ -60,8 +61,7 @@ func jsonMatchesContext(topLevelContext ldcontext.Context, isEventContext bool, 
 		}
 		if isEventContext {
 			if len(redactedShouldBe) != 0 {
-				itemMatchers := h.TransformSlice(redactedShouldBe, func(s string) m.Matcher { return m.Equal(s) })
-				meta = append(meta, m.JSONProperty("redactedAttributes").Should(m.ItemsInAnyOrder(itemMatchers...)))
+				meta = append(meta, m.JSONProperty("redactedAttributes").Should(RedactedAttributesAre(redactedShouldBe...)))
 				requireMeta = true
 			} else {
 				meta = append(meta, JSONPropertyNullOrAbsentOrEqualTo("redactedAttributes", ldvalue.ArrayOf()))
@@ -106,4 +106,21 @@ func jsonMatchesContext(topLevelContext ldcontext.Context, isEventContext bool, 
 		return m.AllOf(ms...)
 	}
 	return matchSingleKind(topLevelContext, false)
+}
+
+// RedactedAttributesAre is a matcher for the value of an event context's redactedAttributes property,
+// verifying that it has the specified attribute names/references and no others. This is not just a
+// plain slice match, because 1. they can be in any order and 2. for simple attribute names, the SDK
+// is allowed to send either "name" or "/name" (with any slashes or tildes escaped in the latter case).
+func RedactedAttributesAre(attrStrings ...string) m.Matcher {
+	matchers := make([]m.Matcher, 0, len(attrStrings))
+	for _, s := range attrStrings {
+		if strings.HasPrefix(s, "/") {
+			matchers = append(matchers, m.Equal(s))
+		} else {
+			escapedName := strings.ReplaceAll(strings.ReplaceAll(s, "~", "~0"), "/", "~1")
+			matchers = append(matchers, m.AnyOf(m.Equal(s), m.Equal("/"+escapedName)))
+		}
+	}
+	return m.ItemsInAnyOrder(matchers...)
 }
