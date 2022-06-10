@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
@@ -16,16 +17,14 @@ import (
 )
 
 type eventContextTestParams struct {
-	name           string
-	eventsConfig   servicedef.SDKConfigEventParams
-	contextFactory func(string) *data.ContextFactory
-	outputMatcher  m.Matcher
+	name             string
+	eventsConfig     servicedef.SDKConfigEventParams
+	contextFactory   func(string) *data.ContextFactory
+	outputContext    func(ldcontext.Context) ldcontext.Context
+	redactedShouldBe []string
 }
 
 func makeEventContextTestParams() []eventContextTestParams {
-	anyKeyMatcher := m.KV("key", m.Not(m.BeNil()))
-	defaultKindMatcher := m.KV("kind", m.Equal(string(ldcontext.DefaultKind)))
-
 	ret := []eventContextTestParams{
 		// Note that in the output matchers, we can't just check for JSON equality with an entire
 		// object, because 1. unique keys are generated for each test (the test logic will check
@@ -36,18 +35,12 @@ func makeEventContextTestParams() []eventContextTestParams {
 			contextFactory: func(prefix string) *data.ContextFactory {
 				return data.NewContextFactory(prefix)
 			},
-			outputMatcher: m.MapOf(anyKeyMatcher, defaultKindMatcher),
 		},
 		{
 			name: "multi-kind minimal",
 			contextFactory: func(prefix string) *data.ContextFactory {
 				return data.NewMultiContextFactory(prefix, []ldcontext.Kind{"org", "other"})
 			},
-			outputMatcher: m.MapOf(
-				m.KV("kind", m.Equal("multi")),
-				m.KV("org", m.MapOf(anyKeyMatcher)),
-				m.KV("other", m.MapOf(anyKeyMatcher)),
-			),
 		},
 		{
 			name: "single-kind with attributes, nothing private",
@@ -61,16 +54,6 @@ func makeEventContextTestParams() []eventContextTestParams {
 					b.Transient(true)
 				})
 			},
-			outputMatcher: m.MapOf(
-				anyKeyMatcher,
-				m.KV("kind", m.Equal("org")),
-				m.KV("name", m.Equal("a")),
-				m.KV("b", m.Equal("c")),
-				m.KV("transient", m.Equal(true)),
-				m.KV("_meta", m.MapOf(
-					m.KV("secondary", m.Equal("s")),
-				)),
-			),
 		},
 		{
 			name: "single-kind, allAttributesPrivate",
@@ -84,14 +67,13 @@ func makeEventContextTestParams() []eventContextTestParams {
 					b.Transient(true)
 				})
 			},
-			outputMatcher: m.MapOf(
-				anyKeyMatcher, defaultKindMatcher,
-				m.KV("transient", m.Equal(true)),
-				m.KV("_meta", m.MapOf(
-					m.KV("secondary", m.Equal("s")),
-					m.KV("redactedAttributes", RedactedAttributesAre("name", "b")),
-				)),
-			),
+			outputContext: func(c ldcontext.Context) ldcontext.Context {
+				return ldcontext.NewBuilderFromContext(c).
+					SetValue("name", ldvalue.Null()).
+					SetValue("b", ldvalue.Null()).
+					Build()
+			},
+			redactedShouldBe: []string{"name", "b"},
 		},
 		{
 			name: "single-kind, specific private attributes",
@@ -107,13 +89,13 @@ func makeEventContextTestParams() []eventContextTestParams {
 					b.Private("b")
 				})
 			},
-			outputMatcher: m.MapOf(
-				anyKeyMatcher, defaultKindMatcher,
-				m.KV("d", m.Equal("e")),
-				m.KV("_meta", m.MapOf(
-					m.KV("redactedAttributes", RedactedAttributesAre("name", "b")),
-				)),
-			),
+			outputContext: func(c ldcontext.Context) ldcontext.Context {
+				return ldcontext.NewBuilderFromContext(c).
+					SetValue("name", ldvalue.Null()).
+					SetValue("b", ldvalue.Null()).
+					Build()
+			},
+			redactedShouldBe: []string{"name", "b"},
 		},
 		{
 			name: "single-kind, private attribute nested property",
@@ -129,15 +111,13 @@ func makeEventContextTestParams() []eventContextTestParams {
 					b.Private("/b/prop1")
 				})
 			},
-			outputMatcher: m.MapOf(
-				anyKeyMatcher, defaultKindMatcher,
-				m.KV("name", m.Equal("a")),
-				m.KV("b", m.JSONStrEqual(`{"prop2": 3}`)),
-				m.KV("c", m.JSONStrEqual(`{"prop1": {"sub1": true}, "prop2": {"sub2": 5}}`)),
-				m.KV("_meta", m.MapOf(
-					m.KV("redactedAttributes", RedactedAttributesAre("/b/prop1", "/c/prop2/sub1")),
-				)),
-			),
+			outputContext: func(c ldcontext.Context) ldcontext.Context {
+				return ldcontext.NewBuilderFromContext(c).
+					SetValue("b", ldvalue.Parse([]byte(`{"prop2": 3}`))).
+					SetValue("c", ldvalue.Parse([]byte(`{"prop1": {"sub1": true}, "prop2": {"sub2": 5}}`))).
+					Build()
+			},
+			redactedShouldBe: []string{"/b/prop1", "/c/prop2/sub1"},
 		},
 	}
 	// Add some test cases to verify that all possible value types can be used for a
@@ -154,10 +134,6 @@ func makeEventContextTestParams() []eventContextTestParams {
 					b.SetValue("attr", value)
 				})
 			},
-			outputMatcher: m.MapOf(
-				anyKeyMatcher, defaultKindMatcher,
-				m.KV("attr", m.JSONEqual(value)),
-			),
 		})
 	}
 	return ret
@@ -169,23 +145,26 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 	dataSource := NewSDKDataSource(t, data)
 
 	for _, p := range makeEventContextTestParams() {
+		outputMatcher := func(context ldcontext.Context) m.Matcher {
+			expectedContext := context
+			if p.outputContext != nil {
+				expectedContext = p.outputContext(context)
+			}
+			return JSONMatchesEventContext(expectedContext, p.redactedShouldBe)
+		}
+
 		t.Run(p.name, func(t *ldtest.T) {
 			contexts := p.contextFactory("doServerSideEventContextTests")
 			events := NewSDKEventSink(t)
-			client := NewSDKClient(t, WithEventsConfig(p.eventsConfig), dataSource, events)
+			client := NewSDKClient(t, c.baseSDKConfigurationPlus(WithEventsConfig(p.eventsConfig), dataSource, events)...)
 
 			c.discardIdentifyEventIfClientSide(t, client, events) // client-side SDKs always send an initial identify
 
-			maybeWithIndexEvent := func(matchers ...m.Matcher) []m.Matcher {
-				// Server-side SDKs send an index event for each never-before-seen user. Client-side SDKs do not.
-				if c.isClientSide {
-					return matchers
-				}
-				return append([]m.Matcher{IsIndexEvent()}, matchers...)
-			}
-
 			t.Run("debug event", func(t *ldtest.T) {
 				context := contexts.NextUniqueContext()
+				if c.isClientSide {
+					client.SendIdentifyEvent(t, context)
+				}
 				client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 					FlagKey:      debuggedFlagKey,
 					Context:      o.Some(context),
@@ -195,15 +174,15 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 				client.FlushEvents(t)
 
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
 				m.In(t).Assert(payload, m.ItemsInAnyOrder(
-					maybeWithIndexEvent(
-						m.AllOf(
-							IsDebugEvent(),
-							HasContextObjectWithMatchingKeys(context),
-							m.JSONProperty("context").Should(p.outputMatcher),
-						),
-						IsSummaryEvent(),
-					)...,
+					h.IfElse(c.isClientSide, IsIdentifyEvent(), IsIndexEvent()),
+					m.AllOf(
+						IsDebugEvent(),
+						HasContextObjectWithMatchingKeys(context),
+						m.JSONProperty("context").Should(outputMatcher(context)),
+					),
+					IsSummaryEvent(),
 				))
 			})
 
@@ -217,7 +196,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 					m.AllOf(
 						IsIdentifyEvent(),
 						HasContextObjectWithMatchingKeys(context),
-						m.JSONProperty("context").Should(p.outputMatcher),
+						m.JSONProperty("context").Should(outputMatcher(context)),
 					),
 				))
 			})
@@ -236,7 +215,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 						m.AllOf(
 							IsIndexEvent(),
 							HasContextObjectWithMatchingKeys(context),
-							m.JSONProperty("context").Should(p.outputMatcher),
+							m.JSONProperty("context").Should(outputMatcher(context)),
 						),
 						IsSummaryEvent(),
 					))

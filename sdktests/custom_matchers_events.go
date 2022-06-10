@@ -1,8 +1,6 @@
 package sdktests
 
 import (
-	"strings"
-
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
@@ -106,21 +104,4 @@ func IsValidSummaryEventWithFlags(keyValueMatchers ...m.KeyValueMatcher) m.Match
 		JSONPropertyKeysCanOnlyBe("kind", "startDate", "endDate", "features"),
 		m.JSONProperty("features").Should(m.MapOf(keyValueMatchers...)),
 	)
-}
-
-// RedactedAttributesAre is a matcher for the value of an event context's redactedAttributes property,
-// verifying that it has the specified attribute names/references and no others. This is not just a
-// plain slice match, because 1. they can be in any order and 2. for simple attribute names, the SDK
-// is allowed to send either "name" or "/name" (with any slashes or tildes escaped in the latter case).
-func RedactedAttributesAre(attrStrings ...string) m.Matcher {
-	matchers := make([]m.Matcher, 0, len(attrStrings))
-	for _, s := range attrStrings {
-		if strings.HasPrefix(s, "/") {
-			matchers = append(matchers, m.Equal(s))
-		} else {
-			escapedName := strings.ReplaceAll(strings.ReplaceAll(s, "~", "~0"), "/", "~1")
-			matchers = append(matchers, m.AnyOf(m.Equal(s), m.Equal("/"+escapedName)))
-		}
-	}
-	return m.ItemsInAnyOrder(matchers...)
 }

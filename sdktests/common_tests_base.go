@@ -10,6 +10,16 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 )
 
+// commonTestsBase provides shared behavior for server-side and client-side SDK tests, if their
+// behavior is similar enough to share most of the test logic. Each subcategory of tests defines
+// its own type embedding this struct (such as CommonEventTests) so that its methods can be
+// namespaced within that category.
+//
+// When we call newCommonTestsBase, it automatically determines whether this is a client-side or
+// a server-side SDK by looking up the test service capabilities. If it is a client-side SDK,
+// isClientSide is set to true, and sdkConfigurers is set to include the minimal required
+// configuration for a client-side SDK (that is, an initial user). For this to work, the test
+// logic should always use baseSDKConfigurationPlus() when creating a client.
 type commonTestsBase struct {
 	sdkKind        mockld.SDKKind
 	isClientSide   bool

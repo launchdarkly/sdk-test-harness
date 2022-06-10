@@ -12,6 +12,7 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
 
@@ -78,6 +79,7 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 								append(configurers,
 									WithClientSideConfig(servicedef.SDKConfigClientSideParams{
 										EvaluationReasons: withReasons,
+										InitialContext:    ldcontext.New("irrelevant-key"),
 									}),
 									c.withFlagRequestMethod(method),
 								)...)...)
@@ -106,7 +108,7 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 	}
 }
 
-func (c CommonStreamingTests) RequestUserProperties(t *ldtest.T, getPath string) {
+func (c CommonStreamingTests) RequestContextProperties(t *ldtest.T, getPath string) {
 	t.RequireCapability(servicedef.CapabilityClientSide) // server-side SDKs do not send user properties in stream requests
 
 	t.Run("context properties", func(t *ldtest.T) {

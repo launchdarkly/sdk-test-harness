@@ -53,7 +53,7 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 	getPath := h.IfElse(sdkKind == mockld.MobileSDK,
 		mockld.StreamingPathMobileGet,
 		strings.ReplaceAll(mockld.StreamingPathJSClientGet, mockld.PollingPathEnvIDParam, envIDOrMobileKey))
-	streamTests.RequestUserProperties(t, getPath)
+	streamTests.RequestContextProperties(t, getPath)
 }
 
 func doClientSideStreamUpdateTests(t *ldtest.T) {
