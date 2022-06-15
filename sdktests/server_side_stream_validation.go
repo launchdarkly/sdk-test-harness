@@ -48,7 +48,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 		stream1.StreamingService().PushEvent(badEventName, badEventData)
 
 		// Expect the second request; it succeeds and gets the second stream data
-		_ = streamEndpoint.RequireConnection(t, time.Millisecond*100)
+		_ = streamEndpoint.RequireConnection(t, time.Second*5)
 
 		// Check that the client got the new data from the second stream
 		pollUntilFlagValueUpdated(t, client, flagKey, user, expectedValueV1, expectedValueV2, ldvalue.Null())
