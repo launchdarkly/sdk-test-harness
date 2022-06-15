@@ -2,6 +2,10 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [1.7.1] - 2022-06-15
+### Fixed:
+- Fixed overly timing-sensitive tests in `streaming/validation`.
+
 ## [1.7.0] - 2022-05-04
 ### Added:
 - Client-side SDK tests for streaming updates, polling, and experimentation evaluations.
