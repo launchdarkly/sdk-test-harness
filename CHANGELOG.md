@@ -2,6 +2,18 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [1.7.1] - 2022-06-15
+### Fixed:
+- Fixed overly timing-sensitive tests in `streaming/validation`.
+
+## [1.7.0] - 2022-05-04
+### Added:
+- Client-side SDK tests for streaming updates, polling, and experimentation evaluations.
+
+### Fixed:
+- Suppressed misleading panic stacktrace output related to `httphelpers.BrokenConnectionHandler`.
+- SDKs are allowed to include an `api_key` scheme identifier in `Authorization` headers.
+
 ## [1.6.2] - 2022-04-29
 ### Fixed:
 - Fixed client-side SDK test expectations for "wrong type" errors.
