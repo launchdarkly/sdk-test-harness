@@ -86,6 +86,7 @@ func doAllClientSideTests(t *ldtest.T) {
 	t.Run("streaming", doClientSideStreamTests)
 	t.Run("polling", doClientSidePollTests)
 	t.Run("tags", doClientSideTagsTests)
+	t.Run("context type", doSDKContextTypeTests)
 }
 
 func allImportantServerSideCapabilities() framework.Capabilities {
