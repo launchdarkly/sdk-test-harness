@@ -12,7 +12,6 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
-	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
 
@@ -76,7 +75,6 @@ func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagReq
 								c.withFlagRequestMethod(method),
 								WithClientSideConfig(servicedef.SDKConfigClientSideParams{
 									EvaluationReasons: withReasons,
-									InitialContext:    ldcontext.New("irrelevant-key"),
 								}),
 								dataSource,
 							)...)
