@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var arbitraryInitialUsers = NewUserFactory("arbitrary-initial-user") //nolint:gochecknoglobals
+
 // SDKConfigurer is an interface for objects that can modify the configuration for StartSDKClient.
 // It is implemented by types such as SDKDataSource.
 type SDKConfigurer helpers.ConfigOption[servicedef.SDKConfigParams]
@@ -123,6 +125,16 @@ func TryNewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) (*SDKClient, err
 	}
 	if config.Credential == "" {
 		config.Credential = defaultSDKKey
+	}
+	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
+		// Ensure that we always provide an initial user for every client-side SDK test, if the test logic
+		// didn't explicitly set one. It's preferable for this to have a unique key, so that if the SDK has any
+		// global state that is cached by key, tests won't interfere with each other.
+		if config.ClientSide.Value().InitialUser.GetKey() == "" {
+			cs := config.ClientSide.Value()
+			cs.InitialUser = arbitraryInitialUsers.NextUniqueUser()
+			config.ClientSide = o.Some(cs)
+		}
 	}
 	if err := validateSDKConfig(config); err != nil {
 		return nil, err
