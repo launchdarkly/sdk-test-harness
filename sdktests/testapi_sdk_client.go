@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync/atomic"
 
+	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
@@ -15,7 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var currentlyExistingClientInstances int32 //nolint:gochecknoglobals
+var currentlyExistingClientInstances int32                                         //nolint:gochecknoglobals
+var arbitraryInitialContexts = data.NewContextFactory("arbitrary-initial-context") //nolint:gochecknoglobals
 
 // SDKConfigurer is an interface for objects that can modify the configuration for StartSDKClient.
 // It is implemented by types such as SDKDataSource.
@@ -135,6 +137,16 @@ func TryNewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) (*SDKClient, err
 	}
 	if config.Credential == "" {
 		config.Credential = defaultSDKKey
+	}
+	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
+		// Ensure that we always provide an initial context for every client-side SDK test, if the test logic
+		// didn't explicitly set one. It's preferable for this to have a unique key, so that if the SDK has any
+		// global state that is cached by key, tests won't interfere with each other.
+		if !config.ClientSide.Value().InitialContext.IsDefined() {
+			cs := config.ClientSide.Value()
+			cs.InitialContext = arbitraryInitialContexts.NextUniqueContext()
+			config.ClientSide = o.Some(cs)
+		}
 	}
 	if err := validateSDKConfig(config); err != nil {
 		return nil, err
