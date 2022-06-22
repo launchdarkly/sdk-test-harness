@@ -32,14 +32,8 @@ func doSDKContextTypeTests(t *ldtest.T) {
 // at a client instance.
 
 func doSDKContextBuildTests(t *ldtest.T) {
-	contextFactory := data.NewContextFactory("doSDKContextBuildTests")
 	dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
-	client := NewSDKClient(t,
-		WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-			InitialContext: contextFactory.NextUniqueContext(),
-		}),
-		dataSource,
-	)
+	client := NewSDKClient(t, dataSource)
 
 	optStr := func(s string) *string { return &s }
 	optBool := func(b bool) *bool { return &b }
@@ -116,14 +110,8 @@ func doSDKContextBuildTests(t *ldtest.T) {
 }
 
 func doSDKContextConvertTests(t *ldtest.T) {
-	contextFactory := data.NewContextFactory("doSDKContextConvertTests")
 	dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
-	client := NewSDKClient(t,
-		WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-			InitialContext: contextFactory.NextUniqueContext(),
-		}),
-		dataSource,
-	)
+	client := NewSDKClient(t, dataSource)
 
 	basicInputPlusProps := func(extraProps string) string {
 		if extraProps != "" {
