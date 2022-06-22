@@ -96,11 +96,9 @@ func jsonMatchesContext(topLevelContext ldcontext.Context, isEventContext bool, 
 		keys := make([]string, 0)
 		keys = append(keys, "kind")
 		ms = append(ms, m.JSONProperty("kind").Should(m.Equal("multi")))
-		for i := 0; i < topLevelContext.MultiKindCount(); i++ {
-			if mc, ok := topLevelContext.MultiKindByIndex(i); ok {
-				ms = append(ms, m.JSONProperty(string(mc.Kind())).Should(matchSingleKind(mc, true)))
-				keys = append(keys, string(mc.Kind()))
-			}
+		for _, mc := range topLevelContext.GetAllIndividualContexts(nil) {
+			ms = append(ms, m.JSONProperty(string(mc.Kind())).Should(matchSingleKind(mc, true)))
+			keys = append(keys, string(mc.Kind()))
 		}
 		ms = append(ms, JSONPropertyKeysCanOnlyBe(keys...))
 		return m.AllOf(ms...)
