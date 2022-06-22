@@ -2,6 +2,10 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [1.7.2] - 2022-06-22
+### Changed:
+- Client-side tests now automatically set a default initial user if the test logic did not specifically do so, since client-side SDKs cannot work without an initial user.
+
 ## [1.7.1] - 2022-06-15
 ### Fixed:
 - Fixed overly timing-sensitive tests in `streaming/validation`.
