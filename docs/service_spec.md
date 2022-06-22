@@ -111,7 +111,7 @@ A `POST` request indicates that the test harness wants to start an instance of t
     * `applicationId` (string, optional): If present and non-null, the SDK should set the "application ID" property to this string.
     * `applicationVersion` (string, optional): If present and non-null, the SDK should set the "application version" property to this string.
   * `clientSide` (object): This is omitted for server-side SDKs, and required for client-side SDKs. Properties are:
-    * `initialContext` (object, required): The context properties to initialize the SDK with.
+    * `initialContext` (object, required): The context properties to initialize the SDK with. The test service for a client-side SDK can assume that the test harness will _always_ set this: if the test logic does not explicitly provide a value, the test harness will add a default one.
     * `evaluationReasons`, `useReport` (boolean, optional): These correspond to the SDK configuration properties of the same names.
 
 The response to a valid request is any HTTP `2xx` status, with a `Location` header whose value is the URL of the test service resource representing this SDK client instance (that is, the one that would be used for "Close client" or "Send command" as described below).
