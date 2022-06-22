@@ -24,15 +24,9 @@ func EventHasKind(kind string) m.Matcher {
 }
 
 func HasContextKeys(context ldcontext.Context) m.Matcher {
-	var kvs []m.KeyValueMatcher
-	if context.Multiple() {
-		for i := 0; i < context.MultiKindCount(); i++ {
-			if mc, ok := context.MultiKindByIndex(i); ok {
-				kvs = append(kvs, m.KV(string(mc.Kind()), m.Equal(mc.Key())))
-			}
-		}
-	} else {
-		kvs = append(kvs, m.KV(string(context.Kind()), m.Equal(context.Key())))
+	kvs := []m.KeyValueMatcher{}
+	for _, mc := range context.GetAllIndividualContexts(nil) {
+		kvs = append(kvs, m.KV(string(mc.Kind()), m.Equal(mc.Key())))
 	}
 	return m.JSONProperty("contextKeys").Should(m.MapOf(kvs...))
 }
@@ -46,11 +40,9 @@ func HasContextObjectWithMatchingKeys(context ldcontext.Context) m.Matcher {
 		kvs := []m.KeyValueMatcher{
 			m.KV("kind", m.Equal("multi")),
 		}
-		for i := 0; i < context.MultiKindCount(); i++ {
-			if mc, ok := context.MultiKindByIndex(i); ok {
-				kvs = append(kvs, m.KV(string(mc.Kind()),
-					m.JSONProperty("key").Should(m.Equal(mc.Key()))))
-			}
+		for _, mc := range context.GetAllIndividualContexts(nil) {
+			kvs = append(kvs, m.KV(string(mc.Kind()),
+				m.JSONProperty("key").Should(m.Equal(mc.Key()))))
 		}
 		return m.JSONProperty("context").Should(m.MapOf(kvs...))
 	}
