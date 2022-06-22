@@ -55,10 +55,8 @@ func TestContextFactoryKeyCollisions(t *testing.T) {
 	f5.SetKeyDisambiguatorValueSameAs(f3)
 	c3, c4, c5 := f3.NextUniqueContext(), f4.NextUniqueContext(), f5.NextUniqueContext()
 	assert.Equal(t, c3.Key(), c4.Key())
-	c5a, _ := c5.MultiKindByIndex(0)
-	assert.Equal(t, c3.Key(), c5a.Key())
-	c5b, _ := c5.MultiKindByIndex(1)
-	assert.Equal(t, c3.Key(), c5b.Key())
+	assert.Equal(t, c3.Key(), c5.IndividualContextByIndex(0).Key())
+	assert.Equal(t, c3.Key(), c5.IndividualContextByIndex(1).Key())
 }
 
 func TestMultiContextFactory(t *testing.T) {
@@ -69,13 +67,13 @@ func TestMultiContextFactory(t *testing.T) {
 
 	c1 := f.NextUniqueContext()
 	assert.True(t, c1.Multiple())
-	assert.Equal(t, 2, c1.MultiKindCount())
-	c1a, _ := c1.MultiKindByIndex(0)
+	assert.Equal(t, 2, c1.IndividualContextCount())
+	c1a := c1.IndividualContextByIndex(0)
 	m.In(t).Assert(c1a.Kind(), equalsKind("org"))
 	m.In(t).Assert(c1a.Key(), m.StringHasPrefix("abcde."))
 	m.In(t).Assert(c1a.Name(), equalsOptString("x"))
 	m.In(t).Assert(c1a.Secondary(), optStringEmpty())
-	c1b, _ := c1.MultiKindByIndex(1)
+	c1b := c1.IndividualContextByIndex(1)
 	m.In(t).Assert(c1b.Kind(), equalsKind("other"))
 	m.In(t).Assert(c1b.Key(), m.StringHasPrefix("abcde."))
 	m.In(t).Assert(c1b.Name(), optStringEmpty())
@@ -83,13 +81,13 @@ func TestMultiContextFactory(t *testing.T) {
 
 	c2 := f.NextUniqueContext()
 	assert.True(t, c2.Multiple())
-	assert.Equal(t, 2, c2.MultiKindCount())
-	c2a, _ := c2.MultiKindByIndex(0)
+	assert.Equal(t, 2, c2.IndividualContextCount())
+	c2a := c2.IndividualContextByIndex(0)
 	m.In(t).Assert(c2a.Kind(), equalsKind("org"))
 	m.In(t).Assert(c2a.Key(), m.StringHasPrefix("abcde."))
 	m.In(t).Assert(c2a.Name(), equalsOptString("x"))
 	m.In(t).Assert(c2a.Secondary(), optStringEmpty())
-	c2b, _ := c2.MultiKindByIndex(1)
+	c2b := c2.IndividualContextByIndex(1)
 	m.In(t).Assert(c2b.Kind(), equalsKind("other"))
 	m.In(t).Assert(c2b.Key(), m.StringHasPrefix("abcde."))
 	m.In(t).Assert(c2b.Name(), optStringEmpty())
@@ -109,8 +107,8 @@ func TestNewContextFactoriesForSingleAndMultiKind(t *testing.T) {
 		c := f.NextUniqueContext()
 		if c.Multiple() {
 			hasMulti = true
-			for i := 0; i < c.MultiKindCount(); i++ {
-				mc, _ := c.MultiKindByIndex(i)
+			for i := 0; i < c.IndividualContextCount(); i++ {
+				mc := c.IndividualContextByIndex(i)
 				m.In(t).Assert(mc.Key(), m.StringHasPrefix("abcde"))
 				if i == 0 {
 					m.In(t).Assert(mc.Name(), equalsOptString("x"))
