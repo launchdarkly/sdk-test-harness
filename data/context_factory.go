@@ -141,7 +141,7 @@ func NewContextFactoriesForExercisingAllAttributes(
 	setAllAttributes := func(b *ldcontext.Builder) {
 		b.Name("a").
 			Secondary("b").
-			Transient(true).
+			Anonymous(true).
 			SetBool("c", true).
 			SetInt("d", 1).
 			SetFloat64("e", 1.5).

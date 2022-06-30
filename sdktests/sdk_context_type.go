@@ -49,10 +49,10 @@ func doSDKContextBuildTests(t *ldtest.T) {
 				`{"kind": "org", "key": "a"}`},
 			{servicedef.ContextBuildSingleParams{Key: "a", Name: optStr("b")},
 				`{"kind": "user", "key": "a", "name": "b"}`},
-			{servicedef.ContextBuildSingleParams{Key: "a", Transient: optBool(false)},
+			{servicedef.ContextBuildSingleParams{Key: "a", Anonymous: optBool(false)},
 				`{"kind": "user", "key": "a"}`},
-			{servicedef.ContextBuildSingleParams{Key: "a", Transient: optBool(true)},
-				`{"kind": "user", "key": "a", "transient": true}`},
+			{servicedef.ContextBuildSingleParams{Key: "a", Anonymous: optBool(true)},
+				`{"kind": "user", "key": "a", "anonymous": true}`},
 			{servicedef.ContextBuildSingleParams{Key: "a", Secondary: optStr("b")},
 				`{"kind": "user", "key": "a", "_meta": {"secondary": "b"}}`},
 			{servicedef.ContextBuildSingleParams{Key: "a", Private: []string{"b"}},
@@ -126,7 +126,7 @@ func doSDKContextConvertTests(t *ldtest.T) {
 		singleKindProps := []string{
 			``,
 			`"name": "b"`,
-			`"transient": true`,
+			`"anonymous": true`,
 			`"attr1": "first"`,                    // basic case of 1 custom attr
 			`"attr1": "first", "attr2": "second"`, // basic case of multiple custom attrs
 			`"_meta": {"secondary": "b"}`,
@@ -194,7 +194,7 @@ func doSDKContextConvertTests(t *ldtest.T) {
 		params := []contextConversionParams{
 			{`{"key": ""}`, `{"kind": "user", "key": ""}`}, // empty key *is* allowed for old user format only
 			{`{"key": "a"}`, `{"kind": "user", "key": "a"}`},
-			{`{"key": "a", "anonymous": true}`, `{"kind": "user", "key": "a", "transient": true}`},
+			{`{"key": "a", "anonymous": true}`, `{"kind": "user", "key": "a", "anonymous": true}`},
 			{`{"key": "a", "anonymous": false}`, `{"kind": "user", "key": "a"}`},
 			{`{"key": "a", "secondary": "b"}`, `{"kind": "user", "key": "a", "_meta": {"secondary": "b"}}`},
 			{`{"key": "a", "secondary": null}`, `{"kind": "user", "key": "a"}`},
@@ -243,8 +243,8 @@ func doSDKContextConvertTests(t *ldtest.T) {
 			`{"kind": "org", "key": null}`,
 			`{"kind": "org", "key": 3}`,
 			`{"kind": "org", "name": 3}`,
-			`{"kind": "org", "transient": null}`,
-			`{"kind": "org", "transient": "yes"}`,
+			`{"kind": "org", "anonymous": null}`,
+			`{"kind": "org", "anonymous": "yes"}`,
 			`{"kind": "org", "_meta": {"secondary": 3}}`,
 			`{"kind": "org", "_meta": {"privateAttributes": 3}}`,
 			`{"kind": "org", "_meta": {"privateAttributes": {}}}`,

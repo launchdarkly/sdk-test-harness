@@ -51,20 +51,20 @@ func makeEventContextTestParams() []eventContextTestParams {
 					b.Name("a")
 					b.SetString("b", "c")
 					b.Secondary("s")
-					b.Transient(true)
+					b.Anonymous(true)
 				})
 			},
 		},
 		{
 			name: "single-kind, allAttributesPrivate",
-			// proves that name and custom attributes are redacted, key/transient/meta are not
+			// proves that name and custom attributes are redacted, key/anonymous/meta are not
 			eventsConfig: servicedef.SDKConfigEventParams{AllAttributesPrivate: true},
 			contextFactory: func(prefix string) *data.ContextFactory {
 				return data.NewContextFactory(prefix, func(b *ldcontext.Builder) {
 					b.Name("a")
 					b.SetString("b", "c")
 					b.Secondary("s")
-					b.Transient(true)
+					b.Anonymous(true)
 				})
 			},
 			outputContext: func(c ldcontext.Context) ldcontext.Context {
