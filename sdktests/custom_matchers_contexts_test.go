@@ -23,7 +23,7 @@ func TestJSONMatchesContext(t *testing.T) {
 			},
 			{
 				c:     ldcontext.NewWithKind("a", "b"),
-				input: `{"kind": "a", "key": "b", "transient": false}`,
+				input: `{"kind": "a", "key": "b", "anonymous": false}`,
 			},
 			{
 				c:     ldcontext.NewWithKind("a", "b"),
@@ -42,8 +42,8 @@ func TestJSONMatchesContext(t *testing.T) {
 				input: `{"kind": "a", "key": "b", "_meta": {"privateAttributes": []}}`,
 			},
 			{
-				c:     ldcontext.NewBuilder("a").Transient(true).Name("b").Secondary("c").Build(),
-				input: `{"kind": "user", "key": "a", "transient": true, "name": "b", "_meta": {"secondary": "c"}}`,
+				c:     ldcontext.NewBuilder("a").Anonymous(true).Name("b").Secondary("c").Build(),
+				input: `{"kind": "user", "key": "a", "anonymous": true, "name": "b", "_meta": {"secondary": "c"}}`,
 			},
 			{
 				c:     ldcontext.NewBuilder("a").Name("b").Private("d", "c").Build(),
@@ -82,7 +82,7 @@ func TestJSONMatchesContext(t *testing.T) {
 			},
 			{
 				c:     ldcontext.NewWithKind("a", "b"),
-				input: `{"kind": "a", "key": "b", "transient": true}`,
+				input: `{"kind": "a", "key": "b", "anonymous": true}`,
 			},
 			{
 				c:     ldcontext.NewWithKind("a", "b"),
@@ -93,16 +93,16 @@ func TestJSONMatchesContext(t *testing.T) {
 				input: `{"kind": "a", "key": "b", "_meta": {"privateAttributes": ["c", "d"]}}`,
 			},
 			{
-				c:     ldcontext.NewBuilder("a").Transient(true).Build(),
+				c:     ldcontext.NewBuilder("a").Anonymous(true).Build(),
 				input: `{"kind": "user", "key": "a"}`,
 			},
 			{
-				c:     ldcontext.NewBuilder("a").Transient(true).Build(),
-				input: `{"kind": "user", "key": "a", "transient": false}`,
+				c:     ldcontext.NewBuilder("a").Anonymous(true).Build(),
+				input: `{"kind": "user", "key": "a", "anonymous": false}`,
 			},
 			{
 				c:     ldcontext.NewBuilder("a").Secondary("b").Build(),
-				input: `{"kind": "user", "key": "a", "transient": true, "name": "b", "_meta": {"secondary": "c"}}`,
+				input: `{"kind": "user", "key": "a", "anonymous": true, "name": "b", "_meta": {"secondary": "c"}}`,
 			},
 			{
 				c:     ldcontext.NewBuilder("a").Name("b").Private("c", "d", "e").Build(),

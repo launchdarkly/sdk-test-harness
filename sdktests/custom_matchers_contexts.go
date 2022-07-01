@@ -13,7 +13,7 @@ import (
 // endpoints), not the event schema.
 //
 // The matcher should be tolerant of all allowable variants: for instance, it is legal to include
-// `"transient": false` in the representation rather than omitting transient.
+// `"anonymous": false` in the representation rather than omitting anonymous.
 func JSONMatchesContext(context ldcontext.Context) m.Matcher {
 	return jsonMatchesContext(context, false, nil)
 }
@@ -23,7 +23,7 @@ func JSONMatchesContext(context ldcontext.Context) m.Matcher {
 // private attribute redaction; redactedShouldBe specifies what we expect to see in redactedAttributes.
 //
 // The matcher should be tolerant of all allowable variants: for instance, it is legal to include
-// `"transient": false` in the representation rather than omitting transient, and attribute names that
+// `"anonymous": false` in the representation rather than omitting anonymous, and attribute names that
 // appear in redactedAttributes could either use the literal syntax or the slash syntax.
 func JSONMatchesEventContext(context ldcontext.Context, redactedShouldBe []string) m.Matcher {
 	return jsonMatchesContext(context, true, redactedShouldBe)
@@ -37,12 +37,12 @@ func jsonMatchesContext(topLevelContext ldcontext.Context, isEventContext bool, 
 			keys = append(keys, "kind")
 			ms = append(ms, m.JSONProperty("kind").Should(m.Equal(string(c.Kind()))))
 		}
-		keys = append(keys, "key", "transient", "_meta")
+		keys = append(keys, "key", "anonymous", "_meta")
 		ms = append(ms, m.JSONProperty("key").Should(m.Equal(c.Key())))
-		if c.Transient() {
-			ms = append(ms, m.JSONProperty("transient").Should(m.Equal(true)))
+		if c.Anonymous() {
+			ms = append(ms, m.JSONProperty("anonymous").Should(m.Equal(true)))
 		} else {
-			ms = append(ms, JSONPropertyNullOrAbsentOrEqualTo("transient", false))
+			ms = append(ms, JSONPropertyNullOrAbsentOrEqualTo("anonymous", false))
 		}
 		for _, attr := range c.GetOptionalAttributeNames(nil) {
 			if value := c.GetValue(attr); value.IsDefined() {

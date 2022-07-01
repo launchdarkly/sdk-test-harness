@@ -237,7 +237,7 @@ The `contextBuild` property in the request body will be a JSON object with these
   * `kind` (string, optional): Even though a context always has a kind, this is optional because the builder should use `"user"` as a default.
   * `key` (string, required)
   * `name` (string, optional)
-  * `transient` (boolean, optional)
+  * `anonymous` (boolean, optional)
   * `secondary` (string, optional)
   * `private` (array of strings, optional): These strings should be treated as attribute references, i.e. they may be slash-delimited paths.
   * `custom` (object, optional): If present, these are name-value pairs for custom attributes.

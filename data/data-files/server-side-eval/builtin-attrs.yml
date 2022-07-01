@@ -38,14 +38,14 @@ parameters:
     CLAUSE: { attribute: "name", op: "in", values: [""], negate: true }
     EXPECT: <IS_NOT_MATCH>
 
-  - NAME: transient match false
+  - NAME: anonymous match false
     CONTEXT: { kind: "user", key: "a" }
-    CLAUSE: { attribute: "transient", op: "in", values: [false] }
+    CLAUSE: { attribute: "anonymous", op: "in", values: [false] }
     EXPECT: <IS_MATCH>
 
-  - NAME: transient match true
-    CONTEXT: { kind: "user", key: "a", transient: true }
-    CLAUSE: { attribute: "transient", op: "in", values: [true] }
+  - NAME: anonymous match true
+    CONTEXT: { kind: "user", key: "a", anonymous: true }
+    CLAUSE: { attribute: "anonymous", op: "in", values: [true] }
     EXPECT: <IS_MATCH>
 
 sdkData:
