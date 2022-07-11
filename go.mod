@@ -8,6 +8,7 @@ require (
 	github.com/launchdarkly/eventsource v1.6.2
 	github.com/launchdarkly/go-test-helpers/v2 v2.3.2
 	github.com/stretchr/testify v1.7.0
+	golang.org/x/exp v0.0.0-20220706164943-b4a6d9510983
 	gopkg.in/launchdarkly/go-jsonstream.v1 v1.0.1
 	gopkg.in/launchdarkly/go-sdk-common.v2 v2.4.0
 	gopkg.in/launchdarkly/go-server-sdk-evaluation.v1 v1.4.1
