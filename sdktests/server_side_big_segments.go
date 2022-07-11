@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
@@ -270,7 +271,7 @@ func doBigSegmentsMembershipCachingTests(t *ldtest.T) {
 		bigSegmentStore.SetupMemberships(t, map[string]map[string]bool{
 			expectedUserHash1: {segmentRef1: false}})
 
-		assert.Eventually(
+		helpers.AssertEventually(
 			t,
 			func() bool {
 				value := basicEvaluateFlag(t, client, flag.Key, user1, ldvalue.Null())
@@ -385,7 +386,7 @@ func doBigSegmentsStatusPollingTests(t *ldtest.T) {
 				Available: newStatus != ldreason.BigSegmentsStoreError,
 				Stale:     newStatus == ldreason.BigSegmentsStale,
 			}
-			assert.Eventually(
+			helpers.AssertEventually(
 				t,
 				func() bool {
 					status := client.GetBigSegmentStoreStatus(t)

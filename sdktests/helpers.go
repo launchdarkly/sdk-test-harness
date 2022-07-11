@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
@@ -21,7 +22,6 @@ import (
 	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldbuilders"
 	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldmodel"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -202,7 +202,7 @@ func checkForUpdatedValue(
 			return true
 		}
 		if !actualValue.Equal(previousValue) {
-			assert.Fail(t, "SDK returned neither previous value nor updated value",
+			require.Fail(t, "SDK returned neither previous value nor updated value",
 				"previous: %s, updated: %s, actual: %s", previousValue, updatedValue, actualValue)
 		}
 		return false
@@ -225,9 +225,7 @@ func pollUntilFlagValueUpdated(
 	updatedValue ldvalue.Value,
 	defaultValue ldvalue.Value,
 ) {
-	// We can't assume that the SDK will immediately apply the new flag data as soon as it has
-	// reconnected, so we have to poll till the new data shows up
-	require.Eventually(
+	helpers.RequireEventually(
 		t,
 		checkForUpdatedValue(t, client, flagKey, user, previousValue, updatedValue, defaultValue),
 		time.Second, time.Millisecond*50, "timed out without seeing updated flag value")
