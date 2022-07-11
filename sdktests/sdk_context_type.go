@@ -172,6 +172,7 @@ func doSDKContextConvertTests(t *ldtest.T) {
 		for _, extraProps := range []string{
 			`"name": null`,
 			`"attr1": null`,
+			`"_meta": null`,
 			`"_meta": {}`,
 			`"_meta": {"secondary": null}`,
 			`"_meta": {"privateAttributes": null}`,
@@ -194,8 +195,19 @@ func doSDKContextConvertTests(t *ldtest.T) {
 		params := []contextConversionParams{
 			{`{"key": ""}`, `{"kind": "user", "key": ""}`}, // empty key *is* allowed for old user format only
 			{`{"key": "a"}`, `{"kind": "user", "key": "a"}`},
+			{`{"key": "a"}`, `{"kind": "user", "key": "a"}`},
+			{`{"key": "a", "custom": {"b": true}}`, `{"kind": "user", "key": "a", "b": true}`},
+			{`{"key": "a", "custom": {"b": 1}}`, `{"kind": "user", "key": "a", "b": 1}`},
+			{`{"key": "a", "custom": {"b": "c"}}`, `{"kind": "user", "key": "a", "b": "c"}`},
+			{`{"key": "a", "custom": {"b": [1, 2]}}`, `{"kind": "user", "key": "a", "b": [1, 2]}`},
+			{`{"key": "a", "custom": {"b": {"c": 1}}}`, `{"kind": "user", "key": "a", "b": {"c": 1}}`},
+			{`{"key": "a", "custom": {"b": 1, "c": 2}}`, `{"kind": "user", "key": "a", "b": 1, "c": 2}`},
+			{`{"key": "a", "custom": {"b": 1, "c": null}}`, `{"kind": "user", "key": "a", "b": 1}`},
+			{`{"key": "a", "custom": {}}`, `{"kind": "user", "key": "a"}`},
+			{`{"key": "a", "custom": null}`, `{"kind": "user", "key": "a"}`},
 			{`{"key": "a", "anonymous": true}`, `{"kind": "user", "key": "a", "anonymous": true}`},
 			{`{"key": "a", "anonymous": false}`, `{"kind": "user", "key": "a"}`},
+			{`{"key": "a", "anonymous": null}`, `{"kind": "user", "key": "a"}`},
 			{`{"key": "a", "secondary": "b"}`, `{"kind": "user", "key": "a", "_meta": {"secondary": "b"}}`},
 			{`{"key": "a", "secondary": null}`, `{"kind": "user", "key": "a"}`},
 			{`{"key": "a", "privateAttributeNames": ["b"]}`,
@@ -291,6 +303,8 @@ func doSDKContextConvertTests(t *ldtest.T) {
 		inputs := []string{
 			`{}`,
 			`{"key": true}`,
+			`{"key": "a", "custom": 3}`,
+			`{"key": "a", "custom": []}`,
 			`{"key": "a", "anonymous": 3}`,
 			`{"key": "a", "secondary": 3}`,
 			`{"key": "a", "privateAttributeNames": 3"}`,
