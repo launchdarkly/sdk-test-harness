@@ -120,7 +120,7 @@ func (c CommonStreamingTests) RequestUserProperties(t *ldtest.T, getPath string)
 					Email("b").AsPrivateAttribute().
 					Custom("c", ldvalue.String("d")).
 					Build()
-				userJSONMatcher := JSONMatchesUser(user)
+				userJSONMatcher := JSONMatchesUser(user, t.Capabilities().Has(servicedef.CapabilityMobile))
 
 				_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 					append(configurers,

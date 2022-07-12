@@ -2,7 +2,6 @@ package sdktests
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
@@ -88,7 +87,7 @@ func (c CommonEventTests) eventUsersWithConfig(
 				client.FlushEvents(t)
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 				m.In(t).Assert(payload, m.Items(
-					m.AllOf(IsIdentifyEvent(), eventUserMatcher(user, eventsConfig)),
+					m.AllOf(IsIdentifyEvent(), eventUserMatcher(user, eventsConfig, c.isMobile)),
 				))
 			})
 
@@ -108,7 +107,7 @@ func (c CommonEventTests) eventUsersWithConfig(
 
 				if eventsConfig.InlineUsers {
 					m.In(t).Assert(payload, m.ItemsInAnyOrder(
-						m.AllOf(IsFeatureEvent(), eventUserMatcher(user, eventsConfig), HasNoUserKeyProperty()),
+						m.AllOf(IsFeatureEvent(), eventUserMatcher(user, eventsConfig, c.isMobile), HasNoUserKeyProperty()),
 						IsSummaryEvent(),
 					))
 				} else {
@@ -144,7 +143,7 @@ func (c CommonEventTests) eventUsersWithConfig(
 
 				if eventsConfig.InlineUsers {
 					m.In(t).Assert(payload, m.Items(
-						m.AllOf(IsCustomEvent(), eventUserMatcher(user, eventsConfig)),
+						m.AllOf(IsCustomEvent(), eventUserMatcher(user, eventsConfig, c.isMobile)),
 					))
 				} else {
 					m.In(t).Assert(payload, m.ItemsInAnyOrder(
@@ -164,7 +163,7 @@ func (c CommonEventTests) eventUsersWithConfig(
 
 					payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 					m.In(t).Assert(payload, m.ItemsInAnyOrder(
-						m.AllOf(IsIndexEvent(), eventUserMatcher(user, eventsConfig)),
+						m.AllOf(IsIndexEvent(), eventUserMatcher(user, eventsConfig, c.isMobile)),
 						IsSummaryEvent(),
 					))
 				})
@@ -197,7 +196,7 @@ func (c CommonEventTests) makeSDKDataWithTrackedFlag(flagKey string) mockld.SDKD
 	return mockld.NewServerSDKDataBuilder().Flag(flag).Build()
 }
 
-func eventUserMatcher(user lduser.User, eventsConfig servicedef.SDKConfigEventParams) m.Matcher {
+func eventUserMatcher(user lduser.User, eventsConfig servicedef.SDKConfigEventParams, isMobile bool) m.Matcher {
 	// This simulates the expected behavior of SDK event processors with regard to redacting
 	// private attributes. For more details about how this works, please see the SDK
 	// documentation, and/or the implementations of the equivalent logic in the SDKs
@@ -244,23 +243,26 @@ func eventUserMatcher(user lduser.User, eventsConfig servicedef.SDKConfigEventPa
 			}
 		}
 	}
-	if len(custom) == 0 {
-		// if there are no custom properties, the SDK is allowed to write "custom":{}, "custom":null,
-		// or just omit the property
-		conditions = append(conditions,
-			m.JSONOptProperty("custom").Should(m.AnyOf(
-				m.BeNil(),
-				m.JSONStrEqual("{}"),
-			)),
-		)
-	} else {
-		conditions = append(conditions, m.JSONProperty("custom").Should(m.JSONEqual(custom)))
-	}
-	if len(private) != 0 {
-		// the SDK should only send "privateAttrs" if there are some private attributes
+
+	conditions = append(conditions, JSONUserCustomAttributesProperty(custom, isMobile))
+
+	if len(private) != 0 || (eventsConfig.AllAttributesPrivate && isMobile) {
+		// The SDK should only send "privateAttrs" if there are some private attributes. If it is a mobile
+		// SDK, then the SDK may have also added "device" and "os" attributes, which will become private if
+		// allAttributesPrivate was set.
 		allowedTopLevelKeys = append(allowedTopLevelKeys, "privateAttrs")
-		sort.Strings(private)
-		conditions = append(conditions, m.JSONProperty("privateAttrs").Should(SortedStrings().Should(m.Equal(private))))
+		var matcher m.Matcher
+		if isMobile && eventsConfig.AllAttributesPrivate {
+			matcher = SortedStrings().Should(
+				m.AnyOf(
+					m.Equal(h.Sorted(private)),
+					m.Equal(h.Sorted(append(h.CopyOf(private), "device", "os"))),
+				),
+			)
+		} else {
+			matcher = SortedStrings().Should(m.Equal(h.Sorted(private)))
+		}
+		conditions = append(conditions, m.JSONProperty("privateAttrs").Should(matcher))
 	}
 
 	conditions = append(conditions, JSONPropertyKeysCanOnlyBe(allowedTopLevelKeys...))

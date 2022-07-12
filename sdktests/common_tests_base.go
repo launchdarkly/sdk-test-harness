@@ -12,6 +12,7 @@ import (
 type commonTestsBase struct {
 	sdkKind        mockld.SDKKind
 	isClientSide   bool
+	isMobile       bool
 	sdkConfigurers []SDKConfigurer
 	userFactory    *UserFactory
 }
@@ -29,6 +30,7 @@ func newCommonTestsBase(t *ldtest.T, testName string, baseSDKConfigurers ...SDKC
 		userFactory: NewUserFactory(testName),
 	}
 	c.isClientSide = c.sdkKind.IsClientSide()
+	c.isMobile = t.Capabilities().Has(servicedef.CapabilityMobile)
 	if c.isClientSide {
 		c.sdkConfigurers = append(
 			[]SDKConfigurer{
