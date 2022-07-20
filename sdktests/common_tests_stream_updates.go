@@ -174,7 +174,7 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 				// A delete for an unknown flag should be persisted by the SDK so it knows this version was
 				// deleted. A subsequent update for the same flag with an equal or lower version should be ignored.
 				stream.StreamingService().PushUpdate("flags", flagKey, updateData)
-				require.Never(
+				h.RequireNever(
 					t,
 					checkForUpdatedValue(t, client, flagKey, context, defaultValue, valueAfter, defaultValue),
 					time.Millisecond*100,
