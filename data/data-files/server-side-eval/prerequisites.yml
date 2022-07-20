@@ -76,6 +76,18 @@ sdkData:
           clauses:
             - { attribute: "flag-rule-should-match", op: "in", values: [ true ] }
 
+    flag-where-first-prereq-is-a-prereq-of-the-second-prereq:
+      <<: *boolean_flag_base
+      on: true
+      rules:
+        - id: ruleid
+          variation: 0
+          clauses:
+            - { attribute: "flag-rule-should-match", op: "in", values: [ true ] }
+      prerequisites:
+        - { key: "prereq1", variation: 0 }
+        - { key: "flag-with-prereq1", variation: 0 }
+
     flag-with-prereq1-and-prereq2:
       <<: *boolean_flag_base
       on: true
@@ -313,3 +325,13 @@ evaluations:
     expect:
       value: false
       reason: { "kind": "ERROR", "errorKind": "MALFORMED_FLAG" }
+
+  - name: first prerequisite is a prerequisite of the second prerequisite
+    flagKey: flag-where-first-prereq-is-a-prereq-of-the-second-prereq
+    user:
+      key: "user-key"
+      custom:
+        prereq1-should-match: true
+        flag-rule-should-match: true
+    default: false
+    expect: <IS_MATCH>

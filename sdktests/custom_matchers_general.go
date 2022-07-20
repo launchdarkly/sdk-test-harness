@@ -159,6 +159,35 @@ func JSONPropertyNullOrAbsentOrEqualTo(name string, emptyValue interface{}) m.Ma
 	return m.JSONOptProperty(name).Should(m.AnyOf(m.BeNil(), m.JSONEqual(emptyValue)))
 }
 
+func JSONUserCustomAttributesProperty(customAttrs map[string]ldvalue.Value, withOptionalMobileProps bool) m.Matcher {
+	// The funny logic here is because in mobile SDKs only, the SDK is allowed to add extra
+	// "device" and "os" properties, whose exact values don't matter for our purposes.
+	customCanBe := []m.Matcher{}
+	if len(customAttrs) == 0 {
+		customCanBe = append(customCanBe, m.BeNil(), m.JSONStrEqual("{}"))
+		if withOptionalMobileProps {
+			customCanBe = append(customCanBe,
+				m.MapOf(
+					m.KV("device", m.Not(m.BeNil())),
+					m.KV("os", m.Not(m.BeNil())),
+				))
+		}
+		return m.JSONOptProperty("custom").Should(m.AnyOf(customCanBe...))
+	}
+	customCanBe = append(customCanBe, m.JSONEqual(customAttrs))
+	if withOptionalMobileProps {
+		props := make([]m.KeyValueMatcher, 0, len(customAttrs)+2)
+		for k, v := range customAttrs {
+			props = append(props, m.KV(k, m.JSONEqual(v)))
+		}
+		props = append(props,
+			m.KV("device", m.Not(m.BeNil())),
+			m.KV("os", m.Not(m.BeNil())))
+		customCanBe = append(customCanBe, m.MapOf(props...))
+	}
+	return m.JSONProperty("custom").Should(m.AnyOf(customCanBe...))
+}
+
 func SortedStrings() m.MatcherTransform {
 	return m.Transform("in order",
 		func(value interface{}) (interface{}, error) {
