@@ -3,6 +3,7 @@ package sdktests
 import (
 	"time"
 
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
@@ -15,8 +16,6 @@ import (
 	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldmodel"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-
-	"github.com/stretchr/testify/require"
 )
 
 func doServerSideSummaryEventTests(t *ldtest.T) {
@@ -347,7 +346,7 @@ func doServerSideSummaryEventVersionTest(t *ldtest.T) {
 
 	dataSource.StreamingService().PushUpdate("flags", flagKey, jsonhelpers.ToJSON(flagAfter))
 
-	require.Eventually(
+	h.RequireEventually(
 		t,
 		checkForUpdatedValue(t, client, flagKey, context, valueBefore, valueAfter, defaultValue),
 		time.Second,
