@@ -157,6 +157,14 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 			})
 		}
 	})
+
+	t.Run("evaluating all flags generates no events", func(t *ldtest.T) {
+		_ = client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
+			User: o.Some(users.NextUniqueUser()),
+		})
+		client.FlushEvents(t)
+		events.ExpectNoAnalyticsEvents(t, time.Millisecond*200)
+	})
 }
 
 func doServerSideDebugEventTests(t *ldtest.T) {
@@ -386,6 +394,21 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 			))
 		})
 	}
+
+	t.Run("evaluating all flags generates no events", func(t *ldtest.T) {
+		dataBuilder := mockld.NewServerSDKDataBuilder()
+		dataBuilder.Flag(flag1, flag2, flag3)
+
+		dataSource := NewSDKDataSource(t, dataBuilder.Build())
+		events := NewSDKEventSink(t)
+		client := NewSDKClient(t, dataSource, events)
+
+		_ = client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
+			User: o.Some(user),
+		})
+		client.FlushEvents(t)
+		events.ExpectNoAnalyticsEvents(t, time.Millisecond*200)
+	})
 }
 
 func maybeReason(withReason bool, reason ldreason.EvaluationReason) m.Matcher {
