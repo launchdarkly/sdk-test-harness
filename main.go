@@ -118,7 +118,12 @@ func loadSuppressions(params *commandParams) error {
 	defer func() { _ = file.Close() }()
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		escaped := regexp.QuoteMeta(scanner.Text())
+		line := scanner.Text()
+		// Ignore blank lines
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		escaped := regexp.QuoteMeta(line)
 		if err := params.filters.MustNotMatch.Set(escaped); err != nil {
 			return fmt.Errorf("cannot parse suppression: %v", err)
 		}
