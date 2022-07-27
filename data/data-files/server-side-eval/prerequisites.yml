@@ -76,6 +76,18 @@ sdkData:
           clauses:
             - { attribute: "flag-rule-should-match", op: "in", values: [ true ] }
 
+    flag-where-first-prereq-is-a-prereq-of-the-second-prereq:
+      <<: *boolean_flag_base
+      on: true
+      rules:
+        - id: ruleid
+          variation: 0
+          clauses:
+            - { attribute: "flag-rule-should-match", op: "in", values: [ true ] }
+      prerequisites:
+        - { key: "prereq1", variation: 0 }
+        - { key: "flag-with-prereq1", variation: 0 }
+
     flag-with-prereq1-and-prereq2:
       <<: *boolean_flag_base
       on: true
@@ -180,97 +192,97 @@ evaluations:
   - name: prerequisite succeeds, flag rule matches
     flagKey: flag-with-prereq1
     context:
-      key: "user-key"
-      custom:
-        prereq1-should-match: true
-        flag-rule-should-match: true
+      kind: user
+      key: user-key
+      prereq1-should-match: true
+      flag-rule-should-match: true
     default: false
     expect: <IS_MATCH>
 
   - name: prerequisite succeeds, flag rule does not match
     flagKey: flag-with-prereq1
     context:
-      key: "user-key"
-      custom:
-        prereq1-should-match: true
-        flag-rule-should-match: false
+      kind: user
+      key: user-key
+      prereq1-should-match: true
+      flag-rule-should-match: false
     default: false
     expect: <IS_NOT_MATCH>
 
   - name: prerequisite fails
     flagKey: flag-with-prereq1
     context:
-      key: "user-key"
-      custom:
-        prereq1-should-match: false
-        flag-rule-should-match: true
+      kind: user
+      key: user-key
+      prereq1-should-match: false
+      flag-rule-should-match: true
     default: false
     expect: <FAILED_PREREQ1>
 
   - name: two prerequisites, both succeed, flag rule matches
     flagKey: flag-with-prereq1-and-prereq2
     context:
-      key: "user-key"
-      custom:
-        prereq1-should-match: true
-        prereq2-should-match: true
-        flag-rule-should-match: true
+      kind: user
+      key: user-key
+      prereq1-should-match: true
+      prereq2-should-match: true
+      flag-rule-should-match: true
     default: false
     expect: <IS_MATCH>
 
   - name: two prerequisites, both valid, flag rule matches
     flagKey: flag-with-prereq1-and-prereq2
     context:
-      key: "user-key"
-      custom:
-        prereq1-should-match: true
-        prereq2-should-match: true
-        flag-rule-should-match: true
+      kind: user
+      key: user-key
+      prereq1-should-match: true
+      prereq2-should-match: true
+      flag-rule-should-match: true
     default: false
     expect: <IS_MATCH>
 
   - name: two prerequisites, second fails
     flagKey: flag-with-prereq1-and-prereq2
     context:
-      key: "user-key"
-      custom:
-        prereq1-should-match: true
-        prereq2-should-match: false
-        flag-rule-should-match: true
+      kind: user
+      key: user-key
+      prereq1-should-match: true
+      prereq2-should-match: false
+      flag-rule-should-match: true
     default: false
     expect: <FAILED_PREREQ2>
 
   - name: nested prerequisites, all succeed
     flagKey: flag-with-prereq3
     context:
-      key: "user-key"
-      custom:
-        prereq1-should-match: true
-        prereq2-should-match: true
-        prereq3-should-match: true
-        flag-rule-should-match: true
+      kind: user
+      key: user-key
+      prereq1-should-match: true
+      prereq2-should-match: true
+      prereq3-should-match: true
+      flag-rule-should-match: true
     default: false
     expect: <IS_MATCH>
 
   - name: nested prerequisites, transitive one fails
     flagKey: flag-with-prereq3
     context:
-      key: "user-key"
-      custom:
-        prereq1-should-match: true
-        prereq2-should-match: false
-        prereq3-should-match: true
-        flag-rule-should-match: true
+      kind: user
+      key: user-key
+      prereq1-should-match: true
+      prereq2-should-match: false
+      prereq3-should-match: true
+      flag-rule-should-match: true
     default: false
     expect: <FAILED_PREREQ3>
 
   - name: prerequisite flag not found
     flagKey: flag-with-unknown-prereq
     context:
-      key: "user-key"
-      custom:
-        prereq1-should-match: true
-        flag-rule-should-match: true
+      kind: user
+      key: user-key
+      prereq1-should-match: true
+      flag-rule-should-match: true
     default: false
     expect:
       value: false
@@ -280,10 +292,10 @@ evaluations:
   - name: failed prerequisite always returns off variation
     flagKey: flag-with-prereq1-and-special-off-variation
     context:
-      key: "user-key"
-      custom:
-        prereq1-should-match: false
-        flag-rule-should-match: true
+      kind: user
+      key: user-key
+      prereq1-should-match: false
+      flag-rule-should-match: true
     expect:
       value: "off"
       variationIndex: 0
@@ -292,24 +304,34 @@ evaluations:
   - name: prerequisite fails regardless of variation if it is off
     flagKey: flag-with-prereq-that-returns-true-but-is-off
     context:
-      key: "user-key"
-      custom:
-        flag-rule-should-match: true
+      kind: user
+      key: user-key
+      flag-rule-should-match: true
     expect:
       value: false
       variationIndex: 1
       reason: { "kind": "PREREQUISITE_FAILED", "prerequisiteKey": "prereq-that-returns-true-but-is-off" }
 
-  - NAME: prerequisite cycle is detected at top level, recursion stops
+  - name: prerequisite cycle is detected at top level, recursion stops
     flagKey: flag-with-prereq-cycle-at-top-level-1
-    context: { key: "user-key" }
+    context: { kind: "user", key: "user-key" }
     expect:
       value: false
       reason: { "kind": "ERROR", "errorKind": "MALFORMED_FLAG" }
 
-  - NAME: prerequisite cycle is detected at deeper level, recursion stops
+  - name: prerequisite cycle is detected at deeper level, recursion stops
     flagKey: flag-with-prereq-cycle-at-deeper-level-1
-    context: { key: "user-key" }
+    context: { kind: "user", key: "user-key" }
     expect:
       value: false
       reason: { "kind": "ERROR", "errorKind": "MALFORMED_FLAG" }
+
+  - name: first prerequisite is a prerequisite of the second prerequisite
+    flagKey: flag-where-first-prereq-is-a-prereq-of-the-second-prereq
+    context:
+      kind: user
+      key: user-key
+      prereq1-should-match: true
+      flag-rule-should-match: true
+    default: false
+    expect: <IS_MATCH>
