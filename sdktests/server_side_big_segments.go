@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
@@ -343,7 +342,7 @@ func doBigSegmentsMembershipCachingTests(t *ldtest.T) {
 		bigSegmentStore.SetupMemberships(t, map[string]map[string]bool{
 			expectedUserHash1: {bigSegmentRef(segment1): false}})
 
-		helpers.AssertEventually(
+		h.AssertEventually(
 			t,
 			func() bool {
 				value := basicEvaluateFlag(t, client, flag.Key, user1, ldvalue.Null())

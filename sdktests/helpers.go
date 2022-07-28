@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
@@ -235,7 +235,7 @@ func pollUntilFlagValueUpdated(
 	updatedValue ldvalue.Value,
 	defaultValue ldvalue.Value,
 ) {
-	helpers.RequireEventually(
+	h.RequireEventually(
 		t,
 		checkForUpdatedValue(t, client, flagKey, context, previousValue, updatedValue, defaultValue),
 		time.Second, time.Millisecond*50, "timed out without seeing updated flag value")
