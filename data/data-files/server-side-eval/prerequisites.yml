@@ -329,7 +329,7 @@ evaluations:
   - name: first prerequisite is a prerequisite of the second prerequisite
     flagKey: flag-where-first-prereq-is-a-prereq-of-the-second-prereq
     context:
-      kind: user,
+      kind: user
       key: "user-key"
       prereq1-should-match: true
       flag-rule-should-match: true
