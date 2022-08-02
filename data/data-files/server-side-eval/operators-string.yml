@@ -140,3 +140,9 @@ evaluations:
     context: { key: "user-key", custom: { attrname: "<USER_VALUE>" } }
     default: false
     expect: <EXPECT>
+
+  - name: "[<USER_VALUE>] <OP> <CLAUSE_VALUE>"
+    flagKey: test-string
+    context: { key: "user-key", custom: { attrname: ["<USER_VALUE>"] } }
+    default: false
+    expect: <EXPECT>
