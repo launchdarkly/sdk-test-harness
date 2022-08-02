@@ -37,6 +37,26 @@ parameters:
     CLAUSE: { attribute: "kind", op: "in", values: ["user"] }
     EXPECT: <IS_MATCH>
 
+  - NAME: kind match for single-kind context using matches operator
+    CONTEXT: { kind: "user", key: "a" }
+    CLAUSE: { attribute: "kind", op: "matches", values: ["^[uo]"] }
+    EXPECT: <IS_MATCH>
+
+  - NAME: kind non-match for single-kind context using matches operator
+    CONTEXT: { kind: "company", key: "a" }
+    CLAUSE: { attribute: "kind", op: "matches", values: ["^[uo]"] }
+    EXPECT: <IS_NOT_MATCH>
+
+  - NAME: kind match for multi-kind context using matches operator
+    CONTEXT: { kind: "multi", user: { key: "a" }, other: { key: "b" } }
+    CLAUSE: { attribute: "kind", op: "matches", values: ["^[uo]"] }
+    EXPECT: <IS_MATCH>
+
+  - NAME: kind non-match for multi-kind context using matches operator
+    CONTEXT: { kind: "multi", company: { key: "a" }, individual: { key: "b" } }
+    CLAUSE: { attribute: "kind", op: "matches", values: ["^[uo]"] }
+    EXPECT: <IS_NOT_MATCH>
+
   - NAME: kind non-match for single-kind context
     CONTEXT: { kind: "user", key: "a" }
     CLAUSE: { attribute: "kind", op: "in", values: ["org"] }
