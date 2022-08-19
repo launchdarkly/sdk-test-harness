@@ -16,6 +16,7 @@ const (
 	CommandAliasEvent               = "aliasEvent"
 	CommandFlushEvents              = "flushEvents"
 	CommandGetBigSegmentStoreStatus = "getBigSegmentStoreStatus"
+	CommandSecureModeHash           = "secureModeHash"
 )
 
 type ValueType string
@@ -29,12 +30,13 @@ const (
 )
 
 type CommandParams struct {
-	Command       string                          `json:"command"`
-	Evaluate      o.Maybe[EvaluateFlagParams]     `json:"evaluate,omitempty"`
-	EvaluateAll   o.Maybe[EvaluateAllFlagsParams] `json:"evaluateAll,omitempty"`
-	CustomEvent   o.Maybe[CustomEventParams]      `json:"customEvent,omitempty"`
-	IdentifyEvent o.Maybe[IdentifyEventParams]    `json:"identifyEvent,omitempty"`
-	AliasEvent    o.Maybe[AliasEventParams]       `json:"aliasEvent,omitempty"`
+	Command        string                          `json:"command"`
+	Evaluate       o.Maybe[EvaluateFlagParams]     `json:"evaluate,omitempty"`
+	EvaluateAll    o.Maybe[EvaluateAllFlagsParams] `json:"evaluateAll,omitempty"`
+	CustomEvent    o.Maybe[CustomEventParams]      `json:"customEvent,omitempty"`
+	IdentifyEvent  o.Maybe[IdentifyEventParams]    `json:"identifyEvent,omitempty"`
+	AliasEvent     o.Maybe[AliasEventParams]       `json:"aliasEvent,omitempty"`
+	SecureModeHash o.Maybe[SecureModeHashParams]   `json:"secureModeHash,omitempty"`
 }
 
 type EvaluateFlagParams struct {
@@ -82,4 +84,12 @@ type AliasEventParams struct {
 type BigSegmentStoreStatusResponse struct {
 	Available bool `json:"available"`
 	Stale     bool `json:"stale"`
+}
+
+type SecureModeHashParams struct {
+	User lduser.User `json:"user"`
+}
+
+type SecureModeHashResponse struct {
+	Result string `json:"result"`
 }
