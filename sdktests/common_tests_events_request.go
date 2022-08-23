@@ -11,7 +11,6 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 )
 
 const currentEventSchema = 3
@@ -22,7 +21,7 @@ func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string
 		events := NewSDKEventSink(t)
 		client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 
-		client.SendIdentifyEvent(t, lduser.NewUser("user-key"))
+		c.sendArbitraryEvent(t, client)
 		client.FlushEvents(t)
 
 		request := events.Endpoint().RequireConnection(t, time.Second)
@@ -57,7 +56,7 @@ func (c CommonEventTests) RequestURLPath(t *ldtest.T, pathMatcher m.Matcher) {
 						BaseURI: eventsURI,
 					}))...)
 
-				client.SendIdentifyEvent(t, lduser.NewUser("user-key"))
+				c.sendArbitraryEvent(t, client)
 				client.FlushEvents(t)
 
 				request := events.Endpoint().RequireConnection(t, time.Second)
@@ -73,13 +72,12 @@ func (c CommonEventTests) UniquePayloadIDs(t *ldtest.T) {
 		events := NewSDKEventSink(t)
 		client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...,
 		)
-		users := NewUserFactory("UniquePayloadIDs")
 
 		numPayloads := 3
 		requests := make([]harness.IncomingRequestInfo, 0, numPayloads)
 
 		for i := 0; i < numPayloads; i++ {
-			client.SendIdentifyEvent(t, users.NextUniqueUser())
+			c.sendArbitraryEvent(t, client)
 			client.FlushEvents(t)
 			requests = append(requests, events.Endpoint().RequireConnection(t, time.Second))
 		}

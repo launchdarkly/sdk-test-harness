@@ -1,12 +1,14 @@
 package sdktests
 
 import (
-	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
+
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
+	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 )
 
 type commonTestsBase struct {
@@ -76,4 +78,12 @@ func (c commonTestsBase) withFlagRequestMethod(method flagRequestMethod) SDKConf
 		configOut.ClientSide = o.Some(clientSideConfig)
 		return nil
 	})
+}
+
+func (c commonTestsBase) sendArbitraryEvent(t *ldtest.T, client *SDKClient) {
+	params := servicedef.CustomEventParams{EventKey: "arbitrary-event"}
+	if !c.isClientSide {
+		params.User = o.Some(lduser.NewUser("user-key"))
+	}
+	client.SendCustomEvent(t, params)
 }
