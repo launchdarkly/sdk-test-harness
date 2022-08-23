@@ -12,7 +12,6 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -100,7 +99,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 					dataSource,
 					events)...)
 
-				client.SendIdentifyEvent(t, lduser.NewUser("user-key"))
+				c.sendArbitraryEvent(t, client)
 				client.FlushEvents(t)
 
 				verifyRequestHeader(t, p, events.Endpoint())
