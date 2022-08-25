@@ -39,6 +39,17 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 	dataV2 := mockld.NewServerSDKDataBuilder().Flag(flagV2).Build()
 	user := lduser.NewUser("user-key")
 
+	// Because we're setting InitialRetryDelayMS to a very short delay, we expect reconnections to
+	// happen quickly - but, execution speed is always unpredictable, so we'll use a timeout for
+	// these that is much longer than we expect we'll need. That won't make the tests run any slower
+	// than they otherwise would unless the SDK really is hanging and not reconnecting.
+	incomingConnectionTimeout := time.Second * 2
+
+	// When we're asserting "there are no more connections", we should use a timeout that isn't too
+	// long because that *will* make successful tests run slow, but long enough that we have a
+	// reasonable chance of detecting an inappropriate retry that happened promptly.
+	noMoreConnectionsTimeout := time.Millisecond * 100
+
 	makeStreamEndpoint := func(t *ldtest.T, handler http.Handler) *harness.MockEndpoint {
 		return requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
 			harness.MockEndpointDescription("streaming service"))
@@ -59,13 +70,13 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get the request info for the first request
-		request1 := streamEndpoint.RequireConnection(t, time.Second*5)
+		request1 := streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 
 		// Now cause the stream to close; this should trigger a reconnect
 		request1.Cancel()
 
 		// Expect the second request; it succeeds and gets the second stream data
-		_ = streamEndpoint.RequireConnection(t, time.Millisecond*100)
+		_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 
 		// Check that the client got the new data from the second stream
 		pollUntilFlagValueUpdated(t, client, flagKey, user, expectedValueV1, expectedValueV2, ldvalue.Null())
@@ -88,7 +99,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get the request info for the first request
-		request1 := stream.Endpoint().RequireConnection(t, time.Second*5)
+		request1 := stream.Endpoint().RequireConnection(t, incomingConnectionTimeout)
 
 		// Now cause the stream to close; this should trigger a reconnect
 		request1.Cancel()
@@ -104,7 +115,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		// since they set a very short retry delay and expect to see connections in much less
 		// than 500ms. So, the failure condition we're really checking for here is "the SDK does
 		// not do a delay at all, it retries immediately".
-		stream.Endpoint().RequireNoMoreConnections(t, time.Millisecond*100)
+		stream.Endpoint().RequireNoMoreConnections(t, noMoreConnectionsTimeout)
 	})
 
 	shouldRetryAfterErrorOnInitialConnect := func(t *ldtest.T, errorHandler http.Handler) {
@@ -122,10 +133,10 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		for i := 0; i < 3; i++ { // expect three requests
-			_ = streamEndpoint.RequireConnection(t, time.Second*5)
+			_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 		}
 
-		streamEndpoint.RequireNoMoreConnections(t, time.Millisecond*100)
+		streamEndpoint.RequireNoMoreConnections(t, noMoreConnectionsTimeout)
 	}
 
 	t.Run("retry after IO error on initial connect", func(t *ldtest.T) {
@@ -157,19 +168,19 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get the request info for the first request
-		request1 := streamEndpoint.RequireConnection(t, time.Second*5)
+		request1 := streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 
 		// Now cause the stream to close; this should trigger a reconnect
 		request1.Cancel()
 
 		// Expect the second request; it will receive an error, causing another attempt
-		_ = streamEndpoint.RequireConnection(t, time.Millisecond*100)
+		_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 
 		// Expect the third request; it will also receive an error, causing another attempt
-		_ = streamEndpoint.RequireConnection(t, time.Millisecond*100)
+		_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 
 		// expect the fourth request; this one succeeds and gets the second stream data
-		_ = streamEndpoint.RequireConnection(t, time.Millisecond*100)
+		_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 
 		// check that the client got the new data from the second stream
 		pollUntilFlagValueUpdated(t, client, flagKey, user, expectedValueV1, expectedValueV2, ldvalue.Null())
@@ -201,9 +212,9 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 				_ = NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{InitCanFail: true}),
 					WithStreamingConfig(baseStreamConfig(streamEndpoint)))
 
-				_ = streamEndpoint.RequireConnection(t, time.Second*5)
+				_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 
-				streamEndpoint.RequireNoMoreConnections(t, time.Millisecond*100)
+				streamEndpoint.RequireNoMoreConnections(t, noMoreConnectionsTimeout)
 			})
 		}
 	})
@@ -225,15 +236,15 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 				m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 				// get the request info for the first request
-				request1 := streamEndpoint.RequireConnection(t, time.Second*5)
+				request1 := streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 
 				// now cause the stream to close; this should trigger a reconnect
 				request1.Cancel()
 
 				// expect the second request; it will receive an error
-				_ = streamEndpoint.RequireConnection(t, time.Millisecond*100)
+				_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 
-				streamEndpoint.RequireNoMoreConnections(t, time.Millisecond*100)
+				streamEndpoint.RequireNoMoreConnections(t, noMoreConnectionsTimeout)
 			})
 		}
 	})
