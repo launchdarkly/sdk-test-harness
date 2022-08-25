@@ -99,7 +99,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 					dataSource,
 					events)...)
 
-				client.SendIdentifyEvent(t, c.contextFactory.NextUniqueContext())
+				c.sendArbitraryEvent(t, client)
 				client.FlushEvents(t)
 
 				verifyRequestHeader(t, p, events.Endpoint())

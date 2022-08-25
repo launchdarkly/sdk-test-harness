@@ -262,6 +262,14 @@ The `contextConvert` property in the request body will be a JSON object with the
 
 The response body and response status are the same as for the `contextBuild` command.
 
+#### Get big segment store status
+
+If `command` is "getBigSegmentStoreStatus", the test service should tell the SDK to report on the status of the configured big segment store.
+
+The request body, if any, is irrelevant.
+
+The response should be a JSON object with two boolean properties, `available` and `stale`.
+
 ### Close client: `DELETE <URL of SDK client instance>`
 
 The test harness sends this request when it is finished using a specific client instance. The test service should use the appropriate SDK operation to shut down the client (normally this is called `Close` or `Dispose`).

@@ -10,7 +10,6 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
-	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
 
@@ -22,7 +21,7 @@ func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string
 		events := NewSDKEventSink(t)
 		client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 
-		client.SendIdentifyEvent(t, ldcontext.New("user-key"))
+		c.sendArbitraryEvent(t, client)
 		client.FlushEvents(t)
 
 		request := events.Endpoint().RequireConnection(t, time.Second)
@@ -57,7 +56,7 @@ func (c CommonEventTests) RequestURLPath(t *ldtest.T, pathMatcher m.Matcher) {
 						BaseURI: eventsURI,
 					}))...)
 
-				client.SendIdentifyEvent(t, ldcontext.New("user-key"))
+				c.sendArbitraryEvent(t, client)
 				client.FlushEvents(t)
 
 				request := events.Endpoint().RequireConnection(t, time.Second)
@@ -77,7 +76,7 @@ func (c CommonEventTests) UniquePayloadIDs(t *ldtest.T) {
 		requests := make([]harness.IncomingRequestInfo, 0, numPayloads)
 
 		for i := 0; i < numPayloads; i++ {
-			client.SendIdentifyEvent(t, c.contextFactory.NextUniqueContext())
+			c.sendArbitraryEvent(t, client)
 			client.FlushEvents(t)
 			requests = append(requests, events.Endpoint().RequireConnection(t, time.Second))
 		}

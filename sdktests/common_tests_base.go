@@ -8,6 +8,8 @@ import (
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 )
 
 // commonTestsBase provides shared behavior for server-side and client-side SDK tests, if their
@@ -87,4 +89,12 @@ func (c commonTestsBase) withFlagRequestMethod(method flagRequestMethod) SDKConf
 		configOut.ClientSide = o.Some(clientSideConfig)
 		return nil
 	})
+}
+
+func (c commonTestsBase) sendArbitraryEvent(t *ldtest.T, client *SDKClient) {
+	params := servicedef.CustomEventParams{EventKey: "arbitrary-event"}
+	if !c.isClientSide {
+		params.Context = o.Some(ldcontext.New("user-key"))
+	}
+	client.SendCustomEvent(t, params)
 }
