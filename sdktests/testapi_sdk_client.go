@@ -316,3 +316,17 @@ func (c *SDKClient) ContextConvert(
 	))
 	return resp
 }
+
+// GetSecureModeHash tells the SDK client to calculate a secure mode hash for a context. The test
+// harness will only call this method if the test service has the "secure-mode-hash" capability.
+func (c *SDKClient) GetSecureModeHash(t *ldtest.T, context ldcontext.Context) string {
+	var resp servicedef.SecureModeHashResponse
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:        servicedef.CommandSecureModeHash,
+			SecureModeHash: o.Some(servicedef.SecureModeHashParams{Context: context}),
+		},
+		t.DebugLogger(),
+		&resp))
+	return resp.Result
+}

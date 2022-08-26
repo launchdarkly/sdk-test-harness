@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [1.9.0] - 2022-08-26
+### Added:
+- New optional server-side test for secure mode hash.
+
+### Fixed:
+- Made stream retry tests less timing-sensitive.
+
 ## [1.8.1] - 2022-08-23
 ### Changed:
 - Speeded up some client-side tests by using `custom` events instead of `identify` (in cases where the type of event doesn't really matter).

@@ -77,6 +77,7 @@ func doAllServerSideTests(t *ldtest.T) {
 	t.Run("big segments", doServerSideBigSegmentsTests)
 	t.Run("service endpoints", doServerSideServiceEndpointsTests)
 	t.Run("tags", doServerSideTagsTests)
+	t.Run("secure mode hash", doServerSideSecureModeHashTests)
 	t.Run("context type", doSDKContextTypeTests)
 }
 
