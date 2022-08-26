@@ -286,3 +286,17 @@ func (c *SDKClient) GetBigSegmentStoreStatus(t *ldtest.T) servicedef.BigSegmentS
 		t.DebugLogger(), &resp))
 	return resp
 }
+
+// GetSecureModeHash tells the SDK client to calculate a secure mode hash for a user. The test
+// harness will only call this method if the test service has the "secure-mode-hash" capability.
+func (c *SDKClient) GetSecureModeHash(t *ldtest.T, user lduser.User) string {
+	var resp servicedef.SecureModeHashResponse
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:        servicedef.CommandSecureModeHash,
+			SecureModeHash: o.Some(servicedef.SecureModeHashParams{User: user}),
+		},
+		t.DebugLogger(),
+		&resp))
+	return resp.Result
+}
