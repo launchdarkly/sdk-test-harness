@@ -307,14 +307,37 @@ func runServerSideEvalBucketingTests(t *ldtest.T) {
 					}
 				}
 
-				t.Run(desc, func(t *ldtest.T) {
-					t.Run("rollouts", func(t *ldtest.T) {
-						doTests(t, makeBucketingTestParams(), ldmodel.RolloutKindRollout, contextKind, ldattr.Ref{}, makeContext)
-					})
+				t.Run("rollouts", func(t *ldtest.T) {
+					doTests(t, makeBucketingTestParams(), ldmodel.RolloutKindRollout, contextKind, ldattr.Ref{}, makeContext)
+				})
 
-					t.Run("experiments", func(t *ldtest.T) {
-						doTests(t, makeBucketingTestParamsForExperiments(), ldmodel.RolloutKindExperiment,
-							contextKind, ldattr.Ref{}, makeContext)
+				t.Run("experiments", func(t *ldtest.T) {
+					doTests(t, makeBucketingTestParamsForExperiments(), ldmodel.RolloutKindExperiment,
+						contextKind, ldattr.Ref{}, makeContext)
+
+					t.Run("inExperiment is false if context kind was not found", func(t *ldtest.T) {
+						context := makeContext(makeBucketingTestParamsForExperiments()[0], false)
+						experiment := ldmodel.Rollout{
+							Kind:        ldmodel.RolloutKindExperiment,
+							ContextKind: ldcontext.Kind("nonexistent"),
+							Variations: []ldmodel.WeightedVariation{
+								{Variation: 0, Weight: 1},
+								{Variation: 1, Weight: 99999},
+							},
+						}
+						flag := ldbuilders.NewFlagBuilder("flagkey").
+							On(true).
+							Variations(ldvalue.Bool(false), ldvalue.Bool(true)).
+							Fallthrough(ldmodel.VariationOrRollout{Rollout: experiment}).
+							Build()
+						dataBuilder := mockld.NewServerSDKDataBuilder().Flag(flag)
+						dataSource := NewSDKDataSource(t, dataBuilder.Build())
+						client := NewSDKClient(t, dataSource)
+						result := evaluateFlagDetail(t, client, flag.Key, context, defaultValue)
+						m.In(t).Assert(result, m.AllOf(
+							EvalResponseVariation().Should(m.Equal(0)),
+							EvalResponseReason().Should(EqualReason(ldreason.NewEvalReasonFallthrough())), // does *not* have inExperiment
+						))
 					})
 				})
 			})
