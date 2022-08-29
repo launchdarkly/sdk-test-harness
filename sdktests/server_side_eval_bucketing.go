@@ -335,7 +335,7 @@ func runServerSideEvalBucketingTests(t *ldtest.T) {
 						client := NewSDKClient(t, dataSource)
 						result := evaluateFlagDetail(t, client, flag.Key, context, defaultValue)
 						m.In(t).Assert(result, m.AllOf(
-							EvalResponseVariation().Should(m.Equal(0)),
+							EvalResponseVariation().Should(m.Equal(o.Some(0))),
 							EvalResponseReason().Should(EqualReason(ldreason.NewEvalReasonFallthrough())), // does *not* have inExperiment
 						))
 					})
