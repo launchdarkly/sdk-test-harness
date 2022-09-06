@@ -10,11 +10,24 @@ import (
 )
 
 const (
-	PollingPathServerSide         = "/sdk/latest-all"
-	PollingPathMobileGet          = "/msdk/evalx/users/{context}"
-	PollingPathMobileReport       = "/msdk/evalx/user"
-	PollingPathJSClientGet        = "/sdk/evalx/{env}/users/{context}"
-	PollingPathJSClientReport     = "/sdk/evalx/{env}/user"
+	PollingPathServerSide     = "/sdk/latest-all"
+	PollingPathMobileGet      = "/msdk/evalx/contexts/{context}"
+	PollingPathMobileReport   = "/msdk/evalx/context"
+	PollingPathJSClientGet    = "/sdk/evalx/{env}/contexts/{context}"
+	PollingPathJSClientReport = "/sdk/evalx/{env}/context"
+
+	// The following endpoint paths were used by older SDKs based on the user model rather than
+	// the context model. New context-aware SDKs should always use the new paths. However, our
+	// mock service still supports the old paths (just as the real LD services do). We have
+	// specific tests to verify that the SDKs use the new paths; in all other tests, if the SDK
+	// uses an old path, it will still work so that we don't confusingly see every test fail.
+	// We do *not* support the very old "eval" (as opposed to "evalx") paths since the only SDKs
+	// that used them are long past EOL.
+	PollingPathMobileGetUser      = "/msdk/evalx/users/{context}"
+	PollingPathMobileReportUser   = "/msdk/evalx/user"
+	PollingPathJSClientGetUser    = "/sdk/evalx/{env}/users/{context}"
+	PollingPathJSClientReportUser = "/sdk/evalx/{env}/user"
+
 	PollingPathContextBase64Param = "{context}"
 	PollingPathEnvIDParam         = "{env}"
 )
@@ -47,10 +60,13 @@ func NewPollingService(
 	case MobileSDK:
 		router.HandleFunc(PollingPathMobileGet, pollHandler).Methods("GET")
 		router.HandleFunc(PollingPathMobileReport, pollHandler).Methods("REPORT")
-		// Note that we only support the "evalx", not the older "eval" which is used only by old unsupported SDKs
+		router.HandleFunc(PollingPathMobileGetUser, pollHandler).Methods("GET")
+		router.HandleFunc(PollingPathMobileReportUser, pollHandler).Methods("REPORT")
 	case JSClientSDK:
 		router.HandleFunc(PollingPathJSClientGet, pollHandler).Methods("GET")
 		router.HandleFunc(PollingPathJSClientReport, pollHandler).Methods("REPORT")
+		router.HandleFunc(PollingPathJSClientGetUser, pollHandler).Methods("GET")
+		router.HandleFunc(PollingPathJSClientReportUser, pollHandler).Methods("REPORT")
 	}
 	p.handler = router
 
