@@ -18,9 +18,10 @@ import (
 type SDKKind string
 
 const (
-	ServerSideSDK SDKKind = "server"
-	MobileSDK     SDKKind = "mobile"
-	JSClientSDK   SDKKind = "jsclient"
+	ServerSideSDK         SDKKind = "server"
+	MobileSDK             SDKKind = "mobile"
+	JSClientSDK           SDKKind = "jsclient"
+	ServerSideOpenFeature SDKKind = "server-openfeature"
 )
 
 func (k SDKKind) IsServerSide() bool {

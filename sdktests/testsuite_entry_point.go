@@ -22,6 +22,9 @@ func RunSDKTestSuite(
 	var sdkKind mockld.SDKKind
 
 	switch {
+	case capabilities.Has(servicedef.CapabilityServerSideOpenFeature):
+		fmt.Println("Running server-side OpenFeature test suite")
+		sdkKind = mockld.ServerSideOpenFeature
 	case capabilities.Has(servicedef.CapabilityServerSide):
 		fmt.Println("Running server-side SDK test suite")
 		sdkKind = mockld.ServerSideSDK
@@ -61,6 +64,8 @@ func RunSDKTestSuite(
 
 	return ldtest.Run(config, func(t *ldtest.T) {
 		switch sdkKind {
+		case mockld.ServerSideOpenFeature:
+			doAllServerSideOpenFeatureTests(t)
 		case mockld.ServerSideSDK:
 			doAllServerSideTests(t)
 		default:
@@ -85,6 +90,10 @@ func doAllClientSideTests(t *ldtest.T) {
 	t.Run("streaming", doClientSideStreamTests)
 	t.Run("polling", doClientSidePollTests)
 	t.Run("tags", doClientSideTagsTests)
+}
+
+func doAllServerSideOpenFeatureTests(t *ldtest.T) {
+	t.Run("evaluation", doServerSideOpenFeatureEvalTests)
 }
 
 func allImportantServerSideCapabilities() framework.Capabilities {
