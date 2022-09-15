@@ -2,6 +2,11 @@ package sdktests
 
 import (
 	"fmt"
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
+	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldbuilders"
+	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
+	"net/http"
 	"strings"
 	"time"
 
@@ -103,6 +108,49 @@ func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagReq
 			}
 		})
 	}
+}
+
+func (c CommonPollingTests) ShouldRetryAfterError(t *ldtest.T) {
+	shouldRetryAfterErrorOnInitialConnection := func(t *ldtest.T, errorHandler http.Handler) {
+		context := ldcontext.New("user-key")
+		expectedValueV1 := ldvalue.Int(1)
+		flagKey := "flag"
+		flag := ldbuilders.NewFlagBuilder(flagKey).Version(1).
+			On(false).OffVariation(0).Variations(expectedValueV1).Build()
+		data := mockld.NewServerSDKDataBuilder().Flag(flag).Build()
+		dataSource := NewSDKDataSource(t, data, DataSourceOptionPolling())
+		handler := httphelpers.SequentialHandler(
+			errorHandler,
+			dataSource.pollingService,
+		)
+		pollingEndpoint := makePollEndpoint(t, handler)
+		t.Defer(pollingEndpoint.Close)
+
+		client := NewSDKClient(t, c.baseSDKConfigurationPlus(
+			WithConfig(servicedef.SDKConfigParams{InitCanFail: true}),
+			c.withFlagRequestMethod(c.availableFlagRequestMethods()[0]),
+			WithPollingConfig(servicedef.SDKConfigPollingParams{
+				BaseURI:        pollingEndpoint.BaseURL(),
+				PollIntervalMS: o.Some(ldtime.UnixMillisecondTime(0)),
+			}),
+		)...)
+
+		incomingConnectionTimeout := time.Second * 2
+		// Error
+		pollingEndpoint.RequireConnection(t, incomingConnectionTimeout)
+		// Success
+		pollingEndpoint.RequireConnection(t, time.Second*60)
+
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
+		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
+
+		// Shouldn't get any more connections.
+		pollingEndpoint.RequireNoMoreConnections(t, incomingConnectionTimeout)
+	}
+
+	t.Run("retry after IO error on initial connect", func(t *ldtest.T) {
+		shouldRetryAfterErrorOnInitialConnection(t, httphelpers.BrokenConnectionHandler())
+	})
 }
 
 func (c CommonPollingTests) RequestContextProperties(t *ldtest.T, getPath string) {
