@@ -1,6 +1,7 @@
 package sdktests
 
 import (
+	"fmt"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
@@ -17,11 +18,13 @@ func doServerSideOpenFeatureEvalTests(t *ldtest.T) {
 	dataSource := NewSDKDataSource(t, data)
 	client := NewSDKClient(t, dataSource)
 
-	client.EvaluateOpenFeatureFlag(t, servicedef.OpenFeatureEvaluateFlagParams{
+	resolution := client.EvaluateOpenFeatureFlag(t, servicedef.OpenFeatureEvaluateFlagParams{
 		FlagKey:           "flag",
 		EvaluationContext: map[string]string{"targetingKey": "key"},
 		ValueType:         servicedef.ValueTypeInt,
 		DefaultValue:      ldvalue.Int(0),
 		Detail:            true,
 	})
+
+	fmt.Print("Val ", resolution.Value, " Reason ", resolution.Reason, " Variant ", resolution.Variant, " ErrorCode ", resolution.ErrorCode)
 }

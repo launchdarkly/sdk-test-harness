@@ -78,6 +78,8 @@ func NewStreamingService(
 	streamHandler := streams.Handler(allDataChannel)
 	router := mux.NewRouter()
 	switch sdkKind {
+	case ServerSideOpenFeature:
+		fallthrough
 	case ServerSideSDK:
 		router.HandleFunc(StreamingPathServerSide, streamHandler).Methods("GET")
 	case MobileSDK:

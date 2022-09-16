@@ -25,7 +25,7 @@ const (
 )
 
 func (k SDKKind) IsServerSide() bool {
-	return k == ServerSideSDK
+	return k == ServerSideSDK || k == ServerSideOpenFeature
 }
 
 func (k SDKKind) IsClientSide() bool {

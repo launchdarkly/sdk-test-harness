@@ -98,5 +98,5 @@ type OpenFeatureEvaluateFlagParams struct {
 	EvaluationContext map[string]string `json:"evaluationContext"`
 	ValueType         ValueType         `json:"valueType"`
 	DefaultValue      ldvalue.Value     `json:"defaultValue"`
-	Detail            bool
+	Detail            bool              `json:"detail"`
 }
