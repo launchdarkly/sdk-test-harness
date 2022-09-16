@@ -16,6 +16,7 @@ const (
 	CommandAliasEvent               = "aliasEvent"
 	CommandFlushEvents              = "flushEvents"
 	CommandGetBigSegmentStoreStatus = "getBigSegmentStoreStatus"
+	CommandOpenFeatureEvaluateFlag  = "openFeatureEvaluate"
 )
 
 type ValueType string
@@ -29,12 +30,13 @@ const (
 )
 
 type CommandParams struct {
-	Command       string                          `json:"command"`
-	Evaluate      o.Maybe[EvaluateFlagParams]     `json:"evaluate,omitempty"`
-	EvaluateAll   o.Maybe[EvaluateAllFlagsParams] `json:"evaluateAll,omitempty"`
-	CustomEvent   o.Maybe[CustomEventParams]      `json:"customEvent,omitempty"`
-	IdentifyEvent o.Maybe[IdentifyEventParams]    `json:"identifyEvent,omitempty"`
-	AliasEvent    o.Maybe[AliasEventParams]       `json:"aliasEvent,omitempty"`
+	Command             string                                 `json:"command"`
+	Evaluate            o.Maybe[EvaluateFlagParams]            `json:"evaluate,omitempty"`
+	EvaluateAll         o.Maybe[EvaluateAllFlagsParams]        `json:"evaluateAll,omitempty"`
+	CustomEvent         o.Maybe[CustomEventParams]             `json:"customEvent,omitempty"`
+	IdentifyEvent       o.Maybe[IdentifyEventParams]           `json:"identifyEvent,omitempty"`
+	AliasEvent          o.Maybe[AliasEventParams]              `json:"aliasEvent,omitempty"`
+	OpenFeatureEvaluate o.Maybe[OpenFeatureEvaluateFlagParams] `json:"openFeatureEvaluate"`
 }
 
 type EvaluateFlagParams struct {
@@ -82,4 +84,19 @@ type AliasEventParams struct {
 type BigSegmentStoreStatusResponse struct {
 	Available bool `json:"available"`
 	Stale     bool `json:"stale"`
+}
+
+type OpenFeatureEvaluateFlagResponse struct {
+	Value     ldvalue.Value   `json:"value"`
+	Variant   string          `json:"variant"`
+	Reason    string          `json:"reason"`
+	ErrorCode o.Maybe[string] `json:"errorCode"`
+}
+
+type OpenFeatureEvaluateFlagParams struct {
+	FlagKey           string            `json:"flagKey"`
+	EvaluationContext map[string]string `json:"evaluationContext"`
+	ValueType         ValueType         `json:"valueType"`
+	DefaultValue      ldvalue.Value     `json:"defaultValue"`
+	Detail            bool
 }

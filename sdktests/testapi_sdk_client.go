@@ -209,6 +209,22 @@ func (c *SDKClient) EvaluateFlag(t *ldtest.T, params servicedef.EvaluateFlagPara
 	return resp
 }
 
+func (c *SDKClient) EvaluateOpenFeatureFlag(t *ldtest.T, params servicedef.OpenFeatureEvaluateFlagParams) servicedef.OpenFeatureEvaluateFlagResponse {
+	if params.ValueType == "" {
+		params.ValueType = servicedef.ValueTypeAny // it'd be easy for a test to forget to set this
+	}
+	var resp servicedef.OpenFeatureEvaluateFlagResponse
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:             servicedef.CommandOpenFeatureEvaluateFlag,
+			OpenFeatureEvaluate: o.Some(params),
+		},
+		t.DebugLogger(),
+		&resp,
+	))
+	return resp
+}
+
 // EvaluateAllFlags tells the SDK client to evaluate all feature flags. This corresponds to calling the SDK's
 // AllFlags or AllFlagsState method.
 //
