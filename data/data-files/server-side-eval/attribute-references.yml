@@ -62,6 +62,11 @@ parameters:
     CLAUSE: { contextKind: "user", attribute: "/attr1/prop1/prop2", op: "in", values: ["right"] }
     EXPECT: <IS_MATCH>
 
+  - NAME: property that is a numeric string
+    CONTEXT: { kind: "user", key: "x", attr1: {"2": "right"}}
+    CLAUSE: { contextKind: "user", attribute: "/attr1/2", op: "in", values: ["right"] }
+    EXPECT: <IS_MATCH>
+  
   - NAME: nonexistent property automatically fails clause
     CONTEXT: { kind: "user", key: "x", attr1: {prop1: "right", prop2: "wrong"}}
     CLAUSE: { contextKind: "user", attribute: "/attr1/prop99", op: "in", values: ["x"], negate: true }
@@ -74,34 +79,9 @@ parameters:
     # note that "not in [x]" does *not* match if the context value does not exist
     EXPECT: <IS_NOT_MATCH>
 
-  - NAME: element in array
-    CONTEXT: { kind: "user", key: "x", attr1: ["wrong", "alas", "right", "no"]}
-    CLAUSE: { contextKind: "user", attribute: "/attr1/2", op: "in", values: ["right"] }
-    EXPECT: <IS_MATCH>
-
-  - NAME: element in nested array
-    CONTEXT: { kind: "user", key: "x", attr1: ["wrong", "alas", ["right", "sorry"], "no"] }
-    CLAUSE: { contextKind: "user", attribute: "/attr1/2/0", op: "in", values: ["right"] }
-    EXPECT: <IS_MATCH>
-
-  - NAME: element in array in object
-    CONTEXT: { kind: "user", key: "x", attr1: { prop1: ["wrong", "alas", "right", "no"] } }
-    CLAUSE: { contextKind: "user", attribute: "/attr1/prop1/2", op: "in", values: ["right"] }
-    EXPECT: <IS_MATCH>
-
-  - NAME: array index too low automatically fails clause
-    CONTEXT: { kind: "user", key: "x", attr1: ["right"] }
-    CLAUSE: { contextKind: "user", attribute: "/attr1/-1", op: "in", values: ["x"], negate: true }
-    EXPECT: <IS_NOT_MATCH>
-
-  - NAME: array index too high automatically fails clause
-    CONTEXT: { kind: "user", key: "x", attr1: ["right", "wrong"] }
-    CLAUSE: { contextKind: "user", attribute: "/attr1/2", op: "in", values: ["x"], negate: true }
-    EXPECT: <IS_NOT_MATCH>
-
-  - NAME: array index in non-array automatically fails clause
-    CONTEXT: { kind: "user", key: "x", attr1: "right" }
-    CLAUSE: { contextKind: "user", attribute: "/attr1/0", op: "in", values: ["x"], negate: true }
+  - NAME: array index is not supported
+    CONTEXT: { kind: "user", key: "x", attr1: ["wrong", "alas", "x"]}
+    CLAUSE: { contextKind: "user", attribute: "/attr1/2", op: "in", values: ["x"] }
     EXPECT: <IS_NOT_MATCH>
 
 sdkData:
