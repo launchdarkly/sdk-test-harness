@@ -2,6 +2,10 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [1.10.0] - 2022-10-04
+### Added:
+- The test harness can now run evaluation tests against the LaunchDarkly PHP SDK, a special case of LaunchDarkly server-side SDKs.
+
 ## [1.9.0] - 2022-08-26
 ### Added:
 - New optional server-side test for secure mode hash.
