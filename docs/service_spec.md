@@ -21,11 +21,11 @@ This resource should return a 200 status to indicate that the service has starte
 
 The test harness will use the `capabilities` information to decide whether to run optional parts of the test suite that relate to those capabilities.
 
-#### SDK type capabilities: `"server-side"`, `"client-side"`, `"mobile"`
+#### SDK type capabilities: `"server-side"`, `"client-side"`, `"mobile"`, `"php"`
 
 The most basic decision in this regard is what type of SDK is being tested: server-side, mobile client-side, or JavaScript-based client-side. The server-side test suite is much more detailed, since client-side SDKs do not have their own evaluation logic. In the client-side test suite, the two variants (mobile and JavaScript-based) mostly receive the same tests, but each variant uses somewhat different simulated LaunchDarkly services.
 
-* If `"server-side"` is present, this is a server-side SDK.
+* If `"server-side"` is present, this is a server-side SDK. If `"php"` is also present, it is the PHP SDK which is a special case of server-side SDKs.
 * Otherwise, if `"client-side"` and `"mobile"` are present, this is a mobile client-side SDK.
 * Otherwise, if `"client-side"` is present without `"mobile"`, this is a JavaScript-based client-side SDK.
 * If none of the above are true, no tests can be run.

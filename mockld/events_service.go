@@ -43,7 +43,7 @@ func NewEventsService(sdkKind SDKKind, logger framework.Logger) *EventsService {
 
 	router := mux.NewRouter()
 	switch sdkKind {
-	case ServerSideSDK:
+	case ServerSideSDK, PHPSDK:
 		router.HandleFunc("/bulk", s.postEvents).Methods("POST")
 		router.HandleFunc("/diagnostic", s.postDiagnosticEvent).Methods("POST")
 	case MobileSDK:

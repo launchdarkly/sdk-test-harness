@@ -86,7 +86,7 @@ func NewSDKDataSourceWithoutEndpoint(t *ldtest.T, data mockld.SDKData, options .
 		data = mockld.EmptyData(sdkKind)
 	}
 
-	defaultIsPolling := sdkKind == mockld.JSClientSDK
+	defaultIsPolling := sdkKind == mockld.JSClientSDK || sdkKind == mockld.PHPSDK
 	d := &SDKDataSource{}
 	if config.polling.Value() || (!config.polling.IsDefined() && defaultIsPolling) {
 		d.pollingService = mockld.NewPollingService(data, sdkKind, t.DebugLogger())
