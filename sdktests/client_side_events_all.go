@@ -26,7 +26,10 @@ func doClientSideEventRequestTests(t *ldtest.T) {
 	eventTests := NewCommonEventTests(t, "doClientSideEventRequestTests",
 		WithCredential(envIDOrMobileKey))
 
-	eventTests.RequestMethodAndHeaders(t, envIDOrMobileKey)
+	eventTests.RequestMethodAndHeaders(t, envIDOrMobileKey, m.AllOf(
+		Header("X-LaunchDarkly-Event-Schema").Should(m.Equal(regularEventSchema)),
+		Header("X-LaunchDarkly-Payload-Id").Should(m.Not(m.Equal(""))),
+	))
 
 	requestPathMatcher := h.IfElse(
 		sdkKind == mockld.JSClientSDK,

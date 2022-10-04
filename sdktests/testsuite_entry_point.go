@@ -95,6 +95,8 @@ func doAllClientSideTests(t *ldtest.T) {
 
 func doAllPHPTests(t *ldtest.T) {
 	t.Run("evaluation", doPHPEvalTests)
+	t.Run("events", doPHPEventTests)
+	t.Run("secure mode hash", doServerSideSecureModeHashTests)
 }
 
 func allImportantServerSideCapabilities() framework.Capabilities {

@@ -2,6 +2,7 @@ package sdktests
 
 import (
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
+	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 )
 
@@ -70,16 +71,21 @@ func IsCustomEventForEventKey(key string) m.Matcher {
 	return m.AllOf(IsCustomEvent(), m.JSONProperty("key").Should(m.Equal(key)))
 }
 
-func IsValidFeatureEventWithConditions(matchers ...m.Matcher) m.Matcher {
+func IsValidFeatureEventWithConditions(isPHP, inlineUser bool, user lduser.User, matchers ...m.Matcher) m.Matcher {
+	propertyKeys := []string{"kind", "creationDate", "key", "version", "user", "userKey", "contextKind",
+		"value", "variation", "reason", "default", "prereqOf"}
+	if isPHP {
+		propertyKeys = append(propertyKeys, "trackEvents", "debugEventsUntilDate")
+		inlineUser = true // PHP SDK always inlines users
+	}
 	return m.AllOf(
 		append(
 			[]m.Matcher{
 				IsFeatureEvent(),
 				HasAnyCreationDate(),
-				JSONPropertyKeysCanOnlyBe(
-					"kind", "creationDate", "key", "version", "user", "userKey", "contextKind",
-					"value", "variation", "reason", "default", "prereqOf",
-				),
+				JSONPropertyKeysCanOnlyBe(propertyKeys...),
+				h.IfElse(inlineUser, HasNoUserKeyProperty(), HasUserKeyProperty(user.GetKey())),
+				h.IfElse(inlineUser, HasUserObjectWithKey(user.GetKey()), HasNoUserObject()),
 			},
 			matchers...)...)
 }

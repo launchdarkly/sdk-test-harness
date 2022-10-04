@@ -32,6 +32,9 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 		}
 
 		for _, inlineUser := range []bool{false, true} {
+			if !inlineUser && c.isPHP {
+				continue // the PHP SDK always inlines users in events
+			}
 			t.Run(h.IfElse(inlineUser, "inline user", "non-inline user"), func(t *ldtest.T) {
 				for _, anonymousUser := range []bool{false, true} {
 					t.Run(h.IfElse(anonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
@@ -43,6 +46,8 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 						client := NewSDKClient(t, c.baseSDKConfigurationPlus(WithEventsConfig(eventsConfig), dataSource, events)...)
 
 						if c.isClientSide {
+							// For client-side SDKs, we do an identify first to set the current user; then we
+							// consume and ignore the identify event.
 							client.SendIdentifyEvent(t, user)
 							client.FlushEvents(t)
 							_ = events.ExpectAnalyticsEvents(t, defaultEventTimeout)

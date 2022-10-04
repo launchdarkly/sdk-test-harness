@@ -71,14 +71,6 @@ func (c CommonEventTests) eventUsersWithConfig(
 		desc := fmt.Sprintf("user-private=%v", h.IfElse[interface{}](len(userPrivateAttrs) == 0, "none",
 			userPrivateAttrs))
 
-		maybeWithIndexEvent := func(matchers ...m.Matcher) []m.Matcher {
-			// Server-side SDKs send an index event for each never-before-seen user. Client-side SDKs do not.
-			if c.isClientSide {
-				return matchers
-			}
-			return append([]m.Matcher{IsIndexEvent()}, matchers...)
-		}
-
 		t.Run(desc, func(t *ldtest.T) {
 			t.Run("identify event", func(t *ldtest.T) {
 				user := makeUser()
@@ -107,14 +99,14 @@ func (c CommonEventTests) eventUsersWithConfig(
 
 				if eventsConfig.InlineUsers {
 					m.In(t).Assert(payload, m.ItemsInAnyOrder(
-						m.AllOf(IsFeatureEvent(), eventUserMatcher(user, eventsConfig, c.isMobile), HasNoUserKeyProperty()),
-						IsSummaryEvent(),
+						c.eventsWithSummaryEventIfAppropriate(
+							m.AllOf(IsFeatureEvent(), eventUserMatcher(user, eventsConfig, c.isMobile), HasNoUserKeyProperty()),
+						)...,
 					))
 				} else {
 					m.In(t).Assert(payload, m.ItemsInAnyOrder(
-						maybeWithIndexEvent(
+						c.eventsWithIndexEventAndSummaryEventIfAppropriate(
 							m.AllOf(IsFeatureEvent(), HasNoUserObject(), HasUserKeyProperty(user.GetKey())),
-							IsSummaryEvent(),
 						)...,
 					))
 				}
@@ -147,12 +139,12 @@ func (c CommonEventTests) eventUsersWithConfig(
 					))
 				} else {
 					m.In(t).Assert(payload, m.ItemsInAnyOrder(
-						maybeWithIndexEvent(
+						c.eventsWithIndexEventIfAppropriate(
 							m.AllOf(IsCustomEvent(), HasNoUserObject(), HasUserKeyProperty(user.GetKey())))...))
 				}
 			})
 
-			if !c.isClientSide {
+			if !c.isClientSide && !c.isPHP { // client-side SDKs and the PHP SDK never send index events
 				t.Run("index event", func(t *ldtest.T) {
 					// Doing an evaluation for a never-before-seen user will generate an index event. We don't
 					// care about the evaluation result or the summary data, we're just looking at the user
@@ -273,6 +265,9 @@ func eventUserMatcher(user lduser.User, eventsConfig servicedef.SDKConfigEventPa
 func (c CommonEventTests) makeEventConfigPermutations() []servicedef.SDKConfigEventParams {
 	var ret []servicedef.SDKConfigEventParams
 	for _, inlineUsers := range []bool{false, true} {
+		if !inlineUsers && c.isPHP {
+			continue // the PHP SDK always inlines users in events
+		}
 		for _, allAttrsPrivate := range []bool{false, true} {
 			for _, globalPrivateAttrs := range [][]lduser.UserAttribute{nil, {lduser.FirstNameAttribute}} {
 				ret = append(ret, servicedef.SDKConfigEventParams{
