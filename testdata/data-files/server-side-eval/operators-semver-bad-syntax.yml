@@ -1,0 +1,54 @@
+---
+name: operators - semver - bad syntax
+
+constants:
+  IS_NOT_MATCH:
+    value: false
+    variationIndex: 1
+    reason: { kind: "FALLTHROUGH" }
+  base_flag: &base_flag
+    on: true
+    fallthrough: { variation: 1 }
+    variations: [ true, false ]
+  base_rule: &base_rule
+    id: ruleid
+    variation: 0
+
+parameters:
+  - VALUE1: "02.0.0"
+    VALUE2: "2.0.0"
+    EXPECT: <IS_NOT_MATCH>
+  - VALUE1: "v2.0.0"
+    VALUE2: "2.0.0"
+    EXPECT: <IS_NOT_MATCH>
+  - VALUE1: "2.0.0.0"
+    VALUE2: "2.0.0"
+    EXPECT: <IS_NOT_MATCH>
+
+sdkData:
+  flags:
+    test-semVerEqual-value1:
+      <<: *base_flag
+      rules:
+        - <<: *base_rule
+          clauses:
+            - { attribute: attrname, op: "semVerEqual", values: [ "<VALUE1>" ] }
+    test-semVerEqual-value2:
+      <<: *base_flag
+      rules:
+        - <<: *base_rule
+          clauses:
+            - { attribute: attrname, op: "semVerEqual", values: [ "<VALUE2>" ] }
+
+evaluations:
+  - name: "<VALUE1> semVerEqual <VALUE2> fails"
+    flagKey: test-semVerEqual-value2
+    user: { key: "user-key", custom: { attrname: "<VALUE1>" } }
+    default: false
+    expect: <IS_NOT_MATCH>
+
+  - name: "<VALUE2> semVerEqual <VALUE1> fails"
+    flagKey: test-semVerEqual-value1
+    user: { key: "user-key", custom: { attrname: "<VALUE2>" } }
+    default: false
+    expect: <IS_NOT_MATCH>
