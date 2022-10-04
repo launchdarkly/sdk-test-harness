@@ -18,8 +18,8 @@ parameters:
   # do permutations of each BAD_VALUE with each OK_VALUE and each OPERATOR
   -
     - BAD_VALUE: "2017-12-06X00:00:00.000-07:00"
-    - BAD_VALUE: "2017-12-06"  # we don't support a date without a time
-    - BAD_VALUE: "00:00:00.000-07.00"  # or a time without a date
+    - BAD_VALUE: "2017-12-06"          # we specifically require RFC3339 format which must have a date *and* a time
+    - BAD_VALUE: "00:00:00.000-07.00"  # ditto
     - BAD_VALUE: "badstring"
     - BAD_VALUE: ""
     - BAD_VALUE: "1512543600000"  # would be valid if it were a number and not a string
