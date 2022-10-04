@@ -1,0 +1,60 @@
+---
+name: operators - date - bad syntax
+
+constants:
+  IS_NOT_MATCH:
+    value: false
+    variationIndex: 1
+    reason: { kind: "FALLTHROUGH" }
+  base_flag: &base_flag
+    on: true
+    fallthrough: { variation: 1 }
+    variations: [ true, false ]
+  base_rule: &base_rule
+    id: ruleid
+    variation: 0
+
+parameters:
+  # do permutations of each BAD_VALUE with each OK_VALUE and each OPERATOR
+  -
+    - BAD_VALUE: "2017-12-06X00:00:00.000-07:00"
+    - BAD_VALUE: "2017-12-06"          # we specifically require RFC3339 format which must have a date *and* a time
+    - BAD_VALUE: "00:00:00.000-07.00"  # ditto
+    - BAD_VALUE: "badstring"
+    - BAD_VALUE: ""
+    - BAD_VALUE: "1512543600000"  # would be valid if it were a number and not a string
+  -
+    - OK_VALUE: "2017-12-06T00:00:00.000-07:00"
+    - OK_VALUE: "2017-12-06T07:00:00.000Z"
+    - OK_VALUE: 1512543600000
+  -
+    - OPERATOR: before
+    - OPERATOR: after
+
+sdkData:
+  flags:
+    test-compare-bad-value:
+      <<: *base_flag
+      rules:
+        - <<: *base_rule
+          clauses:
+            - { attribute: attrname, op: "<OPERATOR>", values: [ "<BAD_VALUE>" ] }
+    test-compare-ok-value:
+      <<: *base_flag
+      rules:
+        - <<: *base_rule
+          clauses:
+            - { attribute: attrname, op: "<OPERATOR>", values: [ "<OK_VALUE>" ] }
+
+evaluations:
+  - name: "<BAD_VALUE> <OPERATOR> <OK_VALUE> fails"
+    flagKey: test-compare-ok-value
+    user: { key: "user-key", custom: { attrname: "<VALUE2>" } }
+    default: false
+    expect: <IS_NOT_MATCH>
+
+  - name: "<OK_VALUE> <OPERATOR> <BAD_VALUE> fails"
+    flagKey: test-compare-bad-value
+    user: { key: "user-key", custom: { attrname: "<OK_VALUE>" } }
+    default: false
+    expect: <IS_NOT_MATCH>

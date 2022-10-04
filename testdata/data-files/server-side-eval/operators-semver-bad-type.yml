@@ -1,0 +1,63 @@
+---
+name: operators - semver - bad type
+
+constants:
+  IS_NOT_MATCH:
+    value: false
+    variationIndex: 1
+    reason: { kind: "FALLTHROUGH" }
+  base_flag: &base_flag
+    on: true
+    fallthrough: { variation: 1 }
+    variations: [ true, false ]
+  base_rule: &base_rule
+    id: ruleid
+    variation: 0
+
+parameters:
+  # do permutations of each BAD_VALUE with each OK_VALUE and each OPERATOR
+  -
+    - BAD_VALUE: null
+      BAD_VALUE_TYPE: "null"
+    - BAD_VALUE: true
+      BAD_VALUE_TYPE: "boolean"
+    - BAD_VALUE: 2  # would be valid if it were a string and not a number
+      BAD_VALUE_TYPE: "number"
+    - BAD_VALUE: {}
+      BAD_VALUE_TYPE: "object"
+  -
+    - OK_VALUE: "2.0.0"
+    - OK_VALUE: "2.0"
+    - OK_VALUE: "2"
+  -
+    - OPERATOR: semVerEqual
+    - OPERATOR: semVerLessThan
+    - OPERATOR: semVerGreaterThan
+
+sdkData:
+  flags:
+    test-compare-bad-value:
+      <<: *base_flag
+      rules:
+        - <<: *base_rule
+          clauses:
+            - { attribute: attrname, op: "<OPERATOR>", values: [ "<BAD_VALUE>" ] }
+    test-compare-ok-value:
+      <<: *base_flag
+      rules:
+        - <<: *base_rule
+          clauses:
+            - { attribute: attrname, op: "<OPERATOR>", values: [ "<OK_VALUE>" ] }
+
+evaluations:
+  - name: "<BAD_VALUE> (<BAD_VALUE_TYPE>) <OPERATOR> <OK_VALUE> fails"
+    flagKey: test-compare-ok-value
+    user: { key: "user-key", custom: { attrname: "<BAD_VALUE>" } }
+    default: false
+    expect: <IS_NOT_MATCH>
+
+  - name: "<OK_VALUE> <OPERATOR> <BAD_VALUE> (<BAD_VALUE_TYPE>) fails"
+    flagKey: test-compare-bad-value
+    user: { key: "user-key", custom: { attrname: "<OK_VALUE>" } }
+    default: false
+    expect: <IS_NOT_MATCH>

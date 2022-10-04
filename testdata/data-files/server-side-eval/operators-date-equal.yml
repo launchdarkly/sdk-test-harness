@@ -1,0 +1,61 @@
+---
+name: operators - date - equal
+
+constants:
+  IS_NOT_MATCH:
+    value: false
+    variationIndex: 1
+    reason: { kind: "FALLTHROUGH" }
+  base_flag: &base_flag
+    on: true
+    fallthrough: { variation: 1 }
+    variations: [ true, false ]
+  base_rule: &base_rule
+    id: ruleid
+    variation: 0
+
+parameters:
+  # do permutations of each VALUE1 with each VALUE2 and each OPERATOR; these are values
+  # that are all logically equal to each other, so both "before" and "after" should fail
+  # (there is no "date equals" operator)
+  -
+    - VALUE1: "2017-12-06T00:00:00.000-07:00"
+    - VALUE1: "2017-12-06T07:00:00.000Z"
+    - VALUE1: "2017-12-06T07:00:00Z"
+    - VALUE1: 1512543600000
+  -
+    - VALUE2: "2017-12-06T00:00:00.000-07:00"
+    - VALUE2: "2017-12-06T07:00:00.000Z"
+    - VALUE2: "2017-12-06T07:00:00Z"
+    - VALUE2: 1512543600000
+  -
+    - OPERATOR: before
+    - OPERATOR: after
+
+sdkData:
+  flags:
+    test-compare-value1:
+      <<: *base_flag
+      rules:
+        - <<: *base_rule
+          clauses:
+            - { attribute: attrname, op: "<OPERATOR>", values: [ "<VALUE1>" ] }
+    test-compare-value2:
+      <<: *base_flag
+      rules:
+        - <<: *base_rule
+          clauses:
+            - { attribute: attrname, op: "<OPERATOR>", values: [ "<VALUE2>" ] }
+
+evaluations:
+  - name: "<VALUE1> <OPERATOR> <VALUE2> fails"
+    flagKey: test-compare-value2
+    user: { key: "user-key", custom: { attrname: "<VALUE1>" } }
+    default: false
+    expect: <IS_NOT_MATCH>
+
+  - name: "<VALUE2> <OPERATOR> <VALUE1> fails"
+    flagKey: test-compare-value1
+    user: { key: "user-key", custom: { attrname: "<VALUE2>" } }
+    default: false
+    expect: <IS_NOT_MATCH>

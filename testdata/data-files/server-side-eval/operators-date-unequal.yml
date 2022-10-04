@@ -24,10 +24,12 @@ parameters:
   -
     - LOWER_VALUE: "2017-12-06T00:00:00.000-07:00"
     - LOWER_VALUE: "2017-12-06T07:00:00.000Z"  # same time but in UTC
+    - LOWER_VALUE: "2017-12-06T07:00:00Z"      # fractional seconds are optional in RFC3339
     - LOWER_VALUE: 1512543600000  # same time as epoch milliseconds
   -
     - HIGHER_VALUE: "2017-12-06T00:01:01.000-07:00"
     - HIGHER_VALUE: "2017-12-06T07:01:01.000Z"
+    - HIGHER_VALUE: "2017-12-06T07:01:01Z"
     - HIGHER_VALUE: 1512543601000
 
 sdkData:
