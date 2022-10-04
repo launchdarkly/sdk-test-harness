@@ -1,6 +1,7 @@
 package mockld
 
 import (
+	"encoding/json"
 	"net/http"
 	"sync"
 
@@ -28,6 +29,10 @@ const (
 	PollingPathJSClientGetUser    = "/sdk/evalx/{env}/users/{context}"
 	PollingPathJSClientReportUser = "/sdk/evalx/{env}/user"
 
+	PollingPathPHPAllFlags = "/sdk/flags"
+	PollingPathPHPFlag     = "/sdk/flags/{key}"
+	PollingPathPHPSegment  = "/sdk/segments/{key}"
+
 	PollingPathContextBase64Param = "{context}"
 	PollingPathEnvIDParam         = "{env}"
 )
@@ -52,21 +57,26 @@ func NewPollingService(
 		debugLogger: debugLogger,
 	}
 
-	pollHandler := p.servePollRequest
+	pollHandler := p.standardPollingHandler()
 	router := mux.NewRouter()
 	switch sdkKind {
 	case ServerSideSDK:
-		router.HandleFunc(PollingPathServerSide, pollHandler).Methods("GET")
+		router.Handle(PollingPathServerSide, pollHandler).Methods("GET")
 	case MobileSDK:
-		router.HandleFunc(PollingPathMobileGet, pollHandler).Methods("GET")
-		router.HandleFunc(PollingPathMobileReport, pollHandler).Methods("REPORT")
-		router.HandleFunc(PollingPathMobileGetUser, pollHandler).Methods("GET")
-		router.HandleFunc(PollingPathMobileReportUser, pollHandler).Methods("REPORT")
+		router.Handle(PollingPathMobileGet, pollHandler).Methods("GET")
+		router.Handle(PollingPathMobileReport, pollHandler).Methods("REPORT")
+		router.Handle(PollingPathMobileGetUser, pollHandler).Methods("GET")
+		router.Handle(PollingPathMobileReportUser, pollHandler).Methods("REPORT")
+		// Note that we only support the "evalx", not the older "eval" which is used only by old unsupported SDKs
 	case JSClientSDK:
-		router.HandleFunc(PollingPathJSClientGet, pollHandler).Methods("GET")
-		router.HandleFunc(PollingPathJSClientReport, pollHandler).Methods("REPORT")
-		router.HandleFunc(PollingPathJSClientGetUser, pollHandler).Methods("GET")
-		router.HandleFunc(PollingPathJSClientReportUser, pollHandler).Methods("REPORT")
+		router.Handle(PollingPathJSClientGet, pollHandler).Methods("GET")
+		router.Handle(PollingPathJSClientReport, pollHandler).Methods("REPORT")
+		router.Handle(PollingPathJSClientGetUser, pollHandler).Methods("GET")
+		router.Handle(PollingPathJSClientReportUser, pollHandler).Methods("REPORT")
+	case PHPSDK:
+		router.Handle(PollingPathPHPFlag, p.phpFlagHandler()).Methods("GET")
+		router.Handle(PollingPathPHPSegment, p.phpSegmentHandler()).Methods("GET")
+		router.Handle(PollingPathPHPAllFlags, p.phpAllFlagsHandler()).Methods("GET")
 	}
 	p.handler = router
 
@@ -77,25 +87,65 @@ func (p *PollingService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p.handler.ServeHTTP(w, r)
 }
 
-func (p *PollingService) servePollRequest(w http.ResponseWriter, r *http.Request) {
-	p.lock.Lock()
-	etag := p.currentEtag
-	if matchEtag := r.Header.Get("If-None-Match"); matchEtag != "" && matchEtag == etag {
+func (p *PollingService) pollingHandler(getDataFn func(*PollingService, *http.Request) []byte) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p.lock.Lock()
+		etag := p.currentEtag
+		if matchEtag := r.Header.Get("If-None-Match"); matchEtag != "" && matchEtag == etag {
+			p.lock.Unlock()
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+
+		if p.currentData == nil || p.currentData.Serialize() == nil {
+			// This means we've deliberately configured the data source to be unavailable
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		data := getDataFn(p, r)
 		p.lock.Unlock()
-		w.WriteHeader(http.StatusNotModified)
-		return
-	}
-	data := p.currentData.Serialize()
-	p.lock.Unlock()
+		if data == nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 
-	p.debugLogger.Printf("Sending poll data: %s", string(data))
+		p.debugLogger.Printf("Sending poll data for %s: %s", r.URL.Path, string(data))
 
-	w.Header().Add("Content-Type", "application/json")
-	if etag != "" {
-		w.Header().Add("Etag", etag)
-	}
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(data)
+		w.Header().Add("Content-Type", "application/json")
+		if etag != "" {
+			w.Header().Add("Etag", etag)
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(data)
+	})
+}
+
+func (p *PollingService) standardPollingHandler() http.Handler {
+	return p.pollingHandler(func(p *PollingService, r *http.Request) []byte {
+		return p.currentData.Serialize()
+	})
+}
+
+func (p *PollingService) phpFlagHandler() http.Handler {
+	return p.pollingHandler(func(p *PollingService, r *http.Request) []byte {
+		data, _ := p.currentData.(ServerSDKData)
+		return data["flags"][mux.Vars(r)["key"]]
+	})
+}
+
+func (p *PollingService) phpSegmentHandler() http.Handler {
+	return p.pollingHandler(func(p *PollingService, r *http.Request) []byte {
+		data, _ := p.currentData.(ServerSDKData)
+		return data["segments"][mux.Vars(r)["key"]]
+	})
+}
+
+func (p *PollingService) phpAllFlagsHandler() http.Handler {
+	return p.pollingHandler(func(p *PollingService, r *http.Request) []byte {
+		data, _ := p.currentData.(ServerSDKData)
+		flagsJSON, _ := json.Marshal(data["flags"])
+		return flagsJSON
+	})
 }
 
 func (p *PollingService) SetData(data SDKData) {

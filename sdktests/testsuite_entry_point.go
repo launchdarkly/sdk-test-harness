@@ -22,6 +22,9 @@ func RunSDKTestSuite(
 	var sdkKind mockld.SDKKind
 
 	switch {
+	case capabilities.Has(servicedef.CapabilityServerSide) && capabilities.Has(servicedef.CapabilityPHP):
+		fmt.Println("Running PHP SDK test suite")
+		sdkKind = mockld.PHPSDK
 	case capabilities.Has(servicedef.CapabilityServerSide):
 		fmt.Println("Running server-side SDK test suite")
 		sdkKind = mockld.ServerSideSDK
@@ -63,6 +66,8 @@ func RunSDKTestSuite(
 		switch sdkKind {
 		case mockld.ServerSideSDK:
 			doAllServerSideTests(t)
+		case mockld.PHPSDK:
+			doAllPHPTests(t)
 		default:
 			doAllClientSideTests(t)
 		}
@@ -88,6 +93,10 @@ func doAllClientSideTests(t *ldtest.T) {
 	t.Run("polling", doClientSidePollTests)
 	t.Run("tags", doClientSideTagsTests)
 	t.Run("context type", doSDKContextTypeTests)
+}
+
+func doAllPHPTests(t *ldtest.T) {
+	t.Run("evaluation", doPHPEvalTests)
 }
 
 func allImportantServerSideCapabilities() framework.Capabilities {

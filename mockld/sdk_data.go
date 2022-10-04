@@ -21,10 +21,11 @@ const (
 	ServerSideSDK SDKKind = "server"
 	MobileSDK     SDKKind = "mobile"
 	JSClientSDK   SDKKind = "jsclient"
+	PHPSDK        SDKKind = "php"
 )
 
 func (k SDKKind) IsServerSide() bool {
-	return k == ServerSideSDK
+	return k == ServerSideSDK || k == PHPSDK
 }
 
 func (k SDKKind) IsClientSide() bool {
@@ -55,6 +56,8 @@ func (b blockingUnavailableSDKData) Serialize() []byte { return nil }
 //
 // This includes the full JSON configuration of every flag and segment, in the same format that is used in
 // streaming and polling responses.
+//
+// We use this for both regular server-side SDKs and the PHP SDK.
 type ServerSDKData map[DataItemKind]map[string]json.RawMessage
 
 // ClientSDKData contains simulated LaunchDarkly environment data for a client-side SDK.

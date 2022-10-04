@@ -7,6 +7,7 @@ const (
 	CapabilityServerSide    = "server-side"
 	CapabilityStronglyTyped = "strongly-typed"
 	CapabilityMobile        = "mobile"
+	CapabilityPHP           = "php"
 	CapabilitySingleton     = "singleton"
 
 	CapabilityAllFlagsWithReasons                = "all-flags-with-reasons"
