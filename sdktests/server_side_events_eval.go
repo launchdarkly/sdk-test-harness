@@ -121,9 +121,8 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 					reason = ldreason.NewEvalReasonError(ldreason.EvalErrorMalformedFlag)
 				}
 				matchFeatureEvent := IsValidFeatureEventWithConditions(
+					false, false, user,
 					m.JSONProperty("key").Should(m.Equal(flag.Key)),
-					HasUserKeyProperty(user.GetKey()),
-					HasNoUserObject(),
 					m.JSONProperty("version").Should(m.Equal(flag.Version)),
 					m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),
 					m.JSONOptProperty("variation").Should(m.JSONEqual(expectedVariation)),
@@ -308,6 +307,11 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 }
 
 func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
+	// The test logic for this is *almost* exactly the same for PHP as for other server-side SDKs
+	// (the only difference is the absence of index and summary events), so we reuse the same
+	// function.
+	isPHP := t.Capabilities().Has(servicedef.CapabilityPHP)
+
 	user := lduser.NewUser("user-key")
 
 	expectedValue1 := ldvalue.String("value1")
@@ -356,12 +360,10 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 			client.FlushEvents(t)
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
-			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				IsIndexEventForUserKey(user.GetKey()),
+			eventMatchers := []m.Matcher{
 				IsValidFeatureEventWithConditions(
+					isPHP, false, user,
 					m.JSONProperty("key").Should(m.Equal(flag1.Key)),
-					HasUserKeyProperty(user.GetKey()),
-					HasNoUserObject(),
 					m.JSONProperty("version").Should(m.Equal(flag1.Version)),
 					m.JSONProperty("value").Should(m.Equal("value1")),
 					m.JSONProperty("variation").Should(m.Equal(1)),
@@ -369,9 +371,8 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 					JSONPropertyNullOrAbsent("prereqOf"),
 				),
 				IsValidFeatureEventWithConditions(
+					isPHP, false, user,
 					m.JSONProperty("key").Should(m.Equal(flag2.Key)),
-					HasUserKeyProperty(user.GetKey()),
-					HasNoUserObject(),
 					m.JSONProperty("version").Should(m.Equal(flag2.Version)),
 					m.JSONProperty("value").Should(m.Equal("ok2")),
 					m.JSONProperty("variation").Should(m.Equal(2)),
@@ -380,9 +381,8 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 					m.JSONOptProperty("prereqOf").Should(m.Equal("flag1")),
 				),
 				IsValidFeatureEventWithConditions(
+					isPHP, false, user,
 					m.JSONProperty("key").Should(m.Equal(flag3.Key)),
-					HasUserKeyProperty(user.GetKey()),
-					HasNoUserObject(),
 					m.JSONProperty("version").Should(m.Equal(flag3.Version)),
 					m.JSONProperty("value").Should(m.Equal("ok3")),
 					m.JSONProperty("variation").Should(m.Equal(3)),
@@ -390,8 +390,11 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 					JSONPropertyNullOrAbsent("default"),
 					m.JSONOptProperty("prereqOf").Should(m.Equal("flag2")),
 				),
-				IsSummaryEvent(),
-			))
+			}
+			if !isPHP {
+				eventMatchers = append(eventMatchers, IsIndexEventForUserKey(user.GetKey()), IsSummaryEvent())
+			}
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(eventMatchers...))
 		})
 	}
 

@@ -53,25 +53,28 @@ func (c CommonEventTests) IdentifyEvents(t *ldtest.T) {
 			events.ExpectNoAnalyticsEvents(t, time.Millisecond*200)
 		})
 
-		t.Run("identify event makes index event for same user unnecessary", func(t *ldtest.T) {
-			// This test is only done for server-side SDKs because client-side ones do not do index events.
-			events := NewSDKEventSink(t)
-			client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
+		if !c.isPHP {
+			t.Run("identify event makes index event for same user unnecessary", func(t *ldtest.T) {
+				// This test is only done for server-side SDKs (excluding PHP), because client-side ones and PHP
+				// do not do index events.
+				events := NewSDKEventSink(t)
+				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 
-			user := c.userFactory.NextUniqueUser()
-			client.SendIdentifyEvent(t, user)
-			client.SendCustomEvent(t, servicedef.CustomEventParams{
-				EventKey: "event-key",
-				User:     o.Some(user),
+				user := c.userFactory.NextUniqueUser()
+				client.SendIdentifyEvent(t, user)
+				client.SendCustomEvent(t, servicedef.CustomEventParams{
+					EventKey: "event-key",
+					User:     o.Some(user),
+				})
+				// Sending a custom event would also generate an index event for the user,
+				// if we hadn't already seen that user
+				client.FlushEvents(t)
+				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+				m.In(t).Assert(payload, m.ItemsInAnyOrder(
+					IsIdentifyEventForUserKey(user.GetKey()),
+					IsCustomEvent(),
+				))
 			})
-			// Sending a custom event would also generate an index event for the user,
-			// if we hadn't already seen that user
-			client.FlushEvents(t)
-			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				IsIdentifyEventForUserKey(user.GetKey()),
-				IsCustomEvent(),
-			))
-		})
+		}
 	}
 }
