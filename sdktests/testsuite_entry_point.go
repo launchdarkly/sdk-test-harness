@@ -97,6 +97,7 @@ func doAllClientSideTests(t *ldtest.T) {
 
 func doAllPHPTests(t *ldtest.T) {
 	t.Run("evaluation", doPHPEvalTests)
+	t.Run("context type", doSDKContextTypeTests)
 }
 
 func allImportantServerSideCapabilities() framework.Capabilities {
