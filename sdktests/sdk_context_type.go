@@ -18,10 +18,6 @@ import (
 )
 
 func doSDKContextTypeTests(t *ldtest.T) {
-	if !t.Capabilities().Has(servicedef.CapabilityStronglyTyped) {
-		t.SkipWithReason("context type tests only apply to strongly-typed SDKs")
-	}
-
 	t.Run("build", doSDKContextBuildTests)
 	t.Run("convert", doSDKContextConvertTests)
 }
@@ -53,17 +49,19 @@ func doSDKContextBuildTests(t *ldtest.T) {
 				`{"kind": "user", "key": "a"}`},
 			{servicedef.ContextBuildSingleParams{Key: "a", Anonymous: optBool(true)},
 				`{"kind": "user", "key": "a", "anonymous": true}`},
-			{servicedef.ContextBuildSingleParams{Key: "a", Secondary: optStr("b")},
-				`{"kind": "user", "key": "a", "_meta": {"secondary": "b"}}`},
 			{servicedef.ContextBuildSingleParams{Key: "a", Private: []string{"b"}},
 				`{"kind": "user", "key": "a", "_meta": {"privateAttributes": ["b"]}}`},
-			{servicedef.ContextBuildSingleParams{Key: "a", Secondary: optStr("b"), Private: []string{"c"}},
-				`{"kind": "user", "key": "a", "_meta": {"secondary": "b", "privateAttributes": ["c"]}}`},
 			{servicedef.ContextBuildSingleParams{Key: "a", Custom: map[string]ldvalue.Value{"attr": ldvalue.Null()}},
 				`{"kind": "user", "key": "a"}`},
 		}
 		for _, v := range data.MakeStandardTestValues() {
 			if v.IsNull() {
+				continue
+			}
+			if v.Type() == ldvalue.ObjectType && v.Count() == 0 && t.Capabilities().Has(servicedef.CapabilityPHP) {
+				// This is a special case where we're skipping "set an attribute to an empty JSON object {}" in
+				// the PHP SDK only. The reason is that due to PHP's idiosyncratic implementation of associative
+				// arrays, it is hard to accurately represent the empty JSON object value {} within the PHP SDK.
 				continue
 			}
 			singleKindTestCases = append(singleKindTestCases, singleKindTestCase{
@@ -127,12 +125,10 @@ func doSDKContextConvertTests(t *ldtest.T) {
 			``,
 			`"name": "b"`,
 			`"anonymous": true`,
-			`"attr1": "first"`,                    // basic case of 1 custom attr
-			`"attr1": "first", "attr2": "second"`, // basic case of multiple custom attrs
-			`"_meta": {"secondary": "b"}`,
+			`"attr1": "first"`,                      // basic case of 1 custom attr
+			`"attr1": "first", "attr2": "second"`,   // basic case of multiple custom attrs
 			`"_meta": {"privateAttributes": ["x"]}`, // basic case of 1 private attr
-			`"_meta": {"privateAttributes": ["x", "y"]}`,                   // basic case of multiple private attrs
-			`"_meta": {"secondary": "b", "privateAttributes": ["x", "y"]}`, // two things in _meta
+			`"_meta": {"privateAttributes": ["x", "y"]}`, // basic case of multiple private attrs
 		}
 		for _, v := range data.MakeStandardTestValues() {
 			// verify that custom attributes of various types and values are allowed - not counting null,
@@ -174,7 +170,6 @@ func doSDKContextConvertTests(t *ldtest.T) {
 			`"attr1": null`,
 			`"_meta": null`,
 			`"_meta": {}`,
-			`"_meta": {"secondary": null}`,
 			`"_meta": {"privateAttributes": null}`,
 			`"_meta": {"privateAttributes": []}`,
 		} {
@@ -208,8 +203,6 @@ func doSDKContextConvertTests(t *ldtest.T) {
 			{`{"key": "a", "anonymous": true}`, `{"kind": "user", "key": "a", "anonymous": true}`},
 			{`{"key": "a", "anonymous": false}`, `{"kind": "user", "key": "a"}`},
 			{`{"key": "a", "anonymous": null}`, `{"kind": "user", "key": "a"}`},
-			{`{"key": "a", "secondary": "b"}`, `{"kind": "user", "key": "a", "_meta": {"secondary": "b"}}`},
-			{`{"key": "a", "secondary": null}`, `{"kind": "user", "key": "a"}`},
 			{`{"key": "a", "privateAttributeNames": ["b"]}`,
 				`{"kind": "user", "key": "a", "_meta": {"privateAttributes": ["b"]}}`},
 			{`{"key": "a", "privateAttributeNames": []}`, `{"kind": "user", "key": "a"}`},
@@ -257,7 +250,6 @@ func doSDKContextConvertTests(t *ldtest.T) {
 			`{"kind": "org", "name": 3}`,
 			`{"kind": "org", "anonymous": null}`,
 			`{"kind": "org", "anonymous": "yes"}`,
-			`{"kind": "org", "_meta": {"secondary": 3}}`,
 			`{"kind": "org", "_meta": {"privateAttributes": 3}}`,
 			`{"kind": "org", "_meta": {"privateAttributes": {}}}`,
 
@@ -304,11 +296,8 @@ func doSDKContextConvertTests(t *ldtest.T) {
 			`{}`,
 			`{"key": true}`,
 			`{"key": "a", "custom": 3}`,
-			`{"key": "a", "custom": []}`,
 			`{"key": "a", "anonymous": 3}`,
-			`{"key": "a", "secondary": 3}`,
 			`{"key": "a", "privateAttributeNames": 3"}`,
-			`{"key": "a", "privateAttributeNames": {}"}`,
 		}
 		for _, stringAttrName := range []string{"name", "firstName", "lastName", "email", "country", "avatar", "ip"} {
 			inputs = append(inputs, fmt.Sprintf(`{"key": "a", "%s": 3}`, stringAttrName))
