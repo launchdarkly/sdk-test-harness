@@ -58,6 +58,12 @@ func doSDKContextBuildTests(t *ldtest.T) {
 			if v.IsNull() {
 				continue
 			}
+			if v.Type() == ldvalue.ObjectType && v.Count() == 0 && t.Capabilities().Has(servicedef.CapabilityPHP) {
+				// This is a special case where we're skipping "set an attribute to an empty JSON object {}" in
+				// the PHP SDK only. The reason is that due to PHP's idiosyncratic implementation of associative
+				// arrays, it is hard to accurately represent the empty JSON object value {} within the PHP SDK.
+				continue
+			}
 			singleKindTestCases = append(singleKindTestCases, singleKindTestCase{
 				servicedef.ContextBuildSingleParams{Key: "a", Custom: map[string]ldvalue.Value{"attr": v}},
 				fmt.Sprintf(`{"kind": "user", "key": "a", "attr": %s}`, v.JSONString()),
