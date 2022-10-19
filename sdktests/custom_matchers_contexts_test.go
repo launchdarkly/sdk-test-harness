@@ -31,19 +31,11 @@ func TestJSONMatchesContext(t *testing.T) {
 			},
 			{
 				c:     ldcontext.NewWithKind("a", "b"),
-				input: `{"kind": "a", "key": "b", "_meta": {"secondary": null}}`,
-			},
-			{
-				c:     ldcontext.NewWithKind("a", "b"),
 				input: `{"kind": "a", "key": "b", "_meta": {"privateAttributes": null}}`,
 			},
 			{
 				c:     ldcontext.NewWithKind("a", "b"),
 				input: `{"kind": "a", "key": "b", "_meta": {"privateAttributes": []}}`,
-			},
-			{
-				c:     ldcontext.NewBuilder("a").Anonymous(true).Name("b").Secondary("c").Build(),
-				input: `{"kind": "user", "key": "a", "anonymous": true, "name": "b", "_meta": {"secondary": "c"}}`,
 			},
 			{
 				c:     ldcontext.NewBuilder("a").Name("b").Private("d", "c").Build(),
@@ -86,10 +78,6 @@ func TestJSONMatchesContext(t *testing.T) {
 			},
 			{
 				c:     ldcontext.NewWithKind("a", "b"),
-				input: `{"kind": "a", "key": "b", "_meta": {"secondary": "c"}}`,
-			},
-			{
-				c:     ldcontext.NewWithKind("a", "b"),
 				input: `{"kind": "a", "key": "b", "_meta": {"privateAttributes": ["c", "d"]}}`,
 			},
 			{
@@ -99,10 +87,6 @@ func TestJSONMatchesContext(t *testing.T) {
 			{
 				c:     ldcontext.NewBuilder("a").Anonymous(true).Build(),
 				input: `{"kind": "user", "key": "a", "anonymous": false}`,
-			},
-			{
-				c:     ldcontext.NewBuilder("a").Secondary("b").Build(),
-				input: `{"kind": "user", "key": "a", "anonymous": true, "name": "b", "_meta": {"secondary": "c"}}`,
 			},
 			{
 				c:     ldcontext.NewBuilder("a").Name("b").Private("c", "d", "e").Build(),

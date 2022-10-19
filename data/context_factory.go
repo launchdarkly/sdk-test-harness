@@ -140,7 +140,6 @@ func NewContextFactoriesForExercisingAllAttributes(
 ) []*ContextFactory {
 	setAllAttributes := func(b *ldcontext.Builder) {
 		b.Name("a").
-			Secondary("b").
 			Anonymous(true).
 			SetBool("c", true).
 			SetInt("d", 1).

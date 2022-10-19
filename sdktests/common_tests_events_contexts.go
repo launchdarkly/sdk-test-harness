@@ -49,7 +49,6 @@ func makeEventContextTestParams() []eventContextTestParams {
 					b.Kind("org")
 					b.Name("a")
 					b.SetString("b", "c")
-					b.Secondary("s")
 					b.Anonymous(true)
 				})
 			},
@@ -62,7 +61,6 @@ func makeEventContextTestParams() []eventContextTestParams {
 				return data.NewContextFactory(prefix, func(b *ldcontext.Builder) {
 					b.Name("a")
 					b.SetString("b", "c")
-					b.Secondary("s")
 					b.Anonymous(true)
 				})
 			},

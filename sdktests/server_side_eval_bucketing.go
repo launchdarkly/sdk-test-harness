@@ -16,8 +16,6 @@ import (
 	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldbuilders"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldmodel"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-
-	"github.com/stretchr/testify/require"
 )
 
 type bucketingTestParams struct {
@@ -170,7 +168,6 @@ func runServerSideEvalBucketingTests(t *ldtest.T) {
 				p.contextValue,
 				p.flagOrSegmentKey,
 				p.salt,
-				o.None[string](),
 				p.seed,
 			)
 		}
@@ -344,60 +341,6 @@ func runServerSideEvalBucketingTests(t *ldtest.T) {
 		}
 	})
 
-	t.Run("secondary key", func(t *ldtest.T) {
-		for _, secondary := range []string{"abcdef", ""} {
-			makeContext := func(p bucketingTestParams, shouldMatchRule bool) ldcontext.Context {
-				b := ldcontext.NewBuilder(p.contextValue)
-				b.Secondary(secondary)
-				if shouldMatchRule {
-					b.SetBool(matchRuleAttr, true)
-				}
-				return b.Build()
-			}
-
-			desc := h.IfElse(secondary == "", "secondary key is an empty string", "secondary key is a non-empty string")
-			t.Run(desc, func(t *ldtest.T) {
-				t.Run("affects bucketing calculations in rollouts", func(t *ldtest.T) {
-					for _, p := range makeBucketingTestParams() {
-						expectedValueWithoutSecondary := computeExpectedBucketValue(
-							p.contextValue,
-							p.flagOrSegmentKey,
-							p.salt,
-							o.None[string](),
-							p.seed,
-						)
-						expectedValueWithSecondary := computeExpectedBucketValue(
-							p.contextValue,
-							p.flagOrSegmentKey,
-							p.salt,
-							o.Some(secondary),
-							p.seed,
-						)
-						require.NotEqual(t, expectedValueWithoutSecondary, expectedValueWithSecondary)
-						p1 := p
-						p1.overrideExpectedValue = o.Some(expectedValueWithSecondary)
-						doTest(t, p1, ldmodel.RolloutKindRollout, ldcontext.DefaultKind, ldattr.Ref{}, makeContext)
-					}
-				})
-
-				t.Run("is ignored in experiments", func(t *ldtest.T) {
-					for _, p := range makeBucketingTestParams() {
-						expectedValueWithoutSecondary := computeExpectedBucketValue(
-							p.contextValue,
-							p.flagOrSegmentKey,
-							p.salt,
-							o.None[string](),
-							p.seed,
-						)
-						p1 := p
-						p1.overrideExpectedValue = o.Some(expectedValueWithoutSecondary)
-						doTest(t, p1, ldmodel.RolloutKindExperiment, ldcontext.DefaultKind, ldattr.Ref{}, makeContext)
-					}
-				})
-			})
-		}
-	})
-
 	t.Run("bucket by non-key attribute", func(t *ldtest.T) {
 		t.Run("in rollouts", func(t *ldtest.T) {
 			contextKind := ldcontext.Kind("org")
@@ -436,7 +379,7 @@ func runServerSideEvalBucketingTests(t *ldtest.T) {
 				for _, n := range []int{33333, 99999} {
 					expectedValue := computeExpectedBucketValue(
 						strconv.Itoa(n),
-						flagKey, salt, o.None[string](), o.None[int](),
+						flagKey, salt, o.None[int](),
 					)
 					p := bucketingTestParams{
 						flagOrSegmentKey:      flagKey,
