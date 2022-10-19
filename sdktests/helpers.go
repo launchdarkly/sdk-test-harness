@@ -53,7 +53,6 @@ func basicEvaluateFlag(
 func computeExpectedBucketValue(
 	userValue string,
 	flagOrSegmentKey, salt string,
-	secondary o.Maybe[string],
 	seed o.Maybe[int],
 ) int {
 	hashInput := ""
@@ -64,9 +63,6 @@ func computeExpectedBucketValue(
 		hashInput += flagOrSegmentKey + "." + salt
 	}
 	hashInput += "." + userValue
-	if secondary.IsDefined() {
-		hashInput += "." + secondary.Value()
-	}
 
 	hashOutputBytes := sha1.Sum([]byte(hashInput)) //nolint:gosec // this isn't for authentication
 	hexEncodedChars := make([]byte, 64)

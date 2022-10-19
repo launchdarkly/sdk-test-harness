@@ -32,7 +32,7 @@ func doServerSideSecureModeHashTests(t *ldtest.T) {
 			// same SDK key with same user key = same result, regardless of other context attributes
 			sdkKey: sdkKey1,
 			context: ldcontext.NewBuilder(userKey1).
-				Anonymous(true).Name("a").SetString("email", "b").Secondary("c").Build(),
+				Anonymous(true).Name("a").SetString("email", "b").Build(),
 			expectedHash: "73df666a13f2c474e50aa34ca5a761e89abb737fb139ff65fdde7fa85c9dcacd",
 		},
 		{

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldattr"
@@ -34,23 +33,9 @@ func TestComputeExpectedBucketValue(t *testing.T) {
 				p.userValue,
 				p.flagOrSegmentKey,
 				p.salt,
-				o.None[string](),
 				p.seed,
 			)
 			assert.Equal(t, p.expectedValue, computedValue, "computed value did not match expected value")
-
-			for _, secondary := range []string{"abcdef", ""} {
-				valueWithSecondaryKey := computeExpectedBucketValue(
-					p.userValue,
-					p.flagOrSegmentKey,
-					p.salt,
-					o.Some(secondary),
-					p.seed,
-				)
-				failureDesc := h.IfElse(secondary == "", "empty secondary key", "empty-but-not-undefined secondary key") +
-					" should have changed result, but did not"
-				assert.NotEqual(t, p.expectedValue, valueWithSecondaryKey, failureDesc)
-			}
 		})
 	}
 }

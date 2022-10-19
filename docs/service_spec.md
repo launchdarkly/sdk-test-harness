@@ -238,7 +238,6 @@ The `contextBuild` property in the request body will be a JSON object with these
   * `key` (string, required)
   * `name` (string, optional)
   * `anonymous` (boolean, optional)
-  * `secondary` (string, optional)
   * `private` (array of strings, optional): These strings should be treated as attribute references, i.e. they may be slash-delimited paths.
   * `custom` (object, optional): If present, these are name-value pairs for custom attributes.
 * `multi` (array, optional): If present, this is an array of objects in the same format as shown for `single` above, for a multi-kind context. Only one of `single` or `multi` will be present.

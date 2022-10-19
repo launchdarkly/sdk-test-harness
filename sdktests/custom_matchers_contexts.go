@@ -53,12 +53,6 @@ func jsonMatchesContext(topLevelContext ldcontext.Context, isEventContext bool, 
 
 		var meta []m.Matcher
 		requireMeta := false
-		if c.Secondary().IsDefined() {
-			meta = append(meta, m.JSONProperty("secondary").Should(m.Equal(c.Secondary().String())))
-			requireMeta = true
-		} else {
-			meta = append(meta, m.JSONOptProperty("secondary").Should(m.BeNil()))
-		}
 		if isEventContext {
 			if len(redactedShouldBe) != 0 {
 				meta = append(meta, m.JSONProperty("redactedAttributes").Should(RedactedAttributesAre(redactedShouldBe...)))
