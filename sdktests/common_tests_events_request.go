@@ -1,7 +1,6 @@
 package sdktests
 
 import (
-	"strconv"
 	"strings"
 	"time"
 
@@ -13,9 +12,10 @@ import (
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
 
-const currentEventSchema = 4
+const currentEventSchema = "4"
+const phpEventSchema = "2"
 
-func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string) {
+func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string, headersMatcher m.Matcher) {
 	t.Run("method and headers", func(t *ldtest.T) {
 		dataSource := NewSDKDataSource(t, nil)
 		events := NewSDKEventSink(t)
@@ -28,13 +28,10 @@ func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string
 
 		m.In(t).For("request method").Assert(request.Method, m.Equal("POST"))
 
-		m.In(t).For("request headers").Assert(request.Headers,
-			m.AllOf(
-				Header("X-LaunchDarkly-Event-Schema").Should(m.Equal(strconv.Itoa(currentEventSchema))),
-				Header("X-LaunchDarkly-Payload-Id").Should(m.Not(m.Equal(""))),
-				c.authorizationHeaderMatcher(credential),
-			),
-		)
+		m.In(t).For("request headers").Assert(request.Headers, m.AllOf(
+			headersMatcher,
+			c.authorizationHeaderMatcher(credential),
+		))
 	})
 }
 

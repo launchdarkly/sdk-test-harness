@@ -30,7 +30,10 @@ func doServerSideEventRequestTests(t *ldtest.T) {
 			Credential: sdkKey,
 		}))
 
-	eventTests.RequestMethodAndHeaders(t, sdkKey)
+	eventTests.RequestMethodAndHeaders(t, sdkKey, m.AllOf(
+		Header("X-LaunchDarkly-Event-Schema").Should(m.Equal(currentEventSchema)),
+		Header("X-LaunchDarkly-Payload-Id").Should(m.Not(m.Equal(""))),
+	))
 
 	eventTests.RequestURLPath(t, m.Equal("/bulk"))
 

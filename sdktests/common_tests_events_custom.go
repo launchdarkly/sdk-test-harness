@@ -25,7 +25,8 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 		metricValue := 1.0
 
 		customEventProperties := []string{
-			"kind", "creationDate", "key", "contextKeys", "data", "metricValue",
+			"kind", "creationDate", "key", "data", "metricValue",
+			h.IfElse(c.isPHP, "context", "contextKeys"), // only PHP has inline contexts in custom events
 		}
 		if t.Capabilities().Has(servicedef.CapabilityClientSide) &&
 			!t.Capabilities().Has(servicedef.CapabilityMobile) {
@@ -58,13 +59,13 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
 				expectedEvents := []m.Matcher{}
-				if !c.isClientSide {
+				if !c.isClientSide && !c.isPHP {
 					expectedEvents = append(expectedEvents, IsIndexEvent())
 				}
 				expectedEvents = append(expectedEvents, m.AllOf(
 					JSONPropertyKeysCanOnlyBe(customEventProperties...),
 					IsCustomEvent(),
-					HasContextKeys(context),
+					h.IfElse(c.isPHP, HasContextObjectWithMatchingKeys(context), HasContextKeys(context)),
 				))
 				m.In(t).Assert(payload, m.ItemsInAnyOrder(expectedEvents...))
 			})
@@ -142,7 +143,7 @@ func (c CommonEventTests) customEventsParameterizedTests(t *ldtest.T) {
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
 			expectedEvents := []m.Matcher{}
-			if !c.isClientSide {
+			if !c.isClientSide && !c.isPHP {
 				expectedEvents = append(expectedEvents, IsIndexEvent())
 			}
 			expectedEvents = append(expectedEvents,

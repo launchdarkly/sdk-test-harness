@@ -35,3 +35,26 @@ func (c CommonEventTests) initialEventPayloadExpectations() []m.Matcher {
 	// Client-side SDKs always send an initial identify event
 	return []m.Matcher{IsIdentifyEvent()}
 }
+
+func (c CommonEventTests) eventsWithIndexEventIfAppropriate(matchers ...m.Matcher) []m.Matcher {
+	// Server-side SDKs (excluding PHP) send an index event for each never-before-seen user. Client-side
+	// SDKs and the PHP SDK do not.
+	if c.isClientSide || c.isPHP {
+		return matchers
+	}
+	return append([]m.Matcher{IsIndexEvent()}, matchers...)
+}
+
+func (c CommonEventTests) eventsWithIndexEventAndSummaryEventIfAppropriate(matchers ...m.Matcher) []m.Matcher {
+	return c.eventsWithSummaryEventIfAppropriate(
+		c.eventsWithIndexEventIfAppropriate(matchers...)...,
+	)
+}
+
+func (c CommonEventTests) eventsWithSummaryEventIfAppropriate(matchers ...m.Matcher) []m.Matcher {
+	// The PHP SDK is the only one that never sends a summary event.
+	if c.isPHP {
+		return matchers
+	}
+	return append(append([]m.Matcher(nil), matchers...), IsSummaryEvent())
+}
