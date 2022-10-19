@@ -26,6 +26,7 @@ type commonTestsBase struct {
 	sdkKind        mockld.SDKKind
 	isClientSide   bool
 	isMobile       bool
+	isPHP          bool
 	sdkConfigurers []SDKConfigurer
 	contextFactory *data.ContextFactory
 }
@@ -44,6 +45,7 @@ func newCommonTestsBase(t *ldtest.T, testName string, baseSDKConfigurers ...SDKC
 	}
 	c.isClientSide = c.sdkKind.IsClientSide()
 	c.isMobile = t.Capabilities().Has(servicedef.CapabilityMobile)
+	c.isPHP = c.sdkKind == mockld.PHPSDK
 	if c.isClientSide {
 		c.sdkConfigurers = append(
 			[]SDKConfigurer{

@@ -2,6 +2,10 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [1.11.0] - 2022-10-05
+### Added:
+- Analytics event tests for the PHP SDK.
+
 ## [1.10.1] - 2022-10-04
 ### Fixed:
 - The test coverage for valid vs. invalid date and semver values was inadequate. Parameterized evaluation tests now include more test cases and are more clearly organized by name, to distinguish between different kinds of logic errors. This may cause some existing SDKs that are not fully compliant with the evaluation spec to show new test failures.

@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
-	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
@@ -160,31 +159,37 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 
 			c.discardIdentifyEventIfClientSide(t, client, events) // client-side SDKs always send an initial identify
 
-			t.Run("debug event", func(t *ldtest.T) {
-				context := contexts.NextUniqueContext()
-				if c.isClientSide {
-					client.SendIdentifyEvent(t, context)
-				}
-				client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
-					FlagKey:      debuggedFlagKey,
-					Context:      o.Some(context),
-					ValueType:    servicedef.ValueTypeAny,
-					DefaultValue: ldvalue.String("default"),
+			if !c.isPHP { // PHP SDK does not send debug events - it just passes along the debugEventsUntilDate property
+				t.Run("debug event", func(t *ldtest.T) {
+					context := contexts.NextUniqueContext()
+					if c.isClientSide {
+						client.SendIdentifyEvent(t, context)
+					}
+					client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+						FlagKey:      debuggedFlagKey,
+						Context:      o.Some(context),
+						ValueType:    servicedef.ValueTypeAny,
+						DefaultValue: ldvalue.String("default"),
+					})
+					client.FlushEvents(t)
+
+					payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+					eventMatchers := []m.Matcher{
+						m.AllOf(
+							IsDebugEvent(),
+							HasContextObjectWithMatchingKeys(context),
+							m.JSONProperty("context").Should(outputMatcher(context)),
+						),
+					}
+					if c.isClientSide {
+						eventMatchers = append(eventMatchers, IsIdentifyEvent())
+					} else if !c.isPHP {
+						eventMatchers = append(eventMatchers, IsIndexEvent(), IsSummaryEvent())
+					}
+					m.In(t).Assert(payload, m.ItemsInAnyOrder(eventMatchers...))
 				})
-				client.FlushEvents(t)
-
-				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-
-				m.In(t).Assert(payload, m.ItemsInAnyOrder(
-					h.IfElse(c.isClientSide, IsIdentifyEvent(), IsIndexEvent()),
-					m.AllOf(
-						IsDebugEvent(),
-						HasContextObjectWithMatchingKeys(context),
-						m.JSONProperty("context").Should(outputMatcher(context)),
-					),
-					IsSummaryEvent(),
-				))
-			})
+			}
 
 			t.Run("identify event", func(t *ldtest.T) {
 				context := contexts.NextUniqueContext()
@@ -201,7 +206,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 				))
 			})
 
-			if !c.isClientSide {
+			if !c.isClientSide && !c.isPHP { // client-side SDKs and the PHP SDK never send index events
 				t.Run("index event", func(t *ldtest.T) {
 					// Doing an evaluation for a never-before-seen user will generate an index event. We don't
 					// care about the evaluation result or the summary data, we're just looking at the user

@@ -5,6 +5,7 @@ import (
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
@@ -17,6 +18,11 @@ func doServerSideExperimentationEventTests(t *ldtest.T) {
 	// An evaluation that involves an experiment (via either a rule match or a fallthrough) should always
 	// generate a full feature event even if event tracking is not enabled for the flag. Also, the event
 	// will contain an evaluation reason in this case regardless of whether the application requested one.
+
+	// The test logic for this is *almost* exactly the same for PHP as for other server-side SDKs
+	// (the only difference is the absence of index and summary events), so we reuse the same
+	// function.
+	isPHP := t.Capabilities().Has(servicedef.CapabilityPHP)
 
 	expectedValue := ldvalue.String("good")
 	expectedVariation := 1
@@ -73,22 +79,22 @@ func doServerSideExperimentationEventTests(t *ldtest.T) {
 			client.FlushEvents(t)
 			payload := eventSink.ExpectAnalyticsEvents(t, time.Second)
 
-			matchFeatureEvent := IsValidFeatureEventWithConditions(
-				m.JSONProperty("key").Should(m.Equal(flag.Key)),
-				HasContextKeys(context),
-				m.JSONProperty("version").Should(m.Equal(flag.Version)),
-				m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),
-				m.JSONProperty("variation").Should(m.Equal(expectedVariation)),
-				m.JSONProperty("reason").Should(m.JSONStrEqual(scenario.expectedReason)),
-				m.JSONProperty("default").Should(m.JSONEqual(defaultValue)),
-				JSONPropertyNullOrAbsent("prereqOf"),
-			)
-
-			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				IsIndexEventForContext(context),
-				matchFeatureEvent,
-				IsSummaryEvent(),
-			))
+			eventMatchers := []m.Matcher{
+				IsValidFeatureEventWithConditions(
+					isPHP, context,
+					m.JSONProperty("key").Should(m.Equal(flag.Key)),
+					m.JSONProperty("version").Should(m.Equal(flag.Version)),
+					m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),
+					m.JSONProperty("variation").Should(m.Equal(expectedVariation)),
+					m.JSONProperty("reason").Should(m.JSONStrEqual(scenario.expectedReason)),
+					m.JSONProperty("default").Should(m.JSONEqual(defaultValue)),
+					JSONPropertyNullOrAbsent("prereqOf"),
+				),
+			}
+			if !isPHP {
+				eventMatchers = append(eventMatchers, IsIndexEventForContext(context), IsSummaryEvent())
+			}
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(eventMatchers...))
 		})
 	}
 }

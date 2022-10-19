@@ -39,9 +39,10 @@ func (c CommonEventTests) IdentifyEvents(t *ldtest.T) {
 		}
 	})
 
-	if !c.isClientSide {
+	if !c.isClientSide && !c.isPHP {
 		t.Run("identify event makes index event for same user unnecessary", func(t *ldtest.T) {
-			// This test is only done for server-side SDKs because client-side ones do not do index events.
+			// This test is only done for server-side SDKs (excluding PHP), because client-side ones and PHP
+			// do not do index events.
 			for _, contexts := range contextCategories {
 				t.Run(contexts.Description(), func(t *ldtest.T) {
 					events := NewSDKEventSink(t)
