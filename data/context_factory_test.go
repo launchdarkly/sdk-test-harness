@@ -72,12 +72,12 @@ func TestMultiContextFactory(t *testing.T) {
 	m.In(t).Assert(c1a.Kind(), equalsKind("org"))
 	m.In(t).Assert(c1a.Key(), m.StringHasPrefix("abcde."))
 	m.In(t).Assert(c1a.Name(), equalsOptString("x"))
-	m.In(t).Assert(c1.Anonymous(), m.Equal(false))
+	m.In(t).Assert(c1a.Anonymous(), m.Equal(false))
 	c1b := c1.IndividualContextByIndex(1)
 	m.In(t).Assert(c1b.Kind(), equalsKind("other"))
 	m.In(t).Assert(c1b.Key(), m.StringHasPrefix("abcde."))
 	m.In(t).Assert(c1b.Name(), optStringEmpty())
-	m.In(t).Assert(c1.Anonymous(), m.Equal(true))
+	m.In(t).Assert(c1b.Anonymous(), m.Equal(true))
 
 	c2 := f.NextUniqueContext()
 	assert.True(t, c2.Multiple())
@@ -86,12 +86,12 @@ func TestMultiContextFactory(t *testing.T) {
 	m.In(t).Assert(c2a.Kind(), equalsKind("org"))
 	m.In(t).Assert(c2a.Key(), m.StringHasPrefix("abcde."))
 	m.In(t).Assert(c2a.Name(), equalsOptString("x"))
-	m.In(t).Assert(c1.Anonymous(), m.Equal(false))
+	m.In(t).Assert(c2a.Anonymous(), m.Equal(false))
 	c2b := c2.IndividualContextByIndex(1)
 	m.In(t).Assert(c2b.Kind(), equalsKind("other"))
 	m.In(t).Assert(c2b.Key(), m.StringHasPrefix("abcde."))
 	m.In(t).Assert(c2b.Name(), optStringEmpty())
-	m.In(t).Assert(c1.Anonymous(), m.Equal(true))
+	m.In(t).Assert(c2b.Anonymous(), m.Equal(true))
 }
 
 func TestNewContextFactoriesForSingleAndMultiKind(t *testing.T) {
