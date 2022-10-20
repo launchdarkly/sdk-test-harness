@@ -18,6 +18,7 @@ import (
 )
 
 func doSDKContextTypeTests(t *ldtest.T) {
+	t.RequireCapability(servicedef.CapabilityContextType)
 	t.Run("build", doSDKContextBuildTests)
 	t.Run("convert", doSDKContextConvertTests)
 }
