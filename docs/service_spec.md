@@ -233,7 +233,7 @@ The response should be a JSON object with two boolean properties, `available` an
 
 If `command` is `"contextBuild"`, the test service should use the SDK's context builder to construct a context and then return a JSON representation of it.
 
-The test harness will only send this command if the test service has the `"strongly-typed"` capability.
+The test harness will only send this command if the test service has the `"context-type"` capability.
 
 The `contextBuild` property in the request body will be a JSON object with these properties:
 
@@ -257,7 +257,7 @@ If the SDK returns an error for this operation, the test service should _not_ re
 
 If `command` is `"contextConvert"`, the test service should use the SDK's JSON conversions for the context type to parse a context from JSON and then return a JSON representation of the result. This verifies that parsing works correctly _and_ that the SDK does any necessary transformations, such as converting an old-style user to a context, or dropping properties that have null values.
 
-The test harness will only send this command if the test service has the `"strongly-typed"` capability.
+The test harness will only send this command if the test service has the `"context-type"` capability.
 
 The `contextConvert` property in the request body will be a JSON object with these properties:
 
