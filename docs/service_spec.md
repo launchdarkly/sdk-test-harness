@@ -56,6 +56,10 @@ This means that the SDK supports Big Segments and can be configured with a custo
 
 For tests that involve Big Segments, the test harness will provide parameters in the `bigSegments` property of the configuration object, including a `callbackUri` that points to one of the test harness's callback services (see [Callback endpoints](#callback-endpoints)). The test service should configure the SDK with its own implementation of a Big Segment store, where every method of the store delegates to a corresponding endpoint in the callback service.
 
+#### Capability `"context-type"`
+
+This means that the SDK has its own type for evaluation contexts (as opposed to just representing them as a JSON-equivalent generic data structure) and convert that type to and from JSON.
+
 #### Capability `"server-side-polling"`
 
 For a server-side SDK, this means that the SDK can be configured to use polling mode instead of streaming mode.
@@ -229,7 +233,7 @@ The response should be a JSON object with two boolean properties, `available` an
 
 If `command` is `"contextBuild"`, the test service should use the SDK's context builder to construct a context and then return a JSON representation of it.
 
-The test harness will only send this command if the test service has the `"strongly-typed"` capability.
+The test harness will only send this command if the test service has the `"context-type"` capability.
 
 The `contextBuild` property in the request body will be a JSON object with these properties:
 
@@ -253,7 +257,7 @@ If the SDK returns an error for this operation, the test service should _not_ re
 
 If `command` is `"contextConvert"`, the test service should use the SDK's JSON conversions for the context type to parse a context from JSON and then return a JSON representation of the result. This verifies that parsing works correctly _and_ that the SDK does any necessary transformations, such as converting an old-style user to a context, or dropping properties that have null values.
 
-The test harness will only send this command if the test service has the `"strongly-typed"` capability.
+The test harness will only send this command if the test service has the `"context-type"` capability.
 
 The `contextConvert` property in the request body will be a JSON object with these properties:
 
