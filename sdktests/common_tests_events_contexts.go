@@ -137,9 +137,37 @@ func makeEventContextTestParams() []eventContextTestParams {
 }
 
 func (c CommonEventTests) EventContexts(t *ldtest.T) {
-	debuggedFlagKey := "debugged-flag"
-	data := c.makeSDKDataWithDebuggedFlag(debuggedFlagKey)
-	dataSource := NewSDKDataSource(t, data)
+	// Flags to use for "feature" and "debug" event tests
+	// The flag variation/value is irrelevant.
+	var flagKey, debuggedFlagKey string
+	flagValue := ldvalue.String("value")
+	var sdkData mockld.SDKData
+	if c.isClientSide {
+		flagKey, debuggedFlagKey = "flag", "debugged-flag"
+		sdkData = mockld.NewClientSDKDataBuilder().
+			Flag(flagKey, mockld.ClientSDKFlag{
+				Value:     flagValue,
+				Variation: o.Some(0),
+			}).
+			Flag(debuggedFlagKey, mockld.ClientSDKFlag{
+				Value:                flagValue,
+				Variation:            o.Some(0),
+				DebugEventsUntilDate: o.Some(ldtime.UnixMillisNow() + 1000000),
+			}).
+			Build()
+	} else {
+		flags := data.NewFlagFactory("EventContexts", data.SingleValueForAllSDKValueTypes(flagValue))
+		debugFlags := data.NewFlagFactory(
+			"EventContextDebugFlag",
+			data.SingleValueForAllSDKValueTypes(flagValue),
+			data.FlagShouldAlwaysHaveDebuggingEnabled,
+		)
+		flag, debugFlag := flags.MakeFlag(), debugFlags.MakeFlag()
+		flagKey, debuggedFlagKey = flag.Key, debugFlag.Key
+		sdkData = mockld.NewServerSDKDataBuilder().Flag(flag, debugFlag).Build()
+	}
+
+	dataSource := NewSDKDataSource(t, sdkData)
 
 	for _, p := range makeEventContextTestParams() {
 		outputMatcher := func(context ldcontext.Context) m.Matcher {
@@ -157,18 +185,31 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 
 			c.discardIdentifyEventIfClientSide(t, client, events) // client-side SDKs always send an initial identify
 
+			if c.isPHP { // only the PHP SDK sends inline contexts in feature events
+				t.Run("feature event", func(t *ldtest.T) {
+					context := contexts.NextUniqueContext()
+					_ = basicEvaluateFlag(t, client, flagKey, context, ldvalue.String("default"))
+					client.FlushEvents(t)
+
+					payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+					eventMatchers := []m.Matcher{
+						m.AllOf(
+							IsValidFeatureEventWithConditions(true, context,
+								m.JSONProperty("context").Should(outputMatcher(context))),
+						),
+					}
+					m.In(t).Assert(payload, m.Items(eventMatchers...))
+				})
+			}
+
 			if !c.isPHP { // PHP SDK does not send debug events - it just passes along the debugEventsUntilDate property
 				t.Run("debug event", func(t *ldtest.T) {
 					context := contexts.NextUniqueContext()
 					if c.isClientSide {
 						client.SendIdentifyEvent(t, context)
 					}
-					client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
-						FlagKey:      debuggedFlagKey,
-						Context:      o.Some(context),
-						ValueType:    servicedef.ValueTypeAny,
-						DefaultValue: ldvalue.String("default"),
-					})
+					_ = basicEvaluateFlag(t, client, debuggedFlagKey, context, ldvalue.String("default"))
 					client.FlushEvents(t)
 
 					payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
@@ -176,7 +217,6 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 					eventMatchers := []m.Matcher{
 						m.AllOf(
 							IsDebugEvent(),
-							HasContextObjectWithMatchingKeys(context),
 							m.JSONProperty("context").Should(outputMatcher(context)),
 						),
 					}
@@ -226,29 +266,4 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 			}
 		})
 	}
-}
-
-func (c CommonEventTests) makeSDKDataWithDebuggedFlag(debuggedFlagKey string) mockld.SDKData {
-	// This sets up the SDK data so that evaluating this flags will produce a debug event.
-	// The flag variation/value is irrelevant.
-	flagValue := ldvalue.String("value")
-
-	if c.isClientSide {
-		return mockld.NewClientSDKDataBuilder().
-			Flag(debuggedFlagKey, mockld.ClientSDKFlag{
-				Value:                flagValue,
-				Variation:            o.Some(0),
-				DebugEventsUntilDate: o.Some(ldtime.UnixMillisNow() + 1000000),
-			}).
-			Build()
-	}
-
-	debugFlags := data.NewFlagFactory(
-		"EventContextDebugFlag",
-		data.SingleValueForAllSDKValueTypes(flagValue),
-		data.FlagShouldAlwaysHaveDebuggingEnabled,
-	)
-	flag := debugFlags.MakeFlag()
-	flag.Key = debuggedFlagKey
-	return mockld.NewServerSDKDataBuilder().Flag(flag).Build()
 }
