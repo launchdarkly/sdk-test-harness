@@ -221,7 +221,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 						),
 					}
 					if c.isClientSide {
-						eventMatchers = append(eventMatchers, IsIdentifyEvent())
+						eventMatchers = append(eventMatchers, IsIdentifyEvent(), IsSummaryEvent())
 					} else if !c.isPHP {
 						eventMatchers = append(eventMatchers, IsIndexEvent(), IsSummaryEvent())
 					}

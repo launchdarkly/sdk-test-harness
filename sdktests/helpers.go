@@ -241,21 +241,12 @@ func pollUntilFlagValueUpdated(
 // ldattr.Ref is a complex reference, a particular object property or array element.
 func setContextValueForAttrRef(b *ldcontext.Builder, ref ldattr.Ref, value ldvalue.Value) {
 	for depth := ref.Depth() - 1; depth > 0; depth-- {
-		name, index := ref.Component(depth)
-		if index.IsDefined() {
-			arrayBuilder := ldvalue.ArrayBuild()
-			for i := 0; i < index.IntValue(); i++ {
-				arrayBuilder.Add(ldvalue.Null())
-				arrayBuilder.Add(value)
-			}
-			value = arrayBuilder.Build()
-		} else {
-			objectBuilder := ldvalue.ObjectBuild()
-			objectBuilder.Set(name, value)
-			value = objectBuilder.Build()
-		}
+		name := ref.Component(depth)
+		objectBuilder := ldvalue.ObjectBuild()
+		objectBuilder.Set(name, value)
+		value = objectBuilder.Build()
 	}
-	name, _ := ref.Component(0)
+	name := ref.Component(0)
 	b.SetValue(name, value)
 }
 

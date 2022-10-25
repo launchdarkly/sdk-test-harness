@@ -9,7 +9,7 @@ import (
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 
-	"github.com/launchdarkly/go-jsonstream/v2/jreader"
+	"github.com/launchdarkly/go-jsonstream/v3/jreader"
 	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldmodel"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
