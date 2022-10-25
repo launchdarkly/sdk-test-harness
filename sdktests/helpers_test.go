@@ -61,10 +61,6 @@ func TestSetContextValueForAttrRef(t *testing.T) {
 			ldcontext.NewBuilder(key).SetValue("attr1", ldvalue.ObjectBuild().Set("subprop",
 				ldvalue.ObjectBuild().Set("subsub", value).Build()).Build()).Build(),
 		},
-		{
-			"array index", "/attr1/1",
-			ldcontext.NewBuilder(key).SetValue("attr1", ldvalue.ArrayOf(ldvalue.Null(), value)).Build(),
-		},
 	} {
 		t.Run(p.name, func(t *testing.T) {
 			b := ldcontext.NewBuilder(key)
