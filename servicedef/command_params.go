@@ -19,6 +19,8 @@ const (
 	CommandContextBuild             = "contextBuild"
 	CommandContextConvert           = "contextConvert"
 	CommandSecureModeHash           = "secureModeHash"
+	CommandAttrRefConstruct         = "attrRefConstruct"
+	CommandAttrRefConvert           = "attrRefConvert"
 )
 
 type ValueType string
@@ -32,14 +34,15 @@ const (
 )
 
 type CommandParams struct {
-	Command        string                          `json:"command"`
-	Evaluate       o.Maybe[EvaluateFlagParams]     `json:"evaluate,omitempty"`
-	EvaluateAll    o.Maybe[EvaluateAllFlagsParams] `json:"evaluateAll,omitempty"`
-	CustomEvent    o.Maybe[CustomEventParams]      `json:"customEvent,omitempty"`
-	IdentifyEvent  o.Maybe[IdentifyEventParams]    `json:"identifyEvent,omitempty"`
-	ContextBuild   o.Maybe[ContextBuildParams]     `json:"contextBuild,omitempty"`
-	ContextConvert o.Maybe[ContextConvertParams]   `json:"contextConvert,omitempty"`
-	SecureModeHash o.Maybe[SecureModeHashParams]   `json:"secureModeHash,omitempty"`
+	Command          string                          `json:"command"`
+	Evaluate         o.Maybe[EvaluateFlagParams]     `json:"evaluate,omitempty"`
+	EvaluateAll      o.Maybe[EvaluateAllFlagsParams] `json:"evaluateAll,omitempty"`
+	CustomEvent      o.Maybe[CustomEventParams]      `json:"customEvent,omitempty"`
+	IdentifyEvent    o.Maybe[IdentifyEventParams]    `json:"identifyEvent,omitempty"`
+	ContextBuild     o.Maybe[ContextBuildParams]     `json:"contextBuild,omitempty"`
+	ContextConvert   o.Maybe[ContextConvertParams]   `json:"contextConvert,omitempty"`
+	SecureModeHash   o.Maybe[SecureModeHashParams]   `json:"secureModeHash,omitempty"`
+	AttrRefConstruct o.Maybe[AttrRefConstructParams] `json:"attrRefConstruct,omitempty"`
 }
 
 type EvaluateFlagParams struct {
@@ -113,4 +116,14 @@ type SecureModeHashParams struct {
 
 type SecureModeHashResponse struct {
 	Result string `json:"result"`
+}
+
+type AttrRefConstructParams struct {
+	Input   string `json:"input"`
+	Literal bool   `json:"literal"`
+}
+
+type AttrRefConstructResponse struct {
+	Valid      bool     `json:"valid"`
+	Components []string `json:"components"`
 }

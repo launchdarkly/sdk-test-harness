@@ -84,6 +84,7 @@ func doAllServerSideTests(t *ldtest.T) {
 	t.Run("tags", doServerSideTagsTests)
 	t.Run("secure mode hash", doServerSideSecureModeHashTests)
 	t.Run("context type", doSDKContextTypeTests)
+	t.Run("attribute reference type", doSDKAttrRefTypeTests)
 }
 
 func doAllClientSideTests(t *ldtest.T) {
@@ -93,6 +94,7 @@ func doAllClientSideTests(t *ldtest.T) {
 	t.Run("polling", doClientSidePollTests)
 	t.Run("tags", doClientSideTagsTests)
 	t.Run("context type", doSDKContextTypeTests)
+	t.Run("attribute reference type", doSDKAttrRefTypeTests)
 }
 
 func doAllPHPTests(t *ldtest.T) {

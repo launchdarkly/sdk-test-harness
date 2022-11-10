@@ -317,6 +317,24 @@ func (c *SDKClient) ContextConvert(
 	return resp
 }
 
+// AttrRefConstruct tells the test service to use the SDK's Attribute Reference constructor to make an
+// attribute reference and return its validity state and all components.
+func (c *SDKClient) AttrRefConstruct(
+	t *ldtest.T,
+	params servicedef.AttrRefConstructParams,
+) servicedef.AttrRefConstructResponse {
+	var resp servicedef.AttrRefConstructResponse
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:          servicedef.CommandAttrRefConstruct,
+			AttrRefConstruct: o.Some(params),
+		},
+		t.DebugLogger(),
+		&resp,
+	))
+	return resp
+}
+
 // GetSecureModeHash tells the SDK client to calculate a secure mode hash for a context. The test
 // harness will only call this method if the test service has the "secure-mode-hash" capability.
 func (c *SDKClient) GetSecureModeHash(t *ldtest.T, context ldcontext.Context) string {
