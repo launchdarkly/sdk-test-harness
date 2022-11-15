@@ -11,6 +11,11 @@ import (
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
 
+// This file is very similar to server_side_events_summary.go, except that the preconditions have to be set up
+// differently because of the single-current-user model. That is, we can't do a bunch of evaluations for flag 1
+// with user A getting one value and mix them in with evaluations for flag 1 with user B getting a different
+// value, because there is just one current value for the flag at a time depending on the current user.
+
 func doClientSideSummaryEventTests(t *ldtest.T) {
 	t.Run("basic counter behavior", doClientSideSummaryEventBasicTest)
 	t.Run("unknown flag", doClientSideSummaryEventUnknownFlagTest)

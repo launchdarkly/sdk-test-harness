@@ -16,6 +16,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// This file is very similar to server_side_events_eval.go, except:
+//
+// - The test data generation works differently because of the different flag model.
+// - We're not using a unique user per evaluation.
+// - There are no prerequisite events.
+
 func doClientSideFeatureEventTests(t *ldtest.T) {
 	flagValues := FlagValueByTypeFactory()
 	defaultValues := DefaultValueByTypeFactory()
