@@ -252,6 +252,11 @@ func (b *ClientSDKDataBuilder) Flag(key string, props ClientSDKFlag) *ClientSDKD
 	return b
 }
 
+func (b *ClientSDKDataBuilder) FullFlag(props ClientSDKFlagWithKey) *ClientSDKDataBuilder {
+	b.flags[props.Key] = props.ClientSDKFlag
+	return b
+}
+
 func (b *ClientSDKDataBuilder) FlagWithValue(
 	key string,
 	version int,

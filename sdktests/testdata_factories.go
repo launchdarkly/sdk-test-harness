@@ -3,6 +3,8 @@ package sdktests
 import (
 	"fmt"
 
+	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/mockld"
 	"github.com/launchdarkly/sdk-test-harness/servicedef"
 
 	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
@@ -44,14 +46,15 @@ func (f *UserFactory) NextUniqueUserMaybeAnonymous(shouldBeAnonymous bool) lduse
 	return user
 }
 
-type FlagFactory interface {
-	MakeFlag(param interface{}) ldmodel.FeatureFlag
+type GenericFactory[T any] interface {
+	Get(param any) T
 }
 
-type MemoizingFlagFactory struct {
-	factoryFn   func(interface{}) ldmodel.FeatureFlag
-	flags       map[interface{}]ldmodel.FeatureFlag
-	nextVersion int
+type MemoizingFactory[T any] struct {
+	factoryFn          func(any) T
+	transformVersionFn func(T, int) T
+	cache              map[any]T
+	nextVersion        int
 }
 
 type ValueFactory func(param interface{}) ldvalue.Value
@@ -96,27 +99,47 @@ func DefaultValueByTypeFactory() ValueFactory {
 	}
 }
 
-func NewMemoizingFlagFactory(startingVersion int, factoryFn func(interface{}) ldmodel.FeatureFlag) FlagFactory {
-	f := &MemoizingFlagFactory{
-		factoryFn:   factoryFn,
-		flags:       make(map[interface{}]ldmodel.FeatureFlag),
+func NewMemoizingFlagFactory(startingVersion int, factoryFn func(interface{}) ldmodel.FeatureFlag) *MemoizingFactory[ldmodel.FeatureFlag] {
+	f := &MemoizingFactory[ldmodel.FeatureFlag]{
+		factoryFn: factoryFn,
+		transformVersionFn: func(f ldmodel.FeatureFlag, v int) ldmodel.FeatureFlag {
+			f.Version = v
+			return f
+		},
 		nextVersion: startingVersion,
-	}
-	if f.nextVersion == 0 {
-		f.nextVersion = 1
 	}
 	return f
 }
 
-func (f *MemoizingFlagFactory) MakeFlag(param interface{}) ldmodel.FeatureFlag {
-	if flag, ok := f.flags[param]; ok {
-		return flag
+func NewMemoizingClientSideFlagFactory(startingVersion int, factoryFn func(interface{}) mockld.ClientSDKFlagWithKey) *MemoizingFactory[mockld.ClientSDKFlagWithKey] {
+	f := &MemoizingFactory[mockld.ClientSDKFlagWithKey]{
+		factoryFn: factoryFn,
+		transformVersionFn: func(f mockld.ClientSDKFlagWithKey, v int) mockld.ClientSDKFlagWithKey {
+			f.Version = v
+			return f
+		},
+		nextVersion: startingVersion,
 	}
-	flag := f.factoryFn(param)
+	return f
+}
+
+func (f *MemoizingFactory[T]) Get(param any) T {
+	if item, ok := f.cache[param]; ok {
+		return item
+	}
+	item := f.factoryFn(param)
+	version := f.nextVersion
+	if version == 0 {
+		version++
+	}
 	f.nextVersion++
-	flag.Version = f.nextVersion
-	f.flags[param] = flag
-	return flag
+	item = f.transformVersionFn(item, version)
+	f.nextVersion = version
+	if f.cache == nil {
+		f.cache = make(map[any]T)
+	}
+	f.cache[param] = item
+	return item
 }
 
 type FlagFactoryForValueTypes struct {
@@ -125,7 +148,7 @@ type FlagFactoryForValueTypes struct {
 	ValueFactory    ValueFactory
 	Reason          ldreason.EvaluationReason
 	StartingVersion int
-	factory         FlagFactory
+	factory         *MemoizingFactory[ldmodel.FeatureFlag]
 }
 
 func (f *FlagFactoryForValueTypes) ForType(valueType servicedef.ValueType) ldmodel.FeatureFlag {
@@ -150,5 +173,42 @@ func (f *FlagFactoryForValueTypes) ForType(valueType servicedef.ValueType) ldmod
 			return builder.Build()
 		})
 	}
-	return f.factory.MakeFlag(valueType)
+	return f.factory.Get(valueType)
+}
+
+type ClientSideFlagFactoryForValueTypes struct {
+	KeyPrefix       string
+	BuilderActions  func(*mockld.ClientSDKFlagWithKey)
+	ValueFactory    ValueFactory
+	Reason          ldreason.EvaluationReason
+	StartingVersion int
+	factory         *MemoizingFactory[mockld.ClientSDKFlagWithKey]
+	nextVariation   int
+}
+
+func (f *ClientSideFlagFactoryForValueTypes) ForType(valueType servicedef.ValueType) mockld.ClientSDKFlagWithKey {
+	if f.factory == nil {
+		if f.ValueFactory == nil {
+			f.ValueFactory = FlagValueByTypeFactory()
+		}
+		f.factory = NewMemoizingClientSideFlagFactory(f.StartingVersion, func(param interface{}) mockld.ClientSDKFlagWithKey {
+			valueType := param.(servicedef.ValueType)
+			ret := mockld.ClientSDKFlagWithKey{
+				Key: fmt.Sprintf("%s.%s", f.KeyPrefix, valueType),
+				ClientSDKFlag: mockld.ClientSDKFlag{
+					Value:     f.ValueFactory(valueType),
+					Variation: o.Some(f.nextVariation),
+				},
+			}
+			f.nextVariation = (f.nextVariation + 1) % 5 // arbitrary number of variations just so data isn't uniform
+			if f.Reason.IsDefined() {
+				ret.Reason = o.Some(f.Reason)
+			}
+			if f.BuilderActions != nil {
+				f.BuilderActions(&ret)
+			}
+			return ret
+		})
+	}
+	return f.factory.Get(valueType)
 }
