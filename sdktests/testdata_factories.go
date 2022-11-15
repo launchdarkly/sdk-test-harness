@@ -46,26 +46,25 @@ func (f *UserFactory) NextUniqueUserMaybeAnonymous(shouldBeAnonymous bool) lduse
 	return user
 }
 
-type GenericFactory[T any] interface {
-	Get(param any) T
+type GenericFactory[ParamT, ResultT any] interface {
+	Get(param ParamT) ResultT
 }
 
-type MemoizingFactory[T any] struct {
-	factoryFn          func(any) T
-	transformVersionFn func(T, int) T
-	cache              map[any]T
+type MemoizingFactory[ParamT comparable, ResultT any] struct {
+	factoryFn          func(ParamT) ResultT
+	transformVersionFn func(ResultT, int) ResultT
+	cache              map[ParamT]ResultT
 	nextVersion        int
 }
 
-type ValueFactory func(param interface{}) ldvalue.Value
+type ValueFactory[ParamT any] func(param ParamT) ldvalue.Value
 
-func SingleValueFactory(value ldvalue.Value) ValueFactory {
-	return func(interface{}) ldvalue.Value { return value }
+func SingleValueFactory(value ldvalue.Value) ValueFactory[servicedef.ValueType] {
+	return func(servicedef.ValueType) ldvalue.Value { return value }
 }
 
-func FlagValueByTypeFactory() ValueFactory {
-	return func(param interface{}) ldvalue.Value {
-		valueType, _ := param.(servicedef.ValueType)
+func FlagValueByTypeFactory() ValueFactory[servicedef.ValueType] {
+	return func(valueType servicedef.ValueType) ldvalue.Value {
 		switch valueType {
 		case servicedef.ValueTypeBool:
 			return ldvalue.Bool(true)
@@ -81,9 +80,8 @@ func FlagValueByTypeFactory() ValueFactory {
 	}
 }
 
-func DefaultValueByTypeFactory() ValueFactory {
-	return func(param interface{}) ldvalue.Value {
-		valueType, _ := param.(servicedef.ValueType)
+func DefaultValueByTypeFactory() ValueFactory[servicedef.ValueType] {
+	return func(valueType servicedef.ValueType) ldvalue.Value {
 		switch valueType {
 		case servicedef.ValueTypeBool:
 			return ldvalue.Bool(false)
@@ -99,8 +97,11 @@ func DefaultValueByTypeFactory() ValueFactory {
 	}
 }
 
-func NewMemoizingFlagFactory(startingVersion int, factoryFn func(interface{}) ldmodel.FeatureFlag) *MemoizingFactory[ldmodel.FeatureFlag] {
-	f := &MemoizingFactory[ldmodel.FeatureFlag]{
+func NewMemoizingFlagFactory(
+	startingVersion int,
+	factoryFn func(servicedef.ValueType) ldmodel.FeatureFlag,
+) *MemoizingFactory[servicedef.ValueType, ldmodel.FeatureFlag] {
+	f := &MemoizingFactory[servicedef.ValueType, ldmodel.FeatureFlag]{
 		factoryFn: factoryFn,
 		transformVersionFn: func(f ldmodel.FeatureFlag, v int) ldmodel.FeatureFlag {
 			f.Version = v
@@ -111,8 +112,11 @@ func NewMemoizingFlagFactory(startingVersion int, factoryFn func(interface{}) ld
 	return f
 }
 
-func NewMemoizingClientSideFlagFactory(startingVersion int, factoryFn func(interface{}) mockld.ClientSDKFlagWithKey) *MemoizingFactory[mockld.ClientSDKFlagWithKey] {
-	f := &MemoizingFactory[mockld.ClientSDKFlagWithKey]{
+func NewMemoizingClientSideFlagFactory(
+	startingVersion int,
+	factoryFn func(servicedef.ValueType) mockld.ClientSDKFlagWithKey,
+) *MemoizingFactory[servicedef.ValueType, mockld.ClientSDKFlagWithKey] {
+	f := &MemoizingFactory[servicedef.ValueType, mockld.ClientSDKFlagWithKey]{
 		factoryFn: factoryFn,
 		transformVersionFn: func(f mockld.ClientSDKFlagWithKey, v int) mockld.ClientSDKFlagWithKey {
 			f.Version = v
@@ -123,7 +127,7 @@ func NewMemoizingClientSideFlagFactory(startingVersion int, factoryFn func(inter
 	return f
 }
 
-func (f *MemoizingFactory[T]) Get(param any) T {
+func (f *MemoizingFactory[P, R]) Get(param P) R {
 	if item, ok := f.cache[param]; ok {
 		return item
 	}
@@ -136,7 +140,7 @@ func (f *MemoizingFactory[T]) Get(param any) T {
 	item = f.transformVersionFn(item, version)
 	f.nextVersion = version
 	if f.cache == nil {
-		f.cache = make(map[any]T)
+		f.cache = make(map[P]R)
 	}
 	f.cache[param] = item
 	return item
@@ -145,10 +149,10 @@ func (f *MemoizingFactory[T]) Get(param any) T {
 type FlagFactoryForValueTypes struct {
 	KeyPrefix       string
 	BuilderActions  func(*ldbuilders.FlagBuilder)
-	ValueFactory    ValueFactory
+	ValueFactory    ValueFactory[servicedef.ValueType]
 	Reason          ldreason.EvaluationReason
 	StartingVersion int
-	factory         *MemoizingFactory[ldmodel.FeatureFlag]
+	factory         *MemoizingFactory[servicedef.ValueType, ldmodel.FeatureFlag]
 }
 
 func (f *FlagFactoryForValueTypes) ForType(valueType servicedef.ValueType) ldmodel.FeatureFlag {
@@ -156,8 +160,7 @@ func (f *FlagFactoryForValueTypes) ForType(valueType servicedef.ValueType) ldmod
 		if f.ValueFactory == nil {
 			f.ValueFactory = FlagValueByTypeFactory()
 		}
-		f.factory = NewMemoizingFlagFactory(f.StartingVersion, func(param interface{}) ldmodel.FeatureFlag {
-			valueType := param.(servicedef.ValueType)
+		f.factory = NewMemoizingFlagFactory(f.StartingVersion, func(valueType servicedef.ValueType) ldmodel.FeatureFlag {
 			flagKey := fmt.Sprintf("%s.%s", f.KeyPrefix, valueType)
 			builder := ldbuilders.NewFlagBuilder(flagKey)
 			builder.Variations(f.ValueFactory(valueType))
@@ -179,10 +182,10 @@ func (f *FlagFactoryForValueTypes) ForType(valueType servicedef.ValueType) ldmod
 type ClientSideFlagFactoryForValueTypes struct {
 	KeyPrefix       string
 	BuilderActions  func(*mockld.ClientSDKFlagWithKey)
-	ValueFactory    ValueFactory
+	ValueFactory    ValueFactory[servicedef.ValueType]
 	Reason          ldreason.EvaluationReason
 	StartingVersion int
-	factory         *MemoizingFactory[mockld.ClientSDKFlagWithKey]
+	factory         *MemoizingFactory[servicedef.ValueType, mockld.ClientSDKFlagWithKey]
 	nextVariation   int
 }
 
@@ -191,24 +194,24 @@ func (f *ClientSideFlagFactoryForValueTypes) ForType(valueType servicedef.ValueT
 		if f.ValueFactory == nil {
 			f.ValueFactory = FlagValueByTypeFactory()
 		}
-		f.factory = NewMemoizingClientSideFlagFactory(f.StartingVersion, func(param interface{}) mockld.ClientSDKFlagWithKey {
-			valueType := param.(servicedef.ValueType)
-			ret := mockld.ClientSDKFlagWithKey{
-				Key: fmt.Sprintf("%s.%s", f.KeyPrefix, valueType),
-				ClientSDKFlag: mockld.ClientSDKFlag{
-					Value:     f.ValueFactory(valueType),
-					Variation: o.Some(f.nextVariation),
-				},
-			}
-			f.nextVariation = (f.nextVariation + 1) % 5 // arbitrary number of variations just so data isn't uniform
-			if f.Reason.IsDefined() {
-				ret.Reason = o.Some(f.Reason)
-			}
-			if f.BuilderActions != nil {
-				f.BuilderActions(&ret)
-			}
-			return ret
-		})
+		f.factory = NewMemoizingClientSideFlagFactory(f.StartingVersion,
+			func(valueType servicedef.ValueType) mockld.ClientSDKFlagWithKey {
+				ret := mockld.ClientSDKFlagWithKey{
+					Key: fmt.Sprintf("%s.%s", f.KeyPrefix, valueType),
+					ClientSDKFlag: mockld.ClientSDKFlag{
+						Value:     f.ValueFactory(valueType),
+						Variation: o.Some(f.nextVariation),
+					},
+				}
+				f.nextVariation = (f.nextVariation + 1) % 5 // arbitrary number of variations just so data isn't uniform
+				if f.Reason.IsDefined() {
+					ret.Reason = o.Some(f.Reason)
+				}
+				if f.BuilderActions != nil {
+					f.BuilderActions(&ret)
+				}
+				return ret
+			})
 	}
 	return f.factory.Get(valueType)
 }
