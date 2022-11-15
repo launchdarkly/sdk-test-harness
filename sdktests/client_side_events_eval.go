@@ -228,43 +228,6 @@ func doClientSideDebugEventTests(t *ldtest.T) {
 			})
 		}
 	}
-	shouldSeeDebugEvent := func(t *ldtest.T, debugUntil time.Time, lastKnownTimeFromLD time.Time) {
-		doDebugTest(t, true, debugUntil, lastKnownTimeFromLD)
-	}
-	shouldNotSeeDebugEvent := func(t *ldtest.T, debugUntil time.Time, lastKnownTimeFromLD time.Time) {
-		doDebugTest(t, false, debugUntil, lastKnownTimeFromLD)
-	}
 
-	t.Run("should see debug event", func(t *ldtest.T) {
-		t.Run("debugEventsUntilDate is after SDK time", func(t *ldtest.T) {
-			futureDebugUntil := time.Now().Add(time.Hour)
-			t.Run("SDK does not know LD time", func(t *ldtest.T) {
-				shouldSeeDebugEvent(t, futureDebugUntil, time.Time{})
-			})
-			t.Run("SDK knows LD time is before debugEventsUntilDate", func(t *ldtest.T) {
-				shouldSeeDebugEvent(t, futureDebugUntil, futureDebugUntil.Add(-time.Minute))
-			})
-		})
-	})
-
-	t.Run("should not see debug event", func(t *ldtest.T) {
-		t.Run("debugEventsUntilDate is before SDK time", func(t *ldtest.T) {
-			pastDebugUntil := time.Now().Add(-time.Hour)
-			t.Run("SDK does not know LD time", func(t *ldtest.T) {
-				shouldNotSeeDebugEvent(t, pastDebugUntil, time.Time{})
-			})
-			t.Run("SDK knows LD time is before debugEventsUntilDate", func(t *ldtest.T) {
-				shouldNotSeeDebugEvent(t, pastDebugUntil, pastDebugUntil.Add(-time.Minute))
-			})
-			t.Run("SDK knows LD time is after debugEventsUntilDate", func(t *ldtest.T) {
-				shouldNotSeeDebugEvent(t, pastDebugUntil, pastDebugUntil.Add(time.Minute))
-			})
-		})
-		t.Run("debugEventsUntilDate is after SDK time", func(t *ldtest.T) {
-			futureDebugUntil := time.Now().Add(time.Hour)
-			t.Run("SDK knows LD time is after debugEventsUntilDate", func(t *ldtest.T) {
-				shouldNotSeeDebugEvent(t, futureDebugUntil, futureDebugUntil.Add(time.Minute))
-			})
-		})
-	})
+	doDebugEventTestCases(t, doDebugTest)
 }

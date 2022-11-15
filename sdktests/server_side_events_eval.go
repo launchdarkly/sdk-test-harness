@@ -265,6 +265,19 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 			})
 		}
 	}
+
+	doDebugEventTestCases(t, doDebugTest)
+}
+
+func doDebugEventTestCases(
+	t *ldtest.T,
+	doDebugTest func(
+		t *ldtest.T,
+		shouldSeeDebugEvent bool,
+		flagDebugUntil time.Time,
+		lastKnownTimeFromLD time.Time,
+	),
+) {
 	shouldSeeDebugEvent := func(t *ldtest.T, debugUntil time.Time, lastKnownTimeFromLD time.Time) {
 		doDebugTest(t, true, debugUntil, lastKnownTimeFromLD)
 	}

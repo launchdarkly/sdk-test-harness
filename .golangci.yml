@@ -7,7 +7,7 @@ linters:
     - bodyclose
     - deadcode
     - depguard
-    #- dupl  # we do have some duplicated lines of test logic, that's life
+    - dupl
     - errcheck
     - gochecknoglobals
     - gochecknoinits
