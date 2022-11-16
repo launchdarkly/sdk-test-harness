@@ -2,6 +2,10 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [1.12.0] - 2022-11-15
+### Added:
+- Client-side SDK tests for `feature`, `debug`, and `summary` events.
+
 ## [1.11.0] - 2022-10-05
 ### Added:
 - Analytics event tests for the PHP SDK.
