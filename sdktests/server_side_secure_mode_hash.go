@@ -61,6 +61,13 @@ func doServerSideSecureModeHashTests(t *ldtest.T) {
 			client := NewSDKClient(t, WithCredential(p.sdkKey), dataSource)
 			hash := client.GetSecureModeHash(t, p.context)
 			assert.Equal(t, p.expectedHash, hash)
+
+			if user := representContextAsOldUser(p.context); user != nil {
+				t.Run("with old user", func(t *ldtest.T) {
+					hash := client.GetSecureModeHashWithOldUser(t, user)
+					assert.Equal(t, p.expectedHash, hash)
+				})
+			}
 		})
 	}
 }

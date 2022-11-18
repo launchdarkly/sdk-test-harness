@@ -187,24 +187,35 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 
 			if c.isPHP { // only the PHP SDK sends inline contexts in feature events
 				t.Run("feature event", func(t *ldtest.T) {
+					defaultValue := ldvalue.String("default")
 					context := contexts.NextUniqueContext()
-					_ = basicEvaluateFlag(t, client, flagKey, context, ldvalue.String("default"))
-					client.FlushEvents(t)
-
-					payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-
-					eventMatchers := []m.Matcher{
-						m.AllOf(
-							IsValidFeatureEventWithConditions(true, context,
-								m.JSONProperty("context").Should(outputMatcher(context))),
-						),
+					verifyResult := func(t *ldtest.T) {
+						client.FlushEvents(t)
+						payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+						eventMatchers := []m.Matcher{
+							m.AllOf(
+								IsValidFeatureEventWithConditions(true, context,
+									m.JSONProperty("context").Should(outputMatcher(context))),
+							),
+						}
+						m.In(t).Assert(payload, m.Items(eventMatchers...))
 					}
-					m.In(t).Assert(payload, m.Items(eventMatchers...))
+
+					_ = basicEvaluateFlag(t, client, flagKey, context, defaultValue)
+					verifyResult(t)
+
+					if user := representContextAsOldUser(context); user != nil {
+						t.Run("with old user", func(t *ldtest.T) {
+							_ = basicEvaluateFlagWithOldUser(t, client, flagKey, user, defaultValue)
+							verifyResult(t)
+						})
+					}
 				})
 			}
 
 			if !c.isPHP { // PHP SDK does not send debug events - it just passes along the debugEventsUntilDate property
 				t.Run("debug event", func(t *ldtest.T) {
+					defaultValue := ldvalue.String("default")
 					context := contexts.NextUniqueContext()
 					if c.isClientSide {
 						client.SendIdentifyEvent(t, context)
@@ -214,54 +225,111 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 
 					payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
-					eventMatchers := []m.Matcher{
-						m.AllOf(
-							IsDebugEvent(),
-							m.JSONProperty("context").Should(outputMatcher(context)),
-						),
-					}
+					debugEventMatcher := m.AllOf(
+						IsDebugEvent(),
+						m.JSONProperty("context").Should(outputMatcher(context)),
+					)
+					eventMatchers := []m.Matcher{debugEventMatcher, IsSummaryEvent()}
 					if c.isClientSide {
-						eventMatchers = append(eventMatchers, IsIdentifyEvent(), IsSummaryEvent())
+						eventMatchers = append(eventMatchers, IsIdentifyEvent())
 					} else if !c.isPHP {
-						eventMatchers = append(eventMatchers, IsIndexEvent(), IsSummaryEvent())
+						eventMatchers = append(eventMatchers, IsIndexEvent())
 					}
 					m.In(t).Assert(payload, m.ItemsInAnyOrder(eventMatchers...))
+
+					if user := representContextAsOldUser(context); user != nil {
+						t.Run("with old user", func(t *ldtest.T) {
+							if c.isClientSide {
+								client.SendIdentifyEventWithOldUser(t, user)
+							}
+							_ = basicEvaluateFlagWithOldUser(t, client, debuggedFlagKey, user, defaultValue)
+							client.FlushEvents(t)
+							payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+							m.In(t).Assert(payload, m.ItemsInAnyOrder(debugEventMatcher, IsSummaryEvent()))
+						})
+					}
 				})
 			}
 
 			t.Run("identify event", func(t *ldtest.T) {
 				context := contexts.NextUniqueContext()
-				client.SendIdentifyEvent(t, context)
 
-				client.FlushEvents(t)
-				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-				m.In(t).Assert(payload, m.Items(
-					m.AllOf(
-						IsIdentifyEvent(),
-						HasContextObjectWithMatchingKeys(context),
-						m.JSONProperty("context").Should(outputMatcher(context)),
-					),
-				))
-			})
-
-			if !c.isClientSide && !c.isPHP { // client-side SDKs and the PHP SDK never send index events
-				t.Run("index event", func(t *ldtest.T) {
-					// Doing an evaluation for a never-before-seen user will generate an index event. We don't
-					// care about the evaluation result or the summary data, we're just looking at the user
-					// properties in the index event itself.
-					context := contexts.NextUniqueContext()
-					basicEvaluateFlag(t, client, "arbitrary-flag-key", context, ldvalue.Null())
+				verifyResult := func(t *ldtest.T) {
 					client.FlushEvents(t)
-
 					payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-					m.In(t).Assert(payload, m.ItemsInAnyOrder(
+					m.In(t).Assert(payload, m.Items(
 						m.AllOf(
-							IsIndexEvent(),
+							IsIdentifyEvent(),
 							HasContextObjectWithMatchingKeys(context),
 							m.JSONProperty("context").Should(outputMatcher(context)),
 						),
-						IsSummaryEvent(),
 					))
+				}
+
+				client.SendIdentifyEvent(t, context)
+				verifyResult(t)
+
+				if user := representContextAsOldUser(context); user != nil {
+					t.Run("with old user", func(t *ldtest.T) {
+						client.SendIdentifyEventWithOldUser(t, user)
+						verifyResult(t)
+					})
+				}
+			})
+
+			if !c.isClientSide && !c.isPHP { // client-side SDKs and the PHP SDK never send index events
+				expectedIndexEvent := func(c ldcontext.Context) m.Matcher {
+					return m.AllOf(
+						IsIndexEvent(),
+						HasContextObjectWithMatchingKeys(c),
+						m.JSONProperty("context").Should(outputMatcher(c)),
+					)
+				}
+
+				t.Run("index event from evaluation", func(t *ldtest.T) {
+					// Doing an evaluation for a never-before-seen user will generate an index event. We don't
+					// care about the evaluation result or the summary data, we're just looking at the user
+					// properties in the index event itself.
+					verifyResult := func(t *ldtest.T, c ldcontext.Context) {
+						client.FlushEvents(t)
+						payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+						m.In(t).Assert(payload, m.ItemsInAnyOrder(expectedIndexEvent(c), IsSummaryEvent()))
+					}
+
+					context := contexts.NextUniqueContext()
+					basicEvaluateFlag(t, client, "arbitrary-flag-key", context, ldvalue.Null())
+					verifyResult(t, context)
+
+					// Before we try converting the context to a user, we need to make sure it has a different key
+					// since the index event test depends on it being a never-before-seen key
+					context2 := contextWithTransformedKeys(context, func(key string) string { return key + ".olduser" })
+					if user := representContextAsOldUser(context2); user != nil {
+						t.Run("with old user", func(t *ldtest.T) {
+							basicEvaluateFlagWithOldUser(t, client, "arbitrary-flag-key", user, ldvalue.Null())
+							verifyResult(t, context2)
+						})
+					}
+				})
+
+				t.Run("index event from custom event", func(t *ldtest.T) {
+					// Sending a custom event for a never-before-seen user will generate an index event.
+					verifyResult := func(t *ldtest.T, c ldcontext.Context) {
+						client.FlushEvents(t)
+						payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+						m.In(t).Assert(payload, m.ItemsInAnyOrder(expectedIndexEvent(c), IsCustomEvent()))
+					}
+
+					context := contexts.NextUniqueContext()
+					client.SendCustomEvent(t, servicedef.CustomEventParams{EventKey: "event-key", Context: o.Some(context)})
+					verifyResult(t, context)
+
+					context2 := contextWithTransformedKeys(context, func(key string) string { return key + ".olduser" })
+					if user := representContextAsOldUser(context2); user != nil {
+						t.Run("with old user", func(t *ldtest.T) {
+							client.SendCustomEvent(t, servicedef.CustomEventParams{EventKey: "event-key", User: user})
+							verifyResult(t, context2)
+						})
+					}
 				})
 			}
 		})

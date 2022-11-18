@@ -4,9 +4,11 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/data/testmodel"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
@@ -108,11 +110,25 @@ func (c CommonEvalParameterizedTestRunner[SDKDataType]) runTestEval(
 	if name == "" {
 		name = test.FlagKey
 	}
+
+	// *If* the context for this test can be represented in the old user model, then we will also do
+	// the test with an equivalent old-style user representation.
+	user := representContextAsOldUser(test.Context.Value())
+
 	t.Run(name, func(t *ldtest.T) {
 		t.Run("evaluate flag without detail", func(t *ldtest.T) {
 			params := makeEvalFlagParams(test, sdkData)
 			result := client.EvaluateFlag(t, params)
 			m.In(t).Assert(result, EvalResponseValue().Should(m.Equal(test.Expect.Value)))
+
+			if user != nil {
+				params.User = user
+				params.Context = o.None[ldcontext.Context]()
+				t.Run("with old user", func(t *ldtest.T) {
+					result := client.EvaluateFlag(t, params)
+					m.In(t).Assert(result, EvalResponseValue().Should(m.Equal(test.Expect.Value)))
+				})
+			}
 		})
 
 		t.Run("evaluate flag with detail", func(t *ldtest.T) {
@@ -130,6 +146,19 @@ func (c CommonEvalParameterizedTestRunner[SDKDataType]) runTestEval(
 				EvalResponseVariation().Should(m.Equal(test.Expect.VariationIndex)),
 				EvalResponseReason().Should(EqualReason(expectedReason)),
 			))
+
+			if user != nil {
+				params.User = user
+				params.Context = o.None[ldcontext.Context]()
+				t.Run("with old user", func(t *ldtest.T) {
+					result := client.EvaluateFlag(t, params)
+					m.In(t).Assert(result, m.AllOf(
+						EvalResponseValue().Should(m.Equal(test.Expect.Value)),
+						EvalResponseVariation().Should(m.Equal(test.Expect.VariationIndex)),
+						EvalResponseReason().Should(EqualReason(expectedReason)),
+					))
+				})
+			}
 		})
 
 		if !suite.SkipEvaluateAllFlags {
@@ -145,6 +174,16 @@ func (c CommonEvalParameterizedTestRunner[SDKDataType]) runTestEval(
 					expectedValue = ldvalue.Null()
 				}
 				m.In(t).Assert(result.State[test.FlagKey], m.Equal(expectedValue))
+
+				if user != nil {
+					t.Run("with old user", func(t *ldtest.T) {
+						result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: user})
+						if test.Expect.VariationIndex.IsDefined() {
+							require.Contains(t, result.State, test.FlagKey)
+						}
+						m.In(t).Assert(result.State[test.FlagKey], m.Equal(expectedValue))
+					})
+				}
 			})
 		}
 	})
