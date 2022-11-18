@@ -178,10 +178,29 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 			return JSONMatchesEventContext(expectedContext, p.redactedShouldBe)
 		}
 
+		identifyEventForContext := func(context ldcontext.Context) m.Matcher {
+			return m.AllOf(IsIdentifyEventForContext(context), outputMatcher(context))
+		}
+
+		contexts := p.contextFactory("doServerSideEventContextTests")
+
 		t.Run(p.name, func(t *ldtest.T) {
-			contexts := p.contextFactory("doServerSideEventContextTests")
 			events := NewSDKEventSink(t)
-			client := NewSDKClient(t, c.baseSDKConfigurationPlus(WithEventsConfig(p.eventsConfig), dataSource, events)...)
+
+			initialContext := contexts.NextUniqueContext()
+			client := NewSDKClient(t, c.baseSDKConfigurationPlus(
+				WithClientSideConfig(servicedef.SDKConfigClientSideParams{InitialContext: initialContext}),
+				WithEventsConfig(p.eventsConfig),
+				dataSource,
+				events)...)
+
+			if c.isClientSide {
+				t.Run("initial identify event", func(t *ldtest.T) {
+					client.FlushEvents(t)
+					payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+					m.In(t).Assert(payload, m.Items(identifyEventForContext(initialContext)))
+				})
+			}
 
 			c.discardIdentifyEventIfClientSide(t, client, events) // client-side SDKs always send an initial identify
 
@@ -333,5 +352,24 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 				})
 			}
 		})
+
+		if c.isClientSide {
+			initialContext2 := contexts.NextUniqueContext()
+			if user := representContextAsOldUser(initialContext2); user != nil {
+				t.Run("initial identify event with old user", func(t *ldtest.T) {
+					events := NewSDKEventSink(t)
+
+					client := NewSDKClient(t, c.baseSDKConfigurationPlus(
+						WithClientSideConfig(servicedef.SDKConfigClientSideParams{InitialUser: user}),
+						WithEventsConfig(p.eventsConfig),
+						dataSource,
+						events)...)
+
+					client.FlushEvents(t)
+					payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+					m.In(t).Assert(payload, m.Items(identifyEventForContext(initialContext2)))
+				})
+			}
+		}
 	}
 }
