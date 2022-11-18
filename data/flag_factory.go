@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
@@ -16,10 +18,10 @@ import (
 
 // FlagFactory is a test data generator that produces ldmodel.FeatureFlag instances.
 type FlagFactory struct {
+	factory        *MemoizingFactory[servicedef.ValueType, ldmodel.FeatureFlag]
 	keyPrefix      string
 	builderActions []func(*ldbuilders.FlagBuilder)
 	valueFactory   ValueFactoryBySDKValueType
-	existingFlags  map[servicedef.ValueType]ldmodel.FeatureFlag
 	counter        int
 }
 
@@ -33,12 +35,29 @@ func NewFlagFactory(
 	valueFactory ValueFactoryBySDKValueType,
 	builderActions ...func(*ldbuilders.FlagBuilder),
 ) *FlagFactory {
-	return &FlagFactory{
+	f := &FlagFactory{
 		keyPrefix:      keyPrefix,
 		valueFactory:   valueFactory,
 		builderActions: builderActions,
-		existingFlags:  make(map[servicedef.ValueType]ldmodel.FeatureFlag),
 	}
+	f.factory = NewMemoizingFlagFactory(0,
+		func(valueType servicedef.ValueType) ldmodel.FeatureFlag {
+			f.counter++
+			flagKey := fmt.Sprintf("%s.%d", f.keyPrefix, f.counter)
+			if valueType == "" {
+				valueType = servicedef.ValueTypeString
+			} else {
+				flagKey += "." + string(valueType)
+			}
+			builder := ldbuilders.NewFlagBuilder(flagKey)
+			builder.Variations(f.valueFactory(valueType))
+			for _, ba := range f.builderActions {
+				ba(builder)
+			}
+			flag := builder.Build()
+			return flag
+		})
+	return f
 }
 
 // MakeFlag creates a new flag configuration. Use this when the value type is not significant to the test;
@@ -49,21 +68,7 @@ func (f *FlagFactory) MakeFlag() ldmodel.FeatureFlag {
 
 // MakeFlagForValueType creates a new flag configuration. The flag variations will be of the specified type.
 func (f *FlagFactory) MakeFlagForValueType(valueType servicedef.ValueType) ldmodel.FeatureFlag {
-	f.counter++
-	flagKey := fmt.Sprintf("%s.%d", f.keyPrefix, f.counter)
-	if valueType == "" {
-		valueType = servicedef.ValueTypeString
-	} else {
-		flagKey += "." + string(valueType)
-	}
-	builder := ldbuilders.NewFlagBuilder(flagKey)
-	builder.Variations(f.valueFactory(valueType))
-	for _, ba := range f.builderActions {
-		ba(builder)
-	}
-	flag := builder.Build()
-	f.existingFlags[valueType] = flag
-	return flag
+	return f.factory.Create(valueType)
 }
 
 // FlagShouldAlwaysHaveDebuggingEnabled is a convenience function for configuring a flag to have debugging
@@ -143,8 +148,76 @@ func FlagShouldProduceThisEvalReason(
 // ReuseFlagForValueType is the same as MakeFlagForValueType except that if MakeFlagForValueType
 // has already been called for the same type, it will return the same flag and not create a new one.
 func (f *FlagFactory) ReuseFlagForValueType(valueType servicedef.ValueType) ldmodel.FeatureFlag {
-	if flag, found := f.existingFlags[valueType]; found {
-		return flag
+	return f.factory.GetOrCreate(valueType)
+}
+
+// ClientSideFlagFactory is a test data generator that produces mockld.ClientSDKFlagWithKey instances.
+type ClientSideFlagFactory struct {
+	factory        *MemoizingFactory[servicedef.ValueType, mockld.ClientSDKFlagWithKey]
+	keyPrefix      string
+	valueFactory   ValueFactoryBySDKValueType
+	builderActions []func(*mockld.ClientSDKFlagWithKey)
+	nextVariation  int
+}
+
+// NewClientSideFlagFactory creates a ClientSideFlagFactory with the specified configuration.
+//
+// The valueFactory parameter provides the value that each flag will return for evaluations.
+// The builderActions, if any, will be run each time a flag is created. Each flag will have
+// a unique key beginning with the specified prefix.
+func NewClientSideFlagFactory(
+	keyPrefix string,
+	valueFactory ValueFactoryBySDKValueType,
+	builderActions ...func(*mockld.ClientSDKFlagWithKey),
+) *ClientSideFlagFactory {
+	f := &ClientSideFlagFactory{
+		keyPrefix:      keyPrefix,
+		valueFactory:   valueFactory,
+		builderActions: builderActions,
 	}
-	return f.MakeFlagForValueType(valueType)
+	f.factory = NewMemoizingClientSideFlagFactory(0,
+		func(valueType servicedef.ValueType) mockld.ClientSDKFlagWithKey {
+			ret := mockld.ClientSDKFlagWithKey{
+				Key: fmt.Sprintf("%s.%s", f.keyPrefix, valueType),
+				ClientSDKFlag: mockld.ClientSDKFlag{
+					Value:     f.valueFactory(valueType),
+					Variation: o.Some(f.nextVariation),
+				},
+			}
+			f.nextVariation = (f.nextVariation + 1) % 5 // arbitrary number of variations just so data isn't uniform
+			for _, ba := range f.builderActions {
+				ba(&ret)
+			}
+			return ret
+		})
+	return f
+}
+
+// MakeFlagForValueType creates a new flag configuration. The flag variation will be of the specified type.
+func (f *ClientSideFlagFactory) MakeFlagForValueType(valueType servicedef.ValueType) mockld.ClientSDKFlagWithKey {
+	return f.factory.Create(valueType)
+}
+
+// ReuseFlagForValueType is the same as MakeFlagForValueType except that if MakeFlagForValueType
+// has already been called for the same type, it will return the same flag and not create a new one.
+func (f *ClientSideFlagFactory) ReuseFlagForValueType(valueType servicedef.ValueType) mockld.ClientSDKFlagWithKey {
+	return f.factory.GetOrCreate(valueType)
+}
+
+// ClientSideFlagShouldHaveEvalReason is a convenience function for configuring a client-side flag
+// to have an evaluation reason.
+func ClientSideFlagShouldHaveEvalReason(reason ldreason.EvaluationReason) func(*mockld.ClientSDKFlagWithKey) {
+	return func(f *mockld.ClientSDKFlagWithKey) { f.Reason = o.Some(reason) }
+}
+
+// ClientSideFlagShouldHaveFullEventTracking is a convenience function for configuring a client-side
+// flag to have full event tracking enabled (by setting TrackEvents to true).
+func ClientSideFlagShouldHaveFullEventTracking(f *mockld.ClientSDKFlagWithKey) {
+	f.TrackEvents = true
+}
+
+// ClientSideFlagShouldHaveDebuggingEnabledUntil is a convenience function for configuring a client-side flag to have
+// debugging enabled until the specified time.
+func ClientSideFlagShouldHaveDebuggingEnabledUntil(t time.Time) func(*mockld.ClientSDKFlagWithKey) {
+	return func(f *mockld.ClientSDKFlagWithKey) { f.DebugEventsUntilDate = o.Some(ldtime.UnixMillisFromTime(t)) }
 }

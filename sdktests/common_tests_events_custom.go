@@ -101,18 +101,7 @@ func (c CommonEventTests) customEventsParameterizedTests(t *ldtest.T) {
 			baseParams.MetricValue = o.Some(metricValue)
 		}
 
-		for _, dataValue := range []ldvalue.Value{
-			ldvalue.Null(),
-			ldvalue.Bool(false),
-			ldvalue.Bool(true),
-			ldvalue.Int(0),
-			ldvalue.Int(1000),
-			ldvalue.Float64(1000.5),
-			ldvalue.String(""),
-			ldvalue.String("abc"),
-			ldvalue.ArrayOf(ldvalue.Int(1), ldvalue.Int(2)),
-			ldvalue.ObjectBuild().Set("property", ldvalue.Bool(true)).Build(),
-		} {
+		for _, dataValue := range data.MakeStandardTestValues() {
 			params := baseParams
 			params.Data = dataValue
 			params.Context = o.Some(c.contextFactory.NextUniqueContext())
