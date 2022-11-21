@@ -84,6 +84,10 @@ This means that the SDK supports the "tags" configuration option and will send t
 
 For tests that involve tags, the test harness will set the `tags` property of the configuration object.
 
+#### Capability `"user-type"`
+
+This means that the SDK has a type corresponding to the old-style user model, and supports directly passing such user data to SDK methods as an alternative to context data. If this capability is present, the test harness may send a `user` property with old-style user JSON for test commands that would normally take a `context` property. If this capability is absent, `user` will never be set.
+
 ### Stop test service: `DELETE /`
 
 The test harness sends this request at the end of a test run if you have specified `--stop-service-at-end` on the [command line](./running.md). The test service should simply quit. This is a convenience so CI scripts can simply start the test service in the background and assume it will be stopped for them.

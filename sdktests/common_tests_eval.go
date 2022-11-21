@@ -113,7 +113,7 @@ func (c CommonEvalParameterizedTestRunner[SDKDataType]) runTestEval(
 
 	// *If* the context for this test can be represented in the old user model, then we will also do
 	// the test with an equivalent old-style user representation.
-	user := representContextAsOldUser(test.Context.Value())
+	user := representContextAsOldUser(t, test.Context.Value())
 
 	t.Run(name, func(t *ldtest.T) {
 		t.Run("evaluate flag without detail", func(t *ldtest.T) {

@@ -223,7 +223,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 					_ = basicEvaluateFlag(t, client, flagKey, context, defaultValue)
 					verifyResult(t)
 
-					if user := representContextAsOldUser(context); user != nil {
+					if user := representContextAsOldUser(t, context); user != nil {
 						t.Run("with old user", func(t *ldtest.T) {
 							_ = basicEvaluateFlagWithOldUser(t, client, flagKey, user, defaultValue)
 							verifyResult(t)
@@ -256,7 +256,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 					}
 					m.In(t).Assert(payload, m.ItemsInAnyOrder(eventMatchers...))
 
-					if user := representContextAsOldUser(context); user != nil {
+					if user := representContextAsOldUser(t, context); user != nil {
 						t.Run("with old user", func(t *ldtest.T) {
 							if c.isClientSide {
 								client.SendIdentifyEventWithOldUser(t, user)
@@ -288,7 +288,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 				client.SendIdentifyEvent(t, context)
 				verifyResult(t)
 
-				if user := representContextAsOldUser(context); user != nil {
+				if user := representContextAsOldUser(t, context); user != nil {
 					t.Run("with old user", func(t *ldtest.T) {
 						client.SendIdentifyEventWithOldUser(t, user)
 						verifyResult(t)
@@ -322,7 +322,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 					// Before we try converting the context to a user, we need to make sure it has a different key
 					// since the index event test depends on it being a never-before-seen key
 					context2 := contextWithTransformedKeys(context, func(key string) string { return key + ".olduser" })
-					if user := representContextAsOldUser(context2); user != nil {
+					if user := representContextAsOldUser(t, context2); user != nil {
 						t.Run("with old user", func(t *ldtest.T) {
 							basicEvaluateFlagWithOldUser(t, client, "arbitrary-flag-key", user, ldvalue.Null())
 							verifyResult(t, context2)
@@ -343,7 +343,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 					verifyResult(t, context)
 
 					context2 := contextWithTransformedKeys(context, func(key string) string { return key + ".olduser" })
-					if user := representContextAsOldUser(context2); user != nil {
+					if user := representContextAsOldUser(t, context2); user != nil {
 						t.Run("with old user", func(t *ldtest.T) {
 							client.SendCustomEvent(t, servicedef.CustomEventParams{EventKey: "event-key", User: user})
 							verifyResult(t, context2)
@@ -355,7 +355,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 
 		if c.isClientSide {
 			initialContext2 := contexts.NextUniqueContext()
-			if user := representContextAsOldUser(initialContext2); user != nil {
+			if user := representContextAsOldUser(t, initialContext2); user != nil {
 				t.Run("initial identify event with old user", func(t *ldtest.T) {
 					events := NewSDKEventSink(t)
 

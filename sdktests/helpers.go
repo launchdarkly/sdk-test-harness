@@ -266,7 +266,10 @@ func pollUntilFlagValueUpdated(
 
 // Attempts to build an old-style user JSON representation that is equivalent to the given context.
 // Returns the JSON data, or nil if there is no equivalent to this context in the old user model.
-func representContextAsOldUser(c ldcontext.Context) json.RawMessage {
+func representContextAsOldUser(t *ldtest.T, c ldcontext.Context) json.RawMessage {
+	if !t.Capabilities().Has(servicedef.CapabilityUserType) {
+		return nil
+	}
 	if c.Kind() != ldcontext.DefaultKind {
 		return nil
 	}

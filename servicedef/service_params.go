@@ -20,6 +20,7 @@ const (
 	CapabilityServerSidePolling = "server-side-polling"
 	CapabilityServiceEndpoints  = "service-endpoints"
 	CapabilityTags              = "tags"
+	CapabilityUserType          = "user-type"
 )
 
 type StatusRep struct {
