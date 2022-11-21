@@ -60,6 +60,10 @@ For tests that involve Big Segments, the test harness will provide parameters in
 
 This means that the SDK has its own type for evaluation contexts (as opposed to just representing them as a JSON-equivalent generic data structure) and convert that type to and from JSON.
 
+#### Capability `"secure-mode-hash"`
+
+This means that the SDK has a function/method for computing a secure mode hash from a context.
+
 #### Capability `"server-side-polling"`
 
 For a server-side SDK, this means that the SDK can be configured to use polling mode instead of streaming mode.
@@ -79,6 +83,10 @@ Note that even if this capability is present, the test harness may still choose 
 This means that the SDK supports the "tags" configuration option and will send the `X-LaunchDarkly-Tags` header in HTTP requests if tags are defined.
 
 For tests that involve tags, the test harness will set the `tags` property of the configuration object.
+
+#### Capability `"user-type"`
+
+This means that the SDK has a type corresponding to the old-style user model, and supports directly passing such user data to SDK methods as an alternative to context data. If this capability is present, the test harness may send a `user` property with old-style user JSON for test commands that would normally take a `context` property. If this capability is absent, `user` will never be set.
 
 ### Stop test service: `DELETE /`
 
@@ -115,7 +123,8 @@ A `POST` request indicates that the test harness wants to start an instance of t
     * `applicationId` (string, optional): If present and non-null, the SDK should set the "application ID" property to this string.
     * `applicationVersion` (string, optional): If present and non-null, the SDK should set the "application version" property to this string.
   * `clientSide` (object): This is omitted for server-side SDKs, and required for client-side SDKs. Properties are:
-    * `initialContext` (object, required): The context properties to initialize the SDK with. The test service for a client-side SDK can assume that the test harness will _always_ set this: if the test logic does not explicitly provide a value, the test harness will add a default one.
+    * `initialContext` (object, optional): The context properties to initialize the SDK with (unless `initialUser` is specified instead). The test service for a client-side SDK can assume that the test harness will _always_ set this: if the test logic does not explicitly provide a value, the test harness will add a default one.
+    * `initialUser` (object, optional): Can be specified instead of `initialContext` to use an old-style user JSON representation.
     * `evaluationReasons`, `useReport` (boolean, optional): These correspond to the SDK configuration properties of the same names.
 
 The response to a valid request is any HTTP `2xx` status, with a `Location` header whose value is the URL of the test service resource representing this SDK client instance (that is, the one that would be used for "Close client" or "Send command" as described below).
@@ -143,7 +152,10 @@ If `command` is `"evaluate"`, the test service should perform a single feature f
 The `evaluate` property in the request body will be a JSON object with these properties:
 
 * `flagKey` (string): The flag key.
-* `context` (object): The context properties. This is required for server-side SDKs, and omitted for client-side SDKs.
+* `context` (object, optional): The context properties.
+  * For client-side SDKs, this is always omitted.
+  * For server-side SDKs, this is required unless `user` is provided instead.
+* `user` (object, optional): Can be sent instead of `context` to use an old-style user JSON representation.
 * `valueType` (string): For strongly-typed SDKs, this can be `"bool"`, `"int"`, `"double"`, `"string"`, or `"any"`, indicating which typed `Variation` or `VariationDetail` method to use (`any` is called "JSON" in most SDKs). For weakly-typed SDKs, it can be ignored.
 * `defaultValue` (any): A JSON value whose type corresponds to `valueType`. This should be used as the application default/fallback parameter for the `Variation` or `VariationDetail` method.
 * `detail` (boolean): If true, use `VariationDetail`. If false or omitted, use `Variation`.
@@ -160,7 +172,10 @@ If `command` is `"evaluateAll"`, the test service should call the SDK method tha
 
 The `evaluateAll` property in the request body will be a JSON object with these properties:
 
-* `context` (object): The context properties. This is required for server-side SDKs, and omitted for client-side SDKs.
+* `context` (object, optional): The context properties.
+  * For client-side SDKs, this is always omitted.
+  * For server-side SDKs, this is required unless `user` is provided instead.
+* `user` (object, optional): Can be sent instead of `context` to use an old-style user JSON representation.
 * `withReasons` (boolean, optional): If true, enables the SDK option for including evaluation reasons in the result. The test harness will only set this option if the test service has the capability `"all-flags-with-reasons"`.
 * `clientSideOnly` (boolean, optional): If true, enables the SDK option for filtering the result to only include flags that are enabled for client-side use. The test harness will only set this option if the test service has the capability `"all-flags-client-side-only"`.
 * `detailsOnlyForTrackedFlags` (boolean, optional): If true, enables the SDK option for filtering the result to only include evaluation reason data if the SDK will need it for events (due to event tracking or debugging or an experiment). The test harness will only set this option if the test service has the capability `"all-flags-details-only-for-tracked-flags"`.
@@ -187,7 +202,8 @@ If `command` is `"identifyEvent"`, the test service should call the SDK's `Ident
 
 The `identifyEvent` property in the request body will be a JSON object with these properties:
 
-* `context` (object): The context properties. This is always provided for both server-side and client-side SDKs.
+* `context` (object, optional): The context properties. This is always required unless `user` is provided instead.
+* `user` (object, optional): Can be sent instead of `context` to use an old-style user JSON representation.
 
 The response should be an empty 2xx response.
 
@@ -198,7 +214,10 @@ If `command` is `"customEvent"`, the test service should tell the SDK to send a 
 The `customEvent` property in the request body will be a JSON object with these properties:
 
 * `eventKey` (string): The event key.
-* `context` (object): The context properties. This is required for server-side SDKs, and omitted for client-side SDKs.
+* `context` (object, optional): The context properties.
+  * For client-side SDKs, this is always omitted.
+  * For server-side SDKs, this is required unless `user` is provided instead.
+* `user` (object, optional): Can be sent instead of `context` to use an old-style user JSON representation.
 * `data` (any): If present, a JSON value for the `data` parameter.
 * `omitNullData` (boolean or null): See below.
 * `metricValue` (number or null): If present, a metric value.
@@ -218,6 +237,19 @@ If `command` is `"flush"`, the test service should tell the SDK to initiate an e
 The request body, if any, is irrelevant.
 
 The response should be an empty 2xx response.
+
+#### Compute a secure mode hash
+
+If `command` is `"secureModeHash"`, the test service should ask the SDK to compute a secure mode hash for a context.
+
+The test harness will only send this command if the test service has the `"secure-mode-hash"` capability.
+
+The `secureModeHash` property in the request body will be a JSON object with these properties:
+
+* `context` (object, optional): The context properties. This is required unless `user` is provided instead.
+* `user` (object, optional): Can be sent instead of `context` to use an old-style user JSON representation.
+
+The response should be a JSON object with a single property, `result`, which is the computed hash as a string.
 
 #### Get big segment store status
 

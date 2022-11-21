@@ -1,6 +1,8 @@
 package servicedef
 
 import (
+	"encoding/json"
+
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
@@ -65,6 +67,7 @@ type SDKConfigTagsParams struct {
 
 type SDKConfigClientSideParams struct {
 	InitialContext    ldcontext.Context `json:"initialContext"`
+	InitialUser       json.RawMessage   `json:"initialUser,omitempty"`
 	EvaluationReasons o.Maybe[bool]     `json:"evaluationReasons,omitempty"`
 	UseReport         o.Maybe[bool]     `json:"useReport,omitempty"`
 }

@@ -46,6 +46,22 @@ func basicEvaluateFlag(
 	return result.Value
 }
 
+func basicEvaluateFlagWithOldUser(
+	t *ldtest.T,
+	client *SDKClient,
+	flagKey string,
+	user json.RawMessage,
+	defaultValue ldvalue.Value,
+) ldvalue.Value {
+	result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+		FlagKey:      flagKey,
+		User:         user,
+		ValueType:    servicedef.ValueTypeAny,
+		DefaultValue: defaultValue,
+	})
+	return result.Value
+}
+
 // computeExpectedBucketValue implements the bucketing hash value calculation as per the evaluation spec,
 // except that it returns the value as an integer in the range [0, 100000] - currently the SDKs convert
 // this to a floating-point fraction by in effect dividing it by 100000, but this test code needs an
@@ -74,6 +90,17 @@ func computeExpectedBucketValue(
 	product.Mul(big.NewInt(hashVal), big.NewInt(100000))
 	result.Div(&product, big.NewInt(0xFFFFFFFFFFFFFFF))
 	return int(result.Int64())
+}
+
+func contextWithTransformedKeys(context ldcontext.Context, keyFn func(string) string) ldcontext.Context {
+	if context.Multiple() {
+		b := ldcontext.NewMultiBuilder()
+		for _, c := range context.GetAllIndividualContexts(nil) {
+			b.Add(contextWithTransformedKeys(c, keyFn))
+		}
+		return b.Build()
+	}
+	return ldcontext.NewBuilderFromContext(context).Key(keyFn(context.Key())).Build()
 }
 
 func evaluateFlagDetail(
@@ -235,6 +262,50 @@ func pollUntilFlagValueUpdated(
 		t,
 		checkForUpdatedValue(t, client, flagKey, context, previousValue, updatedValue, defaultValue),
 		time.Second, time.Millisecond*50, "timed out without seeing updated flag value")
+}
+
+// Attempts to build an old-style user JSON representation that is equivalent to the given context.
+// Returns the JSON data, or nil if there is no equivalent to this context in the old user model.
+func representContextAsOldUser(t *ldtest.T, c ldcontext.Context) json.RawMessage {
+	if !t.Capabilities().Has(servicedef.CapabilityUserType) {
+		return nil
+	}
+	if c.Kind() != ldcontext.DefaultKind {
+		return nil
+	}
+	o := ldvalue.ObjectBuild().SetString("key", c.Key())
+	if c.Anonymous() {
+		o.SetBool("anonymous", true)
+	}
+	custom := ldvalue.ObjectBuild()
+	for _, a := range c.GetOptionalAttributeNames(nil) {
+		value := c.GetValue(a)
+		switch a {
+		case "name", "firstName", "lastName", "email", "avatar", "country", "ip":
+			if !value.IsString() {
+				return nil // not a valid user - these built-in attrs must be strings
+			}
+			o.Set(a, value)
+		default:
+			custom.Set(a, value)
+		}
+	}
+	if custom.Build().Count() != 0 {
+		o.Set("custom", custom.Build())
+	}
+	if c.PrivateAttributeCount() != 0 {
+		pas := ldvalue.ArrayBuild()
+		for i := 0; i < c.PrivateAttributeCount(); i++ {
+			if pa, ok := c.PrivateAttributeByIndex(i); ok {
+				if pa.Depth() != 1 {
+					return nil // not a valid user - users don't support attribute references
+				}
+				pas.Add(ldvalue.String(pa.Component(0)))
+			}
+		}
+		o.Set("privateAttributeNames", pas.Build())
+	}
+	return json.RawMessage(o.Build().JSONString())
 }
 
 // Configures a (single-kind) context to have the specified value for a particular attribute-- or, if the

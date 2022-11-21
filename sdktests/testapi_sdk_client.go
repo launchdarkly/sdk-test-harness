@@ -1,6 +1,7 @@
 package sdktests
 
 import (
+	"encoding/json"
 	"errors"
 	"sync/atomic"
 
@@ -249,7 +250,19 @@ func (c *SDKClient) SendIdentifyEvent(t *ldtest.T, context ldcontext.Context) {
 	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
 		servicedef.CommandParams{
 			Command:       servicedef.CommandIdentifyEvent,
-			IdentifyEvent: o.Some(servicedef.IdentifyEventParams{Context: context}),
+			IdentifyEvent: o.Some(servicedef.IdentifyEventParams{Context: o.Some(context)}),
+		},
+		t.DebugLogger(),
+		nil,
+	))
+}
+
+// SendIdentifyEventWithOldUser is equivalent to SendIdentifyEvent, but with old-style user data.
+func (c *SDKClient) SendIdentifyEventWithOldUser(t *ldtest.T, user json.RawMessage) {
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:       servicedef.CommandIdentifyEvent,
+			IdentifyEvent: o.Some(servicedef.IdentifyEventParams{User: user}),
 		},
 		t.DebugLogger(),
 		nil,
@@ -325,6 +338,19 @@ func (c *SDKClient) GetSecureModeHash(t *ldtest.T, context ldcontext.Context) st
 		servicedef.CommandParams{
 			Command:        servicedef.CommandSecureModeHash,
 			SecureModeHash: o.Some(servicedef.SecureModeHashParams{Context: context}),
+		},
+		t.DebugLogger(),
+		&resp))
+	return resp.Result
+}
+
+// GetSecureModeHashWithOldUser is equivalent to GetSecureModeHash, but with old-style user JSON data.
+func (c *SDKClient) GetSecureModeHashWithOldUser(t *ldtest.T, user json.RawMessage) string {
+	var resp servicedef.SecureModeHashResponse
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:        servicedef.CommandSecureModeHash,
+			SecureModeHash: o.Some(servicedef.SecureModeHashParams{User: user}),
 		},
 		t.DebugLogger(),
 		&resp))

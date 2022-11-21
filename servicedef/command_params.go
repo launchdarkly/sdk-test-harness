@@ -1,6 +1,8 @@
 package servicedef
 
 import (
+	"encoding/json"
+
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
@@ -45,6 +47,7 @@ type CommandParams struct {
 type EvaluateFlagParams struct {
 	FlagKey      string                     `json:"flagKey"`
 	Context      o.Maybe[ldcontext.Context] `json:"context,omitempty"`
+	User         json.RawMessage            `json:"user,omitempty"`
 	ValueType    ValueType                  `json:"valueType"`
 	DefaultValue ldvalue.Value              `json:"defaultValue"`
 	Detail       bool                       `json:"detail"`
@@ -58,6 +61,7 @@ type EvaluateFlagResponse struct {
 
 type EvaluateAllFlagsParams struct {
 	Context                    o.Maybe[ldcontext.Context] `json:"context,omitempty"`
+	User                       json.RawMessage            `json:"user,omitempty"`
 	WithReasons                bool                       `json:"withReasons"`
 	ClientSideOnly             bool                       `json:"clientSideOnly"`
 	DetailsOnlyForTrackedFlags bool                       `json:"detailsOnlyForTrackedFlags"`
@@ -70,13 +74,15 @@ type EvaluateAllFlagsResponse struct {
 type CustomEventParams struct {
 	EventKey     string                     `json:"eventKey"`
 	Context      o.Maybe[ldcontext.Context] `json:"context,omitempty"`
+	User         json.RawMessage            `json:"user,omitempty"`
 	Data         ldvalue.Value              `json:"data,omitempty"`
 	OmitNullData bool                       `json:"omitNullData"`
 	MetricValue  o.Maybe[float64]           `json:"metricValue,omitempty"`
 }
 
 type IdentifyEventParams struct {
-	Context ldcontext.Context `json:"context"`
+	Context o.Maybe[ldcontext.Context] `json:"context"`
+	User    json.RawMessage            `json:"user,omitempty"`
 }
 
 type BigSegmentStoreStatusResponse struct {
@@ -109,6 +115,7 @@ type ContextConvertParams struct {
 
 type SecureModeHashParams struct {
 	Context ldcontext.Context `json:"context"`
+	User    json.RawMessage   `json:"user,omitempty"`
 }
 
 type SecureModeHashResponse struct {
