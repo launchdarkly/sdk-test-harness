@@ -179,7 +179,10 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 		}
 
 		identifyEventForContext := func(context ldcontext.Context) m.Matcher {
-			return m.AllOf(IsIdentifyEventForContext(context), outputMatcher(context))
+			return m.AllOf(
+				IsIdentifyEventForContext(context),
+				m.JSONProperty("context").Should(outputMatcher(context)),
+			)
 		}
 
 		contexts := p.contextFactory("doServerSideEventContextTests")
@@ -201,8 +204,6 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 					m.In(t).Assert(payload, m.Items(identifyEventForContext(initialContext)))
 				})
 			}
-
-			c.discardIdentifyEventIfClientSide(t, client, events) // client-side SDKs always send an initial identify
 
 			if c.isPHP { // only the PHP SDK sends inline contexts in feature events
 				t.Run("feature event", func(t *ldtest.T) {
