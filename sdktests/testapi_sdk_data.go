@@ -110,6 +110,17 @@ func (d *SDKDataSource) StreamingService() *mockld.StreamingService { return d.s
 // streaming data source.
 func (d *SDKDataSource) PollingService() *mockld.PollingService { return d.pollingService }
 
+// SetInitialData configures whichever kind of data source this is (streaming or polling) to use
+// the specified data set the next time it receives an SDK connection.
+func (d *SDKDataSource) SetInitialData(data mockld.SDKData) {
+	if d.streamingService != nil {
+		d.streamingService.SetInitialData(data)
+	}
+	if d.pollingService != nil {
+		d.pollingService.SetData(data)
+	}
+}
+
 // Handler returns the HTTP handler for the service. Since StreamingService implements http.Handler
 // already, this is the same as Service() but makes the purpose clearer.
 func (d *SDKDataSource) Handler() http.Handler { return d.streamingService }
