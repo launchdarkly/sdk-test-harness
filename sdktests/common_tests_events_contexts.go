@@ -198,9 +198,9 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 				events)...)
 
 			if c.isClientSide {
+				client.FlushEvents(t)
+				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 				t.Run("initial identify event", func(t *ldtest.T) {
-					client.FlushEvents(t)
-					payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 					m.In(t).Assert(payload, m.Items(identifyEventForContext(initialContext)))
 				})
 			}
