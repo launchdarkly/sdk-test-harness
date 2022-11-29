@@ -66,7 +66,7 @@ func doClientSideSummaryEventBasicTest(t *ldtest.T) {
 
 	// Now change the user to userB, causing a flag data update, and do 1 more evaluation of flag1
 	dataBuilder.Flag(flag1Key, flag1Result2)
-	dataSource.streamingService.SetInitialData(dataBuilder.Build())
+	dataSource.SetInitialData(dataBuilder.Build())
 	client.SendIdentifyEvent(t, userB)
 
 	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1Key, DefaultValue: default1})
@@ -182,7 +182,7 @@ func doClientSideSummaryEventResetTest(t *ldtest.T) {
 	)
 
 	dataBuilder.Flag(flagKey, flag1Result2)
-	dataSource.streamingService.SetInitialData(dataBuilder.Build())
+	dataSource.SetInitialData(dataBuilder.Build())
 	client.SendIdentifyEvent(t, userB)
 
 	for i := 0; i < 3; i++ {
