@@ -2,6 +2,10 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [1.12.1] - 2022-11-28
+### Fixed:
+- Fixed a bug that caused a nil pointer panic when testing summary events in a non-mobile client-side SDK.
+
 ## [1.12.0] - 2022-11-15
 ### Added:
 - Client-side SDK tests for `feature`, `debug`, and `summary` events.
