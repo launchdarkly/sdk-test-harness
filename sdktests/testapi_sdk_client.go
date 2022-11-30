@@ -347,7 +347,7 @@ func (c *SDKClient) GetSecureModeHash(t *ldtest.T, context ldcontext.Context) st
 	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
 		servicedef.CommandParams{
 			Command:        servicedef.CommandSecureModeHash,
-			SecureModeHash: o.Some(servicedef.SecureModeHashParams{Context: context}),
+			SecureModeHash: o.Some(servicedef.SecureModeHashParams{Context: o.Some(context)}),
 		},
 		t.DebugLogger(),
 		&resp))

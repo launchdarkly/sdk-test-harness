@@ -114,8 +114,8 @@ type ContextConvertParams struct {
 }
 
 type SecureModeHashParams struct {
-	Context ldcontext.Context `json:"context"`
-	User    json.RawMessage   `json:"user,omitempty"`
+	Context o.Maybe[ldcontext.Context] `json:"context,omitempty"`
+	User    json.RawMessage            `json:"user,omitempty"`
 }
 
 type SecureModeHashResponse struct {
