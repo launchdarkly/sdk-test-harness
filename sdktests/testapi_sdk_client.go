@@ -51,6 +51,16 @@ func WithClientSideConfig(clientSideConfig servicedef.SDKConfigClientSideParams)
 	})
 }
 
+// WithClientSideInitialContext is used with StartSDKClient to set the initial context for a client-side SDK.
+func WithClientSideInitialContext(context ldcontext.Context) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		cs := configOut.ClientSide.Value()
+		cs.InitialContext = o.Some(context)
+		configOut.ClientSide = o.Some(cs)
+		return nil
+	})
+}
+
 // WithEventsConfig is used with StartSDKClient to specify a non-default events configuration.
 func WithEventsConfig(eventsConfig servicedef.SDKConfigEventParams) SDKConfigurer {
 	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
@@ -143,9 +153,9 @@ func TryNewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) (*SDKClient, err
 		// Ensure that we always provide an initial context for every client-side SDK test, if the test logic
 		// didn't explicitly set one. It's preferable for this to have a unique key, so that if the SDK has any
 		// global state that is cached by key, tests won't interfere with each other.
-		if !config.ClientSide.Value().InitialContext.IsDefined() {
-			cs := config.ClientSide.Value()
-			cs.InitialContext = arbitraryInitialContexts.NextUniqueContext()
+		cs := config.ClientSide.Value()
+		if !cs.InitialContext.IsDefined() && cs.InitialUser == nil {
+			cs.InitialContext = o.Some(arbitraryInitialContexts.NextUniqueContext())
 			config.ClientSide = o.Some(cs)
 		}
 	}
@@ -337,7 +347,7 @@ func (c *SDKClient) GetSecureModeHash(t *ldtest.T, context ldcontext.Context) st
 	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
 		servicedef.CommandParams{
 			Command:        servicedef.CommandSecureModeHash,
-			SecureModeHash: o.Some(servicedef.SecureModeHashParams{Context: context}),
+			SecureModeHash: o.Some(servicedef.SecureModeHashParams{Context: o.Some(context)}),
 		},
 		t.DebugLogger(),
 		&resp))

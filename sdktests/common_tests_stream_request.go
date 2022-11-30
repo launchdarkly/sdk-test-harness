@@ -79,7 +79,7 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 								append(configurers,
 									WithClientSideConfig(servicedef.SDKConfigClientSideParams{
 										EvaluationReasons: withReasons,
-										InitialContext:    ldcontext.New("irrelevant-key"),
+										InitialContext:    o.Some(ldcontext.New("irrelevant-key")),
 									}),
 									c.withFlagRequestMethod(method),
 								)...)...)
@@ -123,9 +123,7 @@ func (c CommonStreamingTests) RequestContextProperties(t *ldtest.T, getPath stri
 
 						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 							append(configurers,
-								WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-									InitialContext: context,
-								}),
+								WithClientSideInitialContext(context),
 								c.withFlagRequestMethod(method),
 							)...)...)
 

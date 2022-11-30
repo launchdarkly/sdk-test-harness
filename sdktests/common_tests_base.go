@@ -49,9 +49,7 @@ func newCommonTestsBase(t *ldtest.T, testName string, baseSDKConfigurers ...SDKC
 	if c.isClientSide {
 		c.sdkConfigurers = append(
 			[]SDKConfigurer{
-				WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-					InitialContext: c.contextFactory.NextUniqueContext(),
-				}),
+				WithClientSideInitialContext(c.contextFactory.NextUniqueContext()),
 			},
 			baseSDKConfigurers...,
 		)

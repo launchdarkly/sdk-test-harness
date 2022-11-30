@@ -44,9 +44,7 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T) {
 	t.Run("capacity is enforced", func(t *ldtest.T) {
 		events := NewSDKEventSink(t)
 		client := NewSDKClient(t, c.baseSDKConfigurationPlus(
-			WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-				InitialContext: context,
-			}),
+			WithClientSideInitialContext(context),
 			WithEventsConfig(eventsConfig),
 			dataSource,
 			events)...)
@@ -66,9 +64,8 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T) {
 	t.Run("buffer is reset after flush", func(t *ldtest.T) {
 		events := NewSDKEventSink(t)
 		client := NewSDKClient(t, c.baseSDKConfigurationPlus(
-			WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-				InitialContext: context,
-			}),
+			WithClientSideInitialContext(context),
+
 			WithEventsConfig(eventsConfig),
 			dataSource,
 			events)...)

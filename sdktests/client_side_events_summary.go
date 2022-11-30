@@ -53,9 +53,7 @@ func doClientSideSummaryEventBasicTest(t *ldtest.T) {
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
 	client := NewSDKClient(t,
-		WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-			InitialContext: contextA,
-		}),
+		WithClientSideInitialContext(contextA),
 		dataSource, events)
 
 	// flag1: 2 evaluations for contextA
@@ -127,9 +125,7 @@ func doClientSideSummaryEventContextKindsTest(t *ldtest.T) {
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
 	client := NewSDKClient(t,
-		WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-			InitialContext: initialContext,
-		}),
+		WithClientSideInitialContext(initialContext),
 		dataSource, events)
 
 	for _, contextAndFlags := range []struct {
@@ -181,9 +177,7 @@ func doClientSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
 	client := NewSDKClient(t,
-		WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-			InitialContext: context,
-		}),
+		WithClientSideInitialContext(context),
 		dataSource, events)
 
 	// evaluate the unknown flag twice
@@ -230,9 +224,7 @@ func doClientSideSummaryEventResetTest(t *ldtest.T) {
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
 	client := NewSDKClient(t,
-		WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-			InitialContext: contextA,
-		}),
+		WithClientSideInitialContext(contextA),
 		dataSource, events)
 
 	// evaluate flag 10 times for contextA producing value-a, 3 times for contextB producing value-b

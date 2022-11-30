@@ -48,9 +48,7 @@ func doClientSideFeatureEventTests(t *ldtest.T) {
 	events := NewSDKEventSink(t)
 
 	client := NewSDKClient(t,
-		WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-			InitialContext: context,
-		}),
+		WithClientSideInitialContext(context),
 		dataSource, events)
 
 	client.FlushEvents(t)
@@ -171,9 +169,7 @@ func doClientSideDebugEventTests(t *ldtest.T) {
 		}
 
 		client := NewSDKClient(t,
-			WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-				InitialContext: context,
-			}),
+			WithClientSideInitialContext(context),
 			dataSource, events)
 
 		client.FlushEvents(t)
