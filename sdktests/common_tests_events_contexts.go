@@ -192,7 +192,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 
 			initialContext := contexts.NextUniqueContext()
 			client := NewSDKClient(t, c.baseSDKConfigurationPlus(
-				WithClientSideConfig(servicedef.SDKConfigClientSideParams{InitialContext: initialContext}),
+				WithClientSideInitialContext(initialContext),
 				WithEventsConfig(p.eventsConfig),
 				dataSource,
 				events)...)
@@ -252,7 +252,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 					eventMatchers := []m.Matcher{debugEventMatcher, IsSummaryEvent()}
 					if c.isClientSide {
 						eventMatchers = append(eventMatchers, IsIdentifyEvent())
-					} else if !c.isPHP {
+					} else {
 						eventMatchers = append(eventMatchers, IsIndexEvent())
 					}
 					m.In(t).Assert(payload, m.ItemsInAnyOrder(eventMatchers...))
@@ -265,7 +265,11 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 							_ = basicEvaluateFlagWithOldUser(t, client, debuggedFlagKey, user, defaultValue)
 							client.FlushEvents(t)
 							payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-							m.In(t).Assert(payload, m.ItemsInAnyOrder(debugEventMatcher, IsSummaryEvent()))
+							eventMatchers := []m.Matcher{debugEventMatcher, IsSummaryEvent()}
+							if c.isClientSide {
+								eventMatchers = append(eventMatchers, IsIdentifyEvent())
+							} // do _not_ expect an index event from server-side SDKs here, because this context key has already been seen
+							m.In(t).Assert(payload, m.ItemsInAnyOrder(eventMatchers...))
 						})
 					}
 				})
@@ -357,7 +361,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 		if c.isClientSide {
 			initialContext2 := contexts.NextUniqueContext()
 			if user := representContextAsOldUser(t, initialContext2); user != nil {
-				t.Run("initial identify event with old user", func(t *ldtest.T) {
+				t.Run(p.name+" initial identify event with old user", func(t *ldtest.T) {
 					events := NewSDKEventSink(t)
 
 					client := NewSDKClient(t, c.baseSDKConfigurationPlus(

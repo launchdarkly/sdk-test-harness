@@ -76,7 +76,7 @@ func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagReq
 								c.withFlagRequestMethod(method),
 								WithClientSideConfig(servicedef.SDKConfigClientSideParams{
 									EvaluationReasons: withReasons,
-									InitialContext:    ldcontext.New("irrelevant-key"),
+									InitialContext:    o.Some(ldcontext.New("irrelevant-key")),
 								}),
 								dataSource,
 							)...)
@@ -119,9 +119,7 @@ func (c CommonPollingTests) RequestContextProperties(t *ldtest.T, getPath string
 						contextJSONMatcher := JSONMatchesContext(context)
 
 						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
-							WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-								InitialContext: context,
-							}),
+							WithClientSideInitialContext(context),
 							c.withFlagRequestMethod(method),
 							dataSource,
 						)...)

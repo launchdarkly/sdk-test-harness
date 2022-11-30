@@ -6,7 +6,6 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
@@ -50,9 +49,7 @@ func doClientSideExperimentationEventTests(t *ldtest.T) {
 			dataSource := NewSDKDataSource(t, data)
 			eventSink := NewSDKEventSink(t)
 			client := NewSDKClient(t,
-				WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-					InitialContext: context,
-				}),
+				WithClientSideInitialContext(context),
 				dataSource,
 				eventSink,
 			)

@@ -41,7 +41,7 @@ func runParameterizedClientSideEvalTests(t *ldtest.T) {
 					return []SDKConfigurer{
 						WithClientSideConfig(servicedef.SDKConfigClientSideParams{
 							EvaluationReasons: o.Some(withReasons),
-							InitialContext:    testSuite.Context.Value(),
+							InitialContext:    o.Some(testSuite.Context.Value()),
 						}),
 					}
 				},
