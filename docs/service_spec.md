@@ -62,6 +62,12 @@ For tests that involve Big Segments, the test harness will provide parameters in
 
 This means that the SDK has its own type for evaluation contexts (as opposed to just representing them as a JSON-equivalent generic data structure) and convert that type to and from JSON.
 
+#### Capability `"persistent-data-store"`
+
+This means that the SDK supports persistent data stores (i.e. database integrations) and can be configured with a custom store. This is only applicable to server-side SDKs.
+
+For tests that involve persistent data stores, the test harness will provide parameters in the `persistentDataStore` property of the configuration object, including a `callbackUri` that points to one of the test harness's callback services (see [Callback endpoints](#callback-endpoints)). The test service should configure the SDK with its own implementation of a persistent data store, where every method of the store delegates to a corresponding endpoint in the callback service.
+
 #### Capability `"secure-mode-hash"`
 
 This means that the SDK has a function/method for computing a secure mode hash from a context.
@@ -118,19 +124,12 @@ A `POST` request indicates that the test harness wants to start an instance of t
     * `allAttributesPrivate` (boolean, optional): Corresponds to the SDK configuration property of the same name.
     * `globalPrivateAttributes` (array, optional): Corresponds to the `privateAttributes` property in the SDK configuration (rather than in an individual context).
     * `flushIntervalMs` (number, optional): The event flush interval in milliseconds. If omitted or zero, use the SDK's default value.
-<<<<<<< HEAD
-    * `inlineUsers` (boolean, optional): Corresponds to the SDK configuration property of the same name.
   * `persistentDataStore` (object, optional): Enables and configures a persistent data store, using a test fixture rather than a real database in order to test the SDK's generalized data store behavior. Properties are:
     * `callbackUri` (string, required): The base URI for the persistent data store callback fixture. See [Callback fixtures](./service_spec_fixtures.md).
     * `cacheTimeMs` (number, optional): If specified, sets the cache TTL in milliseconds. If undefined, use the default (which should be that caching is enabled with a standard TTL).
   * `bigSegments` (object, optional): Enables and configures Big Segments, using a test fixture rather than a real database in order to test the SDK's generalized Big Segments behavior. Properties are:
     * `callbackUri` (string, required): The base URI for the big segments store callback fixture. See [Callback fixtures](./service_spec_fixtures.md).
     * `userCacheSize`, `userCacheTimeMs`, `statusPollIntervalMs`, `staleAfterMs`: These correspond to the standard optional configuration parameters for every SDK that supports Big Segments.
-=======
-  * `bigSegments` (object, optional): Enables and configures Big Segments. Properties are:
-    * `callbackUri` (string, required): The base URI for the big segments store callback fixture. See [Callback fixtures](#callback-fixtures).
-    * `userCacheSize`, `userCacheTimeMs`, `statusPollIntervalMS`, `staleAfterMs`: These correspond to the standard optional configuration parameters for every SDK that supports Big Segments.
->>>>>>> v2
   * `tags` (object, optional): If specified, this has options for metadata/tags (that is, values that are translated into an `X-LaunchDarkly-Tags` header):
     * `applicationId` (string, optional): If present and non-null, the SDK should set the "application ID" property to this string.
     * `applicationVersion` (string, optional): If present and non-null, the SDK should set the "application version" property to this string.
@@ -322,8 +321,6 @@ The response should be a JSON object with two boolean properties, `available` an
 The test harness sends this request when it is finished using a specific client instance. The test service should use the appropriate SDK operation to shut down the client (normally this is called `Close` or `Dispose`).
 
 The response should be an empty 2xx response if successful, or 500 if the close operation returned an error (for SDKs where that is possible).
-<<<<<<< HEAD
-=======
 
 ## Callback endpoints
 
@@ -362,4 +359,3 @@ The response body is a JSON object with these properties:
 The test service's Big Segment store implementation should return a corresponding membership state to the SDK. When the SDK queries the membership for any given segment reference string, it gets either `true`, `false`, or "no value" (any key that does not exist in the object should be considered "no value", same as if it had a null value).
 
 On platforms where the membership object is nullable, so that the query method could return null/nil instead of a membership object with no values, the test service should return null/nil if `values` is omitted or null. This lets the test harness verify that the SDK treats these two scenarios as equivalent and does not throw any kind of null reference error.
->>>>>>> v2

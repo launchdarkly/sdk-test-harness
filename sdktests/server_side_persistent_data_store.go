@@ -103,6 +103,7 @@ func (s basicSerializedSegment) dataMatcher() m.Matcher {
 }
 
 func doServerSidePersistentDataStoreTests(t *ldtest.T) {
+	t.RequireCapability(servicedef.CapabilityPersistentDataStore)
 	t.Run("init", doServerSidePersistentDataStoreInitTests)
 	t.Run("get", doServerSidePersistentDataStoreGetTests)
 	t.Run("getAll", doServerSidePersistentDataStoreGetAllTests)

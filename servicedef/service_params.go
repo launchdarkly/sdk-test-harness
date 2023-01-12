@@ -14,13 +14,14 @@ const (
 	CapabilityAllFlagsClientSideOnly             = "all-flags-client-side-only"
 	CapabilityAllFlagsDetailsOnlyForTrackedFlags = "all-flags-details-only-for-tracked-flags"
 
-	CapabilityBigSegments       = "big-segments"
-	CapabilityContextType       = "context-type"
-	CapabilitySecureModeHash    = "secure-mode-hash"
-	CapabilityServerSidePolling = "server-side-polling"
-	CapabilityServiceEndpoints  = "service-endpoints"
-	CapabilityTags              = "tags"
-	CapabilityUserType          = "user-type"
+	CapabilityBigSegments         = "big-segments"
+	CapabilityContextType         = "context-type"
+	CapabilityPersistentDataStore = "persistent-data-store"
+	CapabilitySecureModeHash      = "secure-mode-hash"
+	CapabilityServerSidePolling   = "server-side-polling"
+	CapabilityServiceEndpoints    = "service-endpoints"
+	CapabilityTags                = "tags"
+	CapabilityUserType            = "user-type"
 )
 
 type StatusRep struct {
