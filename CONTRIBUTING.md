@@ -4,7 +4,7 @@ This page is for people doing development of the SDK test harness itself. See al
 
 ## Tools used
 
-To build and test the tool locally, you will need Go 1.17 or higher.
+To build and test the tool locally, you will need Go 1.18 or higher.
 
 You do not need to install any other development tools used for the SDKs in order to build the test harness. Generally, each SDK project will include a corresponding test service which will be built using the same tools as that SDK.
 

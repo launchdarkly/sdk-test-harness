@@ -6,10 +6,26 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/launchdarkly/sdk-test-harness/framework"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 
 	"github.com/launchdarkly/eventsource"
+
+	"github.com/gorilla/mux"
 )
+
+const (
+	StreamingPathServerSide         = "/all"
+	StreamingPathMobileGet          = "/meval/{context}"
+	StreamingPathMobileReport       = "/meval"
+	StreamingPathJSClientGet        = "/eval/{env}/{context}"
+	StreamingPathJSClientReport     = "/eval/{env}"
+	StreamingPathContextBase64Param = "{context}"
+	StreamingPathEnvIDParam         = "{env}"
+)
+
+const errClientSideStreamCanOnlyUseFlags = `A client-side test attempted to reference a namespace other than` +
+	` "flags" in the mock streaming service.` +
+	` This is a test logic error, since client-side streams have nowhere to put any data other than flag data.`
 
 type eventSourceDebugLogger struct {
 	logger framework.Logger
@@ -24,11 +40,14 @@ func (l eventSourceDebugLogger) Printf(fmt string, args ...interface{}) {
 }
 
 type StreamingService struct {
-	sdkKind     SDKKind
-	initialData SDKData
-	streams     *eventsource.Server
-	debugLogger framework.Logger
-	lock        sync.RWMutex
+	sdkKind      SDKKind
+	initialData  SDKData
+	streams      *eventsource.Server
+	queuedEvents []eventsource.Event
+	started      bool
+	handler      http.Handler
+	debugLogger  framework.Logger
+	lock         sync.RWMutex
 }
 
 type eventImpl struct {
@@ -42,6 +61,7 @@ const (
 
 func NewStreamingService(
 	initialData SDKData,
+	sdkKind SDKKind,
 	debugLogger framework.Logger,
 ) *StreamingService {
 	streams := eventsource.NewServer()
@@ -49,28 +69,33 @@ func NewStreamingService(
 	streams.Logger = eventSourceDebugLogger{debugLogger}
 
 	s := &StreamingService{
-		sdkKind:     initialData.SDKKind(),
+		sdkKind:     sdkKind,
 		initialData: initialData,
 		streams:     streams,
 		debugLogger: debugLogger,
 	}
+
+	streamHandler := streams.Handler(allDataChannel)
+	router := mux.NewRouter()
+	switch sdkKind {
+	case ServerSideSDK:
+		router.HandleFunc(StreamingPathServerSide, streamHandler).Methods("GET")
+	case MobileSDK:
+		router.HandleFunc(StreamingPathMobileGet, streamHandler).Methods("GET")
+		router.HandleFunc(StreamingPathMobileReport, streamHandler).Methods("REPORT")
+	case JSClientSDK:
+		router.HandleFunc(StreamingPathJSClientGet, streamHandler).Methods("GET")
+		router.HandleFunc(StreamingPathJSClientReport, streamHandler).Methods("REPORT")
+	}
+	s.handler = router
+
 	streams.Register(allDataChannel, s)
 
 	return s
 }
 
 func (s *StreamingService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch {
-	case r.URL.Path == "/all" && s.sdkKind == ServerSideSDK:
-		if r.Method != "GET" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-		s.streams.Handler(allDataChannel)(w, r)
-		s.debugLogger.Printf("End of stream request")
-	default:
-		w.WriteHeader(http.StatusNotFound)
-	}
+	s.handler.ServeHTTP(w, r)
 }
 
 func (s *StreamingService) SetInitialData(data SDKData) {
@@ -98,21 +123,45 @@ func (s *StreamingService) makePutEvent(data []byte) eventsource.Event {
 	if data == nil {
 		data = []byte("{}")
 	}
+	var eventData interface{} = json.RawMessage(data)
+	if s.sdkKind.IsServerSide() {
+		// the schema of this message is slightly different for server-side vs. client-side
+		eventData = map[string]interface{}{
+			"data": eventData,
+		}
+	}
+
 	return eventImpl{
 		name: "put",
-		data: map[string]interface{}{
-			"data": json.RawMessage(data),
-		},
+		data: eventData,
 	}
 }
 
+// Sends an SSE event to all clients that are currently connected to the stream-- or, if no client
+// has connected yet, queues the event so that it will be sent (after the initial data) to the
+// first client that connects. (The latter is necessary to avoid race conditions, since even after
+// a connection is received on the stream endpoint, it is hard for the test logic to know when the
+// HTTP handler has actually created a stream subscription for that connection. If we called
+// the eventsource Publish method before a subscription existed, the event would be lost.)
 func (s *StreamingService) PushEvent(eventName string, eventData interface{}) {
 	event := eventImpl{
 		name: eventName,
 		data: eventData,
 	}
-	s.logEvent(event)
-	s.streams.Publish([]string{allDataChannel}, event)
+
+	s.lock.Lock()
+	alreadyStarted := s.started
+	if !alreadyStarted {
+		s.queuedEvents = append(s.queuedEvents, event)
+	}
+	s.lock.Unlock()
+
+	if alreadyStarted {
+		s.logEvent(event)
+		s.streams.Publish([]string{allDataChannel}, event)
+	} else {
+		s.debugLogger.Printf("Will send %q event after connection has started", eventName)
+	}
 }
 
 func (s *StreamingService) PushInit(data SDKData) {
@@ -120,19 +169,38 @@ func (s *StreamingService) PushInit(data SDKData) {
 }
 
 func (s *StreamingService) PushUpdate(namespace, key string, data json.RawMessage) {
-	s.PushEvent("patch",
-		map[string]interface{}{
+	var eventData interface{}
+	if s.sdkKind.IsServerSide() {
+		eventData = map[string]interface{}{
 			"path": fmt.Sprintf("/%s/%s", namespace, key),
 			"data": data,
-		})
+		}
+	} else {
+		if namespace != "flags" {
+			panic(errClientSideStreamCanOnlyUseFlags)
+		}
+		eventData = data
+	}
+	s.PushEvent("patch", eventData)
 }
 
 func (s *StreamingService) PushDelete(namespace, key string, version int) {
-	s.PushEvent("delete",
-		map[string]interface{}{
+	var eventData interface{}
+	if s.sdkKind.IsServerSide() {
+		eventData = map[string]interface{}{
 			"path":    fmt.Sprintf("/%s/%s", namespace, key),
 			"version": version,
-		})
+		}
+	} else {
+		if namespace != "flags" {
+			panic(errClientSideStreamCanOnlyUseFlags)
+		}
+		eventData = map[string]interface{}{
+			"key":     key,
+			"version": version,
+		}
+	}
+	s.PushEvent("delete", eventData)
 }
 
 func (s *StreamingService) Replay(channel, id string) chan eventsource.Event {
@@ -148,12 +216,27 @@ func (s *StreamingService) Replay(channel, id string) chan eventsource.Event {
 	// The use of a channel here is just part of how the eventsource server API works-- the Replay
 	// method is expected to return a channel, which could be either pre-populated or pushed to
 	// by another goroutine. In this case we're just pre-populating it with the same initial data
-	// that we provide to every incoming connection.
-	eventsCh := make(chan eventsource.Event, 1)
+	// that we provide to every incoming connection, plus any events that were queued by test logic
+	// before the connection actually started.
+
+	s.lock.Lock()
+	queued := s.queuedEvents
+	eventsCh := make(chan eventsource.Event, len(queued)+1)
+	if !s.started {
+		s.started = true
+		s.queuedEvents = nil
+	}
+	s.lock.Unlock()
+
 	if e != nil {
 		s.logEvent(e)
 		eventsCh <- e
 	}
+	for _, qe := range queued {
+		s.logEvent(qe)
+		eventsCh <- qe
+	}
+
 	close(eventsCh)
 	return eventsCh
 }

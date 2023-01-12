@@ -1,0 +1,67 @@
+---
+name: built-in attributes other than kind
+
+constants:
+  IS_MATCH:
+    value: true
+    variationIndex: 0
+    reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "ruleid" }
+  IS_NOT_MATCH:
+    value: false
+    variationIndex: 1
+    reason: { kind: "FALLTHROUGH" }
+
+parameters:
+
+  - NAME: key match
+    CONTEXT: { kind: "user", key: "a" }
+    CLAUSE: { attribute: "key", op: "in", values: ["a"] }
+    EXPECT: <IS_MATCH>
+
+  - NAME: key non-match
+    CONTEXT: { kind: "user", key: "a" }
+    CLAUSE: { attribute: "key", op: "in", values: ["b"] }
+    EXPECT: <IS_NOT_MATCH>
+
+  - NAME: name match
+    CONTEXT: { kind: "user", key: "a", "name": "b" }
+    CLAUSE: { attribute: "name", op: "in", values: ["b"] }
+    EXPECT: <IS_MATCH>
+
+  - NAME: name non-match
+    CONTEXT: { kind: "user", key: "a", "name": "b" }
+    CLAUSE: { attribute: "name", op: "in", values: ["c"] }
+    EXPECT: <IS_NOT_MATCH>
+
+  - NAME: name not found is non-match regardless of op and values
+    CONTEXT: { kind: "user", key: "a", }
+    CLAUSE: { attribute: "name", op: "in", values: [""], negate: true }
+    EXPECT: <IS_NOT_MATCH>
+
+  - NAME: anonymous match false
+    CONTEXT: { kind: "user", key: "a" }
+    CLAUSE: { attribute: "anonymous", op: "in", values: [false] }
+    EXPECT: <IS_MATCH>
+
+  - NAME: anonymous match true
+    CONTEXT: { kind: "user", key: "a", anonymous: true }
+    CLAUSE: { attribute: "anonymous", op: "in", values: [true] }
+    EXPECT: <IS_MATCH>
+
+sdkData:
+  flags:
+    test-flag:
+      on: true
+      fallthrough: { variation: 1 }
+      variations: [ true, false ]
+      rules:
+        - id: ruleid
+          variation: 0
+          clauses: [ <CLAUSE> ]
+
+evaluations:
+  - name: <NAME>
+    flagKey: test-flag
+    context: <CONTEXT>
+    default: false
+    expect: <EXPECT>

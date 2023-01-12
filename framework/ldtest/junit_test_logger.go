@@ -8,10 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/framework"
-	"github.com/launchdarkly/sdk-test-harness/framework/harness"
-
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 )
 
 type JUnitTestLogger struct {
@@ -25,7 +24,7 @@ type JUnitTestLogger struct {
 
 type jUnitTestStatus struct {
 	failures    []error
-	skipped     ldvalue.OptionalString
+	skipped     o.Maybe[string]
 	nonCritical bool
 	output      string
 	startTime   time.Time
@@ -117,7 +116,7 @@ func (j *JUnitTestLogger) TestSkipped(id TestID, reason string) {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 	status := j.tests[id.String()]
-	status.skipped = ldvalue.NewOptionalString(reason)
+	status.skipped = o.Some(reason)
 	j.tests[id.String()] = status
 }
 
@@ -167,7 +166,7 @@ func (j *JUnitTestLogger) EndLog(results Results) error {
 				testCase.Name += " (non-critical)"
 			}
 			if status.skipped.IsDefined() {
-				testCase.SkipMessage = &jUnitXMLSkipMessage{Message: status.skipped.String()}
+				testCase.SkipMessage = &jUnitXMLSkipMessage{Message: status.skipped.Value()}
 			}
 			if len(status.failures) != 0 {
 				var messages []string

@@ -4,14 +4,17 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
 
 func doServerSideStreamValidationTests(t *ldtest.T) {
@@ -21,7 +24,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 	flagV1, flagV2 := makeFlagVersionsWithValues(flagKey, 1, 2, expectedValueV1, expectedValueV2)
 	dataV1 := mockld.NewServerSDKDataBuilder().Flag(flagV1).Build()
 	dataV2 := mockld.NewServerSDKDataBuilder().Flag(flagV2).Build()
-	user := lduser.NewUser("user-key")
+	context := ldcontext.New("user-key")
 
 	shouldDropAndReconnectAfterEvent := func(t *ldtest.T, badEventName string, badEventData json.RawMessage) {
 		stream1 := NewSDKDataSourceWithoutEndpoint(t, dataV1)
@@ -30,24 +33,25 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 			stream1.Handler(), // first request gets the first stream data
 			stream2.Handler(), // second request gets the second stream data
 		)
-		streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, nil, t.DebugLogger())
+		streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
+			harness.MockEndpointDescription("streaming service"))
 		t.Defer(streamEndpoint.Close)
 
 		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get & discard the request info for the first request
-		_ = expectRequest(t, streamEndpoint, time.Second*5)
+		_ = streamEndpoint.RequireConnection(t, time.Second*5)
 
 		// Send the bad event; this should cause the SDK to drop the first stream
-		stream1.Service().PushEvent(badEventName, badEventData)
+		stream1.StreamingService().PushEvent(badEventName, badEventData)
 
 		// Expect the second request; it succeeds and gets the second stream data
-		_ = expectRequest(t, streamEndpoint, time.Millisecond*100)
+		_ = streamEndpoint.RequireConnection(t, time.Second*5)
 
 		// Check that the client got the new data from the second stream
-		pollUntilFlagValueUpdated(t, client, flagKey, user, expectedValueV1, expectedValueV2, ldvalue.Null())
+		pollUntilFlagValueUpdated(t, client, flagKey, context, expectedValueV1, expectedValueV2, ldvalue.Null())
 	}
 
 	t.Run("drop and reconnect if stream event has malformed JSON", func(t *ldtest.T) {
@@ -81,26 +85,26 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 	shouldIgnoreEvent := func(t *ldtest.T, eventName string, eventData json.RawMessage) {
 		dataSource := NewSDKDataSource(t, dataV1)
 		client := NewSDKClient(t, WithStreamingConfig(servicedef.SDKConfigStreamingParams{
-			InitialRetryDelayMs: timeValueAsPointer(briefDelay), // brief delay so we can easily detect if it reconnects
+			InitialRetryDelayMS: o.Some(briefDelay), // brief delay so we can easily detect if it reconnects
 		}), dataSource)
 
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get & discard the request info for the first request
-		_ = expectRequest(t, dataSource.Endpoint(), time.Second*5)
+		_ = dataSource.Endpoint().RequireConnection(t, time.Second*5)
 
 		// Push an event that isn't recognized, but isn't bad enough to cause any problems
-		dataSource.Service().PushEvent(eventName, eventData)
+		dataSource.StreamingService().PushEvent(eventName, eventData)
 
 		// Then, push a patch event, so we can detect if the SDK continued processing the stream as it should
-		dataSource.Service().PushUpdate("flags", flagKey, jsonhelpers.ToJSON(flagV2))
+		dataSource.StreamingService().PushUpdate("flags", flagKey, jsonhelpers.ToJSON(flagV2))
 
 		// Check that the client got the new data
-		pollUntilFlagValueUpdated(t, client, flagKey, user, expectedValueV1, expectedValueV2, ldvalue.Null())
+		pollUntilFlagValueUpdated(t, client, flagKey, context, expectedValueV1, expectedValueV2, ldvalue.Null())
 
 		// Verify that it did not reconnect
-		expectNoMoreRequests(t, dataSource.Endpoint())
+		dataSource.Endpoint().RequireNoMoreConnections(t, time.Millisecond*100)
 	}
 
 	t.Run("unrecognized data that can be safely ignored", func(t *ldtest.T) {

@@ -5,16 +5,18 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/framework/harness"
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 
 	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
 
 const briefDelay ldtime.UnixMillisecondTime = 1
@@ -22,7 +24,7 @@ const briefDelay ldtime.UnixMillisecondTime = 1
 func baseStreamConfig(endpoint *harness.MockEndpoint) servicedef.SDKConfigStreamingParams {
 	return servicedef.SDKConfigStreamingParams{
 		BaseURI:             endpoint.BaseURL(),
-		InitialRetryDelayMs: timeValueAsPointer(briefDelay),
+		InitialRetryDelayMS: o.Some(briefDelay),
 	}
 }
 
@@ -36,7 +38,23 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 	flagV1, flagV2 := makeFlagVersionsWithValues(flagKey, 1, 2, expectedValueV1, expectedValueV2)
 	dataV1 := mockld.NewServerSDKDataBuilder().Flag(flagV1).Build()
 	dataV2 := mockld.NewServerSDKDataBuilder().Flag(flagV2).Build()
-	user := lduser.NewUser("user-key")
+	context := ldcontext.New("user-key")
+
+	// Because we're setting InitialRetryDelayMS to a very short delay, we expect reconnections to
+	// happen quickly - but, execution speed is always unpredictable, so we'll use a timeout for
+	// these that is much longer than we expect we'll need. That won't make the tests run any slower
+	// than they otherwise would unless the SDK really is hanging and not reconnecting.
+	incomingConnectionTimeout := time.Second * 2
+
+	// When we're asserting "there are no more connections", we should use a timeout that isn't too
+	// long because that *will* make successful tests run slow, but long enough that we have a
+	// reasonable chance of detecting an inappropriate retry that happened promptly.
+	noMoreConnectionsTimeout := time.Millisecond * 100
+
+	makeStreamEndpoint := func(t *ldtest.T, handler http.Handler) *harness.MockEndpoint {
+		return requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
+			harness.MockEndpointDescription("streaming service"))
+	}
 
 	t.Run("retry after stream is closed", func(t *ldtest.T) {
 		stream1 := NewSDKDataSourceWithoutEndpoint(t, dataV1)
@@ -45,24 +63,24 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 			stream1.Handler(), // first request gets the first stream data
 			stream2.Handler(), // second request gets the second stream data
 		)
-		streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, nil, t.DebugLogger())
+		streamEndpoint := makeStreamEndpoint(t, handler)
 		t.Defer(streamEndpoint.Close)
 
 		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get the request info for the first request
-		request1 := expectRequest(t, streamEndpoint, time.Second*5)
+		request1 := streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 
 		// Now cause the stream to close; this should trigger a reconnect
 		request1.Cancel()
 
 		// Expect the second request; it succeeds and gets the second stream data
-		expectRequest(t, streamEndpoint, time.Millisecond*100)
+		_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 
 		// Check that the client got the new data from the second stream
-		pollUntilFlagValueUpdated(t, client, flagKey, user, expectedValueV1, expectedValueV2, ldvalue.Null())
+		pollUntilFlagValueUpdated(t, client, flagKey, context, expectedValueV1, expectedValueV2, ldvalue.Null())
 	})
 
 	t.Run("initial retry delay is applied", func(t *ldtest.T) {
@@ -74,15 +92,15 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		stream := NewSDKDataSource(t, dataV1)
 		client := NewSDKClient(t,
 			WithStreamingConfig(servicedef.SDKConfigStreamingParams{
-				InitialRetryDelayMs: timeValueAsPointer(10000),
+				InitialRetryDelayMS: o.Some(ldtime.UnixMillisecondTime(10000)),
 			}),
 			stream,
 		)
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get the request info for the first request
-		request1 := expectRequest(t, stream.Endpoint(), time.Second*5)
+		request1 := stream.Endpoint().RequireConnection(t, incomingConnectionTimeout)
 
 		// Now cause the stream to close; this should trigger a reconnect
 		request1.Cancel()
@@ -98,7 +116,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		// since they set a very short retry delay and expect to see connections in much less
 		// than 500ms. So, the failure condition we're really checking for here is "the SDK does
 		// not do a delay at all, it retries immediately".
-		expectNoMoreRequests(t, stream.Endpoint())
+		stream.Endpoint().RequireNoMoreConnections(t, noMoreConnectionsTimeout)
 	})
 
 	shouldRetryAfterErrorOnInitialConnect := func(t *ldtest.T, errorHandler http.Handler) {
@@ -108,18 +126,18 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 			errorHandler,     // second request also gets the error
 			stream.Handler(), // third request succeeds and gets the stream
 		)
-		streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, nil, t.DebugLogger())
+		streamEndpoint := makeStreamEndpoint(t, handler)
 		t.Defer(streamEndpoint.Close)
 
 		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		for i := 0; i < 3; i++ { // expect three requests
-			expectRequest(t, streamEndpoint, time.Second*5)
+			_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 		}
 
-		expectNoMoreRequests(t, streamEndpoint)
+		streamEndpoint.RequireNoMoreConnections(t, noMoreConnectionsTimeout)
 	}
 
 	t.Run("retry after IO error on initial connect", func(t *ldtest.T) {
@@ -143,30 +161,30 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 			errorHandler,      // third request also gets the error
 			stream2.Handler(), // fourth request gets the second stream data
 		)
-		streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, nil, t.DebugLogger())
+		streamEndpoint := makeStreamEndpoint(t, handler)
 		t.Defer(streamEndpoint.Close)
 
 		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get the request info for the first request
-		request1 := expectRequest(t, streamEndpoint, time.Second*5)
+		request1 := streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 
 		// Now cause the stream to close; this should trigger a reconnect
 		request1.Cancel()
 
 		// Expect the second request; it will receive an error, causing another attempt
-		_ = expectRequest(t, streamEndpoint, time.Millisecond*100)
+		_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 
 		// Expect the third request; it will also receive an error, causing another attempt
-		_ = expectRequest(t, streamEndpoint, time.Millisecond*100)
+		_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 
 		// expect the fourth request; this one succeeds and gets the second stream data
-		_ = expectRequest(t, streamEndpoint, time.Millisecond*100)
+		_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 
 		// check that the client got the new data from the second stream
-		pollUntilFlagValueUpdated(t, client, flagKey, user, expectedValueV1, expectedValueV2, ldvalue.Null())
+		pollUntilFlagValueUpdated(t, client, flagKey, context, expectedValueV1, expectedValueV2, ldvalue.Null())
 	}
 
 	t.Run("retry after IO error on reconnect", func(t *ldtest.T) {
@@ -189,15 +207,15 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 					httphelpers.HandlerWithStatus(status), // first request gets the error
 					stream.Handler(),                      // second request would succeed and get the stream, but shouldn't happen
 				)
-				streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, nil, t.DebugLogger())
+				streamEndpoint := makeStreamEndpoint(t, handler)
 				t.Defer(streamEndpoint.Close)
 
 				_ = NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{InitCanFail: true}),
 					WithStreamingConfig(baseStreamConfig(streamEndpoint)))
 
-				_ = expectRequest(t, streamEndpoint, time.Second*5)
+				_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 
-				expectNoMoreRequests(t, streamEndpoint)
+				streamEndpoint.RequireNoMoreConnections(t, noMoreConnectionsTimeout)
 			})
 		}
 	})
@@ -211,23 +229,23 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 					httphelpers.HandlerWithStatus(status), // second request gets the error
 					stream.Handler(),                      // third request would get the stream again, but shouldn't happen
 				)
-				streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, nil, t.DebugLogger())
+				streamEndpoint := makeStreamEndpoint(t, handler)
 				t.Defer(streamEndpoint.Close)
 
 				client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
-				result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
+				result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 				m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 				// get the request info for the first request
-				request1 := expectRequest(t, streamEndpoint, time.Second*5)
+				request1 := streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 
 				// now cause the stream to close; this should trigger a reconnect
 				request1.Cancel()
 
 				// expect the second request; it will receive an error
-				_ = expectRequest(t, streamEndpoint, time.Millisecond*100)
+				_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 
-				expectNoMoreRequests(t, streamEndpoint)
+				streamEndpoint.RequireNoMoreConnections(t, noMoreConnectionsTimeout)
 			})
 		}
 	})

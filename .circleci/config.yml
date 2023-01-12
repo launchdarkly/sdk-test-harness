@@ -9,7 +9,9 @@ workflows:
 jobs:
   build-and-test:
     docker:
-      - image: cimg/go:1.17
+      - image: cimg/go:1.18
+        environment:
+          GOPRIVATE: github.com/launchdarkly/*-private
     steps:
       - checkout
       - run: make test

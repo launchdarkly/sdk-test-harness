@@ -2,6 +2,88 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [1.12.1] - 2022-11-28
+### Fixed:
+- Fixed a bug that caused a nil pointer panic when testing summary events in a non-mobile client-side SDK.
+
+## [1.12.0] - 2022-11-15
+### Added:
+- Client-side SDK tests for `feature`, `debug`, and `summary` events.
+
+## [1.11.0] - 2022-10-05
+### Added:
+- Analytics event tests for the PHP SDK.
+
+## [1.10.1] - 2022-10-04
+### Fixed:
+- The test coverage for valid vs. invalid date and semver values was inadequate. Parameterized evaluation tests now include more test cases and are more clearly organized by name, to distinguish between different kinds of logic errors. This may cause some existing SDKs that are not fully compliant with the evaluation spec to show new test failures.
+
+## [1.10.0] - 2022-10-04
+### Added:
+- The test harness can now run evaluation tests against the LaunchDarkly PHP SDK, a special case of LaunchDarkly server-side SDKs.
+
+## [1.9.0] - 2022-08-26
+### Added:
+- New optional server-side test for secure mode hash.
+
+### Fixed:
+- Made stream retry tests less timing-sensitive.
+
+## [1.8.1] - 2022-08-23
+### Changed:
+- Speeded up some client-side tests by using `custom` events instead of `identify` (in cases where the type of event doesn't really matter).
+
+## [1.8.0] - 2022-07-26
+### Added:
+- Test for allFlagsState method not generating events in server-side SDKs.
+
+## [1.7.2] - 2022-06-22
+### Changed:
+- Client-side tests now automatically set a default initial user if the test logic did not specifically do so, since client-side SDKs cannot work without an initial user.
+
+## [1.7.1] - 2022-06-15
+### Fixed:
+- Fixed overly timing-sensitive tests in `streaming/validation`.
+
+## [1.7.0] - 2022-05-04
+### Added:
+- Client-side SDK tests for streaming updates, polling, and experimentation evaluations.
+
+### Fixed:
+- Suppressed misleading panic stacktrace output related to `httphelpers.BrokenConnectionHandler`.
+- SDKs are allowed to include an `api_key` scheme identifier in `Authorization` headers.
+
+## [1.6.2] - 2022-04-29
+### Fixed:
+- Fixed client-side SDK test expectations for "wrong type" errors.
+
+## [1.6.1] - 2022-04-29
+### Changed:
+- Tests for application tag behavior now include a non-critical test of the 64-character length limit.
+
+### Fixed:
+- Expectations about the `Authorization` header now allow the optional `api_key` scheme identifier that some SDKs include.
+
+## [1.6.0] - 2022-04-25
+### Added:
+- The test harness now supports testing client-side LaunchDarkly SDKs as well as server-side ones. The client-side test suite includes evaluation and event behavior, but is still missing test cases for some areas such as summary events, experimentation evaluations, and streaming updates.
+
+### Fixed:
+- Fixed a race condition in the test "`events/requests/new payload ID for each post`".
+
+## [1.5.0] - 2022-04-14
+### Added:
+- Each release now includes binaries for the `arm64` architecture (these were added manually to the 1.4.0 release, but they will now be added automatically).
+- Added a test for disabling events.
+- Added opt-in "service endpoints" capability for SDKs that support this mechanism.
+
+### Changed:
+- The tool is now built with Go 1.18.
+
+## [1.4.0] - 2022-04-12
+### Added:
+- Tests for basic HTTP behavior of analytics event posts (request path, headers, etc.).
+
 ## [1.3.0] - 2022-03-08
 ### Added:
 - Tests for new SDK application metadata properties, enabled by the "tags" capability.

@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/launchdarkly/sdk-test-harness/framework/harness"
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
-	cf "github.com/launchdarkly/sdk-test-harness/servicedef/callbackfixtures"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	cf "github.com/launchdarkly/sdk-test-harness/v2/servicedef/callbackfixtures"
 )
 
 // PersistentDataStore is a test fixture that provides callback endpoints for SDK clients to connect to,
@@ -46,22 +47,19 @@ func NewPersistentDataStore(t *ldtest.T) *PersistentDataStore {
 		t.DebugLogger(),
 	)
 	p.SetupIsInitialized(func() (bool, error) { return true, nil }) // reasonable default behavior for most tests
-	p.endpoint = requireContext(t).harness.NewMockEndpoint(p.service, nil, t.DebugLogger())
+	p.endpoint = requireContext(t).harness.NewMockEndpoint(p.service, t.DebugLogger())
 	t.Defer(p.endpoint.Close)
 
 	return p
 }
 
-// ApplyConfiguration updates the SDK client configuration for NewSDKClient, causing the SDK
+// Configure updates the SDK client configuration for NewSDKClient, causing the SDK
 // to connect to the appropriate base URI for the persistent data store test fixture.
-func (p *PersistentDataStore) ApplyConfiguration(config *servicedef.SDKConfigParams) {
-	if config.PersistentDataStore == nil {
-		config.PersistentDataStore = &servicedef.SDKConfigPersistentDataStoreParams{}
-	} else {
-		ps := *config.PersistentDataStore
-		config.PersistentDataStore = &ps // copy to avoid side effects
-	}
-	config.PersistentDataStore.CallbackURI = p.endpoint.BaseURL()
+func (p *PersistentDataStore) Configure(config *servicedef.SDKConfigParams) error {
+	params := config.PersistentDataStore.Value()
+	params.CallbackURI = p.endpoint.BaseURL()
+	config.PersistentDataStore = o.Some(params)
+	return nil
 }
 
 // SetupInit causes the specified function to be called whenever the SDK calls the Init method

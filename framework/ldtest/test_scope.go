@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"runtime/debug"
 
-	"github.com/launchdarkly/sdk-test-harness/framework"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 )
 
 type environment struct {
@@ -112,7 +112,7 @@ func (t *T) Run(name string, action func(*T)) {
 	id := t.id.Plus(name)
 
 	t.env.config.TestLogger.TestStarted(id)
-	if t.env.config.Filter != nil && !t.env.config.Filter(id) {
+	if t.env.config.Filter != nil && !t.env.config.Filter.Match(id) {
 		t.env.config.TestLogger.TestSkipped(id, "excluded by filter parameters")
 		return
 	}

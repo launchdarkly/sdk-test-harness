@@ -5,18 +5,20 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
-	cf "github.com/launchdarkly/sdk-test-harness/servicedef/callbackfixtures"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	cf "github.com/launchdarkly/sdk-test-harness/v2/servicedef/callbackfixtures"
+
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
+	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldbuilders"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldbuilders"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,12 +34,12 @@ func makeAllDataStoreCachingParams() []dataStoreCachingParams {
 	return []dataStoreCachingParams{
 		{
 			name:           "uncached",
-			storeParams:    servicedef.SDKConfigPersistentDataStoreParams{CacheTimeMS: ldvalue.NewOptionalInt(0)},
+			storeParams:    servicedef.SDKConfigPersistentDataStoreParams{CacheTimeMS: o.Some[ldtime.UnixMillisecondTime](0)},
 			shouldBeCached: false,
 		},
 		{
 			name:           "cached explicitly",
-			storeParams:    servicedef.SDKConfigPersistentDataStoreParams{CacheTimeMS: ldvalue.NewOptionalInt(100000)},
+			storeParams:    servicedef.SDKConfigPersistentDataStoreParams{CacheTimeMS: o.Some[ldtime.UnixMillisecondTime](100000)},
 			shouldBeCached: true,
 		},
 		{
@@ -123,7 +125,7 @@ func doServerSidePersistentDataStoreInitTests(t *ldtest.T) {
 		initCh := store.SetupInitCapture()
 		_ = NewSDKClient(t, dataSource, store)
 
-		data1 := requireValue(t, initCh, time.Second*5)
+		data1 := h.RequireValue(t, initCh, time.Second*5)
 		m.In(t).For("initial data").Require(data1.Data, m.Items(
 			m.AllOf(
 				dm.collectionKind().Should(m.Equal(segmentsKind)),
@@ -151,7 +153,7 @@ func doServerSidePersistentDataStoreInitTests(t *ldtest.T) {
 
 		dataSource.streamingService.PushInit(newData)
 
-		data2 := requireValue(t, initCh, time.Second*5)
+		data2 := h.RequireValue(t, initCh, time.Second*5)
 		m.In(t).For("updated data").Assert(data2.Data, m.Items(
 			m.AllOf(
 				dm.collectionKind().Should(m.Equal(segmentsKind)),
@@ -171,7 +173,7 @@ func doServerSidePersistentDataStoreInitTests(t *ldtest.T) {
 
 func doServerSidePersistentDataStoreGetTests(t *ldtest.T) {
 	expectedValue, wrongValue, defaultValue := ldvalue.String("yes"), ldvalue.String("no"), ldvalue.String("default")
-	user := lduser.NewUser("userkey")
+	context := ldcontext.New("userkey")
 
 	basicFlag := ldbuilders.NewFlagBuilder("flagkey").
 		Version(1).
@@ -182,7 +184,7 @@ func doServerSidePersistentDataStoreGetTests(t *ldtest.T) {
 
 	basicSegment := ldbuilders.NewSegmentBuilder("segmentkey").
 		Version(1).
-		Included(user.GetKey()).
+		Included(context.Key()).
 		Build()
 
 	flagForSegment := makeFlagToCheckSegmentMatch("flagkey", basicSegment.Key, wrongValue, expectedValue)
@@ -201,9 +203,9 @@ func doServerSidePersistentDataStoreGetTests(t *ldtest.T) {
 
 				client := NewSDKClient(t, emptyDataSource, WithPersistentDataStoreConfig(cacheParams.storeParams), store)
 
-				result := basicEvaluateFlag(t, client, basicFlag.Key, user, defaultValue)
+				result := basicEvaluateFlag(t, client, basicFlag.Key, context, defaultValue)
 
-				params := requireValue(t, paramsCh, time.Second*5)
+				params := h.RequireValue(t, paramsCh, time.Second*5)
 				assert.Equal(t, flagsKind, params.Kind)
 				assert.Equal(t, basicFlag.Key, params.Key)
 
@@ -218,13 +220,13 @@ func doServerSidePersistentDataStoreGetTests(t *ldtest.T) {
 
 				client := NewSDKClient(t, emptyDataSource, WithPersistentDataStoreConfig(cacheParams.storeParams), store)
 
-				result := basicEvaluateFlag(t, client, basicFlag.Key, user, defaultValue)
+				result := basicEvaluateFlag(t, client, basicFlag.Key, context, defaultValue)
 
-				params1 := requireValue(t, paramsCh, time.Second*5)
+				params1 := h.RequireValue(t, paramsCh, time.Second*5)
 				assert.Equal(t, flagsKind, params1.Kind)
 				assert.Equal(t, flagForSegment.Key, params1.Key)
 
-				params2 := requireValue(t, paramsCh, time.Second*5)
+				params2 := h.RequireValue(t, paramsCh, time.Second*5)
 				assert.Equal(t, segmentsKind, params2.Kind)
 				assert.Equal(t, basicSegment.Key, params2.Key)
 
@@ -239,19 +241,19 @@ func doServerSidePersistentDataStoreGetTests(t *ldtest.T) {
 
 				client := NewSDKClient(t, emptyDataSource, WithPersistentDataStoreConfig(cacheParams.storeParams), store)
 
-				result1 := basicEvaluateFlag(t, client, basicFlag.Key, user, defaultValue)
-				result2 := basicEvaluateFlag(t, client, basicFlag.Key, user, defaultValue)
+				result1 := basicEvaluateFlag(t, client, basicFlag.Key, context, defaultValue)
+				result2 := basicEvaluateFlag(t, client, basicFlag.Key, context, defaultValue)
 				m.In(t).Assert(result1, m.JSONEqual(expectedValue))
 				m.In(t).Assert(result2, m.JSONEqual(expectedValue))
 
-				params1 := requireValue(t, paramsCh, time.Second*5)
+				params1 := h.RequireValue(t, paramsCh, time.Second*5)
 				assert.Equal(t, flagsKind, params1.Kind)
 				assert.Equal(t, basicFlag.Key, params1.Key)
 
 				if cacheParams.shouldBeCached {
-					requireNoMoreValues(t, paramsCh, time.Millisecond*10)
+					h.RequireNoMoreValues(t, paramsCh, time.Millisecond*10)
 				} else {
-					params2 := requireValue(t, paramsCh, time.Millisecond*10)
+					params2 := h.RequireValue(t, paramsCh, time.Millisecond*10)
 					assert.Equal(t, params1, params2)
 				}
 			})
@@ -264,23 +266,23 @@ func doServerSidePersistentDataStoreGetTests(t *ldtest.T) {
 
 				client := NewSDKClient(t, emptyDataSource, WithPersistentDataStoreConfig(cacheParams.storeParams), store)
 
-				result1 := basicEvaluateFlag(t, client, flagForSegment.Key, user, defaultValue)
-				result2 := basicEvaluateFlag(t, client, flagForSegment.Key, user, defaultValue)
+				result1 := basicEvaluateFlag(t, client, flagForSegment.Key, context, defaultValue)
+				result2 := basicEvaluateFlag(t, client, flagForSegment.Key, context, defaultValue)
 				m.In(t).Assert(result1, m.JSONEqual(expectedValue))
 				m.In(t).Assert(result2, m.JSONEqual(expectedValue))
 
-				params1 := requireValue(t, paramsCh, time.Second*5)
+				params1 := h.RequireValue(t, paramsCh, time.Second*5)
 				assert.Equal(t, flagsKind, params1.Kind)
 				assert.Equal(t, flagForSegment.Key, params1.Key)
-				params2 := requireValue(t, paramsCh, time.Second*5)
+				params2 := h.RequireValue(t, paramsCh, time.Second*5)
 				assert.Equal(t, segmentsKind, params2.Kind)
 				assert.Equal(t, basicSegment.Key, params2.Key)
 
 				if cacheParams.shouldBeCached {
-					requireNoMoreValues(t, paramsCh, time.Millisecond*10)
+					h.RequireNoMoreValues(t, paramsCh, time.Millisecond*10)
 				} else {
-					params3 := requireValue(t, paramsCh, time.Millisecond*10)
-					params4 := requireValue(t, paramsCh, time.Millisecond*10)
+					params3 := h.RequireValue(t, paramsCh, time.Millisecond*10)
+					params4 := h.RequireValue(t, paramsCh, time.Millisecond*10)
 					assert.Equal(t, params1, params3)
 					assert.Equal(t, params2, params4)
 				}
@@ -296,13 +298,13 @@ func doServerSidePersistentDataStoreGetTests(t *ldtest.T) {
 
 				client := NewSDKClient(t, dataSource, WithPersistentDataStoreConfig(cacheParams.storeParams), store)
 
-				result := basicEvaluateFlag(t, client, basicFlag.Key, user, defaultValue)
+				result := basicEvaluateFlag(t, client, basicFlag.Key, context, defaultValue)
 				m.In(t).Assert(result, m.JSONEqual(expectedValue))
 
 				if cacheParams.shouldBeCached {
-					requireNoMoreValues(t, paramsCh, time.Millisecond*10)
+					h.RequireNoMoreValues(t, paramsCh, time.Millisecond*10)
 				} else {
-					params := requireValue(t, paramsCh, time.Second*5)
+					params := h.RequireValue(t, paramsCh, time.Second*5)
 					assert.Equal(t, flagsKind, params.Kind)
 					assert.Equal(t, basicFlag.Key, params.Key)
 				}
@@ -315,9 +317,9 @@ func doServerSidePersistentDataStoreGetTests(t *ldtest.T) {
 
 				client := NewSDKClient(t, emptyDataSource, WithPersistentDataStoreConfig(cacheParams.storeParams), store)
 
-				detail := evaluateFlagDetail(t, client, basicFlag.Key, user, defaultValue)
+				detail := evaluateFlagDetail(t, client, basicFlag.Key, context, defaultValue)
 
-				params := requireValue(t, paramsCh, time.Second*5)
+				params := h.RequireValue(t, paramsCh, time.Second*5)
 				assert.Equal(t, flagsKind, params.Kind)
 				assert.Equal(t, basicFlag.Key, params.Key)
 
@@ -331,7 +333,7 @@ func doServerSidePersistentDataStoreGetTests(t *ldtest.T) {
 func doServerSidePersistentDataStoreGetAllTests(t *ldtest.T) {
 	expectedValue1, expectedValue2, wrongValue :=
 		ldvalue.String("value1"), ldvalue.String("value2"), ldvalue.String("no")
-	user := lduser.NewUser("userkey")
+	context := ldcontext.New("userkey")
 
 	flag1 := ldbuilders.NewFlagBuilder("flag1").
 		Version(1).
@@ -360,7 +362,7 @@ func doServerSidePersistentDataStoreGetAllTests(t *ldtest.T) {
 				dataSourceToStartClientWithNoFlags = NewSDKDataSource(t,
 					mockld.BlockingUnavailableSDKData(mockld.ServerSideSDK))
 				sdkConfig.InitCanFail = true
-				sdkConfig.StartWaitTimeMS = ldtime.UnixMillisecondTime(1)
+				sdkConfig.StartWaitTimeMS = o.Some(ldtime.UnixMillisecondTime(1))
 			} else {
 				dataSourceToStartClientWithNoFlags = emptyDataSource
 			}
@@ -376,9 +378,9 @@ func doServerSidePersistentDataStoreGetAllTests(t *ldtest.T) {
 					WithPersistentDataStoreConfig(cacheParams.storeParams),
 					store)
 
-				result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
+				result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 
-				params := requireValue(t, paramsCh, time.Second*5)
+				params := h.RequireValue(t, paramsCh, time.Second*5)
 				assert.Equal(t, flagsKind, params.Kind)
 
 				m.In(t).Assert(result.State, m.MapIncluding(
@@ -398,16 +400,16 @@ func doServerSidePersistentDataStoreGetAllTests(t *ldtest.T) {
 					WithPersistentDataStoreConfig(cacheParams.storeParams),
 					store)
 
-				result1 := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
-				result2 := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
+				result1 := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
+				result2 := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 
-				params1 := requireValue(t, paramsCh, time.Second*5)
+				params1 := h.RequireValue(t, paramsCh, time.Second*5)
 				assert.Equal(t, flagsKind, params1.Kind)
 
 				if cacheParams.shouldBeCached {
-					requireNoMoreValues(t, paramsCh, time.Millisecond*10)
+					h.RequireNoMoreValues(t, paramsCh, time.Millisecond*10)
 				} else {
-					params2 := requireValue(t, paramsCh, time.Millisecond*10)
+					params2 := h.RequireValue(t, paramsCh, time.Millisecond*10)
 					assert.Equal(t, params1, params2)
 				}
 
@@ -423,15 +425,15 @@ func doServerSidePersistentDataStoreGetAllTests(t *ldtest.T) {
 
 				client := NewSDKClient(t, dataSource, WithPersistentDataStoreConfig(cacheParams.storeParams), store)
 
-				result1 := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
-				result2 := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: &user})
+				result1 := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
+				result2 := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 
 				if cacheParams.shouldBeCached {
-					requireNoMoreValues(t, paramsCh, time.Millisecond*10)
+					h.RequireNoMoreValues(t, paramsCh, time.Millisecond*10)
 				} else {
-					params1 := requireValue(t, paramsCh, time.Second*5)
+					params1 := h.RequireValue(t, paramsCh, time.Second*5)
 					assert.Equal(t, flagsKind, params1.Kind)
-					params2 := requireValue(t, paramsCh, time.Millisecond*10)
+					params2 := h.RequireValue(t, paramsCh, time.Millisecond*10)
 					assert.Equal(t, params1, params2)
 				}
 

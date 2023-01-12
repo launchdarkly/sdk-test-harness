@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/framework"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 
 	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
 
@@ -18,11 +18,11 @@ func TestMockEndpointServesRequest(t *testing.T) {
 	m := newMockEndpointsManager("http://testharness:9999", framework.NullLogger())
 
 	handler1 := httphelpers.HandlerWithStatus(200)
-	e1 := m.newMockEndpoint(handler1, nil, framework.NullLogger())
+	e1 := m.newMockEndpoint(handler1, framework.NullLogger())
 	assert.Equal(t, "http://testharness:9999/endpoints/1", e1.BaseURL())
 
 	handler2 := httphelpers.HandlerWithStatus(204)
-	e2 := m.newMockEndpoint(handler2, nil, framework.NullLogger())
+	e2 := m.newMockEndpoint(handler2, framework.NullLogger())
 	assert.Equal(t, "http://testharness:9999/endpoints/2", e2.BaseURL())
 
 	rr1 := httptest.NewRecorder()
@@ -40,7 +40,7 @@ func TestMockEndpointReceivesSubpath(t *testing.T) {
 	m := newMockEndpointsManager("http://testharness:9999", framework.NullLogger())
 
 	handler, requests := httphelpers.RecordingHandler(httphelpers.HandlerWithStatus(200))
-	e := m.newMockEndpoint(handler, nil, framework.NullLogger())
+	e := m.newMockEndpoint(handler, framework.NullLogger())
 	assert.Equal(t, "http://testharness:9999/endpoints/1", e.BaseURL())
 
 	for _, subpath := range []string{"", "/", "/sub/path"} {
@@ -59,7 +59,7 @@ func TestMockEndpointReceivesSubpath(t *testing.T) {
 func TestMockEndpointConnectionInfo(t *testing.T) {
 	m := newMockEndpointsManager("http://testharness:9999", framework.NullLogger())
 	handler := httphelpers.HandlerWithStatus(200)
-	e := m.newMockEndpoint(handler, nil, framework.NullLogger())
+	e := m.newMockEndpoint(handler, framework.NullLogger())
 
 	_, err := e.AwaitConnection(time.Millisecond * 50)
 	assert.Error(t, err)

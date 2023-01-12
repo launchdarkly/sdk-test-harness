@@ -1,53 +1,104 @@
 package sdktests
 
 import (
+	"encoding/json"
 	"errors"
+	"sync/atomic"
 
-	"github.com/launchdarkly/sdk-test-harness/framework/harness"
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/data"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 
 	"github.com/stretchr/testify/require"
 )
 
+var currentlyExistingClientInstances int32                                         //nolint:gochecknoglobals
+var arbitraryInitialContexts = data.NewContextFactory("arbitrary-initial-context") //nolint:gochecknoglobals
+
 // SDKConfigurer is an interface for objects that can modify the configuration for StartSDKClient.
 // It is implemented by types such as SDKDataSource.
-type SDKConfigurer interface {
-	ApplyConfiguration(*servicedef.SDKConfigParams)
-}
-
-type sdkConfigurerFunc func(*servicedef.SDKConfigParams)
-
-func (f sdkConfigurerFunc) ApplyConfiguration(configOut *servicedef.SDKConfigParams) { f(configOut) }
+type SDKConfigurer helpers.ConfigOption[servicedef.SDKConfigParams]
 
 // WithConfig is used with StartSDKClient to specify a non-default SDK configuration. Use this
 // before any other SDKConfigurers or it will overwrite their effects.
 func WithConfig(config servicedef.SDKConfigParams) SDKConfigurer {
-	return sdkConfigurerFunc(func(configOut *servicedef.SDKConfigParams) {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
 		*configOut = config
+		return nil
+	})
+}
+
+// WithCredential is used with StartSDKClient to set only the credential (SDK key, mobile key, or
+// environment ID).
+func WithCredential(credential string) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		configOut.Credential = credential
+		return nil
+	})
+}
+
+// WithClientSideConfig is used with StartSDKClient to specify a non-default client-side SDK
+// configuration.
+func WithClientSideConfig(clientSideConfig servicedef.SDKConfigClientSideParams) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		configOut.ClientSide = o.Some(clientSideConfig)
+		return nil
+	})
+}
+
+// WithClientSideInitialContext is used with StartSDKClient to set the initial context for a client-side SDK.
+func WithClientSideInitialContext(context ldcontext.Context) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		cs := configOut.ClientSide.Value()
+		cs.InitialContext = o.Some(context)
+		configOut.ClientSide = o.Some(cs)
+		return nil
 	})
 }
 
 // WithEventsConfig is used with StartSDKClient to specify a non-default events configuration.
 func WithEventsConfig(eventsConfig servicedef.SDKConfigEventParams) SDKConfigurer {
-	return sdkConfigurerFunc(func(configOut *servicedef.SDKConfigParams) {
-		configOut.Events = &eventsConfig
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		configOut.Events = o.Some(eventsConfig)
+		return nil
+	})
+}
+
+// WithPollingConfig is used with StartSDKClient to specify a non-default polling configuration.
+func WithPollingConfig(pollingConfig servicedef.SDKConfigPollingParams) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		configOut.Polling = o.Some(pollingConfig)
+		return nil
+	})
+}
+
+// WithServiceEndpointsConfig is used with StartSDKClient to specify non-default service endpoints.
+// This will only work if the test service has the "service-endpoints" capability.
+func WithServiceEndpointsConfig(endpointsConfig servicedef.SDKConfigServiceEndpointsParams) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		configOut.ServiceEndpoints = o.Some(endpointsConfig)
+		return nil
 	})
 }
 
 // WithPersistentDataStoreConfig is used with StartSDKClient to specify a non-default data store configuration.
 func WithPersistentDataStoreConfig(storeConfig servicedef.SDKConfigPersistentDataStoreParams) SDKConfigurer {
-	return sdkConfigurerFunc(func(configOut *servicedef.SDKConfigParams) {
-		configOut.PersistentDataStore = &storeConfig
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		configOut.PersistentDataStore = o.Some(storeConfig)
+		return nil
 	})
 }
 
 // WithStreamingConfig is used with StartSDKClient to specify a non-default streaming configuration.
 func WithStreamingConfig(streamingConfig servicedef.SDKConfigStreamingParams) SDKConfigurer {
-	return sdkConfigurerFunc(func(configOut *servicedef.SDKConfigParams) {
-		configOut.Streaming = &streamingConfig
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		configOut.Streaming = o.Some(streamingConfig)
+		return nil
 	})
 }
 
@@ -68,9 +119,9 @@ type SDKClient struct {
 // components such as SDKDataSource implement this interface so that they can insert the appropriate
 // base URIs into the configuration, so a common pattern is:
 //
-//     dataSource := NewSDKDataSource(t, ...)
-//     eventSink := NewSDKEventSink(t, ...)
-//     client := NewSDKClient(t, dataSource, eventSink)
+//	dataSource := NewSDKDataSource(t, ...)
+//	eventSink := NewSDKEventSink(t, ...)
+//	client := NewSDKClient(t, dataSource, eventSink)
 //
 // Since the client will attempt to connect to its data source and possibly send events as soon as it
 // starts up, the test fixtures must always be created first. You may reuse a previously created data
@@ -79,20 +130,42 @@ type SDKClient struct {
 //
 // The object's lifecycle is tied to the test scope that created it; it will be automatically closed
 // when this test scope exits. It can be reused by subtests until then.
-func NewSDKClient(t *ldtest.T, configurer SDKConfigurer, moreConfigurers ...SDKConfigurer) *SDKClient {
-	client, err := TryNewSDKClient(t, configurer, moreConfigurers...)
+func NewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) *SDKClient {
+	count := atomic.AddInt32(&currentlyExistingClientInstances, 1)
+	if count == 2 && t.Capabilities().Has(servicedef.CapabilitySingleton) {
+		atomic.AddInt32(&currentlyExistingClientInstances, -1)
+		t.Errorf("Test tried to create an SDK client instance when one already existed, and this SDK is a singleton")
+		t.FailNow()
+	}
+	client, err := TryNewSDKClient(t, configurers...)
+	if err != nil {
+		atomic.AddInt32(&currentlyExistingClientInstances, -1)
+	}
 	require.NoError(t, err)
 	return client
 }
 
-func TryNewSDKClient(t *ldtest.T, configurer SDKConfigurer, moreConfigurers ...SDKConfigurer) (*SDKClient, error) {
+func TryNewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) (*SDKClient, error) {
+	if len(configurers) == 0 {
+		return nil, errors.New("tried to create an SDK client without any custom configuration")
+	}
+
 	config := servicedef.SDKConfigParams{}
-	configurer.ApplyConfiguration(&config)
-	for _, c := range moreConfigurers {
-		c.ApplyConfiguration(&config)
+	if err := helpers.ApplyOptions(&config, configurers...); err != nil {
+		return nil, err
 	}
 	if config.Credential == "" {
 		config.Credential = defaultSDKKey
+	}
+	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
+		// Ensure that we always provide an initial context for every client-side SDK test, if the test logic
+		// didn't explicitly set one. It's preferable for this to have a unique key, so that if the SDK has any
+		// global state that is cached by key, tests won't interfere with each other.
+		cs := config.ClientSide.Value()
+		if !cs.InitialContext.IsDefined() && cs.InitialUser == nil {
+			cs.InitialContext = o.Some(arbitraryInitialContexts.NextUniqueContext())
+			config.ClientSide = o.Some(cs)
+		}
 	}
 	if err := validateSDKConfig(config); err != nil {
 		return nil, err
@@ -119,10 +192,22 @@ func TryNewSDKClient(t *ldtest.T, configurer SDKConfigurer, moreConfigurers ...S
 }
 
 func validateSDKConfig(config servicedef.SDKConfigParams) error {
-	if config.Streaming == nil || config.Streaming.BaseURI == "" {
-		return errors.New("streaming base URI was not set-- did you forget to include the SDKDataSource as a parameter?")
+	if !config.Streaming.IsDefined() && !config.Polling.IsDefined() && config.ServiceEndpoints.Value().Streaming == "" {
+		// Note that the default is streaming, so we don't necessarily need to set config.Streaming if there are
+		// no other customized options and if we used serviceEndpoints.streaming to set the stream URI
+		return errors.New(
+			"neither streaming nor polling was enabled-- did you forget to include the SDKDataSource as a parameter?")
 	}
-	if config.Events != nil && config.Events.BaseURI == "" {
+	if config.Streaming.IsDefined() && config.Streaming.Value().BaseURI == "" &&
+		(!config.ServiceEndpoints.IsDefined() || config.ServiceEndpoints.Value().Streaming == "") {
+		return errors.New("streaming was enabled but base URI was not set")
+	}
+	if config.Polling.IsDefined() && config.Polling.Value().BaseURI == "" &&
+		(!config.ServiceEndpoints.IsDefined() || config.ServiceEndpoints.Value().Polling == "") {
+		return errors.New("polling was enabled but base URI was not set")
+	}
+	if config.Events.IsDefined() && config.Events.Value().BaseURI == "" &&
+		(!config.ServiceEndpoints.IsDefined() || config.ServiceEndpoints.Value().Events == "") {
 		return errors.New("events were enabled but base URI was not set--" +
 			" did you forget to include the SDKEventSink as a parameter?")
 	}
@@ -132,6 +217,7 @@ func validateSDKConfig(config servicedef.SDKConfigParams) error {
 // Close tells the test service to shut down the client instance. Normally this happens automatically at
 // the end of a test.
 func (c *SDKClient) Close() error {
+	atomic.AddInt32(&currentlyExistingClientInstances, -1)
 	return c.sdkClientEntity.Close()
 }
 
@@ -147,7 +233,7 @@ func (c *SDKClient) EvaluateFlag(t *ldtest.T, params servicedef.EvaluateFlagPara
 	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
 		servicedef.CommandParams{
 			Command:  servicedef.CommandEvaluateFlag,
-			Evaluate: &params,
+			Evaluate: o.Some(params),
 		},
 		t.DebugLogger(),
 		&resp,
@@ -167,7 +253,7 @@ func (c *SDKClient) EvaluateAllFlags(
 	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
 		servicedef.CommandParams{
 			Command:     servicedef.CommandEvaluateAllFlags,
-			EvaluateAll: &params,
+			EvaluateAll: o.Some(params),
 		},
 		t.DebugLogger(),
 		&resp,
@@ -178,11 +264,23 @@ func (c *SDKClient) EvaluateAllFlags(
 // SendIdentifyEvent tells the SDK client to send an identify event.
 //
 // Any error from the test service causes the test to terminate immediately.
-func (c *SDKClient) SendIdentifyEvent(t *ldtest.T, user lduser.User) {
+func (c *SDKClient) SendIdentifyEvent(t *ldtest.T, context ldcontext.Context) {
 	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
 		servicedef.CommandParams{
 			Command:       servicedef.CommandIdentifyEvent,
-			IdentifyEvent: &servicedef.IdentifyEventParams{User: user},
+			IdentifyEvent: o.Some(servicedef.IdentifyEventParams{Context: o.Some(context)}),
+		},
+		t.DebugLogger(),
+		nil,
+	))
+}
+
+// SendIdentifyEventWithOldUser is equivalent to SendIdentifyEvent, but with old-style user data.
+func (c *SDKClient) SendIdentifyEventWithOldUser(t *ldtest.T, user json.RawMessage) {
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:       servicedef.CommandIdentifyEvent,
+			IdentifyEvent: o.Some(servicedef.IdentifyEventParams{User: user}),
 		},
 		t.DebugLogger(),
 		nil,
@@ -196,21 +294,7 @@ func (c *SDKClient) SendCustomEvent(t *ldtest.T, params servicedef.CustomEventPa
 	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
 		servicedef.CommandParams{
 			Command:     servicedef.CommandCustomEvent,
-			CustomEvent: &params,
-		},
-		t.DebugLogger(),
-		nil,
-	))
-}
-
-// SendAliasEvent tells the SDK client to send an alias event.
-//
-// Any error from the test service causes the test to terminate immediately.
-func (c *SDKClient) SendAliasEvent(t *ldtest.T, params servicedef.AliasEventParams) {
-	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
-		servicedef.CommandParams{
-			Command:    servicedef.CommandAliasEvent,
-			AliasEvent: &params,
+			CustomEvent: o.Some(params),
 		},
 		t.DebugLogger(),
 		nil,
@@ -231,4 +315,62 @@ func (c *SDKClient) GetBigSegmentStoreStatus(t *ldtest.T) servicedef.BigSegmentS
 	require.NoError(t, c.sdkClientEntity.SendCommand(servicedef.CommandGetBigSegmentStoreStatus,
 		t.DebugLogger(), &resp))
 	return resp
+}
+
+// ContextBuild tells the test service to use the SDK's context builder to build a context and return it as JSON.
+func (c *SDKClient) ContextBuild(t *ldtest.T, params servicedef.ContextBuildParams) servicedef.ContextBuildResponse {
+	var resp servicedef.ContextBuildResponse
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:      servicedef.CommandContextBuild,
+			ContextBuild: o.Some(params),
+		},
+		t.DebugLogger(),
+		&resp,
+	))
+	return resp
+}
+
+// ContextConvert tells the test service to use the SDK's JSON converters to unmarshal and remarshal a context.
+func (c *SDKClient) ContextConvert(
+	t *ldtest.T,
+	params servicedef.ContextConvertParams,
+) servicedef.ContextBuildResponse {
+	var resp servicedef.ContextBuildResponse
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:        servicedef.CommandContextConvert,
+			ContextConvert: o.Some(params),
+		},
+		t.DebugLogger(),
+		&resp,
+	))
+	return resp
+}
+
+// GetSecureModeHash tells the SDK client to calculate a secure mode hash for a context. The test
+// harness will only call this method if the test service has the "secure-mode-hash" capability.
+func (c *SDKClient) GetSecureModeHash(t *ldtest.T, context ldcontext.Context) string {
+	var resp servicedef.SecureModeHashResponse
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:        servicedef.CommandSecureModeHash,
+			SecureModeHash: o.Some(servicedef.SecureModeHashParams{Context: o.Some(context)}),
+		},
+		t.DebugLogger(),
+		&resp))
+	return resp.Result
+}
+
+// GetSecureModeHashWithOldUser is equivalent to GetSecureModeHash, but with old-style user JSON data.
+func (c *SDKClient) GetSecureModeHashWithOldUser(t *ldtest.T, user json.RawMessage) string {
+	var resp servicedef.SecureModeHashResponse
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:        servicedef.CommandSecureModeHash,
+			SecureModeHash: o.Some(servicedef.SecureModeHashParams{User: user}),
+		},
+		t.DebugLogger(),
+		&resp))
+	return resp.Result
 }

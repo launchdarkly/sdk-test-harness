@@ -3,8 +3,8 @@ package ldtest
 import (
 	"testing"
 
-	"github.com/launchdarkly/sdk-test-harness/framework"
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest/internal"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest/internal"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -149,9 +149,9 @@ func TestTestScopeSkippedResult(t *testing.T) {
 }
 
 func TestTestScopeFilter(t *testing.T) {
-	filter := func(id TestID) bool {
+	filter := FilterFunc(func(id TestID) bool {
 		return len(id) == 0 || id[0] == "b"
-	}
+	})
 
 	result := Run(TestConfiguration{Filter: filter}, func(ldt *T) {
 		ldt.Run("a", func(ldt0 *T) {

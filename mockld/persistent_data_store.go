@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/launchdarkly/sdk-test-harness/framework"
-	cf "github.com/launchdarkly/sdk-test-harness/servicedef/callbackfixtures"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework"
+	cf "github.com/launchdarkly/sdk-test-harness/v2/servicedef/callbackfixtures"
 )
 
 // PersistentDataStoreService is the low-level component providing the mock endpoints for the persistent

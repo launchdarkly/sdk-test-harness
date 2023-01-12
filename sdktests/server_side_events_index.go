@@ -1,101 +1,129 @@
 package sdktests
 
 import (
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/data"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
+
+	"github.com/stretchr/testify/require"
 )
 
 func doServerSideIndexEventTests(t *ldtest.T) {
-	// These do not include detailed tests of the properties within the user object, which are in
-	// server_side_events_users.go.
+	// These tests only apply to server-side SDKs. Client-side SDKs do not send index events, because
+	// they are guaranteed to always send the user properties in an identify event whenever the
+	// current context is changed.
 
-	users := NewUserFactory("doServerSideIndexEventTests")
-	matchIndexEvent := func(user lduser.User) m.Matcher {
+	// These do not include detailed tests of the properties within the context object, which are in
+	// server_side_events_contexts.go.
+
+	contexts := data.NewContextFactory("doServerSideIndexEventTests")
+	matchIndexEvent := func(context ldcontext.Context) m.Matcher {
 		return m.AllOf(
-			JSONPropertyKeysCanOnlyBe("kind", "creationDate", "user"),
+			JSONPropertyKeysCanOnlyBe("kind", "creationDate", "context"),
 			IsIndexEvent(),
 			HasAnyCreationDate(),
-			HasUserObjectWithKey(user.GetKey()),
+			HasContextObjectWithMatchingKeys(context),
 		)
 	}
 
 	t.Run("basic properties", func(t *ldtest.T) {
+		// Details of the JSON representation of the context are tested in server_side_events_contexts.go.
 		dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
 		events := NewSDKEventSink(t)
 		client := NewSDKClient(t, dataSource, events)
 
-		for _, isAnonymousUser := range []bool{false, true} {
-			t.Run(selectString(isAnonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
-				user := users.NextUniqueUserMaybeAnonymous(isAnonymousUser)
+		context := contexts.NextUniqueContext()
 
-				basicEvaluateFlag(t, client, "arbitrary-flag-key", user, ldvalue.Null())
+		basicEvaluateFlag(t, client, "arbitrary-flag-key", context, ldvalue.Null())
 
-				client.FlushEvents(t)
-				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+		client.FlushEvents(t)
+		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
-				m.In(t).Assert(payload, m.ItemsInAnyOrder(
-					matchIndexEvent(user),
-					IsSummaryEvent(),
-				))
-			})
-		}
+		m.In(t).Assert(payload, m.ItemsInAnyOrder(
+			matchIndexEvent(context),
+			IsSummaryEvent(),
+		))
 	})
 
-	t.Run("only one index event per user", func(t *ldtest.T) {
+	t.Run("only one index event per evaluation context", func(t *ldtest.T) {
 		dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+
+		// Contexts are supposed to be deduplicated not just by key, but by the fully qualified key which
+		// is different for different kinds, and is a composite key for multi-kind contexts. So, here we
+		// will use NewContextFactoriesForSingleAndMultiKind to give us some factories for those different
+		// cases, and we will deliberately override the "no key collisions between factories" behavior so
+		// that they will produce some identical keys for different kinds.
+		makeContextsAndIndexEventMatchers := func(t *ldtest.T) ([]ldcontext.Context, []m.Matcher) {
+			contextCategories := data.NewContextFactoriesForSingleAndMultiKind("doServerSideIndexEventTests.deduplication")
+			for i := 1; i < len(contextCategories); i++ {
+				contextCategories[i].SetKeyDisambiguatorValueSameAs(contextCategories[0])
+			}
+			cs := make([]ldcontext.Context, 0, len(contextCategories)*2)
+			ms := make([]m.Matcher, 0, len(contextCategories)*2)
+			for _, factory := range contextCategories {
+				cs = append(cs, factory.NextUniqueContext())
+				cs = append(cs, factory.NextUniqueContext())
+			}
+
+			// Verify that we did indeed produce some duplicate keys (but not duplicate fully-qualified keys)
+			individualKeysUsed, fullyQualifiedKeysUsed := make(map[string]bool), make(map[string]bool)
+			atLeastOneIndividualKeyReused := false
+			for _, c := range cs {
+				atLeastOneIndividualKeyReused = atLeastOneIndividualKeyReused || individualKeysUsed[c.Key()]
+				individualKeysUsed[c.Key()] = true
+				require.NotContains(t, fullyQualifiedKeysUsed, c.FullyQualifiedKey(), "failure in input data generation logic")
+				fullyQualifiedKeysUsed[c.FullyQualifiedKey()] = true
+			}
+			require.True(t, atLeastOneIndividualKeyReused, "failure in input data generation logic")
+
+			for _, c := range cs {
+				ms = append(ms, matchIndexEvent(c))
+			}
+			return cs, ms
+		}
 
 		t.Run("from feature event", func(t *ldtest.T) {
 			events := NewSDKEventSink(t)
 			client := NewSDKClient(t, dataSource, events)
 
-			user1 := users.NextUniqueUser()
-			user2 := users.NextUniqueUser()
-			flagKey := "arbitrary-flag-key"
+			uniqueContexts, matchers := makeContextsAndIndexEventMatchers(t)
 
-			basicEvaluateFlag(t, client, flagKey, user1, ldvalue.Null())
-			basicEvaluateFlag(t, client, flagKey, user1, ldvalue.Null())
-			basicEvaluateFlag(t, client, flagKey, user2, ldvalue.Null())
-			basicEvaluateFlag(t, client, flagKey, user1, ldvalue.Null())
-			basicEvaluateFlag(t, client, flagKey, user2, ldvalue.Null())
+			flagKey := "arbitrary-flag-key"
+			for i := 0; i < 3; i++ { // 3 = arbitrary number of repetitions to prove we're deduplicating
+				for _, c := range uniqueContexts {
+					basicEvaluateFlag(t, client, flagKey, c, ldvalue.Null())
+				}
+			}
 
 			client.FlushEvents(t)
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
-			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				matchIndexEvent(user1),
-				matchIndexEvent(user2),
-				IsSummaryEvent(),
-			))
+			matchers = append(matchers, IsSummaryEvent())
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(matchers...))
 		})
 
 		t.Run("from custom event", func(t *ldtest.T) {
 			events := NewSDKEventSink(t)
 			client := NewSDKClient(t, dataSource, events)
 
-			user1 := users.NextUniqueUser()
-			user2 := users.NextUniqueUser()
-			params1 := servicedef.CustomEventParams{EventKey: "event1", User: user1}
-			params2 := servicedef.CustomEventParams{EventKey: "event1", User: user2}
-
-			client.SendCustomEvent(t, params1)
-			client.SendCustomEvent(t, params1)
-			client.SendCustomEvent(t, params2)
-			client.SendCustomEvent(t, params1)
-			client.SendCustomEvent(t, params2)
+			uniqueContexts, matchers := makeContextsAndIndexEventMatchers(t)
+			for i := 0; i < 3; i++ { // 3 = arbitrary number of repetitions to prove we're deduplicating
+				for _, c := range uniqueContexts {
+					client.SendCustomEvent(t, servicedef.CustomEventParams{EventKey: "event1", Context: o.Some(c)})
+					matchers = append(matchers, IsCustomEvent())
+				}
+			}
 
 			client.FlushEvents(t)
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
-			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				matchIndexEvent(user1),
-				matchIndexEvent(user2),
-				IsCustomEvent(), IsCustomEvent(), IsCustomEvent(), IsCustomEvent(), IsCustomEvent(),
-			))
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(matchers...))
 		})
 	})
 }
