@@ -38,8 +38,8 @@ type environmentFilter struct {
 	o.Maybe[string]
 }
 
-//// String returns a human-readable representation of the filter key,
-//// suitable for test output.
+// String returns a human-readable representation of the filter key,
+// suitable for test output.
 func (p environmentFilter) String() string {
 	return fmt.Sprintf("environment_filter_key=\"%s\"", p.Value())
 }

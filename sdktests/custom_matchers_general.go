@@ -22,6 +22,9 @@ import (
 // The functions in this file are for convenient use of the matchers API with complex
 // types. For more information, see matchers.Transform.
 
+// QueryParameters returns a MatcherTransform which parses a string representing a URL's
+// RawQuery field into a map from parameter key to parameter value. If there are multiple values
+// for a key, the first is used.
 func QueryParameters() m.MatcherTransform {
 	return m.Transform("extract URL query parameter", func(i interface{}) (interface{}, error) {
 		values, err := url.ParseQuery(i.(string))
