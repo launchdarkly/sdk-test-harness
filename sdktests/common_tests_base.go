@@ -44,9 +44,9 @@ func (p environmentFilter) String() string {
 	return fmt.Sprintf("environment_filter_key=\"%s\"", p.Value())
 }
 
-// Matcher checks that if the filter is present, then the query parameter map contains a parameter
+// Matcher checks that if the filter is present, the query parameter map contains a parameter
 // named "filter" with its value.
-// If the filter is not present (envFilterNone), checks that the query parameter map *does not* contain
+// If the filter is not present, it checks that the query parameter map *does not* contain
 // a parameter named "filter".
 func (p environmentFilter) Matcher() m.Matcher {
 	hasFilter := m.MapIncluding(
