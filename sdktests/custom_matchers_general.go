@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 
@@ -21,6 +22,20 @@ import (
 // The functions in this file are for convenient use of the matchers API with complex
 // types. For more information, see matchers.Transform.
 
+func QueryParameters() m.MatcherTransform {
+	return m.Transform("extract URL query parameter", func(i interface{}) (interface{}, error) {
+		values, err := url.ParseQuery(i.(string))
+		if err != nil {
+			return nil, err
+		}
+		out := make(map[string]string)
+		for k, v := range values {
+			out[k] = v[0]
+		}
+		return out, nil
+	}).
+		EnsureInputValueType("")
+}
 func Base64DecodedData() m.MatcherTransform {
 	return m.Transform(
 		"base64-decoded data",
