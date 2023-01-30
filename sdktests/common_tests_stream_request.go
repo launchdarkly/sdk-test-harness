@@ -40,7 +40,7 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 		for _, filter := range c.environmentFilters() {
 			t.Run(filter.String(), func(t *ldtest.T) {
 				if filter.IsDefined() {
-					t.RequireCapability(servicedef.CapabilityFilters)
+					t.RequireCapability(servicedef.CapabilityFiltering)
 				}
 				for _, trailingSlash := range []bool{false, true} {
 					t.Run(h.IfElse(trailingSlash, "base URI has a trailing slash", "base URI has no trailing slash"), func(t *ldtest.T) {

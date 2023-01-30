@@ -19,7 +19,7 @@ const (
 	CapabilityServerSidePolling = "server-side-polling"
 	CapabilityServiceEndpoints  = "service-endpoints"
 	CapabilityTags              = "tags"
-	CapabilityFilters           = "filters"
+	CapabilityFiltering         = "filtering"
 )
 
 type StatusRep struct {
