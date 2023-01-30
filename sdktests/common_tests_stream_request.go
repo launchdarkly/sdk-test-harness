@@ -39,7 +39,7 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 	t.Run("URL path is computed correctly", func(t *ldtest.T) {
 		for _, filter := range c.environmentFilters() {
 			t.Run(filter.String(), func(t *ldtest.T) {
-				if filter.Key().IsDefined() {
+				if filter.IsDefined() {
 					t.RequireCapability(servicedef.CapabilityFilters)
 				}
 				for _, trailingSlash := range []bool{false, true} {
@@ -57,7 +57,7 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 									append(configurers,
 										WithStreamingConfig(servicedef.SDKConfigStreamingParams{
 											BaseURI: streamURI,
-											Filter:  filter.Key(),
+											Filter:  filter.Maybe,
 										}),
 										c.withFlagRequestMethod(method),
 									)...)...)

@@ -33,25 +33,17 @@ const (
 // named "filter".
 //
 // Example: "foo" -> "?filter=foo"
-type environmentFilter string
-
-const envFilterNone environmentFilter = ""
-
-// Key returns the filter's key, if any.
-func (p environmentFilter) Key() o.Maybe[string] {
-	if p == envFilterNone {
-		return o.None[string]()
-	}
-	return o.Some(string(p))
+type environmentFilter struct {
+	o.Maybe[string]
 }
 
-// String returns a human-readable representation of the filter key,
-// suitable for test output.
+//// String returns a human-readable representation of the filter key,
+//// suitable for test output.
 func (p environmentFilter) String() string {
-	if p == envFilterNone {
+	if !p.IsDefined() {
 		return "no environment filter"
 	}
-	return fmt.Sprintf("environment_filter_key=\"%s\"", string(p))
+	return fmt.Sprintf("environment_filter_key=\"%s\"", p.Value())
 }
 
 // Matcher checks that if the filter is present, then the query parameter map contains a parameter
@@ -60,9 +52,9 @@ func (p environmentFilter) String() string {
 // a parameter named "filter".
 func (p environmentFilter) Matcher() m.Matcher {
 	hasFilter := m.MapIncluding(
-		m.KV("filter", m.Equal(string(p))),
+		m.KV("filter", m.Equal(p.Value())),
 	)
-	if p == envFilterNone {
+	if !p.IsDefined() {
 		hasFilter = m.Not(hasFilter)
 	}
 	return QueryParameters().Should(hasFilter)
@@ -111,12 +103,12 @@ func (c commonTestsBase) availableFlagRequestMethods() []flagRequestMethod {
 
 func (c commonTestsBase) environmentFilters() []environmentFilter {
 	if c.isClientSide {
-		return []environmentFilter{envFilterNone}
+		return []environmentFilter{{o.None[string]()}}
 	}
 	return []environmentFilter{
-		envFilterNone,
-		"encoding_not_necessary",
-		"encoding necessary +! %& ( )",
+		{o.None[string]()},
+		{o.Some("encoding_not_necessary")},
+		{o.Some("encoding necessary +! %& ( )")},
 	}
 }
 
