@@ -2,6 +2,7 @@ package sdktests
 
 import (
 	"fmt"
+
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
@@ -101,10 +102,9 @@ func (c commonTestsBase) availableFlagRequestMethods() []flagRequestMethod {
 	return []flagRequestMethod{flagRequestGET}
 }
 
+// Returns a set of environment filters for testing, along with a filter representing
+// "no filter".
 func (c commonTestsBase) environmentFilters() []environmentFilter {
-	if c.isClientSide {
-		return []environmentFilter{{o.None[string]()}}
-	}
 	return []environmentFilter{
 		{o.None[string]()},
 		{o.Some("encoding_not_necessary")},
