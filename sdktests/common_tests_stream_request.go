@@ -38,7 +38,7 @@ func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, credential st
 func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagRequestMethod) m.Matcher) {
 	t.Run("URL path is computed correctly", func(t *ldtest.T) {
 		for _, filter := range c.environmentFilters() {
-			t.Run(filter.String(), func(t *ldtest.T) {
+			t.Run(h.IfElse(filter.IsDefined(), filter.String(), "no environment filter"), func(t *ldtest.T) {
 				// The environment filtering feature is only tested on server-side SDKs that support
 				// the "filtering" capability. All other SDKs should be tested against the
 				// "no filter" scenario (!filter.IsDefined()), since that was the default functionality

@@ -41,9 +41,6 @@ type environmentFilter struct {
 //// String returns a human-readable representation of the filter key,
 //// suitable for test output.
 func (p environmentFilter) String() string {
-	if !p.IsDefined() {
-		return "no environment filter"
-	}
 	return fmt.Sprintf("environment_filter_key=\"%s\"", p.Value())
 }
 
