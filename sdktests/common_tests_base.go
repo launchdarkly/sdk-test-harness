@@ -55,7 +55,7 @@ func (p environmentFilter) Matcher() m.Matcher {
 	if !p.IsDefined() {
 		hasFilter = m.Not(hasFilter)
 	}
-	return QueryParameters().Should(hasFilter)
+	return UniqueQueryParameters().Should(hasFilter)
 }
 
 func newCommonTestsBase(t *ldtest.T, testName string, baseSDKConfigurers ...SDKConfigurer) commonTestsBase {

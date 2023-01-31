@@ -22,10 +22,10 @@ import (
 // The functions in this file are for convenient use of the matchers API with complex
 // types. For more information, see matchers.Transform.
 
-// QueryParameters returns a MatcherTransform which parses a string representing a URL's
+// UniqueQueryParameters returns a MatcherTransform which parses a string representing a URL's
 // RawQuery field into a map from parameter key to parameter value. If there are multiple values
-// for a key, the first is used.
-func QueryParameters() m.MatcherTransform {
+// for a key, an error is returned.
+func UniqueQueryParameters() m.MatcherTransform {
 	return m.Transform("extract URL query parameter", func(i interface{}) (interface{}, error) {
 		values, err := url.ParseQuery(i.(string))
 		if err != nil {
@@ -33,6 +33,9 @@ func QueryParameters() m.MatcherTransform {
 		}
 		out := make(map[string]string)
 		for k, v := range values {
+			if len(v) > 1 {
+				return nil, fmt.Errorf("parameter %s had %v values; expected 1", k, len(v))
+			}
 			out[k] = v[0]
 		}
 		return out, nil
