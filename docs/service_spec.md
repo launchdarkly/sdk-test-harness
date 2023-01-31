@@ -88,6 +88,14 @@ For tests that involve tags, the test harness will set the `tags` property of th
 
 This means that the SDK has a type corresponding to the old-style user model, and supports directly passing such user data to SDK methods as an alternative to context data. If this capability is present, the test harness may send a `user` property with old-style user JSON for test commands that would normally take a `context` property. If this capability is absent, `user` will never be set.
 
+#### Capability `"filtering"`
+
+This means that the SDK supports the "filter" configuration option for streaming/polling data sources,
+and will send a `?filter=name` query parameter along with streaming/polling requests.
+
+For tests that involve filtering, the test harness will set the `filter` property of the `streaming` or `polling` configuration
+object. The property will either be omitted if no filter is requested, or a non-empty string if requested.
+
 ### Stop test service: `DELETE /`
 
 The test harness sends this request at the end of a test run if you have specified `--stop-service-at-end` on the [command line](./running.md). The test service should simply quit. This is a convenience so CI scripts can simply start the test service in the background and assume it will be stopped for them.
@@ -106,9 +114,11 @@ A `POST` request indicates that the test harness wants to start an instance of t
   * `streaming` (object, optional): Enables streaming mode and provides streaming configuration. If this is omitted _and_ `polling` is also omitted, then the test service can use streaming as a default; but if `streaming` is omitted and `polling` is provided, then streaming should be disabled. Properties are:
     * `baseUri` (string, optional): The base URI for the streaming service. For contract testing, this will be the URI of a simulated streaming endpoint that the test harness provides. If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.streaming` if any, or if that is not set either, connect to the real LaunchDarkly streaming service.
     * `initialRetryDelayMs` (number, optional): The initial stream retry delay in milliseconds. If omitted, use the SDK's default value.
+    * `filter` (string, optional): The key for a filtered environment. If omitted, do not configure the SDK with a filter.
   * `polling` (object, optional): Enables polling mode and provides polling configuration. Properties are:
     * `baseUri` (string, optional): The base URI for the polling service. For contract testing, this will be the URI of a simulated polling endpoint that the test harness provides. If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.polling` if any, or if that is not set either, connect to the real LaunchDarkly polling service.
     * `pollIntervalMs` (number, optional): The polling interval in milliseconds. If omitted, use the SDK's default value. For mobile SDKs that are configured with both streaming and polling enabled, this should be interpreted as the _background_ polling interval.
+    * `filter` (string, optional): The key for a filtered environment. If omitted, do not configure the SDK with a filter.
   * `events` (object, optional): Enables events and provides events configuration, or disables events if it is omitted or null. Properties are:
     * `baseUri` (string, optional): The base URI for the events service. For contract testing, this will be the URI of a simulated event-recorder endpoint that the test harness provides.  If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.events` if any, or if that is not set either, connect to the real LaunchDarkly events service.
     * `capacity` (number, optional): If specified and greater than zero, the event buffer capacity should be set to this value.

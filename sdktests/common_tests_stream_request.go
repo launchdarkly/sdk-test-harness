@@ -37,27 +37,42 @@ func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, credential st
 
 func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagRequestMethod) m.Matcher) {
 	t.Run("URL path is computed correctly", func(t *ldtest.T) {
-		for _, trailingSlash := range []bool{false, true} {
-			t.Run(h.IfElse(trailingSlash, "base URI has a trailing slash", "base URI has no trailing slash"), func(t *ldtest.T) {
-				for _, method := range c.availableFlagRequestMethods() {
-					t.Run(string(method), func(t *ldtest.T) {
-						dataSource, configurers := c.setupDataSources(t, nil)
+		for _, filter := range c.environmentFilters() {
+			t.Run(h.IfElse(filter.IsDefined(), filter.String(), "no environment filter"), func(t *ldtest.T) {
+				// The environment filtering feature is only tested on server-side SDKs that support
+				// the "filtering" capability. All other SDKs should be tested against the
+				// "no filter" scenario (!filter.IsDefined()), since that was the default functionality
+				// previous to the introduction of filtering.
+				if filter.IsDefined() {
+					t.RequireCapability(servicedef.CapabilityFiltering)
+					t.RequireCapability(servicedef.CapabilityServerSide)
+				}
+				for _, trailingSlash := range []bool{false, true} {
+					t.Run(h.IfElse(trailingSlash, "base URI has a trailing slash",
+						"base URI has no trailing slash"), func(t *ldtest.T) {
+						for _, method := range c.availableFlagRequestMethods() {
+							t.Run(string(method), func(t *ldtest.T) {
+								dataSource, configurers := c.setupDataSources(t, nil)
 
-						streamURI := strings.TrimSuffix(dataSource.Endpoint().BaseURL(), "/")
-						if trailingSlash {
-							streamURI += "/"
+								streamURI := strings.TrimSuffix(dataSource.Endpoint().BaseURL(), "/")
+								if trailingSlash {
+									streamURI += "/"
+								}
+
+								_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
+									append(configurers,
+										WithStreamingConfig(servicedef.SDKConfigStreamingParams{
+											BaseURI: streamURI,
+											Filter:  filter.Maybe,
+										}),
+										c.withFlagRequestMethod(method),
+									)...)...)
+
+								request := dataSource.Endpoint().RequireConnection(t, time.Second)
+								m.In(t).For("request path").Assert(request.URL.Path, pathMatcher(method))
+								m.In(t).For("filter key").Assert(request.URL.RawQuery, filter.Matcher())
+							})
 						}
-
-						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
-							append(configurers,
-								WithStreamingConfig(servicedef.SDKConfigStreamingParams{
-									BaseURI: streamURI,
-								}),
-								c.withFlagRequestMethod(method),
-							)...)...)
-
-						request := dataSource.Endpoint().RequireConnection(t, time.Second)
-						m.In(t).For("request path").Assert(request.URL.Path, pathMatcher(method))
 					})
 				}
 			})
