@@ -35,26 +35,41 @@ func (c CommonPollingTests) RequestMethodAndHeaders(t *ldtest.T, credential stri
 
 func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagRequestMethod) m.Matcher) {
 	t.Run("URL path is computed correctly", func(t *ldtest.T) {
-		for _, trailingSlash := range []bool{false, true} {
-			t.Run(h.IfElse(trailingSlash, "base URI has a trailing slash", "base URI has no trailing slash"), func(t *ldtest.T) {
-				for _, method := range c.availableFlagRequestMethods() {
-					t.Run(string(method), func(t *ldtest.T) {
-						dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
+		for _, filter := range c.environmentFilters() {
+			t.Run(h.IfElse(filter.IsDefined(), filter.String(), "no environment filter"), func(t *ldtest.T) {
+				// The environment filtering feature is only tested on server-side SDKs that support
+				// the "filtering" capability. All other SDKs should be tested against the
+				// "no filter" scenario (!filter.IsDefined()), since that was the default functionality
+				// previous to the introduction of filtering.
+				if filter.IsDefined() {
+					t.RequireCapability(servicedef.CapabilityFiltering)
+					t.RequireCapability(servicedef.CapabilityServerSide)
+				}
+				for _, trailingSlash := range []bool{false, true} {
+					t.Run(h.IfElse(trailingSlash, "base URI has a trailing slash",
+						"base URI has no trailing slash"), func(t *ldtest.T) {
+						for _, method := range c.availableFlagRequestMethods() {
+							t.Run(string(method), func(t *ldtest.T) {
+								dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
 
-						pollURI := strings.TrimSuffix(dataSource.Endpoint().BaseURL(), "/")
-						if trailingSlash {
-							pollURI += "/"
+								pollURI := strings.TrimSuffix(dataSource.Endpoint().BaseURL(), "/")
+								if trailingSlash {
+									pollURI += "/"
+								}
+
+								_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
+									c.withFlagRequestMethod(method),
+									WithPollingConfig(servicedef.SDKConfigPollingParams{
+										BaseURI: pollURI,
+										Filter:  filter.Maybe,
+									}),
+								)...)
+
+								request := dataSource.Endpoint().RequireConnection(t, time.Second)
+								m.In(t).For("request path").Assert(request.URL.Path, pathMatcher(method))
+								m.In(t).For("filter key").Assert(request.URL.RawQuery, filter.Matcher())
+							})
 						}
-
-						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
-							c.withFlagRequestMethod(method),
-							WithPollingConfig(servicedef.SDKConfigPollingParams{
-								BaseURI: pollURI,
-							}),
-						)...)
-
-						request := dataSource.Endpoint().RequireConnection(t, time.Second)
-						m.In(t).For("request path").Assert(request.URL.Path, pathMatcher(method))
 					})
 				}
 			})
