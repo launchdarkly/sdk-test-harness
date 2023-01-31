@@ -32,11 +32,13 @@ type SDKConfigServiceEndpointsParams struct {
 type SDKConfigStreamingParams struct {
 	BaseURI             string                              `json:"baseUri,omitempty"`
 	InitialRetryDelayMS o.Maybe[ldtime.UnixMillisecondTime] `json:"initialRetryDelayMs,omitempty"`
+	Filter              o.Maybe[string]                     `json:"filter,omitempty"`
 }
 
 type SDKConfigPollingParams struct {
 	BaseURI        string                              `json:"baseUri,omitempty"`
 	PollIntervalMS o.Maybe[ldtime.UnixMillisecondTime] `json:"pollIntervalMs,omitempty"`
+	Filter         o.Maybe[string]                     `json:"filter,omitempty"`
 }
 
 type SDKConfigEventParams struct {
