@@ -1,6 +1,8 @@
 package sdktests
 
 import (
+	"fmt"
+
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
@@ -37,6 +39,36 @@ const (
 	flagRequestGET    flagRequestMethod = "GET"
 	flagRequestREPORT flagRequestMethod = "REPORT"
 )
+
+// Represents a key identifying a filtered environment. This key is passed into
+// SDKs when configuring the polling or streaming data source, and should be
+// appended to the end of streaming/polling requests as a URL query parameter
+// named "filter".
+//
+// Example: "foo" -> "?filter=foo"
+type environmentFilter struct {
+	o.Maybe[string]
+}
+
+// String returns a human-readable representation of the filter key,
+// suitable for test output.
+func (p environmentFilter) String() string {
+	return fmt.Sprintf("environment_filter_key=\"%s\"", p.Value())
+}
+
+// Matcher checks that if the filter is present, the query parameter map contains a parameter
+// named "filter" with its value.
+// If the filter is not present, it checks that the query parameter map *does not* contain
+// a parameter named "filter".
+func (p environmentFilter) Matcher() m.Matcher {
+	hasFilter := m.MapIncluding(
+		m.KV("filter", m.Equal(p.Value())),
+	)
+	if !p.IsDefined() {
+		hasFilter = m.Not(hasFilter)
+	}
+	return UniqueQueryParameters().Should(hasFilter)
+}
 
 func newCommonTestsBase(t *ldtest.T, testName string, baseSDKConfigurers ...SDKConfigurer) commonTestsBase {
 	c := commonTestsBase{
@@ -75,6 +107,16 @@ func (c commonTestsBase) availableFlagRequestMethods() []flagRequestMethod {
 		return []flagRequestMethod{flagRequestGET, flagRequestREPORT}
 	}
 	return []flagRequestMethod{flagRequestGET}
+}
+
+// Returns a set of environment filters for testing, along with a filter representing
+// "no filter".
+func (c commonTestsBase) environmentFilters() []environmentFilter {
+	return []environmentFilter{
+		{o.None[string]()},
+		{o.Some("encoding_not_necessary")},
+		{o.Some("encoding necessary +! %& ( )")},
+	}
 }
 
 func (c commonTestsBase) withFlagRequestMethod(method flagRequestMethod) SDKConfigurer {
