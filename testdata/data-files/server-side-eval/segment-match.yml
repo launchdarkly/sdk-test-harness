@@ -42,6 +42,14 @@ sdkData:
           clauses:
             - { attribute: "", op: "segmentMatch", values: [ "segment99" ]}
 
+    flag-using-segment3:
+      <<: *boolean_flag_base
+      rules:
+        - id: ruleid
+          variation: 0
+          clauses:
+            - { attribute: "", op: "segmentMatch", values: [ "segment3" ]}
+
   segments:
     segment1:
       included: [ "user-included-in-segment" ]
@@ -54,6 +62,16 @@ sdkData:
       rules:
         - clauses:
             - { attribute: "segment2RuleShouldMatch", op: "in", values: [ true ] }
+
+    segment3:
+      salt: salty
+      rules:
+        - id: ruleid
+          clauses:
+            - { attribute: "segment3RuleShouldMatch", op: "in", values: [ true ] }
+          #Bucket value for segment3.salty.user-key + 5
+          #The value will be 36563 for segment3.salty.unmatching-key
+          weight: 14955
 
 evaluations:
   - name: user matches via include
@@ -94,3 +112,17 @@ evaluations:
     user:
       key: "user-key"
     expect: <IS_NOT_MATCH>
+
+  - name: key does not bucket into segment
+    flagKey: flag-using-segment3
+    user:
+      key: "unmatching-key"
+      custom: { "segment3RuleShouldMatch": true }
+    expect: <IS_NOT_MATCH>
+
+  - name: key does bucket into segment
+    flagKey: flag-using-segment3
+    user:
+      key: "user-key"
+      custom: { "segment3RuleShouldMatch": true }
+    expect: <IS_MATCH>
