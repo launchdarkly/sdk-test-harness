@@ -44,7 +44,7 @@ sdkData:
       variations: [ <TYPE_VALUE_OFF>, <TYPE_VALUE_1>, <TYPE_VALUE_2>, <TYPE_VALUE_FALLTHROUGH> ]
       offVariation: 0
       fallthrough: { variation: 3 }
-    
+
     on-flag:
       on: true
       variations: [ <TYPE_VALUE_OFF>, <TYPE_VALUE_1>, <TYPE_VALUE_2>, <TYPE_VALUE_FALLTHROUGH> ]
@@ -53,6 +53,19 @@ sdkData:
       targets:
         - { variation: 1, values: [ "key1" ] }
         - { variation: 2, values: [ "key2" ] }
+
+    flag-targets-match-before-rules:
+      on: true
+      variations: [ <TYPE_VALUE_OFF>, <TYPE_VALUE_FALLTHROUGH>, <TYPE_VALUE_1>, <TYPE_VALUE_2> ]
+      offVariation: 0
+      fallthrough: { variation: 1 }
+      targets:
+        - { variation: 2, values: [ "key1" ] }
+      rules:
+        - id: rule1
+          variation: 3
+          clauses:
+            - { "attribute": "key", "op": "in", "values": [ "key1" ] }
 
 evaluations:
   - name: off
