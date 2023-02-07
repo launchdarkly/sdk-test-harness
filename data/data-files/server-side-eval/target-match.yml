@@ -75,7 +75,7 @@ sdkData:
         - { contextKind: "user", variation: 2 }
         - { contextKind: "user", variation: 3 }
 
-    flag-with-targets-exclude-rules:
+    flag-targets-match-before-rules:
       on: true
       variations: [ <VALUE_OFF>, <VALUE_FALLTHROUGH>, <VALUE_A>, <VALUE_B> ]
       offVariation: 0
@@ -224,7 +224,7 @@ evaluations:
     expect: <IS_OFF>
 
   - name: target matching takes precedence over rules
-    flagKey: flag-with-targets-exclude-rules
+    flagKey: flag-targets-match-before-rules
     context: { "kind": "user", "key": "key1" }
     default: <VALUE_DEFAULT>
     expect: <IS_MATCH_A>
