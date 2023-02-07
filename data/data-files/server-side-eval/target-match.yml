@@ -75,6 +75,19 @@ sdkData:
         - { contextKind: "user", variation: 2 }
         - { contextKind: "user", variation: 3 }
 
+    flag-targets-match-before-rules:
+      on: true
+      variations: [ <VALUE_OFF>, <VALUE_FALLTHROUGH>, <VALUE_A>, <VALUE_B> ]
+      offVariation: 0
+      fallthrough: { variation: 1 }
+      targets:
+        - { variation: 2, values: [ "key1" ] }
+      rules:
+        - id: rule1
+          variation: 3
+          clauses:
+            - { "attribute": "key", "op": "in", "values": [ "key1" ] }
+
 evaluations:
   - name: user targets only, match user 1
     flagKey: flag-with-targets
@@ -209,3 +222,9 @@ evaluations:
     context: { "kind": "user", "key": "key1" }
     default: <VALUE_DEFAULT>
     expect: <IS_OFF>
+
+  - name: target matching takes precedence over rules
+    flagKey: flag-targets-match-before-rules
+    context: { "kind": "user", "key": "key1" }
+    default: <VALUE_DEFAULT>
+    expect: <IS_MATCH_A>

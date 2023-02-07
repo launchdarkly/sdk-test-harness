@@ -44,7 +44,7 @@ sdkData:
       variations: [ <TYPE_VALUE_OFF>, <TYPE_VALUE_1>, <TYPE_VALUE_2>, <TYPE_VALUE_FALLTHROUGH> ]
       offVariation: 0
       fallthrough: { variation: 3 }
-    
+
     on-flag:
       on: true
       variations: [ <TYPE_VALUE_OFF>, <TYPE_VALUE_1>, <TYPE_VALUE_2>, <TYPE_VALUE_FALLTHROUGH> ]
