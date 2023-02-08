@@ -54,19 +54,6 @@ sdkData:
         - { variation: 1, values: [ "key1" ] }
         - { variation: 2, values: [ "key2" ] }
 
-    flag-targets-match-before-rules:
-      on: true
-      variations: [ <TYPE_VALUE_OFF>, <TYPE_VALUE_FALLTHROUGH>, <TYPE_VALUE_1>, <TYPE_VALUE_2> ]
-      offVariation: 0
-      fallthrough: { variation: 1 }
-      targets:
-        - { variation: 2, values: [ "key1" ] }
-      rules:
-        - id: rule1
-          variation: 3
-          clauses:
-            - { "attribute": "key", "op": "in", "values": [ "key1" ] }
-
 evaluations:
   - name: off
     flagKey: off-flag
@@ -116,6 +103,3 @@ evaluations:
     expect:
       value: <TYPE_DEFAULT>
       reason: { "kind": "ERROR", "errorKind": "FLAG_NOT_FOUND" }
-      value: <TYPE_VALUE_FALLTHROUGH>
-      variationIndex: 1
-      reason: { "kind": "FALLTHROUGH" }
