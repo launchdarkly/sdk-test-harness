@@ -1,105 +1,106 @@
 ---
-name: variation value types (<TYPE_NAME>)
-
-parameters:
-  - TYPE_NAME: bool
-    TYPE_VALUE_OFF: false
-    TYPE_VALUE_FALLTHROUGH: false
-    TYPE_VALUE_1: true
-    TYPE_VALUE_2: false
-    TYPE_DEFAULT: false
-
-  - TYPE_NAME: int
-    TYPE_VALUE_OFF: -100
-    TYPE_VALUE_FALLTHROUGH: -101
-    TYPE_VALUE_1: 1
-    TYPE_VALUE_2: 2
-    TYPE_DEFAULT: -1
-
-  - TYPE_NAME: double
-    TYPE_VALUE_OFF: -100
-    TYPE_VALUE_FALLTHROUGH: -101
-    TYPE_VALUE_1: 1.5
-    TYPE_VALUE_2: 2.5
-    TYPE_DEFAULT: 0.5
-
-  - TYPE_NAME: string
-    TYPE_VALUE_OFF: "off"
-    TYPE_VALUE_FALLTHROUGH: "fall"
-    TYPE_VALUE_1: "a"
-    TYPE_VALUE_2: "b"
-    TYPE_DEFAULT: "default"
-
-  - TYPE_NAME: any
-    TYPE_VALUE_OFF: "off"
-    TYPE_VALUE_FALLTHROUGH: "fall"
-    TYPE_VALUE_1: 3
-    TYPE_VALUE_2: "b"
-    TYPE_DEFAULT: false
-
-sdkData:
-  flags:
-    off-flag:
-      on: false
-      variations: [ <TYPE_VALUE_OFF>, <TYPE_VALUE_1>, <TYPE_VALUE_2>, <TYPE_VALUE_FALLTHROUGH> ]
-      offVariation: 0
-      fallthrough: { variation: 3 }
-
-    on-flag:
-      on: true
-      variations: [ <TYPE_VALUE_OFF>, <TYPE_VALUE_1>, <TYPE_VALUE_2>, <TYPE_VALUE_FALLTHROUGH> ]
-      offVariation: 0
-      fallthrough: { variation: 3 }
-      targets:
-        - { variation: 1, values: [ "key1" ] }
-        - { variation: 2, values: [ "key2" ] }
-
-evaluations:
-  - name: off
-    flagKey: off-flag
-    context: { kind: "user", key: "key1" }
-    valueType: <TYPE_NAME>
-    default: <TYPE_DEFAULT>
-    expect:
-      value: <TYPE_VALUE_OFF>
-      variationIndex: 0
-      reason: { "kind": "OFF" }
-
-  - name: fallthrough
-    flagKey: on-flag
-    context: { kind: "user", key: "key99" }
-    valueType: <TYPE_NAME>
-    default: <TYPE_DEFAULT>
-    expect:
-      value: <TYPE_VALUE_FALLTHROUGH>
-      variationIndex: 3
-      reason: { "kind": "FALLTHROUGH" }
-
-  - name: match variation 1
-    flagKey: on-flag
-    context: { kind: "user", key: "key1" }
-    valueType: <TYPE_NAME>
-    default: <TYPE_DEFAULT>
-    expect:
-      value: <TYPE_VALUE_1>
-      variationIndex: 1
-      reason: { "kind": "TARGET_MATCH" }
-
-  - name: match variation 2
-    flagKey: on-flag
-    context: { kind: "user", key: "key2" }
-    valueType: <TYPE_NAME>
-    default: <TYPE_DEFAULT>
-    expect:
-      value: <TYPE_VALUE_2>
-      variationIndex: 2
-      reason: { "kind": "TARGET_MATCH" }
-
-  - name: default
-    flagKey: unknown-flag
-    context: { kind: "user", key: "key2" }
-    valueType: <TYPE_NAME>
-    default: <TYPE_DEFAULT>
-    expect:
-      value: <TYPE_DEFAULT>
-      reason: { "kind": "ERROR", "errorKind": "FLAG_NOT_FOUND" }
+  name: variation value types (<TYPE_NAME>)
+  
+  parameters:
+    - TYPE_NAME: bool
+      TYPE_VALUE_OFF: false
+      TYPE_VALUE_FALLTHROUGH: false
+      TYPE_VALUE_1: true
+      TYPE_VALUE_2: false
+      TYPE_DEFAULT: false
+  
+    - TYPE_NAME: int
+      TYPE_VALUE_OFF: -100
+      TYPE_VALUE_FALLTHROUGH: -101
+      TYPE_VALUE_1: 1
+      TYPE_VALUE_2: 2
+      TYPE_DEFAULT: -1
+  
+    - TYPE_NAME: double
+      TYPE_VALUE_OFF: -100
+      TYPE_VALUE_FALLTHROUGH: -101
+      TYPE_VALUE_1: 1.5
+      TYPE_VALUE_2: 2.5
+      TYPE_DEFAULT: 0.5
+  
+    - TYPE_NAME: string
+      TYPE_VALUE_OFF: "off"
+      TYPE_VALUE_FALLTHROUGH: "fall"
+      TYPE_VALUE_1: "a"
+      TYPE_VALUE_2: "b"
+      TYPE_DEFAULT: "default"
+  
+    - TYPE_NAME: any
+      TYPE_VALUE_OFF: "off"
+      TYPE_VALUE_FALLTHROUGH: "fall"
+      TYPE_VALUE_1: 3
+      TYPE_VALUE_2: "b"
+      TYPE_DEFAULT: false
+  
+  sdkData:
+    flags:
+      off-flag:
+        on: false
+        variations: [ <TYPE_VALUE_OFF>, <TYPE_VALUE_1>, <TYPE_VALUE_2>, <TYPE_VALUE_FALLTHROUGH> ]
+        offVariation: 0
+        fallthrough: { variation: 3 }
+  
+      on-flag:
+        on: true
+        variations: [ <TYPE_VALUE_OFF>, <TYPE_VALUE_1>, <TYPE_VALUE_2>, <TYPE_VALUE_FALLTHROUGH> ]
+        offVariation: 0
+        fallthrough: { variation: 3 }
+        targets:
+          - { variation: 1, values: [ "key1" ] }
+          - { variation: 2, values: [ "key2" ] }
+  
+  evaluations:
+    - name: off
+      flagKey: off-flag
+      context: { kind: "user", key: "key1" }
+      valueType: <TYPE_NAME>
+      default: <TYPE_DEFAULT>
+      expect:
+        value: <TYPE_VALUE_OFF>
+        variationIndex: 0
+        reason: { "kind": "OFF" }
+  
+    - name: fallthrough
+      flagKey: on-flag
+      context: { kind: "user", key: "key99" }
+      valueType: <TYPE_NAME>
+      default: <TYPE_DEFAULT>
+      expect:
+        value: <TYPE_VALUE_FALLTHROUGH>
+        variationIndex: 3
+        reason: { "kind": "FALLTHROUGH" }
+  
+    - name: match variation 1
+      flagKey: on-flag
+      context: { kind: "user", key: "key1" }
+      valueType: <TYPE_NAME>
+      default: <TYPE_DEFAULT>
+      expect:
+        value: <TYPE_VALUE_1>
+        variationIndex: 1
+        reason: { "kind": "TARGET_MATCH" }
+  
+    - name: match variation 2
+      flagKey: on-flag
+      context: { kind: "user", key: "key2" }
+      valueType: <TYPE_NAME>
+      default: <TYPE_DEFAULT>
+      expect:
+        value: <TYPE_VALUE_2>
+        variationIndex: 2
+        reason: { "kind": "TARGET_MATCH" }
+  
+    - name: default
+      flagKey: unknown-flag
+      context: { kind: "user", key: "key2" }
+      valueType: <TYPE_NAME>
+      default: <TYPE_DEFAULT>
+      expect:
+        value: <TYPE_DEFAULT>
+        reason: { "kind": "ERROR", "errorKind": "FLAG_NOT_FOUND" }
+  
