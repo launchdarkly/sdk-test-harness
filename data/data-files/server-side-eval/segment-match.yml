@@ -179,14 +179,16 @@ evaluations:
 
   - name: key does not bucket into segment
     flagKey: flag-using-segment3
-    user:
-      key: "unmatching-key"
-      custom: { "segment3RuleShouldMatch": true }
+    context:
+      key: unmatching-key
+      kind: user
+      segment3RuleShouldMatch: true
     expect: <IS_NOT_MATCH>
 
   - name: key does bucket into segment
     flagKey: flag-using-segment3
-    user:
-      key: "user-key"
-      custom: { "segment3RuleShouldMatch": true }
+    context:
+      kind: user
+      key: user-key
+      segment3RuleShouldMatch: true
     expect: <IS_MATCH>
