@@ -17,6 +17,8 @@ const (
 	StreamingPathServerSide      = "/all"
 	StreamingPathMobileGet       = "/meval/{user}"
 	StreamingPathMobileReport    = "/meval"
+	StreamingPathRokuHandshake   = "/handshake"
+	StreamingPathRokuEvaluate    = "/mevalalternate"
 	StreamingPathJSClientGet     = "/eval/{env}/{user}"
 	StreamingPathJSClientReport  = "/eval/{env}"
 	StreamingPathUserBase64Param = "{user}"
@@ -80,6 +82,12 @@ func NewStreamingService(
 	switch sdkKind {
 	case ServerSideSDK:
 		router.HandleFunc(StreamingPathServerSide, streamHandler).Methods("GET")
+	case RokuSDK:
+		rokuHandler := RokuServer{}
+
+		router.Path(StreamingPathRokuHandshake).Methods("POST").HandlerFunc(rokuHandler.ServeHandshake)
+		router.Path(StreamingPathRokuEvaluate).Methods("POST").Handler(rokuHandler.Wrap(s))
+		fallthrough
 	case MobileSDK:
 		router.HandleFunc(StreamingPathMobileGet, streamHandler).Methods("GET")
 		router.HandleFunc(StreamingPathMobileReport, streamHandler).Methods("REPORT")
