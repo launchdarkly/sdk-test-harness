@@ -48,6 +48,8 @@ func NewPollingService(
 	switch sdkKind {
 	case ServerSideSDK:
 		router.Handle(PollingPathServerSide, pollHandler).Methods("GET")
+	case RokuSDK:
+		fallthrough
 	case MobileSDK:
 		router.Handle(PollingPathMobileGet, pollHandler).Methods("GET")
 		router.Handle(PollingPathMobileReport, pollHandler).Methods("REPORT")

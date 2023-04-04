@@ -40,6 +40,8 @@ func (c CommonStreamingTests) setupDataSources(
 	case mockld.ServerSideSDK:
 		break
 
+	case mockld.RokuSDK:
+		fallthrough
 	case mockld.MobileSDK:
 		emptyPollingDataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
 		configurers = append(configurers, emptyPollingDataSource)

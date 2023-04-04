@@ -26,6 +26,8 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 
 	requestPathMatcher := func(method flagRequestMethod) m.Matcher {
 		switch sdkKind {
+		case mockld.RokuSDK:
+			panic("invalid SDK kind")
 		case mockld.MobileSDK:
 			mobileGetPathPrefix := strings.TrimSuffix(mockld.StreamingPathMobileGet, mockld.StreamingPathUserBase64Param)
 			return h.IfElse(method == flagRequestREPORT,
@@ -50,7 +52,7 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 	}
 	streamTests.RequestURLPath(t, requestPathMatcher)
 
-	getPath := h.IfElse(sdkKind == mockld.MobileSDK,
+	getPath := h.IfElse(sdkKind == mockld.MobileSDK || sdkKind == mockld.RokuSDK,
 		mockld.StreamingPathMobileGet,
 		strings.ReplaceAll(mockld.StreamingPathJSClientGet, mockld.PollingPathEnvIDParam, envIDOrMobileKey))
 	streamTests.RequestUserProperties(t, getPath)

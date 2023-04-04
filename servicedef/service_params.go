@@ -8,6 +8,7 @@ const (
 	CapabilityStronglyTyped = "strongly-typed"
 	CapabilityMobile        = "mobile"
 	CapabilityPHP           = "php"
+	CapabilityRoku          = "roku"
 	CapabilitySingleton     = "singleton"
 
 	CapabilityAllFlagsWithReasons                = "all-flags-with-reasons"

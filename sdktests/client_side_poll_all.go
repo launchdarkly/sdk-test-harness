@@ -25,6 +25,8 @@ func doClientSidePollRequestTest(t *ldtest.T) {
 
 	requestPathMatcher := func(method flagRequestMethod) m.Matcher {
 		switch sdkKind {
+		case mockld.RokuSDK:
+			fallthrough
 		case mockld.MobileSDK:
 			mobileGetPathPrefix := strings.TrimSuffix(mockld.PollingPathMobileGet, mockld.PollingPathUserBase64Param)
 			return h.IfElse(method == flagRequestREPORT,
@@ -48,7 +50,7 @@ func doClientSidePollRequestTest(t *ldtest.T) {
 	}
 	pollTests.RequestURLPath(t, requestPathMatcher)
 
-	getPath := h.IfElse(sdkKind == mockld.MobileSDK,
+	getPath := h.IfElse(sdkKind == mockld.MobileSDK || sdkKind == mockld.RokuSDK,
 		mockld.PollingPathMobileGet,
 		strings.ReplaceAll(mockld.PollingPathJSClientGet, mockld.PollingPathEnvIDParam, envIDOrMobileKey))
 	pollTests.RequestUserProperties(t, getPath)
