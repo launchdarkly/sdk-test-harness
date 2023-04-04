@@ -29,6 +29,11 @@ func RunSDKTestSuite(
 		fmt.Println("Running server-side SDK test suite")
 		sdkKind = mockld.ServerSideSDK
 		importantCapabilities = allImportantServerSideCapabilities()
+	case capabilities.Has(servicedef.CapabilityClientSide) &&
+		capabilities.Has(servicedef.CapabilityMobile) &&
+		capabilities.Has(servicedef.CapabilityRoku):
+		fmt.Println("Running client-side (roku) SDK test suite")
+		sdkKind = mockld.RokuSDK
 	case capabilities.Has(servicedef.CapabilityClientSide) && capabilities.Has(servicedef.CapabilityMobile):
 		fmt.Println("Running client-side (mobile) SDK test suite")
 		sdkKind = mockld.MobileSDK

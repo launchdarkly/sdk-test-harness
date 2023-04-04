@@ -46,6 +46,8 @@ func NewEventsService(sdkKind SDKKind, logger framework.Logger) *EventsService {
 	case ServerSideSDK, PHPSDK:
 		router.HandleFunc("/bulk", s.postEvents).Methods("POST")
 		router.HandleFunc("/diagnostic", s.postDiagnosticEvent).Methods("POST")
+	case RokuSDK:
+		fallthrough
 	case MobileSDK:
 		router.HandleFunc("/mobile", s.postEvents).Methods("POST")
 		router.HandleFunc("/mobile/events", s.postEvents).Methods("POST")
