@@ -22,6 +22,7 @@ const (
 	MobileSDK     SDKKind = "mobile"
 	JSClientSDK   SDKKind = "jsclient"
 	PHPSDK        SDKKind = "php"
+	RokuSDK       SDKKind = "roku"
 )
 
 func (k SDKKind) IsServerSide() bool {
