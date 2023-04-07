@@ -2,6 +2,12 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [1.14.0] - 2023-04-07
+### Added:
+- Added a test to ensure targets take precedence over rules in the evaluation algorithm.
+- Added support for Roku SDK alternative endpoints.
+- Expanded coverage for existing segment tests.
+
 ## [1.13.0] - 2023-01-31
 ### Added:
 - Server-side tests for environment filtering feature, under capability "filtering".
