@@ -1,8 +1,8 @@
 version: 2
 
 branches:
-  - main
-  - v2
+  - name: main
+  - name: v2
   
 jobs:
   - docker:
