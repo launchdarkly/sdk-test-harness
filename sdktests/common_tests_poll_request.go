@@ -37,11 +37,11 @@ func (c CommonPollingTests) RequestMethodAndHeaders(t *ldtest.T, credential stri
 }
 
 func (c CommonPollingTests) LargePayloads(t *ldtest.T) {
-	flags := make([]ldmodel.FeatureFlag, 100)
-	for i := 0; i < 100; i++ {
+	flags := make([]ldmodel.FeatureFlag, 1000)
+	for i := 0; i < 1000; i++ {
 		flag := ldmodel.FeatureFlag{
 			Key:          fmt.Sprintf("flag-key-%d", i),
-			On:           i == 99,
+			On:           i == 999,
 			Variations:   []ldvalue.Value{ldvalue.String("fallthrough"), ldvalue.String("off"), ldvalue.String("default")},
 			OffVariation: ldvalue.NewOptionalInt(1),
 			Fallthrough: ldmodel.VariationOrRollout{
@@ -71,7 +71,7 @@ func (c CommonPollingTests) LargePayloads(t *ldtest.T) {
 		}
 
 		resp = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
-			FlagKey:      "flag-key-99",
+			FlagKey:      "flag-key-999",
 			ValueType:    servicedef.ValueTypeString,
 			Context:      o.Some(ldcontext.New("user-key")),
 			DefaultValue: ldvalue.String("default"),
