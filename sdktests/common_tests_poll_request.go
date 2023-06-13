@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldmodel"
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
@@ -12,7 +14,6 @@ import (
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
-	"github.com/stretchr/testify/require"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
