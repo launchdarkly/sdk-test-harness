@@ -5,6 +5,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
+	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldmodel"
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
@@ -13,6 +16,7 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
 
@@ -29,6 +33,53 @@ func (c CommonPollingTests) RequestMethodAndHeaders(t *ldtest.T, credential stri
 				m.In(t).For("request method").Assert(request.Method, m.Equal(string(method)))
 				m.In(t).For("request headers").Assert(request.Headers, c.authorizationHeaderMatcher(credential))
 			})
+		}
+	})
+}
+
+func (c CommonPollingTests) LargePayloads(t *ldtest.T) {
+	flags := make([]ldmodel.FeatureFlag, 1000)
+	for i := 0; i < 1000; i++ {
+		flag := ldmodel.FeatureFlag{
+			Key:          fmt.Sprintf("flag-key-%d", i),
+			On:           i == 999,
+			Variations:   []ldvalue.Value{ldvalue.String("fallthrough"), ldvalue.String("off"), ldvalue.String("default")},
+			OffVariation: ldvalue.NewOptionalInt(1),
+			Fallthrough: ldmodel.VariationOrRollout{
+				Variation: ldvalue.NewOptionalInt(0),
+			},
+		}
+		flags = append(flags, flag)
+	}
+
+	sdkData := mockld.NewServerSDKDataBuilder().Flag(flags...).Build()
+	dataSource := NewSDKDataSource(t, sdkData, DataSourceOptionPolling())
+
+	t.Run("large payloads", func(t *ldtest.T) {
+		client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource)...)
+
+		dataSource.Endpoint().RequireConnection(t, time.Second)
+
+		resp := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+			FlagKey:      "flag-key-0",
+			ValueType:    servicedef.ValueTypeString,
+			Context:      o.Some(ldcontext.New("user-key")),
+			DefaultValue: ldvalue.String("default"),
+		})
+
+		if !m.In(t).Assert(ldvalue.String("off"), m.JSONEqual(resp.Value)) {
+			require.Fail(t, "evaluation unexpectedly returned wrong value")
+		}
+
+		resp = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+			FlagKey:      "flag-key-999",
+			ValueType:    servicedef.ValueTypeString,
+			Context:      o.Some(ldcontext.New("user-key")),
+			DefaultValue: ldvalue.String("default"),
+		})
+
+		if !m.In(t).Assert(ldvalue.String("fallthrough"), m.JSONEqual(resp.Value)) {
+			require.Fail(t, "evaluation unexpectedly returned wrong value")
 		}
 	})
 }
