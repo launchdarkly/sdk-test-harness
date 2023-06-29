@@ -10,7 +10,6 @@ import (
 )
 
 func (c CommonEventTests) AutoEnvAttributesNoCollisions(t *ldtest.T) {
-
 	dataSource := NewSDKDataSource(t, nil)
 	contextFactories := data.NewContextFactoriesForSingleAndMultiKind(c.contextFactory.Prefix())
 
@@ -77,7 +76,6 @@ func (c CommonEventTests) AutoEnvAttributesNoCollisions(t *ldtest.T) {
 }
 
 func (c CommonEventTests) AutoEnvAttributesCollisions(t *ldtest.T) {
-
 	dataSource := NewSDKDataSource(t, nil)
 
 	f1 := data.NewContextFactory(c.contextFactory.Prefix(), func(b *ldcontext.Builder) { b.Kind("ld_application") })
