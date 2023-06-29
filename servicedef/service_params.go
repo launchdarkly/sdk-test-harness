@@ -1,6 +1,6 @@
 package servicedef
 
-import "github.com/launchdarkly/sdk-test-harness/framework/harness"
+import "github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 
 const (
 	CapabilityClientSide    = "client-side"
@@ -16,10 +16,12 @@ const (
 	CapabilityAllFlagsDetailsOnlyForTrackedFlags = "all-flags-details-only-for-tracked-flags"
 
 	CapabilityBigSegments       = "big-segments"
+	CapabilityContextType       = "context-type"
 	CapabilitySecureModeHash    = "secure-mode-hash"
 	CapabilityServerSidePolling = "server-side-polling"
 	CapabilityServiceEndpoints  = "service-endpoints"
 	CapabilityTags              = "tags"
+	CapabilityUserType          = "user-type"
 	CapabilityFiltering         = "filtering"
 )
 

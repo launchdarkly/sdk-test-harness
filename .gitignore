@@ -1,5 +1,6 @@
 .vscode/
 bin/
 dist/
-.idea
+.idea/
+
 sdk-test-harness

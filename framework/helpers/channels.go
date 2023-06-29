@@ -3,7 +3,7 @@ package helpers
 import (
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 )
 
 // NonBlockingSend is a shortcut for using select to do a non-blocking send. It returns

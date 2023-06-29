@@ -1,0 +1,120 @@
+---
+name: segment recursion
+
+constants:
+  IS_MATCH:
+    value: true
+    variationIndex: 0
+    reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "ruleid" }
+  IS_NOT_MATCH:
+    value: false
+    variationIndex: 1
+    reason: { kind: "FALLTHROUGH" }
+  boolean_flag_base: &boolean_flag_base
+    on: true
+    variations: [ true, false ]
+    offVariation: 1
+    fallthrough: { variation: 1 }
+
+parameters:
+  - NAME: simple single-level recursion
+    FLAG_USES_SEGMENT: recursive-segment-1
+    RECURSIVE_SEGMENT_1_USES: segment-that-always-matches
+    CONTEXT: { kind: "user", key: "user-key" }
+    EXPECT: <IS_MATCH>
+
+  - NAME: single level, two clauses in one rule, both match
+    FLAG_USES_SEGMENT: segment-requiring-both-of-two-segments
+    CONTEXT: { kind: "user", key: "user-key", "segment-with-rule-a-should-match": true, "segment-with-rule-b-should-match": true }
+    EXPECT: <IS_MATCH>
+
+  - NAME: single level, two clauses in one rule, one does not match
+    FLAG_USES_SEGMENT: segment-requiring-both-of-two-segments
+    CONTEXT: { kind: "user", key: "user-key", "segment-with-rule-a-should-match": false, "segment-with-rule-b-should-match": true }
+    EXPECT: <IS_NOT_MATCH>
+
+  - NAME: single level, two rules, one does not match
+    FLAG_USES_SEGMENT: segment-requiring-either-of-two-segments
+    CONTEXT: { kind: "user", key: "user-key", "segment-with-rule-a-should-match": false, "segment-with-rule-b-should-match": true }
+    EXPECT: <IS_MATCH>
+
+  - NAME: cycle is detected at top level, recursion stops
+    FLAG_USES_SEGMENT: recursive-segment-1
+    RECURSIVE_SEGMENT_1_USES: recursive-segment-2
+    RECURSIVE_SEGMENT_2_USES: recursive-segment-3
+    RECURSIVE_SEGMENT_3_USES: recursive-segment-1
+    CONTEXT: { kind: "user", key: "user-key" }
+    EXPECT:
+      value: false
+      reason: { kind: "ERROR", errorKind: "MALFORMED_FLAG" }
+
+  - NAME: cycle is detected below top level, recursion stops
+    FLAG_USES_SEGMENT: recursive-segment-1
+    RECURSIVE_SEGMENT_1_USES: recursive-segment-2
+    RECURSIVE_SEGMENT_2_USES: recursive-segment-3
+    RECURSIVE_SEGMENT_3_USES: recursive-segment-2
+    CONTEXT: { kind: "user", key: "user-key" }
+    EXPECT:
+      value: false
+      reason: { kind: "ERROR", errorKind: "MALFORMED_FLAG" }
+
+sdkData:
+  flags:
+    flag-using-segment:
+      <<: *boolean_flag_base
+      rules:
+        - id: ruleid
+          variation: 0
+          clauses:
+            - { attribute: "", op: "segmentMatch", values: [ "<FLAG_USES_SEGMENT>" ]}
+
+  segments:
+    recursive-segment-1:
+      rules:
+        - clauses:
+            - { op: "segmentMatch", values: [ "<RECURSIVE_SEGMENT_1_USES>" ] }
+
+    recursive-segment-2:
+      rules:
+        - clauses:
+            - { op: "segmentMatch", values: [ "<RECURSIVE_SEGMENT_2_USES>" ] }
+
+    recursive-segment-3:
+      rules:
+        - clauses:
+            - { op: "segmentMatch", values: [ "<RECURSIVE_SEGMENT_3_USES>" ] }
+
+    segment-that-always-matches:
+      rules:
+        - clauses:
+            - { attribute: "key", op: "in", values: [ "" ], negate: true }
+
+    segment-with-rule-a:
+      rules:
+        - clauses:
+            - { attribute: "segment-with-rule-a-should-match", op: "in", values: [ true ] }
+
+    segment-with-rule-b:
+      rules:
+        - clauses:
+            - { attribute: "segment-with-rule-b-should-match", op: "in", values: [ true ] }
+
+    segment-requiring-both-of-two-segments:
+      rules:
+        - clauses:
+            - { op: "segmentMatch", values: [ "segment-with-rule-a" ] }
+            - { op: "segmentMatch", values: [ "segment-with-rule-b" ] }
+
+    segment-requiring-either-of-two-segments:
+      rules:
+        - clauses:
+            - { op: "segmentMatch", values: [ "segment-with-rule-a" ] }
+        - clauss:
+            - { op: "segmentMatch", values: [ "segment-with-rule-b" ] }
+
+evaluations:
+  - name: <NAME>
+    flagKey: flag-using-segment
+    context: <CONTEXT>
+    default: false
+    expect: <EXPECT>

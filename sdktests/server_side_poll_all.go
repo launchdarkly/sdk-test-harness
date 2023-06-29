@@ -1,9 +1,9 @@
 package sdktests
 
 import (
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
@@ -12,6 +12,7 @@ func doServerSidePollTests(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityServerSidePolling)
 
 	t.Run("requests", doServerSidePollRequestTests)
+	t.Run("payload", doServerSidePollPayloadTests)
 }
 
 func doServerSidePollRequestTests(t *ldtest.T) {
@@ -27,4 +28,15 @@ func doServerSidePollRequestTests(t *ldtest.T) {
 	pollTests.RequestURLPath(t, func(flagRequestMethod) m.Matcher {
 		return m.Equal(mockld.PollingPathServerSide)
 	})
+}
+
+func doServerSidePollPayloadTests(t *ldtest.T) {
+	sdkKey := "my-sdk-key"
+
+	pollTests := NewCommonPollingTests(t, "doServerSidePollPayloadTests",
+		WithConfig(servicedef.SDKConfigParams{
+			Credential: sdkKey,
+		}))
+
+	pollTests.LargePayloads(t)
 }

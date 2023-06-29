@@ -3,15 +3,14 @@ package sdktests
 import (
 	"time"
 
-	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/data"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
 
 	"github.com/stretchr/testify/require"
 )
@@ -23,35 +22,33 @@ import (
 // - There are no prerequisite events.
 
 func doClientSideFeatureEventTests(t *ldtest.T) {
-	flagValues := FlagValueByTypeFactory()
-	defaultValues := DefaultValueByTypeFactory()
-	user := NewUserFactory("doClientSideFeatureEventTests").NextUniqueUser()
+	valueFactories := data.MakeValueFactoriesBySDKValueType(2)
+	flagValues, defaultValues := valueFactories[0], valueFactories[1]
+	context := data.NewContextFactory("doClientSideFeatureEventTests").NextUniqueContext()
 	expectedReason := ldreason.NewEvalReasonFallthrough()
-	untrackedFlags := ClientSideFlagFactoryForValueTypes{
-		KeyPrefix:    "untracked-flag-",
-		ValueFactory: flagValues,
-		Reason:       expectedReason,
-	}
-	trackedFlags := ClientSideFlagFactoryForValueTypes{
-		KeyPrefix:      "tracked-flag-",
-		ValueFactory:   flagValues,
-		BuilderActions: func(f *mockld.ClientSDKFlagWithKey) { f.TrackEvents = true },
-		Reason:         expectedReason,
-	}
+	untrackedFlags := data.NewClientSideFlagFactory(
+		"untracked-flag",
+		flagValues,
+		data.ClientSideFlagShouldHaveEvalReason(expectedReason),
+	)
+	trackedFlags := data.NewClientSideFlagFactory(
+		"tracked-flag",
+		flagValues,
+		data.ClientSideFlagShouldHaveEvalReason(expectedReason),
+		data.ClientSideFlagShouldHaveFullEventTracking,
+	)
 
 	dataBuilder := mockld.NewClientSDKDataBuilder()
 	for _, valueType := range getValueTypesToTest(t) {
-		dataBuilder.FullFlag(untrackedFlags.ForType(valueType))
-		dataBuilder.FullFlag(trackedFlags.ForType(valueType))
+		dataBuilder.FullFlag(untrackedFlags.MakeFlagForValueType(valueType))
+		dataBuilder.FullFlag(trackedFlags.MakeFlagForValueType(valueType))
 	}
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
 
 	client := NewSDKClient(t,
-		WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-			InitialUser: user,
-		}),
+		WithClientSideInitialContext(context),
 		dataSource, events)
 
 	client.FlushEvents(t)
@@ -60,7 +57,7 @@ func doClientSideFeatureEventTests(t *ldtest.T) {
 	t.Run("only summary event for untracked flag", func(t *ldtest.T) {
 		for _, valueType := range getValueTypesToTest(t) {
 			t.Run(testDescFromType(valueType), func(t *ldtest.T) {
-				flag := untrackedFlags.ForType(valueType)
+				flag := untrackedFlags.ReuseFlagForValueType(valueType)
 
 				resp := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 					FlagKey:      flag.Key,
@@ -85,7 +82,7 @@ func doClientSideFeatureEventTests(t *ldtest.T) {
 	doFeatureEventTest := func(t *ldtest.T, withReason bool) {
 		for _, valueType := range getValueTypesToTest(t) {
 			t.Run(testDescFromType(valueType), func(t *ldtest.T) {
-				flag := trackedFlags.ForType(valueType)
+				flag := trackedFlags.ReuseFlagForValueType(valueType)
 				expectedValue := flag.Value
 				expectedVariation := flag.Variation
 				resp := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
@@ -103,7 +100,7 @@ func doClientSideFeatureEventTests(t *ldtest.T) {
 				client.FlushEvents(t)
 
 				matchFeatureEvent := IsValidFeatureEventWithConditions(
-					false, false, user,
+					false, context,
 					m.JSONProperty("key").Should(m.Equal(flag.Key)),
 					m.JSONProperty("version").Should(m.Equal(flag.Version)),
 					m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),
@@ -142,9 +139,9 @@ func doClientSideDebugEventTests(t *ldtest.T) {
 	// and the host that's running the test service are out of sync by at least an hour. However,
 	// in normal usage those are the same host.
 
-	flagValues := FlagValueByTypeFactory()
-	defaultValues := DefaultValueByTypeFactory()
-	users := NewUserFactory("doClientSideDebugEventTests")
+	valueFactories := data.MakeValueFactoriesBySDKValueType(2)
+	flagValues, defaultValues := valueFactories[0], valueFactories[1]
+	contexts := data.NewContextFactory("doClientSideDebugEventTests")
 	expectedReason := ldreason.NewEvalReasonFallthrough()
 
 	doDebugTest := func(
@@ -153,18 +150,16 @@ func doClientSideDebugEventTests(t *ldtest.T) {
 		flagDebugUntil time.Time,
 		lastKnownTimeFromLD time.Time,
 	) {
-		user := users.NextUniqueUser()
-		flags := ClientSideFlagFactoryForValueTypes{
-			KeyPrefix:    "flag",
-			ValueFactory: flagValues,
-			Reason:       expectedReason,
-			BuilderActions: func(f *mockld.ClientSDKFlagWithKey) {
-				f.DebugEventsUntilDate = o.Some(ldtime.UnixMillisFromTime(flagDebugUntil))
-			},
-		}
+		context := contexts.NextUniqueContext()
+		flags := data.NewClientSideFlagFactory(
+			"flag",
+			flagValues,
+			data.ClientSideFlagShouldHaveEvalReason(expectedReason),
+			data.ClientSideFlagShouldHaveDebuggingEnabledUntil(flagDebugUntil),
+		)
 		dataBuilder := mockld.NewClientSDKDataBuilder()
 		for _, valueType := range getValueTypesToTest(t) {
-			dataBuilder.FullFlag(flags.ForType(valueType))
+			dataBuilder.FullFlag(flags.MakeFlagForValueType(valueType))
 		}
 		dataSource := NewSDKDataSource(t, dataBuilder.Build())
 
@@ -174,9 +169,7 @@ func doClientSideDebugEventTests(t *ldtest.T) {
 		}
 
 		client := NewSDKClient(t,
-			WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-				InitialUser: user,
-			}),
+			WithClientSideInitialContext(context),
 			dataSource, events)
 
 		client.FlushEvents(t)
@@ -194,7 +187,7 @@ func doClientSideDebugEventTests(t *ldtest.T) {
 			t.Run(h.IfElse(withReasons, "with reasons", "without reasons"), func(t *ldtest.T) {
 				for _, valueType := range getValueTypesToTest(t) {
 					t.Run(testDescFromType(valueType), func(t *ldtest.T) {
-						flag := flags.ForType(valueType)
+						flag := flags.ReuseFlagForValueType(valueType)
 						result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 							FlagKey:      flag.Key,
 							ValueType:    valueType,
@@ -208,12 +201,12 @@ func doClientSideDebugEventTests(t *ldtest.T) {
 
 						if shouldSeeDebugEvent {
 							matchDebugEvent := m.AllOf(
-								JSONPropertyKeysCanOnlyBe("kind", "creationDate", "key", "user",
+								JSONPropertyKeysCanOnlyBe("kind", "creationDate", "key", "context",
 									"version", "value", "variation", "reason", "default"),
 								IsDebugEvent(),
 								HasAnyCreationDate(),
 								m.JSONProperty("key").Should(m.Equal(flag.Key)),
-								HasUserObjectWithKey(user.GetKey()),
+								HasContextObjectWithMatchingKeys(context),
 								m.JSONProperty("version").Should(m.Equal(flag.Version)),
 								m.JSONProperty("value").Should(m.JSONEqual(result.Value)),
 								m.JSONProperty("variation").Should(m.JSONEqual(flag.Variation)),

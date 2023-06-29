@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/stretchr/testify/assert"
 )
 

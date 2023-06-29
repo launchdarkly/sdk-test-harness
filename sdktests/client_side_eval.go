@@ -3,12 +3,13 @@ package sdktests
 import (
 	"fmt"
 
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
-	"github.com/launchdarkly/sdk-test-harness/testdata/testmodel"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
+	"github.com/launchdarkly/sdk-test-harness/v2/data/testmodel"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+
+	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
 )
 
 // The tests in this file verify that the Variation and VariationDetail methods of a client-side SDK
@@ -33,14 +34,14 @@ func runParameterizedClientSideEvalTests(t *ldtest.T) {
 		t.Run(fmt.Sprintf("evaluationReasons=%t", withReasons), func(t *ldtest.T) {
 			parameterizedTests := CommonEvalParameterizedTestRunner[mockld.ClientSDKData]{
 				SDKConfigurers: func(testSuite testmodel.EvalTestSuite[mockld.ClientSDKData]) []SDKConfigurer {
-					if !testSuite.User.IsDefined() {
-						t.Errorf("client-side test suite %q did not define a user", testSuite.Name)
+					if !testSuite.Context.IsDefined() {
+						t.Errorf("client-side test suite %q did not define a context", testSuite.Name)
 						t.FailNow()
 					}
 					return []SDKConfigurer{
 						WithClientSideConfig(servicedef.SDKConfigClientSideParams{
 							EvaluationReasons: o.Some(withReasons),
-							InitialUser:       testSuite.User.Value(),
+							InitialContext:    o.Some(testSuite.Context.Value()),
 						}),
 					}
 				},

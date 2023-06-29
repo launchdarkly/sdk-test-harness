@@ -1,0 +1,157 @@
+---
+name: evaluation failures (<TYPE_NAME>)
+
+constants:
+  CONTEXT: { kind: "user", key: "user-key" }
+  MALFORMED_FLAG_RESULT:
+    value: <TYPE_DEFAULT>
+    reason: { "kind": "ERROR", "errorKind": "MALFORMED_FLAG" }
+
+# Here we iterate through several variation types to prove that the Variation methods correctly
+# handle returning the default value in an error condition regardless of the type.
+
+parameters:
+  - TYPE_NAME: bool
+    TYPE_VALUE: true
+    TYPE_DEFAULT: false
+
+  - TYPE_NAME: int
+    TYPE_VALUE: 1
+    TYPE_DEFAULT: -1
+
+  - TYPE_NAME: double
+    TYPE_VALUE: 1.5
+    TYPE_DEFAULT: 0.5
+
+  - TYPE_NAME: string
+    TYPE_VALUE: "a"
+    TYPE_DEFAULT: "x"
+
+  - TYPE_NAME: any
+    TYPE_VALUE: 3
+    TYPE_DEFAULT: false
+
+sdkData:
+  flags:
+    off-variation-too-low-<TYPE_NAME>:
+      on: false
+      offVariation: -1
+      variations: [ "<TYPE_VALUE>" ]
+
+    off-variation-too-high-<TYPE_NAME>:
+      on: false
+      offVariation: 1
+      variations: [ "<TYPE_VALUE>" ]
+
+    no-off-variation-<TYPE_NAME>:
+      on: false
+      variations: [ "<TYPE_VALUE>" ]
+
+    fallthrough-variation-too-low-<TYPE_NAME>:
+      on: true
+      fallthrough: { "variation": -1 }
+      variations: [ "<TYPE_VALUE>" ]
+
+    fallthrough-variation-too-high-<TYPE_NAME>:
+      on: true
+      fallthrough: { "variation": 1 }
+      variations: [ "<TYPE_VALUE>" ]
+
+    target-match-variation-too-low-<TYPE_NAME>:
+      on: true
+      targets:
+        - { "variation": -1, "values": [ "user-key" ] } 
+      variations: [ "<TYPE_VALUE>" ]
+
+    target-match-variation-too-high-<TYPE_NAME>:
+      on: true
+      targets:
+        - { "variation": 1, "values": [ "user-key" ] } 
+      variations: [ "<TYPE_VALUE>" ]
+
+    rule-match-variation-too-low-<TYPE_NAME>:
+      on: true
+      rules:
+        - { "variation": -1, "clauses": [ { "attribute": "key", "op": "in", "values": [""], "negate": true }] }
+      variations: [ "<TYPE_VALUE>" ]
+
+    rule-match-variation-too-high-<TYPE_NAME>:
+      on: true
+      rules:
+        - { "variation": 1, "clauses": [ { "attribute": "key", "op": "in", "values": [""], "negate": true }] }
+      variations: [ "<TYPE_VALUE>" ]
+
+evaluations:
+  - name: flag not found
+    flagKey: no-such-flag
+    context: <CONTEXT>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect:
+      value: <TYPE_DEFAULT>
+      reason: { "kind": "ERROR", "errorKind": "FLAG_NOT_FOUND" }
+
+  - name: off variation too low
+    flagKey: off-variation-too-low-<TYPE_NAME>
+    context: <CONTEXT>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect: <MALFORMED_FLAG_RESULT>
+
+  - name: off variation too high
+    flagKey: off-variation-too-high-<TYPE_NAME>
+    context: <CONTEXT>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect: <MALFORMED_FLAG_RESULT>
+
+  - name: flag is off but has no off variation
+    flagKey: no-off-variation-<TYPE_NAME>
+    context: <CONTEXT>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect:
+      value: <TYPE_DEFAULT>
+      reason: { kind: "OFF" }  # this is *not* considered a "malformed flag" condition even though it returns the default
+
+  - name: fallthrough variation too low
+    flagKey: fallthrough-variation-too-low-<TYPE_NAME>
+    context: <CONTEXT>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect: <MALFORMED_FLAG_RESULT>
+
+  - name: fallthrough variation too high
+    flagKey: fallthrough-variation-too-high-<TYPE_NAME>
+    context: <CONTEXT>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect: <MALFORMED_FLAG_RESULT>
+
+  - name: target variation too low
+    flagKey: target-match-variation-too-low-<TYPE_NAME>
+    context: <CONTEXT>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect: <MALFORMED_FLAG_RESULT>
+
+  - name: target variation too high
+    flagKey: target-match-variation-too-high-<TYPE_NAME>
+    context: <CONTEXT>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect: <MALFORMED_FLAG_RESULT>
+
+  - name: rule variation too low
+    flagKey: rule-match-variation-too-low-<TYPE_NAME>
+    context: <CONTEXT>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect: <MALFORMED_FLAG_RESULT>
+
+  - name: rule variation too high
+    flagKey: rule-match-variation-too-high-<TYPE_NAME>
+    context: <CONTEXT>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect: <MALFORMED_FLAG_RESULT>

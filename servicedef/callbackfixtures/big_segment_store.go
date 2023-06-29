@@ -1,6 +1,6 @@
 package callbackfixtures
 
-import "gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
+import "github.com/launchdarkly/go-sdk-common/v3/ldtime"
 
 const (
 	BigSegmentStorePathGetMetadata   = "/getMetadata"
@@ -12,7 +12,7 @@ type BigSegmentStoreGetMetadataResponse struct {
 }
 
 type BigSegmentStoreGetMembershipParams struct {
-	UserHash string `json:"userHash"`
+	ContextHash string `json:"contextHash"`
 }
 
 type BigSegmentStoreGetMembershipResponse struct {

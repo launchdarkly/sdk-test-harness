@@ -4,15 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 
-	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
-	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 
+	"github.com/launchdarkly/go-jsonstream/v3/jreader"
+	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
+	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldmodel"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
-	"gopkg.in/launchdarkly/go-jsonstream.v1/jreader"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldmodel"
 )
 
 type SDKKind string

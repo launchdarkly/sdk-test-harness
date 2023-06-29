@@ -1,9 +1,9 @@
 package sdktests
 
 import (
-	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
@@ -16,8 +16,7 @@ func doClientSideEventTests(t *ldtest.T) {
 	t.Run("experimentation", doClientSideExperimentationEventTests)
 	t.Run("identify events", doClientSideIdentifyEventTests)
 	t.Run("custom events", doClientSideCustomEventTests)
-	t.Run("alias events", doClientSideAliasEventTests)
-	t.Run("user properties", doClientSideEventUserTests)
+	t.Run("context properties", doClientSideEventContextTests)
 	t.Run("event capacity", doClientSideEventBufferTests)
 	t.Run("disabling", doClientSideEventDisableTests)
 }
@@ -30,7 +29,7 @@ func doClientSideEventRequestTests(t *ldtest.T) {
 		WithCredential(envIDOrMobileKey))
 
 	eventTests.RequestMethodAndHeaders(t, envIDOrMobileKey, m.AllOf(
-		Header("X-LaunchDarkly-Event-Schema").Should(m.Equal(regularEventSchema)),
+		Header("X-LaunchDarkly-Event-Schema").Should(m.Equal(currentEventSchema)),
 		Header("X-LaunchDarkly-Payload-Id").Should(m.Not(m.Equal(""))),
 	))
 
@@ -59,14 +58,9 @@ func doClientSideCustomEventTests(t *ldtest.T) {
 		CustomEvents(t)
 }
 
-func doClientSideAliasEventTests(t *ldtest.T) {
-	NewCommonEventTests(t, "doClientSideAliasEventTests").
-		AliasEvents(t)
-}
-
-func doClientSideEventUserTests(t *ldtest.T) {
-	NewCommonEventTests(t, "doClientSideEventUserTests").
-		EventUsers(t)
+func doClientSideEventContextTests(t *ldtest.T) {
+	NewCommonEventTests(t, "doClientSideEventContextTests").
+		EventContexts(t)
 }
 
 func doClientSideEventBufferTests(t *ldtest.T) {

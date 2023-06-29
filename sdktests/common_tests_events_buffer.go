@@ -3,12 +3,12 @@ package sdktests
 import (
 	"fmt"
 
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -19,7 +19,7 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T) {
 	eventsConfig := baseEventsConfig()
 	eventsConfig.Capacity = o.Some(capacity)
 
-	user := c.userFactory.NextUniqueUser()
+	context := c.contextFactory.NextUniqueContext()
 	keys := make([]string, 0)
 	for i := 0; i < capacity+extraItemsOverCapacity; i++ {
 		keys = append(keys, fmt.Sprintf("event%d", i))
@@ -44,9 +44,7 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T) {
 	t.Run("capacity is enforced", func(t *ldtest.T) {
 		events := NewSDKEventSink(t)
 		client := NewSDKClient(t, c.baseSDKConfigurationPlus(
-			WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-				InitialUser: user,
-			}),
+			WithClientSideInitialContext(context),
 			WithEventsConfig(eventsConfig),
 			dataSource,
 			events)...)
@@ -54,7 +52,7 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T) {
 		for _, key := range keys {
 			client.SendCustomEvent(t, servicedef.CustomEventParams{
 				EventKey: key,
-				User:     o.Some(user),
+				Context:  o.Some(context),
 			})
 		}
 		client.FlushEvents(t)
@@ -66,9 +64,8 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T) {
 	t.Run("buffer is reset after flush", func(t *ldtest.T) {
 		events := NewSDKEventSink(t)
 		client := NewSDKClient(t, c.baseSDKConfigurationPlus(
-			WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-				InitialUser: user,
-			}),
+			WithClientSideInitialContext(context),
+
 			WithEventsConfig(eventsConfig),
 			dataSource,
 			events)...)
@@ -76,7 +73,7 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T) {
 		for _, key := range keys {
 			client.SendCustomEvent(t, servicedef.CustomEventParams{
 				EventKey: key,
-				User:     o.Some(user),
+				Context:  o.Some(context),
 			})
 		}
 		client.FlushEvents(t)
@@ -87,7 +84,7 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T) {
 		anotherKey := "one-more-event-key"
 		client.SendCustomEvent(t, servicedef.CustomEventParams{
 			EventKey: anotherKey,
-			User:     o.Some(user),
+			Context:  o.Some(context),
 		})
 		client.FlushEvents(t)
 		payload2 := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
@@ -109,13 +106,13 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T) {
 		for _, key := range keysToSend {
 			client.SendCustomEvent(t, servicedef.CustomEventParams{
 				EventKey: key,
-				User:     o.Some(user),
+				Context:  o.Some(context),
 			})
 		}
 
 		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 			FlagKey:      "arbitrary-flag-key",
-			User:         o.Some(user),
+			Context:      o.Some(context),
 			ValueType:    servicedef.ValueTypeBool,
 			DefaultValue: ldvalue.Bool(false),
 		})
