@@ -1,12 +1,17 @@
 package sdktests
 
 import (
+	"strings"
+	"time"
+
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	"github.com/stretchr/testify/assert"
 )
 
 func (c CommonEventTests) AutoEnvAttributesNoCollisions(t *ldtest.T) {
@@ -109,5 +114,71 @@ func (c CommonEventTests) AutoEnvAttributesCollisions(t *ldtest.T) {
 				))
 			})
 		}
+	})
+}
+
+func (c CommonEventTests) AutoEnvAttributesTags(t *ldtest.T) {
+	t.RequireCapability(servicedef.CapabilityTags)
+
+	verifyRequestHeader := func(t *ldtest.T, endpoint *harness.MockEndpoint) {
+		request := endpoint.RequireConnection(t, time.Second)
+
+		header := request.Headers.Get("X-LaunchDarkly-Tags")
+		assert.NotEmpty(t, header)
+
+		// Deconstruct header into name/value pairs
+		nameValuePairs := make(map[string]string)
+		for _, pair := range strings.Split(header, " ") {
+			parts := strings.Split(pair, "/")
+			assert.Len(t, parts, 2)
+
+			nameValuePairs[parts[0]] = parts[1]
+		}
+
+		for _, expectedTag := range []string{"application-id", "application-version", "application-version-name"} {
+			value, found := nameValuePairs[expectedTag]
+			assert.True(t, found, "Provided tags did not contain %s", expectedTag)
+			assert.NotEmpty(t, value, "Value for tag %s is empty", expectedTag)
+		}
+	}
+
+	t.Run("stream requests", func(t *ldtest.T) {
+		dataSource := NewSDKDataSource(t, nil, DataSourceOptionStreaming())
+		configurers := c.baseSDKConfigurationPlus(
+			WithClientSideConfig(servicedef.SDKConfigClientSideParams{IncludeEnvironmentAttributes: opt.Some(true)}),
+			dataSource)
+
+		if c.isClientSide {
+			// client-side SDKs in streaming mode may *also* need a polling data source
+			configurers = append(configurers,
+				NewSDKDataSource(t, nil, DataSourceOptionPolling()))
+		}
+		_ = NewSDKClient(t, configurers...)
+		verifyRequestHeader(t, dataSource.Endpoint())
+	})
+
+	t.Run("poll requests", func(t *ldtest.T) {
+		// Currently server-side SDK test services do not support polling
+		t.RequireCapability(servicedef.CapabilityClientSide)
+
+		dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
+		_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
+			WithClientSideConfig(servicedef.SDKConfigClientSideParams{IncludeEnvironmentAttributes: opt.Some(true)}),
+			dataSource)...)
+		verifyRequestHeader(t, dataSource.Endpoint())
+	})
+
+	t.Run("event posts", func(t *ldtest.T) {
+		dataSource := NewSDKDataSource(t, nil)
+		events := NewSDKEventSink(t)
+		client := NewSDKClient(t, c.baseSDKConfigurationPlus(
+			WithClientSideConfig(servicedef.SDKConfigClientSideParams{IncludeEnvironmentAttributes: opt.Some(true)}),
+			dataSource,
+			events)...)
+
+		c.sendArbitraryEvent(t, client)
+		client.FlushEvents(t)
+
+		verifyRequestHeader(t, events.Endpoint())
 	})
 }

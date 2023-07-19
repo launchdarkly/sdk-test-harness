@@ -9,6 +9,7 @@ func doClientSideAutoEnvAttributesTests(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityAutoEnvAttributes)
 	t.Run("no collisions", doClientSideAutoEnvAttributesEventsNoCollisionsTests)
 	t.Run("collisions", doClientSideAutoEnvAttributesEventsCollisionsTests)
+	t.Run("tags", doClientSideAutoEnvAttributesHeaderTests)
 }
 
 func doClientSideAutoEnvAttributesEventsNoCollisionsTests(t *ldtest.T) {
@@ -19,4 +20,9 @@ func doClientSideAutoEnvAttributesEventsNoCollisionsTests(t *ldtest.T) {
 func doClientSideAutoEnvAttributesEventsCollisionsTests(t *ldtest.T) {
 	NewCommonEventTests(t, "doClientSideAutoEnvAttributesEventsCollisionsTests").
 		AutoEnvAttributesCollisions(t)
+}
+
+func doClientSideAutoEnvAttributesHeaderTests(t *ldtest.T) {
+	NewCommonEventTests(t, "doClientSideAutoEnvAttributesHeaderTests").
+		AutoEnvAttributesTags(t)
 }
