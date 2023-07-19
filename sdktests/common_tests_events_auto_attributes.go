@@ -65,14 +65,23 @@ func (c CommonEventTests) AutoEnvAttributesNoCollisions(t *ldtest.T) {
 				client.SendIdentifyEvent(t, context)
 				client.FlushEvents(t)
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+				context_matchers := []m.Matcher{
+					m.JSONOptProperty("ld_application").Should(m.BeNil()),
+					m.JSONOptProperty("ld_device").Should(m.BeNil()),
+				}
+
+				if context.Multiple() {
+					for _, c := range context.GetAllIndividualContexts(nil) {
+						context_matchers = append(context_matchers, m.JSONProperty(string(c.Kind())).Should(m.Not(m.BeNil())))
+					}
+				} else {
+					context_matchers = append(context_matchers, m.JSONProperty("kind").Should(m.Equal(string(context.Kind()))))
+				}
+
 				m.In(t).Assert(payload, m.Items(
-					append(
-						c.initialEventPayloadExpectations(),
-						m.AllOf(
-							m.JSONProperty("context").Should(
-								m.JSONOptProperty("ld_application").Should(m.BeNil()),
-							),
-						),
+					append(c.initialEventPayloadExpectations(),
+						m.JSONProperty("context").Should(m.AllOf(context_matchers...)),
 					)...,
 				))
 			})
