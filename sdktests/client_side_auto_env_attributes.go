@@ -19,9 +19,10 @@ func doClientSideAutoEnvAttributesTests(t *ldtest.T) {
 	t.Run("events", doClientSideAutoEnvAttributesEventsTests)
 	t.Run("headers", doClientSideAutoEnvAttributesHeaderTests)
 
-	t.RequireCapability(servicedef.CapabilityClientSide) // server-side SDKs do not send user properties in polling/streaming requests
-	t.Run("polling", doClientSideAutoEnvAttributesPollingTests)
-	t.Run("streaming", doClientSideAutoEnvAttributesStreamingTests)
+	// server-side SDKs do not send user properties in polling/streaming requests
+	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
+		t.Run("pollingAndStreaming", doClientSideAutoEnvAttributesRequestingTests)
+	}
 }
 
 func doClientSideAutoEnvAttributesEventsTests(t *ldtest.T) {
@@ -29,14 +30,9 @@ func doClientSideAutoEnvAttributesEventsTests(t *ldtest.T) {
 	t.Run("collisions", doClientSideAutoEnvAttributesEventsCollisionsTests)
 }
 
-func doClientSideAutoEnvAttributesPollingTests(t *ldtest.T) {
-	t.Run("no collisions", doClientSideAutoEnvAttributesPollingNoCollisionsTests)
-	t.Run("collisions", doClientSideAutoEnvAttributesPollingCollisionsTests)
-}
-
-func doClientSideAutoEnvAttributesStreamingTests(t *ldtest.T) {
-	t.Run("no collisions", doClientSideAutoEnvAttributesStreamingNoCollisionsTests)
-	t.Run("collisions", doClientSideAutoEnvAttributesStreamingCollisionsTests)
+func doClientSideAutoEnvAttributesRequestingTests(t *ldtest.T) {
+	t.Run("no collisions", doClientSideAutoEnvAttributesRequestingNoCollisionsTests)
+	t.Run("collisions", doClientSideAutoEnvAttributesRequestingCollisionsTests)
 }
 
 // Start tests for events
@@ -154,19 +150,19 @@ func doClientSideAutoEnvAttributesEventsCollisionsTests(t *ldtest.T) {
 		}
 	})
 }
-
 // end tests for events
 
-// start tests for polling
-func doClientSideAutoEnvAttributesPollingNoCollisionsTests(t *ldtest.T) {
+// start tests for streaming/polling
+func doClientSideAutoEnvAttributesRequestingNoCollisionsTests(t *ldtest.T) {
+	t.RequireCapability(servicedef.CapabilityClientSide) // server-side SDKs do not send user properties in stream requests
 	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesPollNoCollisionsTests")
-	contextFactories := data.NewContextFactoriesForSingleAndMultiKind(base.contextFactory.Prefix())
-
-	t.Run("context properties", func(t *ldtest.T) {
+	dsos := []SDKDataSourceOption{DataSourceOptionPolling(), DataSourceOptionStreaming()}
+	for _, dso := range dsos {
+		contextFactories := data.NewContextFactoriesForSingleAndMultiKind(base.contextFactory.Prefix())
 		for _, contexts := range contextFactories {
 			t.Run(contexts.Description(), func(t *ldtest.T) {
 				// for _, method := range base.availableFlagRequestMethods() {
-				dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
+				dataSource := NewSDKDataSource(t, nil, dso)
 				context := contexts.NextUniqueContext()
 
 				_ = NewSDKClient(t, base.baseSDKConfigurationPlus(
@@ -190,21 +186,21 @@ func doClientSideAutoEnvAttributesPollingNoCollisionsTests(t *ldtest.T) {
 				))
 			})
 		}
-	})
+	}
 }
 
-func doClientSideAutoEnvAttributesPollingCollisionsTests(t *ldtest.T) {
+func doClientSideAutoEnvAttributesRequestingCollisionsTests(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityClientSide) // server-side SDKs do not send user properties in stream requests
 	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesPollNoCollisionsTests")
-	f1 := data.NewContextFactory(base.contextFactory.Prefix(), func(b *ldcontext.Builder) { b.Kind("ld_application") })
-	f2 := data.NewMultiContextFactory(base.contextFactory.Prefix(), []ldcontext.Kind{"ld_application", "other"})
-	contextFactories := []*data.ContextFactory{f1, f2}
-
-	t.Run("context properties", func(t *ldtest.T) {
+	dsos := []SDKDataSourceOption{DataSourceOptionPolling(), DataSourceOptionStreaming()}
+	for _, dso := range dsos {
+		f1 := data.NewContextFactory(base.contextFactory.Prefix(), func(b *ldcontext.Builder) { b.Kind("ld_application") })
+		f2 := data.NewMultiContextFactory(base.contextFactory.Prefix(), []ldcontext.Kind{"ld_application", "other"})
+		contextFactories := []*data.ContextFactory{f1, f2}
 		for _, contexts := range contextFactories {
 			t.Run(contexts.Description(), func(t *ldtest.T) {
 				// for _, method := range base.availableFlagRequestMethods() {
-				dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
+				dataSource := NewSDKDataSource(t, nil, dso)
 				context := contexts.NextUniqueContext()
 
 				_ = NewSDKClient(t, base.baseSDKConfigurationPlus(
@@ -224,83 +220,9 @@ func doClientSideAutoEnvAttributesPollingCollisionsTests(t *ldtest.T) {
 				))
 			})
 		}
-	})
+	}
 }
-
-// end tests for polling
-
-// start tests for streaming
-func doClientSideAutoEnvAttributesStreamingNoCollisionsTests(t *ldtest.T) {
-	t.RequireCapability(servicedef.CapabilityClientSide) // server-side SDKs do not send user properties in stream requests
-	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesPollNoCollisionsTests")
-	contextFactories := data.NewContextFactoriesForSingleAndMultiKind(base.contextFactory.Prefix())
-
-	t.Run("context properties", func(t *ldtest.T) {
-		for _, contexts := range contextFactories {
-			t.Run(contexts.Description(), func(t *ldtest.T) {
-				// for _, method := range base.availableFlagRequestMethods() {
-				dataSource := NewSDKDataSource(t, nil, DataSourceOptionStreaming())
-				context := contexts.NextUniqueContext()
-
-				_ = NewSDKClient(t, base.baseSDKConfigurationPlus(
-					WithClientSideConfig(servicedef.SDKConfigClientSideParams{IncludeEnvironmentAttributes: opt.Some(true)}),
-					WithClientSideInitialContext(context),
-					base.withFlagRequestMethod(flagRequestREPORT),
-					dataSource,
-				)...)
-
-				request := dataSource.Endpoint().RequireConnection(t, time.Second)
-
-				m.In(t).For("request body").Assert(request.Body, m.AllOf(
-					m.JSONProperty("ld_application").Should(m.AllOf(
-						m.JSONProperty("key").Should(m.Not(m.BeNil())),
-						m.JSONProperty("envAttributesVersion").Should(m.Not(m.BeNil())),
-					)),
-					m.JSONProperty("ld_device").Should(m.AllOf(
-						m.JSONProperty("key").Should(m.Not(m.BeNil())),
-						m.JSONProperty("envAttributesVersion").Should(m.Not(m.BeNil())),
-					)),
-				))
-			})
-		}
-	})
-}
-
-func doClientSideAutoEnvAttributesStreamingCollisionsTests(t *ldtest.T) {
-	t.RequireCapability(servicedef.CapabilityClientSide) // server-side SDKs do not send user properties in stream requests
-	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesPollNoCollisionsTests")
-	f1 := data.NewContextFactory(base.contextFactory.Prefix(), func(b *ldcontext.Builder) { b.Kind("ld_application") })
-	f2 := data.NewMultiContextFactory(base.contextFactory.Prefix(), []ldcontext.Kind{"ld_application", "other"})
-	contextFactories := []*data.ContextFactory{f1, f2}
-
-	t.Run("context properties", func(t *ldtest.T) {
-		for _, contexts := range contextFactories {
-			t.Run(contexts.Description(), func(t *ldtest.T) {
-				// for _, method := range base.availableFlagRequestMethods() {
-				dataSource := NewSDKDataSource(t, nil, DataSourceOptionStreaming())
-				context := contexts.NextUniqueContext()
-
-				_ = NewSDKClient(t, base.baseSDKConfigurationPlus(
-					WithClientSideConfig(servicedef.SDKConfigClientSideParams{IncludeEnvironmentAttributes: opt.Some(true)}),
-					WithClientSideInitialContext(context),
-					base.withFlagRequestMethod(flagRequestREPORT),
-					dataSource,
-				)...)
-
-				request := dataSource.Endpoint().RequireConnection(t, time.Second)
-
-				m.In(t).For("request body").Assert(request.Body, m.AllOf(
-					m.JSONProperty("ld_application").Should(
-						JSONPropertyNullOrAbsent("envAttributesVersion"),
-					),
-					m.JSONProperty("ld_device").Should(m.Not(m.BeNil())),
-				))
-			})
-		}
-	})
-}
-
-// end tests for streaming
+// end tests for streaming/polling
 
 // start tests for headers
 func doClientSideAutoEnvAttributesHeaderTests(t *ldtest.T) {
