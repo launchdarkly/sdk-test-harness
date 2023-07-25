@@ -150,6 +150,7 @@ func doClientSideAutoEnvAttributesEventsCollisionsTests(t *ldtest.T) {
 		}
 	})
 }
+
 // end tests for events
 
 // start tests for streaming/polling
@@ -222,6 +223,7 @@ func doClientSideAutoEnvAttributesRequestingCollisionsTests(t *ldtest.T) {
 		}
 	}
 }
+
 // end tests for streaming/polling
 
 // start tests for headers
