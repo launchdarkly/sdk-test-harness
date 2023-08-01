@@ -20,11 +20,7 @@ func doClientSideAutoEnvAttributesTests(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityAutoEnvAttributes)
 	t.Run("events", doClientSideAutoEnvAttributesEventsTests)
 	t.Run("headers", doClientSideAutoEnvAttributesHeaderTests)
-
-	// server-side SDKs do not send user properties in polling/streaming requests
-	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
-		t.Run("pollingAndStreaming", doClientSideAutoEnvAttributesRequestingTests)
-	}
+	t.Run("pollingAndStreaming", doClientSideAutoEnvAttributesRequestingTests)
 }
 
 func doClientSideAutoEnvAttributesEventsTests(t *ldtest.T) {
@@ -157,14 +153,12 @@ func doClientSideAutoEnvAttributesEventsCollisionsTests(t *ldtest.T) {
 
 // start tests for streaming/polling
 func doClientSideAutoEnvAttributesRequestingNoCollisionsTests(t *ldtest.T) {
-	t.RequireCapability(servicedef.CapabilityClientSide) // server-side SDKs do not send user properties in stream requests
 	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesPollNoCollisionsTests")
 	dsos := []SDKDataSourceOption{DataSourceOptionPolling(), DataSourceOptionStreaming()}
 	for _, dso := range dsos {
 		contextFactories := data.NewContextFactoriesForSingleAndMultiKind(base.contextFactory.Prefix())
 		for _, contexts := range contextFactories {
 			t.Run(contexts.Description(), func(t *ldtest.T) {
-				// for _, method := range base.availableFlagRequestMethods() {
 				dataSource := NewSDKDataSource(t, nil, dso)
 				context := contexts.NextUniqueContext()
 
@@ -193,7 +187,6 @@ func doClientSideAutoEnvAttributesRequestingNoCollisionsTests(t *ldtest.T) {
 }
 
 func doClientSideAutoEnvAttributesRequestingCollisionsTests(t *ldtest.T) {
-	t.RequireCapability(servicedef.CapabilityClientSide) // server-side SDKs do not send user properties in stream requests
 	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesPollNoCollisionsTests")
 	dsos := []SDKDataSourceOption{DataSourceOptionPolling(), DataSourceOptionStreaming()}
 	for _, dso := range dsos {
@@ -202,7 +195,6 @@ func doClientSideAutoEnvAttributesRequestingCollisionsTests(t *ldtest.T) {
 		contextFactories := []*data.ContextFactory{f1, f2}
 		for _, contexts := range contextFactories {
 			t.Run(contexts.Description(), func(t *ldtest.T) {
-				// for _, method := range base.availableFlagRequestMethods() {
 				dataSource := NewSDKDataSource(t, nil, dso)
 				context := contexts.NextUniqueContext()
 
@@ -271,9 +263,6 @@ func doClientSideAutoEnvAttributesHeaderTests(t *ldtest.T) {
 	})
 
 	t.Run("poll requests", func(t *ldtest.T) {
-		// Currently server-side SDK test services do not support polling
-		t.RequireCapability(servicedef.CapabilityClientSide)
-
 		dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
 		_ = NewSDKClient(t, base.baseSDKConfigurationPlus(
 			WithClientSideConfig(servicedef.SDKConfigClientSideParams{IncludeEnvironmentAttributes: opt.Some(true)}),
