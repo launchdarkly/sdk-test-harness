@@ -23,6 +23,7 @@ const (
 	CapabilityTags              = "tags"
 	CapabilityUserType          = "user-type"
 	CapabilityFiltering         = "filtering"
+	CapabilityAutoEnvAttributes = "auto-env-attributes"
 )
 
 type StatusRep struct {

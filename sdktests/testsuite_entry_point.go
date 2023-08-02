@@ -98,6 +98,7 @@ func doAllClientSideTests(t *ldtest.T) {
 	t.Run("polling", doClientSidePollTests)
 	t.Run("tags", doClientSideTagsTests)
 	t.Run("context type", doSDKContextTypeTests)
+	t.Run("autoEnvAttributes", doClientSideAutoEnvAttributesTests)
 }
 
 func doAllPHPTests(t *ldtest.T) {

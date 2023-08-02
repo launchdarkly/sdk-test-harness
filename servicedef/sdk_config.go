@@ -68,8 +68,9 @@ type SDKConfigTagsParams struct {
 }
 
 type SDKConfigClientSideParams struct {
-	InitialContext    o.Maybe[ldcontext.Context] `json:"initialContext,omitempty"`
-	InitialUser       json.RawMessage            `json:"initialUser,omitempty"`
-	EvaluationReasons o.Maybe[bool]              `json:"evaluationReasons,omitempty"`
-	UseReport         o.Maybe[bool]              `json:"useReport,omitempty"`
+	InitialContext               o.Maybe[ldcontext.Context] `json:"initialContext,omitempty"`
+	InitialUser                  json.RawMessage            `json:"initialUser,omitempty"`
+	EvaluationReasons            o.Maybe[bool]              `json:"evaluationReasons,omitempty"`
+	UseReport                    o.Maybe[bool]              `json:"useReport,omitempty"`
+	IncludeEnvironmentAttributes o.Maybe[bool]              `json:"includeEnvironmentAttributes,omitempty"`
 }
