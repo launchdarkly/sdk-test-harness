@@ -253,6 +253,40 @@ func (c *SDKClient) EvaluateAllFlags(
 	return resp
 }
 
+// MigrationVariation tells the SDK client to evaluate a feature flag representing a migration. This corresponds to calling the SDK's
+// MigrationVariation method.
+//
+// Any error from the test service causes the test to terminate immediately.
+func (c *SDKClient) MigrationVariation(t *ldtest.T, params servicedef.MigrationVariationParams) servicedef.MigrationVariationResponse {
+	var resp servicedef.MigrationVariationResponse
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:            servicedef.CommandMigrationVariation,
+			MigrationVariation: o.Some(params),
+		},
+		t.DebugLogger(),
+		&resp,
+	))
+	return resp
+}
+
+// MigrationOperation tells the SDK client to evaluate a feature flag representing a migration. This corresponds to calling the SDK's
+// MigrationOperation method.
+//
+// Any error from the test service causes the test to terminate immediately.
+func (c *SDKClient) MigrationOperation(t *ldtest.T, params servicedef.MigrationOperationParams) servicedef.MigrationOperationResponse {
+	var resp servicedef.MigrationOperationResponse
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:            servicedef.CommandMigrationOperation,
+			MigrationOperation: o.Some(params),
+		},
+		t.DebugLogger(),
+		&resp,
+	))
+	return resp
+}
+
 // SendIdentifyEvent tells the SDK client to send an identify event.
 //
 // Any error from the test service causes the test to terminate immediately.
