@@ -99,6 +99,11 @@
       flagKey: flag-using-segment1
       context: { key: "user-included-in-segment" }
       expect: <IS_MATCH>
+
+    - name: user matches via include in multi-kind user
+      flagKey: flag-using-segment1
+      context: { kind: "multi", user: {key: "user-included-in-segment"}, org: { key: "org-key"} }
+      expect: <IS_MATCH>
   
     - name: user matches via rule
       flagKey: flag-using-segment1
