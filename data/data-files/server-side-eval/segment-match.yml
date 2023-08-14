@@ -25,6 +25,14 @@
             variation: 0
             clauses:
               - { attribute: "", op: "segmentMatch", values: [ "segment1" ]}
+
+      negated-flag-using-segment1:
+        <<: *boolean_flag_base
+        rules:
+          - id: ruleid
+            variation: 0
+            clauses:
+              - { attribute: "", op: "segmentMatch", values: [ "segment1" ], negate: true}
   
       flag-using-segment1-and-segment2:
         <<: *boolean_flag_base
@@ -100,6 +108,12 @@
       context: { key: "user-included-in-segment" }
       expect: <IS_MATCH>
 
+    # User matches the segment and the flag rule negates it making it not a match.
+    - name: user matched via include can be negated
+      flagKey: negated-flag-using-segment1
+      context: { key: "user-included-in-segment" }
+      expect: <IS_NOT_MATCH>
+
     - name: user matches via include in multi-kind user
       flagKey: flag-using-segment1
       context: { kind: "multi", user: {key: "user-included-in-segment"}, org: { key: "org-key"} }
@@ -123,6 +137,12 @@
       flagKey: flag-using-segment1
       context: { key: "some-user" }
       expect: <IS_NOT_MATCH>
+
+    # User does not match, but it can be made into a match by negation.
+    - name: user does not match and can be negated
+      flagKey: negated-flag-using-segment1
+      context: { key: "some-key" }
+      expect: <IS_MATCH>
   
     - name: clause matches if any of the segments match
       flagKey: flag-using-segment1-and-segment2
