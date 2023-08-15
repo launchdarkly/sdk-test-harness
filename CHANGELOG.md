@@ -2,6 +2,14 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.1] - 2023-08-15
+### Added:
+- Add polling test with large payload size.
+- Add contract tests for auto-populated environment attributes.
+- Verify event payloads contain the correct content-type header.
+- Add test which matches a user context in a multi-context.
+- Add test which validates negating segment match operations.
+
 ## [2.0.0] - 2023-04-13
 ## Changed:
 - This release of the SDK Contract Tests marks the beginning of support for the generally available [Contexts](https://docs.launchdarkly.com/guides/flags/intro-contexts) feature.
