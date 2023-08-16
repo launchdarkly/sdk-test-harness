@@ -2,6 +2,7 @@ package mockld
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -9,10 +10,11 @@ import (
 
 	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldlog"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldlogtest"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+
+	"github.com/launchdarkly/go-sdk-common/v3/ldlog"
+	"github.com/launchdarkly/go-sdk-common/v3/ldlogtest"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 
 	"github.com/stretchr/testify/require"
 )
@@ -29,33 +31,53 @@ func TestPollingServiceServerSide(t *testing.T) {
 }
 
 func TestPollingServiceMobile(t *testing.T) {
-	for _, useReport := range []bool{true, false} {
-		method := h.IfElse(useReport, "REPORT", "GET")
-		t.Run(method, func(t *testing.T) {
-			doPollingServiceTests(
-				t,
-				MobileSDK,
-				EmptyClientSDKData(),
-				NewClientSDKDataBuilder().FlagWithValue("flag1", 1, ldvalue.String("yes"), 0).Build(),
-				method,
-				h.IfElse(useReport, "/msdk/evalx/user", "/msdk/evalx/users/fakeuserdata"),
-			)
+	for _, oldUserPaths := range []bool{false, true} {
+		userOrContext := h.IfElse(oldUserPaths, "user", "context")
+		t.Run(userOrContext, func(t *testing.T) {
+			for _, useReport := range []bool{true, false} {
+				method := h.IfElse(useReport, "REPORT", "GET")
+				endpoint := h.IfElse(
+					useReport,
+					fmt.Sprintf("/msdk/evalx/%s", userOrContext),
+					fmt.Sprintf("/msdk/evalx/%ss/fakeuserdata", userOrContext),
+				)
+				t.Run(method, func(t *testing.T) {
+					doPollingServiceTests(
+						t,
+						MobileSDK,
+						EmptyClientSDKData(),
+						NewClientSDKDataBuilder().FlagWithValue("flag1", 1, ldvalue.String("yes"), 0).Build(),
+						method,
+						endpoint,
+					)
+				})
+			}
 		})
 	}
 }
 
 func TestPollingServiceJSClient(t *testing.T) {
-	for _, useReport := range []bool{true, false} {
-		method := h.IfElse(useReport, "REPORT", "GET")
-		t.Run(method, func(t *testing.T) {
-			doPollingServiceTests(
-				t,
-				JSClientSDK,
-				EmptyClientSDKData(),
-				NewClientSDKDataBuilder().FlagWithValue("flag1", 1, ldvalue.String("yes"), 0).Build(),
-				method,
-				h.IfElse(useReport, "/sdk/evalx/fakeid/user", "/sdk/evalx/fakeid/users/fakeuserdata"),
-			)
+	for _, oldUserPaths := range []bool{false, true} {
+		userOrContext := h.IfElse(oldUserPaths, "user", "context")
+		t.Run(userOrContext, func(t *testing.T) {
+			for _, useReport := range []bool{true, false} {
+				method := h.IfElse(useReport, "REPORT", "GET")
+				endpoint := h.IfElse(
+					useReport,
+					fmt.Sprintf("/sdk/evalx/fakeid/%s", userOrContext),
+					fmt.Sprintf("/sdk/evalx/fakeid/%ss/fakeuserdata", userOrContext),
+				)
+				t.Run(method, func(t *testing.T) {
+					doPollingServiceTests(
+						t,
+						JSClientSDK,
+						EmptyClientSDKData(),
+						NewClientSDKDataBuilder().FlagWithValue("flag1", 1, ldvalue.String("yes"), 0).Build(),
+						method,
+						endpoint,
+					)
+				})
+			}
 		})
 	}
 }

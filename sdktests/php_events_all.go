@@ -2,8 +2,8 @@ package sdktests
 
 import (
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 )
 
 // Although the PHP SDK is a server-side SDK, it has different analytics event behavior than
@@ -22,8 +22,7 @@ func doPHPEventTests(t *ldtest.T) {
 	t.Run("experimentation", doServerSideExperimentationEventTests)
 	t.Run("identify events", doServerSideIdentifyEventTests)
 	t.Run("custom events", doServerSideCustomEventTests)
-	t.Run("alias events", doServerSideAliasEventTests)
-	t.Run("user properties", doServerSideEventUserTests)
+	t.Run("context properties", doServerSideEventContextTests)
 }
 
 func doPHPEventRequestTests(t *ldtest.T) {

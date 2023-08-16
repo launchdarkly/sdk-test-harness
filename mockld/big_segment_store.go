@@ -4,30 +4,31 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/launchdarkly/sdk-test-harness/framework"
-	cf "github.com/launchdarkly/sdk-test-harness/servicedef/callbackfixtures"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework"
+	cf "github.com/launchdarkly/sdk-test-harness/v2/servicedef/callbackfixtures"
 
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 )
 
 // MockBigSegmentStoreService is the low-level component providing the mock endpoints for the
 // Big Segments test fixture. The higher-level component sdktests.BigSegmentStore decorates this
 // to make it more convenient to use in test logic.
 type MockBigSegmentStoreService struct {
-	service             *callbackService
-	getMetadataFn       func() (ldtime.UnixMillisecondTime, error)
-	getUserMembershipFn func(string) (map[string]bool, error)
+	service                *callbackService
+	getMetadataFn          func() (ldtime.UnixMillisecondTime, error)
+	getContextMembershipFn func(string) (map[string]bool, error)
 }
 
 func NewMockBigSegmentStoreService(
 	getMetadata func() (ldtime.UnixMillisecondTime, error),
-	getUserMembership func(string) (map[string]bool, error),
+	getContextMembership func(string) (map[string]bool, error),
 	logger framework.Logger,
 ) *MockBigSegmentStoreService {
 	service := newCallbackService(logger, "BigSegmentStore")
-	m := &MockBigSegmentStoreService{service: service, getMetadataFn: getMetadata, getUserMembershipFn: getUserMembership}
+	m := &MockBigSegmentStoreService{service: service, getMetadataFn: getMetadata,
+		getContextMembershipFn: getContextMembership}
 	service.addPath(cf.BigSegmentStorePathGetMetadata, m.doGetMetadata)
-	service.addPath(cf.BigSegmentStorePathGetMembership, m.doGetUserMembership)
+	service.addPath(cf.BigSegmentStorePathGetMembership, m.doGetMembership)
 	return m
 }
 
@@ -49,7 +50,7 @@ func (m *MockBigSegmentStoreService) doGetMetadata(*json.Decoder) (interface{}, 
 	return cf.BigSegmentStoreGetMetadataResponse{LastUpToDate: lastUpToDate}, nil
 }
 
-func (m *MockBigSegmentStoreService) doGetUserMembership(readParams *json.Decoder) (interface{}, error) {
+func (m *MockBigSegmentStoreService) doGetMembership(readParams *json.Decoder) (interface{}, error) {
 	var params cf.BigSegmentStoreGetMembershipParams
 	if err := readParams.Decode(&params); err != nil {
 		return nil, err
@@ -57,8 +58,8 @@ func (m *MockBigSegmentStoreService) doGetUserMembership(readParams *json.Decode
 
 	var membership map[string]bool
 	var err error
-	if m.getUserMembershipFn != nil {
-		membership, err = m.getUserMembershipFn(params.UserHash)
+	if m.getContextMembershipFn != nil {
+		membership, err = m.getContextMembershipFn(params.ContextHash)
 	}
 
 	if err != nil {

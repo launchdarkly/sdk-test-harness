@@ -1,8 +1,8 @@
 package sdktests
 
 import (
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 )
 
 // CommonStreamingTests groups together streaming-related test methods that are shared between server-side

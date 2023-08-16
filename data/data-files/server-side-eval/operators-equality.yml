@@ -1,0 +1,101 @@
+---
+name: operators - equality (<TYPE_NAME>)
+
+constants:
+  IS_MATCH:
+    value: true
+    variationIndex: 0
+    reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "ruleid" }
+  IS_NOT_MATCH:
+    value: false
+    variationIndex: 1
+    reason: { kind: "FALLTHROUGH" }
+
+parameters:
+  - TYPE_NAME: bool
+    TYPE_VALUE_OFF: false
+    TYPE_VALUE_FALLTHROUGH: false
+    TYPE_VALUE_1: true
+    TYPE_VALUE_2: false
+    TYPE_DEFAULT: false
+
+  - TYPE_NAME: int
+    TYPE_VALUE_OFF: -100
+    TYPE_VALUE_FALLTHROUGH: -101
+    TYPE_VALUE_1: 1
+    TYPE_VALUE_2: 2
+    TYPE_DEFAULT: -1
+
+  - TYPE_NAME: double
+    TYPE_VALUE_OFF: -100
+    TYPE_VALUE_FALLTHROUGH: -101
+    TYPE_VALUE_1: 1.5
+    TYPE_VALUE_2: 2.5
+    TYPE_DEFAULT: 0.5
+
+  - TYPE_NAME: string
+    TYPE_VALUE_OFF: "off"
+    TYPE_VALUE_FALLTHROUGH: "fall"
+    TYPE_VALUE_1: "a"
+    TYPE_VALUE_2: "b"
+    TYPE_DEFAULT: "default"
+
+  - TYPE_NAME: any
+    TYPE_VALUE_OFF: "off"
+    TYPE_VALUE_FALLTHROUGH: "fall"
+    TYPE_VALUE_1: 3
+    TYPE_VALUE_2: "b"
+    TYPE_DEFAULT: false
+
+sdkData:
+  flags:
+    test-against-single-value:
+      on: true
+      fallthrough: { variation: 1 }
+      variations: [ true, false ]
+      rules:
+        - id: ruleid
+          variation: 0
+          clauses:
+            - { attribute: attrname, op: in, values: [ <TYPE_VALUE_1> ] }
+
+    test-against-multiple-values:
+      on: true
+      fallthrough: { variation: 1 }
+      variations: [ true, false ]
+      rules:
+        - id: ruleid
+          variation: 0
+          clauses:
+            - { attribute: attrname, op: in, values: [ <TYPE_VALUE_1>, <TYPE_VALUE_2> ] }
+
+evaluations:
+  - name: user matches clause with single value
+    flagKey: test-against-single-value
+    context: { key: "user-key", custom: { attrname: <TYPE_VALUE_1> } }
+    default: false
+    expect: <IS_MATCH>
+
+  - name: user does not match clause with single value
+    flagKey: test-against-single-value
+    context: { key: "user-key", custom: { attrname: <TYPE_VALUE_2> } }
+    default: false
+    expect: <IS_NOT_MATCH>
+
+  - name: user with single value matches clause with multiple values
+    flagKey: test-against-multiple-values
+    context: { key: "user-key", custom: { attrname: <TYPE_VALUE_2> } }
+    default: false
+    expect: <IS_MATCH>
+
+  - name: user with multiple values matches clause with single value
+    flagKey: test-against-single-value
+    context: { key: "user-key", custom: { attrname: [ <TYPE_VALUE_2>, <TYPE_VALUE_1> ] } }
+    default: false
+    expect: <IS_MATCH>
+
+  - name: user with no value for attribute does not match clause
+    flagKey: test-against-single-value
+    context: { key: "user-key" }
+    default: false
+    expect: <IS_NOT_MATCH>

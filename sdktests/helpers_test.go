@@ -4,8 +4,12 @@ import (
 	"fmt"
 	"testing"
 
-	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
-	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+
+	"github.com/launchdarkly/go-sdk-common/v3/ldattr"
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -29,23 +33,46 @@ func TestComputeExpectedBucketValue(t *testing.T) {
 				p.userValue,
 				p.flagOrSegmentKey,
 				p.salt,
-				o.None[string](),
 				p.seed,
 			)
 			assert.Equal(t, p.expectedValue, computedValue, "computed value did not match expected value")
-
-			for _, secondary := range []string{"abcdef", ""} {
-				valueWithSecondaryKey := computeExpectedBucketValue(
-					p.userValue,
-					p.flagOrSegmentKey,
-					p.salt,
-					o.Some(secondary),
-					p.seed,
-				)
-				failureDesc := h.IfElse(secondary == "", "empty secondary key", "empty-but-not-undefined secondary key") +
-					" should have changed result, but did not"
-				assert.NotEqual(t, p.expectedValue, valueWithSecondaryKey, failureDesc)
-			}
 		})
 	}
+}
+
+func TestSetContextValueForAttrRef(t *testing.T) {
+	key := "arbitrary-key"
+	value := ldvalue.String("value")
+
+	for _, p := range []struct {
+		name          string
+		attrRefString string
+		expectContext ldcontext.Context
+	}{
+		{
+			"simple", "attr1", ldcontext.NewBuilder(key).SetValue("attr1", value).Build(),
+		},
+		{
+			"object property", "/attr1/subprop",
+			ldcontext.NewBuilder(key).SetValue("attr1", ldvalue.ObjectBuild().Set("subprop", value).Build()).Build(),
+		},
+		{
+			"nested property", "/attr1/subprop/subsub",
+			ldcontext.NewBuilder(key).SetValue("attr1", ldvalue.ObjectBuild().Set("subprop",
+				ldvalue.ObjectBuild().Set("subsub", value).Build()).Build()).Build(),
+		},
+	} {
+		t.Run(p.name, func(t *testing.T) {
+			b := ldcontext.NewBuilder(key)
+			setContextValueForAttrRef(b, ldattr.NewRef(p.attrRefString), value)
+			m.In(t).Assert(b.Build(), m.JSONEqual(p.expectContext))
+		})
+	}
+
+	t.Run("object property", func(t *testing.T) {
+		b := ldcontext.NewBuilder("key")
+		setContextValueForAttrRef(b, ldattr.NewRef("/attr1/subprop"), value)
+		assert.Equal(t, ldcontext.NewBuilder("key").SetValue("attr1",
+			ldvalue.ObjectBuild().Set("subprop", value).Build()).Build(), b.Build())
+	})
 }

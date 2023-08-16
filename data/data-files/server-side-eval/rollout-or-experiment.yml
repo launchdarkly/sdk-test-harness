@@ -1,0 +1,148 @@
+---
+name: rollout or experiment - <NAME>
+
+constants:
+  MATCH_FALLTHROUGH_VARIATION_A:
+    value: "a"
+    variationIndex: 2
+    reason: { kind: "FALLTHROUGH" }
+  MATCH_FALLTHROUGH_VARIATION_B:
+    value: "b"
+    variationIndex: 3
+    reason: { kind: "FALLTHROUGH" }
+  MATCH_FALLTHROUGH_VARIATION_A_EXPERIMENT:
+    value: "a"
+    variationIndex: 2
+    reason: { kind: "FALLTHROUGH", inExperiment: true }
+  MATCH_FALLTHROUGH_VARIATION_B_EXPERIMENT:
+    value: "b"
+    variationIndex: 3
+    reason: { kind: "FALLTHROUGH", inExperiment: true }
+  MATCH_RULE_VARIATION_A:
+    value: "a"
+    variationIndex: 2
+    reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "rule-id" }
+  MATCH_RULE_VARIATION_B:
+    value: "b"
+    variationIndex: 3
+    reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "rule-id" }
+  MATCH_RULE_VARIATION_A_EXPERIMENT:
+    value: "a"
+    variationIndex: 2
+    reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "rule-id", inExperiment: true }
+  MATCH_RULE_VARIATION_B_EXPERIMENT:
+    value: "b"
+    variationIndex: 3
+    reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "rule-id", inExperiment: true }
+  MALFORMED_FLAG_ERROR_RESULT:
+    value: "default"
+    reason: { kind: "ERROR", errorKind: "MALFORMED_FLAG" }
+
+parameters:
+  - NAME: user matches first bucket in rollout
+    ROLLOUT:
+      variations:
+        - { variation: 2, weight: 99999 }
+        - { variation: 3, weight: 1 }
+    USER: { key: "user-key" }
+    EXPECT_FOR_FALLTHROUGH: <MATCH_FALLTHROUGH_VARIATION_A>
+    EXPECT_FOR_RULE: <MATCH_RULE_VARIATION_A>
+
+  - NAME: user matches second bucket in rollout
+    ROLLOUT:
+      variations:
+        - { variation: 2, weight: 1 }
+        - { variation: 3, weight: 99999 }
+    USER: { key: "user-key" }
+    EXPECT_FOR_FALLTHROUGH: <MATCH_FALLTHROUGH_VARIATION_B>
+    EXPECT_FOR_RULE: <MATCH_RULE_VARIATION_B>
+
+  - NAME: last rollout bucket is used if value is past the end
+    ROLLOUT:
+      variations:
+        - { variation: 2, weight: 1 }
+        - { variation: 3, weight: 1 }
+    USER: { key: "user-key" }
+    EXPECT_FOR_FALLTHROUGH: <MATCH_FALLTHROUGH_VARIATION_B>
+    EXPECT_FOR_RULE: <MATCH_RULE_VARIATION_B>
+
+  - NAME: user matches first bucket in experiment
+    ROLLOUT:
+      kind: experiment
+      variations:
+        - { variation: 2, weight: 99999 }
+        - { variation: 3, weight: 1 }
+    USER: { key: "user-key" }
+    EXPECT_FOR_FALLTHROUGH: <MATCH_FALLTHROUGH_VARIATION_A_EXPERIMENT>
+    EXPECT_FOR_RULE: <MATCH_RULE_VARIATION_A_EXPERIMENT>
+
+  - NAME: user matches second bucket in experiment
+    ROLLOUT:
+      kind: experiment
+      variations:
+        - { variation: 2, weight: 1 }
+        - { variation: 3, weight: 99999 }
+    USER: { key: "user-key" }
+    EXPECT_FOR_FALLTHROUGH: <MATCH_FALLTHROUGH_VARIATION_B_EXPERIMENT>
+    EXPECT_FOR_RULE: <MATCH_RULE_VARIATION_B_EXPERIMENT>
+
+  - NAME: user matches untracked bucket in experiment
+    ROLLOUT:
+      kind: experiment
+      variations:
+        - { variation: 2, weight: 99999, untracked: true }
+        - { variation: 3, weight: 1 }
+    USER: { key: "user-key" }
+    EXPECT_FOR_FALLTHROUGH: <MATCH_FALLTHROUGH_VARIATION_A>
+    EXPECT_FOR_RULE: <MATCH_RULE_VARIATION_A>
+
+  - NAME: last experiment bucket is used if value is past the end
+    ROLLOUT:
+      kind: experiment
+      variations:
+        - { variation: 2, weight: 1 }
+        - { variation: 3, weight: 1 }
+    USER: { key: "user-key" }
+    EXPECT_FOR_FALLTHROUGH: <MATCH_FALLTHROUGH_VARIATION_B_EXPERIMENT>
+    EXPECT_FOR_RULE: <MATCH_RULE_VARIATION_B_EXPERIMENT>
+
+  - NAME: error for empty variations list in rollout
+    ROLLOUT:
+      variations: []
+    USER: { key: "user-key" }
+    EXPECT_FOR_FALLTHROUGH: <MALFORMED_FLAG_ERROR_RESULT>
+    EXPECT_FOR_RULE: <MALFORMED_FLAG_ERROR_RESULT>
+
+sdkData:
+  flags:
+    flag-with-fallthrough-rollout:
+      on: true
+      variations: [ "off", "fallthrough", "a", "b" ]
+      offVariation: 0
+      fallthrough:
+        rollout: <ROLLOUT>
+
+    flag-with-rule-rollout:
+      on: true
+      variations: [ "off", "fallthrough", "a", "b" ]
+      offVariation: 0
+      fallthrough:
+        variation: 1
+      rules:
+        - id: "rule-id"
+          rollout: <ROLLOUT>
+          clauses:
+            - { attribute: "key", op: "in", values: [ "" ], negate: true } # always matches
+
+evaluations:
+  - name: fallthrough rollout
+    flagKey: flag-with-fallthrough-rollout
+    context: <USER>
+    default: "default"
+    expect: <EXPECT_FOR_FALLTHROUGH>
+
+  - name: rule rollout
+    flagKey: flag-with-rule-rollout
+    context: <USER>
+    default: "default"
+    expect: <EXPECT_FOR_RULE>

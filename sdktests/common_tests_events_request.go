@@ -4,15 +4,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/framework/harness"
-	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
 
-const regularEventSchema = "3"
+const currentEventSchema = "4"
 const phpEventSchema = "2"
 
 func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string, headersMatcher m.Matcher) {
@@ -67,8 +67,7 @@ func (c CommonEventTests) UniquePayloadIDs(t *ldtest.T) {
 	t.Run("new payload ID for each post", func(t *ldtest.T) {
 		dataSource := NewSDKDataSource(t, nil)
 		events := NewSDKEventSink(t)
-		client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...,
-		)
+		client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 
 		numPayloads := 3
 		requests := make([]harness.IncomingRequestInfo, 0, numPayloads)

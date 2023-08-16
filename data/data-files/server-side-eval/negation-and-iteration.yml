@@ -1,0 +1,66 @@
+---
+name: clause negation and value iteration
+
+constants:
+  IS_MATCH:
+    value: true
+    variationIndex: 0
+    reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "ruleid" }
+  IS_NOT_MATCH:
+    value: false
+    variationIndex: 1
+    reason: { kind: "FALLTHROUGH" }
+
+parameters:
+  - NAME: negated, match if expression does not match single clause value
+    CONTEXT: { kind: "user", key: "a" }
+    CLAUSE: { attribute: "key", op: "in", values: ["b"], negate: true }
+    EXPECT: <IS_MATCH>
+
+  - NAME: negated, non-match if expression matches for single clause value
+    CONTEXT: { kind: "user", key: "a" }
+    CLAUSE: { attribute: "key", op: "in", values: ["a"], negate: true }
+    EXPECT: <IS_NOT_MATCH>
+
+  - NAME: match if expression matches any of multiple clause values
+    CONTEXT: { kind: "user", key: "a" }
+    CLAUSE: { attribute: "key", op: "in", values: ["a", "b", "c"] }
+    EXPECT: <IS_MATCH>
+
+  - NAME: match if expression matches any of multiple context values with single clause value
+    CONTEXT: { kind: "user", key: "a", attr1: ["b", "c"] }
+    CLAUSE: { attribute: "attr1", op: "in", values: ["c"] }
+    EXPECT: <IS_MATCH>
+
+  - NAME: negated, non-match if expression matches any of multiple context values with single clause value
+    CONTEXT: { kind: "user", key: "a", attr1: ["b", "c"] }
+    CLAUSE: { attribute: "attr1", op: "in", values: ["c"], negate: true }
+    EXPECT: <IS_NOT_MATCH>
+
+  - NAME: match if expression matches any of multiple context values with any of multiple clause values
+    CONTEXT: { kind: "user", key: "a", attr1: ["b", "c"] }
+    CLAUSE: { attribute: "attr1", op: "in", values: ["c", "d"] }
+    EXPECT: <IS_MATCH>
+
+  - NAME: negated, non-match if expression matches any of multiple context values with any of multiple clause values
+    CONTEXT: { kind: "user", key: "a", attr1: ["b", "c"] }
+    CLAUSE: { attribute: "attr1", op: "in", values: ["c", "d"], negate: true }
+    EXPECT: <IS_NOT_MATCH>
+
+sdkData:
+  flags:
+    test-flag:
+      on: true
+      fallthrough: { variation: 1 }
+      variations: [ true, false ]
+      rules:
+        - id: ruleid
+          variation: 0
+          clauses: [ <CLAUSE> ]
+
+evaluations:
+  - name: <NAME>
+    flagKey: test-flag
+    context: <CONTEXT>
+    default: false
+    expect: <EXPECT>

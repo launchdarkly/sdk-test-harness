@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/launchdarkly/sdk-test-harness/framework"
-	"github.com/launchdarkly/sdk-test-harness/framework/harness"
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 )
 
 func RunSDKTestSuite(
@@ -88,6 +88,7 @@ func doAllServerSideTests(t *ldtest.T) {
 	t.Run("service endpoints", doServerSideServiceEndpointsTests)
 	t.Run("tags", doServerSideTagsTests)
 	t.Run("secure mode hash", doServerSideSecureModeHashTests)
+	t.Run("context type", doSDKContextTypeTests)
 }
 
 func doAllClientSideTests(t *ldtest.T) {
@@ -96,11 +97,14 @@ func doAllClientSideTests(t *ldtest.T) {
 	t.Run("streaming", doClientSideStreamTests)
 	t.Run("polling", doClientSidePollTests)
 	t.Run("tags", doClientSideTagsTests)
+	t.Run("context type", doSDKContextTypeTests)
+	t.Run("autoEnvAttributes", doClientSideAutoEnvAttributesTests)
 }
 
 func doAllPHPTests(t *ldtest.T) {
 	t.Run("evaluation", doPHPEvalTests)
 	t.Run("events", doPHPEventTests)
+	t.Run("context type", doSDKContextTypeTests)
 	t.Run("secure mode hash", doServerSideSecureModeHashTests)
 }
 

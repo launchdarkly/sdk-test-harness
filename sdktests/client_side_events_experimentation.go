@@ -3,15 +3,14 @@ package sdktests
 import (
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
 
 func doClientSideExperimentationEventTests(t *ldtest.T) {
@@ -28,7 +27,7 @@ func doClientSideExperimentationEventTests(t *ldtest.T) {
 	expectedVariation := 1
 	flagVersion := 100
 	defaultValue := ldvalue.String("default")
-	user := lduser.NewUser("user-key")
+	context := ldcontext.New("user-key")
 
 	for _, expectedReason := range []ldreason.EvaluationReason{
 		ldreason.NewEvalReasonFallthroughExperiment(true),
@@ -50,21 +49,19 @@ func doClientSideExperimentationEventTests(t *ldtest.T) {
 			dataSource := NewSDKDataSource(t, data)
 			eventSink := NewSDKEventSink(t)
 			client := NewSDKClient(t,
-				WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-					InitialUser: user,
-				}),
+				WithClientSideInitialContext(context),
 				dataSource,
 				eventSink,
 			)
 
-			result := basicEvaluateFlag(t, client, flagKey, user, defaultValue)
+			result := basicEvaluateFlag(t, client, flagKey, context, defaultValue)
 			m.In(t).Assert(result, m.JSONEqual(expectedValue))
 
 			client.FlushEvents(t)
 			payload := eventSink.ExpectAnalyticsEvents(t, time.Second)
 
 			matchFeatureEvent := IsValidFeatureEventWithConditions(
-				false, false, user,
+				false, context,
 				m.JSONProperty("key").Should(m.Equal(flagKey)),
 				m.JSONProperty("version").Should(m.Equal(flagVersion)),
 				m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),

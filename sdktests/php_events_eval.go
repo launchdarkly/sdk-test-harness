@@ -4,17 +4,18 @@ import (
 	"fmt"
 	"time"
 
-	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/data"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
+	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldbuilders"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldbuilders"
 
 	"github.com/stretchr/testify/require"
 )
@@ -31,9 +32,9 @@ import (
 //   event-- to be used when the Relay Proxy summarizes the event data.
 
 func doPHPFeatureEventTests(t *ldtest.T) {
-	flagValues := FlagValueByTypeFactory()
-	defaultValues := DefaultValueByTypeFactory()
-	users := NewUserFactory("doPHPFeatureEventTests")
+	valueFactories := data.MakeValueFactoriesBySDKValueType(2)
+	flagValues, defaultValues := valueFactories[0], valueFactories[1]
+	contextFactories := data.NewContextFactoriesForSingleAndMultiKind("doPHPFeatureEventTests")
 	expectedReason := ldreason.NewEvalReasonFallthrough()
 	debugDate := ldtime.UnixMillisecondTime(12345678)
 
@@ -54,13 +55,14 @@ func doPHPFeatureEventTests(t *ldtest.T) {
 			}
 		}
 	}
-	flagFactories := make(map[flagSelectors]*FlagFactoryForValueTypes)
+	flagFactories := make(map[flagSelectors]*data.FlagFactory)
 	for _, fs := range allFlagSelectors {
 		fs := fs
-		flagFactories[fs] = &FlagFactoryForValueTypes{
-			KeyPrefix: fmt.Sprintf("%s-flag", describe(fs)),
-			Reason:    expectedReason,
-			BuilderActions: func(b *ldbuilders.FlagBuilder) {
+		flagFactories[fs] = data.NewFlagFactory(
+			fmt.Sprintf("%s-flag", describe(fs)),
+			flagValues,
+			data.FlagShouldProduceThisEvalReason(expectedReason),
+			func(b *ldbuilders.FlagBuilder) {
 				b.TrackEvents(fs.tracked)
 				if fs.withDebug {
 					b.DebugEventsUntilDate(debugDate)
@@ -68,13 +70,14 @@ func doPHPFeatureEventTests(t *ldtest.T) {
 				if fs.malformed {
 					b.On(false).OffVariation(-1)
 				}
-			}}
+			},
+		)
 	}
 
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	for _, factory := range flagFactories {
 		for _, valueType := range getValueTypesToTest(t) {
-			dataBuilder.Flag(factory.ForType(valueType))
+			dataBuilder.Flag(factory.MakeFlagForValueType(valueType))
 		}
 	}
 
@@ -83,58 +86,62 @@ func doPHPFeatureEventTests(t *ldtest.T) {
 
 	client := NewSDKClient(t, dataSource, events)
 
-	doFeatureEventTest := func(t *ldtest.T, fs flagSelectors, withReason, isAnonymousUser bool) {
-		for _, valueType := range getValueTypesToTest(t) {
-			t.Run(testDescFromType(valueType), func(t *ldtest.T) {
-				flag := flagFactories[fs].ForType(valueType)
-				var expectedValue ldvalue.Value
-				var expectedVariation o.Maybe[int]
-				if fs.malformed {
-					expectedValue = defaultValues(valueType)
-					expectedVariation = o.None[int]()
-				} else {
-					expectedValue = flagValues(valueType)
-					expectedVariation = o.Some(0)
-				}
-				user := users.NextUniqueUserMaybeAnonymous(isAnonymousUser)
-				resp := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
-					FlagKey:      flag.Key,
-					User:         o.Some(user),
-					ValueType:    valueType,
-					DefaultValue: defaultValues(valueType),
-					Detail:       withReason,
-				})
+	doFeatureEventTests := func(t *ldtest.T, fs flagSelectors, withReason bool) {
+		for _, contextFactory := range contextFactories {
+			t.Run(contextFactory.Description(), func(t *ldtest.T) {
+				for _, valueType := range getValueTypesToTest(t) {
+					t.Run(testDescFromType(valueType), func(t *ldtest.T) {
+						flag := flagFactories[fs].ReuseFlagForValueType(valueType)
+						var expectedValue ldvalue.Value
+						var expectedVariation o.Maybe[int]
+						if fs.malformed {
+							expectedValue = defaultValues(valueType)
+							expectedVariation = o.None[int]()
+						} else {
+							expectedValue = flagValues(valueType)
+							expectedVariation = o.Some(0)
+						}
+						context := contextFactory.NextUniqueContext()
+						resp := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+							FlagKey:      flag.Key,
+							Context:      o.Some(context),
+							ValueType:    valueType,
+							DefaultValue: defaultValues(valueType),
+							Detail:       withReason,
+						})
 
-				// If the evaluation didn't return the expected value, then the rest of the test is moot
-				if !m.In(t).Assert(expectedValue, m.JSONEqual(resp.Value)) {
-					require.Fail(t, "evaluation unexpectedly returned wrong value")
-				}
+						// If the evaluation didn't return the expected value, then the rest of the test is moot
+						if !m.In(t).Assert(resp.Value, m.JSONEqual(expectedValue)) {
+							require.Fail(t, "evaluation unexpectedly returned wrong value")
+						}
 
-				client.FlushEvents(t)
+						client.FlushEvents(t)
 
-				reason := expectedReason
-				if fs.malformed {
-					reason = ldreason.NewEvalReasonError(ldreason.EvalErrorMalformedFlag)
-				}
-				propMatchers := []m.Matcher{
-					m.JSONProperty("key").Should(m.Equal(flag.Key)),
-					m.JSONProperty("version").Should(m.Equal(flag.Version)),
-					m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),
-					m.JSONOptProperty("variation").Should(m.JSONEqual(expectedVariation)),
-					maybeReason(withReason, reason),
-					m.JSONProperty("default").Should(m.JSONEqual(defaultValues(valueType))),
-					JSONPropertyNullOrAbsent("prereqOf"),
-					m.JSONOptProperty("trackEvents").Should(
-						h.IfElse(fs.tracked, m.JSONEqual(true), m.AnyOf(m.BeNil(), m.JSONEqual(false))),
-					),
-					m.JSONOptProperty("debugEventsUntilDate").Should(
-						h.IfElse(fs.withDebug, m.JSONEqual(debugDate), m.BeNil()),
-					),
-				}
-				matchFeatureEvent := IsValidFeatureEventWithConditions(true, true, user, propMatchers...)
+						reason := expectedReason
+						if fs.malformed {
+							reason = ldreason.NewEvalReasonError(ldreason.EvalErrorMalformedFlag)
+						}
+						propMatchers := []m.Matcher{
+							m.JSONProperty("key").Should(m.Equal(flag.Key)),
+							m.JSONProperty("version").Should(m.Equal(flag.Version)),
+							m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),
+							m.JSONOptProperty("variation").Should(m.JSONEqual(expectedVariation)),
+							maybeReason(withReason, reason),
+							m.JSONProperty("default").Should(m.JSONEqual(defaultValues(valueType))),
+							JSONPropertyNullOrAbsent("prereqOf"),
+							m.JSONOptProperty("trackEvents").Should(
+								h.IfElse(fs.tracked, m.JSONEqual(true), m.AnyOf(m.BeNil(), m.JSONEqual(false))),
+							),
+							m.JSONOptProperty("debugEventsUntilDate").Should(
+								h.IfElse(fs.withDebug, m.JSONEqual(debugDate), m.BeNil()),
+							),
+						}
+						matchFeatureEvent := IsValidFeatureEventWithConditions(true, context, propMatchers...)
 
-				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-				m.In(t).Assert(payload, m.Items(matchFeatureEvent))
+						payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+						m.In(t).Assert(payload, m.Items(matchFeatureEvent))
+					})
+				}
 			})
 		}
 	}
@@ -143,11 +150,7 @@ func doPHPFeatureEventTests(t *ldtest.T) {
 		t.Run(describe(fs), func(t *ldtest.T) {
 			for _, withReason := range []bool{false, true} {
 				t.Run(h.IfElse(withReason, "with reason", "without reason"), func(t *ldtest.T) {
-					for _, isAnonymousUser := range []bool{false, true} {
-						t.Run(h.IfElse(isAnonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
-							doFeatureEventTest(t, fs, withReason, isAnonymousUser)
-						})
-					}
+					doFeatureEventTests(t, fs, withReason)
 				})
 			}
 		})
@@ -155,7 +158,7 @@ func doPHPFeatureEventTests(t *ldtest.T) {
 
 	t.Run("evaluating all flags generates no events", func(t *ldtest.T) {
 		_ = client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
-			User: o.Some(users.NextUniqueUser()),
+			Context: o.Some(contextFactories[0].NextUniqueContext()),
 		})
 		client.FlushEvents(t)
 		events.ExpectNoAnalyticsEvents(t, time.Millisecond*200)

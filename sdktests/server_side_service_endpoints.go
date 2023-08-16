@@ -3,12 +3,12 @@ package sdktests
 import (
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 )
 
 func doServerSideServiceEndpointsTests(t *ldtest.T) {
@@ -43,7 +43,7 @@ func doServerSideServiceEndpointsTests(t *ldtest.T) {
 				makeEventsConfig(events),
 				dataSource,
 			)
-			client.SendIdentifyEvent(t, lduser.NewUser("user-key"))
+			client.SendIdentifyEvent(t, ldcontext.New("user-key"))
 			client.FlushEvents(t)
 			_ = events.Endpoint().RequireConnection(t, time.Second)
 		})

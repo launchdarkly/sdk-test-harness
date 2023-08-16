@@ -4,99 +4,79 @@ import (
 	"fmt"
 	"time"
 
-	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/data"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
 
 func (c CommonEventTests) CustomEvents(t *ldtest.T) {
-	// These do not include detailed tests of the encoding of user attributes in custom events,
-	// which are in common_tests_events_users.go.
+	// These do not include detailed tests of the encoding of context attributes in custom events,
+	// which are in common_tests_events_contexts.go.
 
 	t.Run("data and metricValue parameters", c.customEventsParameterizedTests)
 
 	t.Run("basic properties", func(t *ldtest.T) {
 		metricValue := 1.0
 
-		baseCustomEventProperties := []string{
-			"kind", "contextKind", "creationDate", "key", "data", "metricValue",
+		customEventProperties := []string{
+			"kind", "creationDate", "key", "data", "metricValue",
+			h.IfElse(c.isPHP, "context", "contextKeys"), // only PHP has inline contexts in custom events
 		}
 		if t.Capabilities().Has(servicedef.CapabilityClientSide) &&
 			!t.Capabilities().Has(servicedef.CapabilityMobile) {
 			// this is a JS-based client-side SDK, so custom events may have an additional property
-			baseCustomEventProperties = append(baseCustomEventProperties, "url")
+			customEventProperties = append(customEventProperties, "url")
 		}
 
-		for _, inlineUser := range []bool{false, true} {
-			if !inlineUser && c.isPHP {
-				continue // the PHP SDK always inlines users in events
-			}
-			t.Run(h.IfElse(inlineUser, "inline user", "non-inline user"), func(t *ldtest.T) {
-				for _, anonymousUser := range []bool{false, true} {
-					t.Run(h.IfElse(anonymousUser, "anonymous user", "non-anonymous user"), func(t *ldtest.T) {
-						eventsConfig := servicedef.SDKConfigEventParams{InlineUsers: inlineUser}
-						user := c.userFactory.NextUniqueUserMaybeAnonymous(anonymousUser)
+		for _, contexts := range data.NewContextFactoriesForSingleAndMultiKind(c.contextFactory.Prefix()) {
+			t.Run(contexts.Description(), func(t *ldtest.T) {
+				context := contexts.NextUniqueContext()
 
-						dataSource := NewSDKDataSource(t, nil)
-						events := NewSDKEventSink(t)
-						client := NewSDKClient(t, c.baseSDKConfigurationPlus(WithEventsConfig(eventsConfig), dataSource, events)...)
+				dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+				events := NewSDKEventSink(t)
+				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 
-						if c.isClientSide {
-							// For client-side SDKs, we do an identify first to set the current user; then we
-							// consume and ignore the identify event.
-							client.SendIdentifyEvent(t, user)
-							client.FlushEvents(t)
-							_ = events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-						}
-						client.SendCustomEvent(t, servicedef.CustomEventParams{
-							EventKey:    "event-key",
-							User:        o.Some(user),
-							Data:        ldvalue.Bool(true),
-							MetricValue: o.Some(metricValue),
-						})
-
-						client.FlushEvents(t)
-						payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-
-						if inlineUser {
-							expectedEvent := m.AllOf(
-								JSONPropertyKeysCanOnlyBe(append(baseCustomEventProperties, "user")...),
-								IsCustomEvent(),
-								HasUserObjectWithKey(user.GetKey()),
-								HasContextKind(user),
-							)
-							m.In(t).Assert(payload, m.Items(expectedEvent))
-						} else {
-							expectedEvents := []m.Matcher{}
-							if !c.isClientSide {
-								expectedEvents = append(expectedEvents, IsIndexEvent())
-							}
-							expectedEvents = append(expectedEvents, m.AllOf(
-								JSONPropertyKeysCanOnlyBe(append(baseCustomEventProperties, "userKey")...),
-								IsCustomEvent(),
-								HasUserKeyProperty(user.GetKey()),
-								HasContextKind(user),
-							))
-							m.In(t).Assert(payload, m.ItemsInAnyOrder(expectedEvents...))
-						}
-					})
+				if c.isClientSide {
+					client.SendIdentifyEvent(t, context)
+					client.FlushEvents(t)
+					_ = events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 				}
+
+				client.SendCustomEvent(t, servicedef.CustomEventParams{
+					EventKey:    "event-key",
+					Context:     o.Some(context),
+					Data:        ldvalue.Bool(true),
+					MetricValue: o.Some(metricValue),
+				})
+
+				client.FlushEvents(t)
+				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+				expectedEvents := []m.Matcher{}
+				if !c.isClientSide && !c.isPHP {
+					expectedEvents = append(expectedEvents, IsIndexEvent())
+				}
+				expectedEvents = append(expectedEvents, m.AllOf(
+					JSONPropertyKeysCanOnlyBe(customEventProperties...),
+					IsCustomEvent(),
+					h.IfElse(c.isPHP, HasContextObjectWithMatchingKeys(context), HasContextKeys(context)),
+				))
+				m.In(t).Assert(payload, m.ItemsInAnyOrder(expectedEvents...))
 			})
 		}
 	})
 }
 
 func (c CommonEventTests) customEventsParameterizedTests(t *ldtest.T) {
-	eventsConfig := baseEventsConfig()
-	eventsConfig.InlineUsers = true // so we don't get index events in the output
-
 	dataSource := NewSDKDataSource(t, nil)
 	events := NewSDKEventSink(t)
-	client := NewSDKClient(t, c.baseSDKConfigurationPlus(WithEventsConfig(eventsConfig), dataSource, events)...)
+	client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 
 	if c.isClientSide {
 		// ignore the initial identify event
@@ -121,21 +101,10 @@ func (c CommonEventTests) customEventsParameterizedTests(t *ldtest.T) {
 			baseParams.MetricValue = o.Some(metricValue)
 		}
 
-		for _, dataValue := range []ldvalue.Value{
-			ldvalue.Null(),
-			ldvalue.Bool(false),
-			ldvalue.Bool(true),
-			ldvalue.Int(0),
-			ldvalue.Int(1000),
-			ldvalue.Float64(1000.5),
-			ldvalue.String(""),
-			ldvalue.String("abc"),
-			ldvalue.ArrayOf(ldvalue.Int(1), ldvalue.Int(2)),
-			ldvalue.ObjectBuild().Set("property", ldvalue.Bool(true)).Build(),
-		} {
+		for _, dataValue := range data.MakeStandardTestValues() {
 			params := baseParams
 			params.Data = dataValue
-			params.User = o.Some(c.userFactory.NextUniqueUser())
+			params.Context = o.Some(c.contextFactory.NextUniqueContext())
 			allParams = append(allParams, params)
 		}
 
@@ -144,7 +113,7 @@ func (c CommonEventTests) customEventsParameterizedTests(t *ldtest.T) {
 		// data which may be null", to make sure we're covering both methods.
 		params := baseParams
 		params.OmitNullData = true
-		params.User = o.Some(c.userFactory.NextUniqueUser())
+		params.Context = o.Some(c.contextFactory.NextUniqueContext())
 		allParams = append(allParams, params)
 	}
 
@@ -161,7 +130,12 @@ func (c CommonEventTests) customEventsParameterizedTests(t *ldtest.T) {
 			client.SendCustomEvent(t, params)
 			client.FlushEvents(t)
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-			m.In(t).Assert(payload, m.Items(
+
+			expectedEvents := []m.Matcher{}
+			if !c.isClientSide && !c.isPHP {
+				expectedEvents = append(expectedEvents, IsIndexEvent())
+			}
+			expectedEvents = append(expectedEvents,
 				m.AllOf(
 					IsCustomEventForEventKey(params.EventKey),
 					h.IfElse(params.OmitNullData && params.Data.IsNull(),
@@ -174,7 +148,8 @@ func (c CommonEventTests) customEventsParameterizedTests(t *ldtest.T) {
 						m.JSONProperty("metricValue").Should(m.JSONEqual(params.MetricValue)),
 					),
 				),
-			))
+			)
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(expectedEvents...))
 		})
 	}
 }

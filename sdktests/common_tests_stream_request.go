@@ -5,14 +5,14 @@ import (
 	"strings"
 	"time"
 
-	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
+	"github.com/launchdarkly/sdk-test-harness/v2/data"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
 
@@ -94,6 +94,7 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 								append(configurers,
 									WithClientSideConfig(servicedef.SDKConfigClientSideParams{
 										EvaluationReasons: withReasons,
+										InitialContext:    o.Some(ldcontext.New("irrelevant-key")),
 									}),
 									c.withFlagRequestMethod(method),
 								)...)...)
@@ -122,44 +123,42 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 	}
 }
 
-func (c CommonStreamingTests) RequestUserProperties(t *ldtest.T, getPath string) {
+func (c CommonStreamingTests) RequestContextProperties(t *ldtest.T, getPath string) {
 	t.RequireCapability(servicedef.CapabilityClientSide) // server-side SDKs do not send user properties in stream requests
 
-	t.Run("user properties", func(t *ldtest.T) {
-		for _, method := range c.availableFlagRequestMethods() {
-			t.Run(string(method), func(t *ldtest.T) {
-				dataSource, configurers := c.setupDataSources(t, nil)
+	t.Run("context properties", func(t *ldtest.T) {
+		for _, contexts := range data.NewContextFactoriesForExercisingAllAttributes(c.contextFactory.Prefix()) {
+			t.Run(contexts.Description(), func(t *ldtest.T) {
+				for _, method := range c.availableFlagRequestMethods() {
+					t.Run(string(method), func(t *ldtest.T) {
+						dataSource, configurers := c.setupDataSources(t, nil)
 
-				user := lduser.NewUserBuilder(c.userFactory.NextUniqueUser().GetKey()).
-					Name("a").
-					Email("b").AsPrivateAttribute().
-					Custom("c", ldvalue.String("d")).
-					Build()
-				userJSONMatcher := JSONMatchesUser(user, t.Capabilities().Has(servicedef.CapabilityMobile))
+						context := contexts.NextUniqueContext()
+						contextJSONMatcher := JSONMatchesContext(context)
 
-				_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
-					append(configurers,
-						WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-							InitialUser: user,
-						}),
-						c.withFlagRequestMethod(method),
-					)...)...)
+						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
+							append(configurers,
+								WithClientSideInitialContext(context),
+								c.withFlagRequestMethod(method),
+							)...)...)
 
-				request := dataSource.Endpoint().RequireConnection(t, time.Second)
+						request := dataSource.Endpoint().RequireConnection(t, time.Second)
 
-				if method == flagRequestREPORT {
-					m.In(t).For("request body").Assert(request.Body, m.AllOf(
-						m.Not(m.BeNil()),
-						userJSONMatcher))
-				} else {
-					m.In(t).For("request body").Assert(request.Body, m.Length().Should(m.Equal(0)))
+						if method == flagRequestREPORT {
+							m.In(t).For("request body").Assert(request.Body, m.AllOf(
+								m.Not(m.BeNil()),
+								contextJSONMatcher))
+						} else {
+							m.In(t).For("request body").Assert(request.Body, m.Length().Should(m.Equal(0)))
 
-					getPathPrefix := strings.TrimSuffix(getPath, mockld.StreamingPathUserBase64Param)
-					m.In(t).For("request path").Require(request.URL.Path, m.StringHasPrefix(getPathPrefix))
-					userData := strings.TrimPrefix(request.URL.Path, getPathPrefix)
+							getPathPrefix := strings.TrimSuffix(getPath, mockld.StreamingPathContextBase64Param)
+							m.In(t).For("request path").Require(request.URL.Path, m.StringHasPrefix(getPathPrefix))
+							contextData := strings.TrimPrefix(request.URL.Path, getPathPrefix)
 
-					m.In(t).For("user data in URL").Assert(userData,
-						Base64DecodedData().Should(userJSONMatcher))
+							m.In(t).For("context data in URL").Assert(contextData,
+								Base64DecodedData().Should(contextJSONMatcher))
+						}
+					})
 				}
 			})
 		}

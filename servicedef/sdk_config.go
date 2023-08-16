@@ -1,10 +1,12 @@
 package servicedef
 
 import (
-	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
+	"encoding/json"
 
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 )
 
 type SDKConfigParams struct {
@@ -44,9 +46,8 @@ type SDKConfigEventParams struct {
 	Capacity                o.Maybe[int]                        `json:"capacity,omitempty"`
 	EnableDiagnostics       bool                                `json:"enableDiagnostics"`
 	AllAttributesPrivate    bool                                `json:"allAttributesPrivate,omitempty"`
-	GlobalPrivateAttributes []lduser.UserAttribute              `json:"globalPrivateAttributes,omitempty"`
+	GlobalPrivateAttributes []string                            `json:"globalPrivateAttributes,omitempty"`
 	FlushIntervalMS         o.Maybe[ldtime.UnixMillisecondTime] `json:"flushIntervalMs,omitempty"`
-	InlineUsers             bool                                `json:"inlineUsers,omitempty"`
 }
 
 type SDKConfigPersistentDataStoreParams struct {
@@ -67,8 +68,9 @@ type SDKConfigTagsParams struct {
 }
 
 type SDKConfigClientSideParams struct {
-	InitialUser        lduser.User   `json:"initialUser"`
-	AutoAliasingOptOut o.Maybe[bool] `json:"autoAliasingOptOut,omitempty"`
-	EvaluationReasons  o.Maybe[bool] `json:"evaluationReasons,omitempty"`
-	UseReport          o.Maybe[bool] `json:"useReport,omitempty"`
+	InitialContext               o.Maybe[ldcontext.Context] `json:"initialContext,omitempty"`
+	InitialUser                  json.RawMessage            `json:"initialUser,omitempty"`
+	EvaluationReasons            o.Maybe[bool]              `json:"evaluationReasons,omitempty"`
+	UseReport                    o.Maybe[bool]              `json:"useReport,omitempty"`
+	IncludeEnvironmentAttributes o.Maybe[bool]              `json:"includeEnvironmentAttributes,omitempty"`
 }
