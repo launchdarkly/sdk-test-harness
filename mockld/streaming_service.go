@@ -137,6 +137,7 @@ func (s *StreamingService) makePutEvent() eventsource.Event {
 	if s.sdkKind.IsServerSide() {
 		// the schema of this message is slightly different for server-side vs. client-side
 		eventData = map[string]interface{}{
+			"path": "/",
 			"data": eventData,
 		}
 	}
