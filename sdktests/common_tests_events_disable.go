@@ -3,12 +3,12 @@ package sdktests
 import (
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 )
 
 func (c CommonEventTests) DisablingEvents(t *ldtest.T) {
@@ -17,7 +17,7 @@ func (c CommonEventTests) DisablingEvents(t *ldtest.T) {
 	// mock endpoint.
 	t.RequireCapability(servicedef.CapabilityServiceEndpoints)
 
-	user := lduser.NewUser("user-key")
+	context := ldcontext.New("user-key")
 
 	doTest := func(t *ldtest.T, name string, actionThatCausesEvent func(*ldtest.T, *SDKClient)) {
 		t.Run(name, func(t *ldtest.T) {
@@ -37,24 +37,17 @@ func (c CommonEventTests) DisablingEvents(t *ldtest.T) {
 	}
 
 	doTest(t, "evaluation", func(t *ldtest.T, client *SDKClient) {
-		_ = basicEvaluateFlag(t, client, "nonexistent-flag", user, ldvalue.Null())
+		_ = basicEvaluateFlag(t, client, "nonexistent-flag", context, ldvalue.Null())
 	})
 
 	doTest(t, "identify event", func(t *ldtest.T, client *SDKClient) {
-		client.SendIdentifyEvent(t, user)
+		client.SendIdentifyEvent(t, context)
 	})
 
 	doTest(t, "custom event", func(t *ldtest.T, client *SDKClient) {
 		client.SendCustomEvent(t, servicedef.CustomEventParams{
 			EventKey: "event-key",
-			User:     o.Some(user),
-		})
-	})
-
-	doTest(t, "alias event", func(t *ldtest.T, client *SDKClient) {
-		client.SendAliasEvent(t, servicedef.AliasEventParams{
-			User:         user,
-			PreviousUser: lduser.NewUser("previous-user-key"),
+			Context:  o.Some(context),
 		})
 	})
 }

@@ -4,21 +4,33 @@ import (
 	"fmt"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
+	"github.com/launchdarkly/sdk-test-harness/v2/data"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 )
 
+// commonTestsBase provides shared behavior for server-side and client-side SDK tests, if their
+// behavior is similar enough to share most of the test logic. Each subcategory of tests defines
+// its own type embedding this struct (such as CommonEventTests) so that its methods can be
+// namespaced within that category.
+//
+// When we call newCommonTestsBase, it automatically determines whether this is a client-side or
+// a server-side SDK by looking up the test service capabilities. If it is a client-side SDK,
+// isClientSide is set to true, and sdkConfigurers is set to include the minimal required
+// configuration for a client-side SDK (that is, an initial user). For this to work, the test
+// logic should always use baseSDKConfigurationPlus() when creating a client.
 type commonTestsBase struct {
 	sdkKind        mockld.SDKKind
 	isClientSide   bool
 	isMobile       bool
 	isPHP          bool
 	sdkConfigurers []SDKConfigurer
-	userFactory    *UserFactory
+	contextFactory *data.ContextFactory
 }
 
 type flagRequestMethod string
@@ -60,8 +72,8 @@ func (p environmentFilter) Matcher() m.Matcher {
 
 func newCommonTestsBase(t *ldtest.T, testName string, baseSDKConfigurers ...SDKConfigurer) commonTestsBase {
 	c := commonTestsBase{
-		sdkKind:     requireContext(t).sdkKind,
-		userFactory: NewUserFactory(testName),
+		sdkKind:        requireContext(t).sdkKind,
+		contextFactory: data.NewContextFactory(testName),
 	}
 	c.isClientSide = c.sdkKind.IsClientSide()
 	c.isMobile = t.Capabilities().Has(servicedef.CapabilityMobile)
@@ -69,9 +81,7 @@ func newCommonTestsBase(t *ldtest.T, testName string, baseSDKConfigurers ...SDKC
 	if c.isClientSide {
 		c.sdkConfigurers = append(
 			[]SDKConfigurer{
-				WithClientSideConfig(servicedef.SDKConfigClientSideParams{
-					InitialUser: c.userFactory.NextUniqueUser(),
-				}),
+				WithClientSideInitialContext(c.contextFactory.NextUniqueContext()),
 			},
 			baseSDKConfigurers...,
 		)
@@ -126,7 +136,7 @@ func (c commonTestsBase) withFlagRequestMethod(method flagRequestMethod) SDKConf
 func (c commonTestsBase) sendArbitraryEvent(t *ldtest.T, client *SDKClient) {
 	params := servicedef.CustomEventParams{EventKey: "arbitrary-event"}
 	if !c.isClientSide {
-		params.User = o.Some(lduser.NewUser("user-key"))
+		params.Context = o.Some(ldcontext.New("user-key"))
 	}
 	client.SendCustomEvent(t, params)
 }

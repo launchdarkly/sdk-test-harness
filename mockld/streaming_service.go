@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/launchdarkly/sdk-test-harness/framework"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 
 	"github.com/launchdarkly/eventsource"
 
@@ -14,15 +14,15 @@ import (
 )
 
 const (
-	StreamingPathServerSide      = "/all"
-	StreamingPathMobileGet       = "/meval/{user}"
-	StreamingPathMobileReport    = "/meval"
-	StreamingPathRokuHandshake   = "/handshake"
-	StreamingPathRokuEvaluate    = "/mevalalternate"
-	StreamingPathJSClientGet     = "/eval/{env}/{user}"
-	StreamingPathJSClientReport  = "/eval/{env}"
-	StreamingPathUserBase64Param = "{user}"
-	StreamingPathEnvIDParam      = "{env}"
+	StreamingPathServerSide         = "/all"
+	StreamingPathMobileGet          = "/meval/{context}"
+	StreamingPathMobileReport       = "/meval"
+	StreamingPathRokuHandshake      = "/handshake"
+	StreamingPathRokuEvaluate       = "/mevalalternate"
+	StreamingPathJSClientGet        = "/eval/{env}/{context}"
+	StreamingPathJSClientReport     = "/eval/{env}"
+	StreamingPathContextBase64Param = "{context}"
+	StreamingPathEnvIDParam         = "{env}"
 )
 
 const errClientSideStreamCanOnlyUseFlags = `A client-side test attempted to reference a namespace other than` +

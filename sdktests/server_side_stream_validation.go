@@ -4,17 +4,17 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"github.com/launchdarkly/sdk-test-harness/framework/harness"
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
-
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
 
 func doServerSideStreamValidationTests(t *ldtest.T) {
@@ -24,7 +24,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 	flagV1, flagV2 := makeFlagVersionsWithValues(flagKey, 1, 2, expectedValueV1, expectedValueV2)
 	dataV1 := mockld.NewServerSDKDataBuilder().Flag(flagV1).Build()
 	dataV2 := mockld.NewServerSDKDataBuilder().Flag(flagV2).Build()
-	user := lduser.NewUser("user-key")
+	context := ldcontext.New("user-key")
 
 	shouldDropAndReconnectAfterEvent := func(t *ldtest.T, badEventName string, badEventData json.RawMessage) {
 		stream1 := NewSDKDataSourceWithoutEndpoint(t, dataV1)
@@ -38,7 +38,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 		t.Defer(streamEndpoint.Close)
 
 		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: o.Some(user)})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get & discard the request info for the first request
@@ -51,7 +51,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 		_ = streamEndpoint.RequireConnection(t, time.Second*5)
 
 		// Check that the client got the new data from the second stream
-		pollUntilFlagValueUpdated(t, client, flagKey, user, expectedValueV1, expectedValueV2, ldvalue.Null())
+		pollUntilFlagValueUpdated(t, client, flagKey, context, expectedValueV1, expectedValueV2, ldvalue.Null())
 	}
 
 	t.Run("drop and reconnect if stream event has malformed JSON", func(t *ldtest.T) {
@@ -88,7 +88,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 			InitialRetryDelayMS: o.Some(briefDelay), // brief delay so we can easily detect if it reconnects
 		}), dataSource)
 
-		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: o.Some(user)})
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get & discard the request info for the first request
@@ -101,7 +101,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 		dataSource.StreamingService().PushUpdate("flags", flagKey, jsonhelpers.ToJSON(flagV2))
 
 		// Check that the client got the new data
-		pollUntilFlagValueUpdated(t, client, flagKey, user, expectedValueV1, expectedValueV2, ldvalue.Null())
+		pollUntilFlagValueUpdated(t, client, flagKey, context, expectedValueV1, expectedValueV2, ldvalue.Null())
 
 		// Verify that it did not reconnect
 		dataSource.Endpoint().RequireNoMoreConnections(t, time.Millisecond*100)

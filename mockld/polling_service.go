@@ -5,22 +5,36 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/launchdarkly/sdk-test-harness/framework"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 
 	"github.com/gorilla/mux"
 )
 
 const (
-	PollingPathServerSide      = "/sdk/latest-all"
-	PollingPathMobileGet       = "/msdk/evalx/users/{user}"
-	PollingPathMobileReport    = "/msdk/evalx/user"
-	PollingPathJSClientGet     = "/sdk/evalx/{env}/users/{user}"
-	PollingPathJSClientReport  = "/sdk/evalx/{env}/user"
-	PollingPathPHPAllFlags     = "/sdk/flags"
-	PollingPathPHPFlag         = "/sdk/flags/{key}"
-	PollingPathPHPSegment      = "/sdk/segments/{key}"
-	PollingPathUserBase64Param = "{user}"
-	PollingPathEnvIDParam      = "{env}"
+	PollingPathServerSide     = "/sdk/latest-all"
+	PollingPathMobileGet      = "/msdk/evalx/contexts/{context}"
+	PollingPathMobileReport   = "/msdk/evalx/context"
+	PollingPathJSClientGet    = "/sdk/evalx/{env}/contexts/{context}"
+	PollingPathJSClientReport = "/sdk/evalx/{env}/context"
+
+	// The following endpoint paths were used by older SDKs based on the user model rather than
+	// the context model. New context-aware SDKs should always use the new paths. However, our
+	// mock service still supports the old paths (just as the real LD services do). We have
+	// specific tests to verify that the SDKs use the new paths; in all other tests, if the SDK
+	// uses an old path, it will still work so that we don't confusingly see every test fail.
+	// We do *not* support the very old "eval" (as opposed to "evalx") paths since the only SDKs
+	// that used them are long past EOL.
+	PollingPathMobileGetUser      = "/msdk/evalx/users/{context}"
+	PollingPathMobileReportUser   = "/msdk/evalx/user"
+	PollingPathJSClientGetUser    = "/sdk/evalx/{env}/users/{context}"
+	PollingPathJSClientReportUser = "/sdk/evalx/{env}/user"
+
+	PollingPathPHPAllFlags = "/sdk/flags"
+	PollingPathPHPFlag     = "/sdk/flags/{key}"
+	PollingPathPHPSegment  = "/sdk/segments/{key}"
+
+	PollingPathContextBase64Param = "{context}"
+	PollingPathEnvIDParam         = "{env}"
 )
 
 type PollingService struct {
@@ -53,10 +67,14 @@ func NewPollingService(
 	case MobileSDK:
 		router.Handle(PollingPathMobileGet, pollHandler).Methods("GET")
 		router.Handle(PollingPathMobileReport, pollHandler).Methods("REPORT")
+		router.Handle(PollingPathMobileGetUser, pollHandler).Methods("GET")
+		router.Handle(PollingPathMobileReportUser, pollHandler).Methods("REPORT")
 		// Note that we only support the "evalx", not the older "eval" which is used only by old unsupported SDKs
 	case JSClientSDK:
 		router.Handle(PollingPathJSClientGet, pollHandler).Methods("GET")
 		router.Handle(PollingPathJSClientReport, pollHandler).Methods("REPORT")
+		router.Handle(PollingPathJSClientGetUser, pollHandler).Methods("GET")
+		router.Handle(PollingPathJSClientReportUser, pollHandler).Methods("REPORT")
 	case PHPSDK:
 		router.Handle(PollingPathPHPFlag, p.phpFlagHandler()).Methods("GET")
 		router.Handle(PollingPathPHPSegment, p.phpSegmentHandler()).Methods("GET")

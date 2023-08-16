@@ -3,16 +3,15 @@ package sdktests
 import (
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
+	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldbuilders"
+	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldmodel"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldbuilders"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldmodel"
 )
 
 func doServerSideExperimentationEventTests(t *ldtest.T) {
@@ -40,26 +39,26 @@ func doServerSideExperimentationEventTests(t *ldtest.T) {
 			},
 		},
 	}
-	user := lduser.NewUser("user-key")
+	context := ldcontext.New("user-key")
 
 	scenarios := []struct {
 		name           string
 		flagConfig     func(*ldbuilders.FlagBuilder)
-		expectedReason ldreason.EvaluationReason
+		expectedReason string
 	}{
 		{
 			name: "experiment in rule",
 			flagConfig: func(f *ldbuilders.FlagBuilder) {
 				f.AddRule(ldbuilders.NewRuleBuilder().ID("rule1").VariationOrRollout(rollout))
 			},
-			expectedReason: ldreason.NewEvalReasonRuleMatchExperiment(0, "rule1", true),
+			expectedReason: `{"kind": "RULE_MATCH", "ruleIndex": 0, "ruleId": "rule1", "inExperiment": true}`,
 		},
 		{
 			name: "experiment in fallthrough",
 			flagConfig: func(f *ldbuilders.FlagBuilder) {
 				f.Fallthrough(rollout)
 			},
-			expectedReason: ldreason.NewEvalReasonFallthroughExperiment(true),
+			expectedReason: `{"kind": "FALLTHROUGH", "inExperiment": true}`,
 		},
 	}
 	for _, scenario := range scenarios {
@@ -74,7 +73,7 @@ func doServerSideExperimentationEventTests(t *ldtest.T) {
 			eventSink := NewSDKEventSink(t)
 			client := NewSDKClient(t, dataSource, eventSink)
 
-			result := basicEvaluateFlag(t, client, flag.Key, user, defaultValue)
+			result := basicEvaluateFlag(t, client, flag.Key, context, defaultValue)
 			m.In(t).Assert(result, m.JSONEqual(expectedValue))
 
 			client.FlushEvents(t)
@@ -82,18 +81,18 @@ func doServerSideExperimentationEventTests(t *ldtest.T) {
 
 			eventMatchers := []m.Matcher{
 				IsValidFeatureEventWithConditions(
-					isPHP, false, user,
+					isPHP, context,
 					m.JSONProperty("key").Should(m.Equal(flag.Key)),
 					m.JSONProperty("version").Should(m.Equal(flag.Version)),
 					m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),
 					m.JSONProperty("variation").Should(m.Equal(expectedVariation)),
-					m.JSONProperty("reason").Should(m.JSONEqual(scenario.expectedReason)),
+					m.JSONProperty("reason").Should(m.JSONStrEqual(scenario.expectedReason)),
 					m.JSONProperty("default").Should(m.JSONEqual(defaultValue)),
 					JSONPropertyNullOrAbsent("prereqOf"),
 				),
 			}
 			if !isPHP {
-				eventMatchers = append(eventMatchers, IsIndexEventForUserKey(user.GetKey()), IsSummaryEvent())
+				eventMatchers = append(eventMatchers, IsIndexEventForContext(context), IsSummaryEvent())
 			}
 			m.In(t).Assert(payload, m.ItemsInAnyOrder(eventMatchers...))
 		})

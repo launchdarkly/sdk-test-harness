@@ -1,20 +1,24 @@
 package sdktests
 
 import (
+	"encoding/json"
 	"errors"
+	"sync/atomic"
 
-	"github.com/launchdarkly/sdk-test-harness/framework/harness"
-	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/data"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 
 	"github.com/stretchr/testify/require"
 )
 
-var arbitraryInitialUsers = NewUserFactory("arbitrary-initial-user") //nolint:gochecknoglobals
+var currentlyExistingClientInstances int32                                         //nolint:gochecknoglobals
+var arbitraryInitialContexts = data.NewContextFactory("arbitrary-initial-context") //nolint:gochecknoglobals
 
 // SDKConfigurer is an interface for objects that can modify the configuration for StartSDKClient.
 // It is implemented by types such as SDKDataSource.
@@ -43,6 +47,16 @@ func WithCredential(credential string) SDKConfigurer {
 func WithClientSideConfig(clientSideConfig servicedef.SDKConfigClientSideParams) SDKConfigurer {
 	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
 		configOut.ClientSide = o.Some(clientSideConfig)
+		return nil
+	})
+}
+
+// WithClientSideInitialContext is used with StartSDKClient to set the initial context for a client-side SDK.
+func WithClientSideInitialContext(context ldcontext.Context) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		cs := configOut.ClientSide.Value()
+		cs.InitialContext = o.Some(context)
+		configOut.ClientSide = o.Some(cs)
 		return nil
 	})
 }
@@ -109,7 +123,16 @@ type SDKClient struct {
 // The object's lifecycle is tied to the test scope that created it; it will be automatically closed
 // when this test scope exits. It can be reused by subtests until then.
 func NewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) *SDKClient {
+	count := atomic.AddInt32(&currentlyExistingClientInstances, 1)
+	if count == 2 && t.Capabilities().Has(servicedef.CapabilitySingleton) {
+		atomic.AddInt32(&currentlyExistingClientInstances, -1)
+		t.Errorf("Test tried to create an SDK client instance when one already existed, and this SDK is a singleton")
+		t.FailNow()
+	}
 	client, err := TryNewSDKClient(t, configurers...)
+	if err != nil {
+		atomic.AddInt32(&currentlyExistingClientInstances, -1)
+	}
 	require.NoError(t, err)
 	return client
 }
@@ -127,12 +150,12 @@ func TryNewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) (*SDKClient, err
 		config.Credential = defaultSDKKey
 	}
 	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
-		// Ensure that we always provide an initial user for every client-side SDK test, if the test logic
+		// Ensure that we always provide an initial context for every client-side SDK test, if the test logic
 		// didn't explicitly set one. It's preferable for this to have a unique key, so that if the SDK has any
 		// global state that is cached by key, tests won't interfere with each other.
-		if config.ClientSide.Value().InitialUser.GetKey() == "" {
-			cs := config.ClientSide.Value()
-			cs.InitialUser = arbitraryInitialUsers.NextUniqueUser()
+		cs := config.ClientSide.Value()
+		if !cs.InitialContext.IsDefined() && cs.InitialUser == nil {
+			cs.InitialContext = o.Some(arbitraryInitialContexts.NextUniqueContext())
 			config.ClientSide = o.Some(cs)
 		}
 	}
@@ -186,6 +209,7 @@ func validateSDKConfig(config servicedef.SDKConfigParams) error {
 // Close tells the test service to shut down the client instance. Normally this happens automatically at
 // the end of a test.
 func (c *SDKClient) Close() error {
+	atomic.AddInt32(&currentlyExistingClientInstances, -1)
 	return c.sdkClientEntity.Close()
 }
 
@@ -232,7 +256,19 @@ func (c *SDKClient) EvaluateAllFlags(
 // SendIdentifyEvent tells the SDK client to send an identify event.
 //
 // Any error from the test service causes the test to terminate immediately.
-func (c *SDKClient) SendIdentifyEvent(t *ldtest.T, user lduser.User) {
+func (c *SDKClient) SendIdentifyEvent(t *ldtest.T, context ldcontext.Context) {
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:       servicedef.CommandIdentifyEvent,
+			IdentifyEvent: o.Some(servicedef.IdentifyEventParams{Context: o.Some(context)}),
+		},
+		t.DebugLogger(),
+		nil,
+	))
+}
+
+// SendIdentifyEventWithOldUser is equivalent to SendIdentifyEvent, but with old-style user data.
+func (c *SDKClient) SendIdentifyEventWithOldUser(t *ldtest.T, user json.RawMessage) {
 	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
 		servicedef.CommandParams{
 			Command:       servicedef.CommandIdentifyEvent,
@@ -257,20 +293,6 @@ func (c *SDKClient) SendCustomEvent(t *ldtest.T, params servicedef.CustomEventPa
 	))
 }
 
-// SendAliasEvent tells the SDK client to send an alias event.
-//
-// Any error from the test service causes the test to terminate immediately.
-func (c *SDKClient) SendAliasEvent(t *ldtest.T, params servicedef.AliasEventParams) {
-	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
-		servicedef.CommandParams{
-			Command:    servicedef.CommandAliasEvent,
-			AliasEvent: o.Some(params),
-		},
-		t.DebugLogger(),
-		nil,
-	))
-}
-
 // FlushEvents tells the SDK client to initiate an event flush.
 //
 // Any error from the test service causes the test to terminate immediately.
@@ -287,9 +309,53 @@ func (c *SDKClient) GetBigSegmentStoreStatus(t *ldtest.T) servicedef.BigSegmentS
 	return resp
 }
 
-// GetSecureModeHash tells the SDK client to calculate a secure mode hash for a user. The test
+// ContextBuild tells the test service to use the SDK's context builder to build a context and return it as JSON.
+func (c *SDKClient) ContextBuild(t *ldtest.T, params servicedef.ContextBuildParams) servicedef.ContextBuildResponse {
+	var resp servicedef.ContextBuildResponse
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:      servicedef.CommandContextBuild,
+			ContextBuild: o.Some(params),
+		},
+		t.DebugLogger(),
+		&resp,
+	))
+	return resp
+}
+
+// ContextConvert tells the test service to use the SDK's JSON converters to unmarshal and remarshal a context.
+func (c *SDKClient) ContextConvert(
+	t *ldtest.T,
+	params servicedef.ContextConvertParams,
+) servicedef.ContextBuildResponse {
+	var resp servicedef.ContextBuildResponse
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:        servicedef.CommandContextConvert,
+			ContextConvert: o.Some(params),
+		},
+		t.DebugLogger(),
+		&resp,
+	))
+	return resp
+}
+
+// GetSecureModeHash tells the SDK client to calculate a secure mode hash for a context. The test
 // harness will only call this method if the test service has the "secure-mode-hash" capability.
-func (c *SDKClient) GetSecureModeHash(t *ldtest.T, user lduser.User) string {
+func (c *SDKClient) GetSecureModeHash(t *ldtest.T, context ldcontext.Context) string {
+	var resp servicedef.SecureModeHashResponse
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:        servicedef.CommandSecureModeHash,
+			SecureModeHash: o.Some(servicedef.SecureModeHashParams{Context: o.Some(context)}),
+		},
+		t.DebugLogger(),
+		&resp))
+	return resp.Result
+}
+
+// GetSecureModeHashWithOldUser is equivalent to GetSecureModeHash, but with old-style user JSON data.
+func (c *SDKClient) GetSecureModeHashWithOldUser(t *ldtest.T, user json.RawMessage) string {
 	var resp servicedef.SecureModeHashResponse
 	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
 		servicedef.CommandParams{

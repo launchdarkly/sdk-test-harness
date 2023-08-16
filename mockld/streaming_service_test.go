@@ -7,15 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
-	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 
 	"github.com/launchdarkly/eventsource"
+	"github.com/launchdarkly/go-sdk-common/v3/ldlog"
+	"github.com/launchdarkly/go-sdk-common/v3/ldlogtest"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldlog"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldlogtest"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -103,7 +102,7 @@ func doStreamingServiceTests(
 }
 
 func requireEvent(t *testing.T, stream *eventsource.Stream) eventsource.Event {
-	return helpers.RequireValueWithMessage(t, stream.Events, time.Second*5, "timed out waiting for event")
+	return h.RequireValueWithMessage(t, stream.Events, time.Second*5, "timed out waiting for event")
 }
 
 func expectedServerSidePutData(sdkData SDKData) string {

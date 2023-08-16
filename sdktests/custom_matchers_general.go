@@ -8,15 +8,14 @@ import (
 	"sort"
 	"strings"
 
-	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
-	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
 )
 
 // The functions in this file are for convenient use of the matchers API with complex
@@ -63,6 +62,13 @@ func Base64DecodedData() m.MatcherTransform {
 		EnsureInputValueType("")
 }
 
+// EqualReason is a type-safe replacement for m.Equal(EvaluationReason) that also provides better
+// failure output, by treating it as a JSON object-- since the default implementation of String()
+// for EvaluationReason returns a shorter string that doesn't include every property.
+func EqualReason(reason ldreason.EvaluationReason) m.Matcher {
+	return m.JSONEqual(reason)
+}
+
 func EvalResponseValue() m.MatcherTransform {
 	return m.Transform(
 		"result value",
@@ -94,13 +100,6 @@ func EvalResponseReason() m.MatcherTransform {
 			return o.None[ldreason.EvaluationReason](), nil
 		}).
 		EnsureInputValueType(servicedef.EvaluateFlagResponse{})
-}
-
-// EqualReason is a type-safe replacement for m.Equal(EvaluationReason) that also provides better
-// failure output, by treating it as a JSON object-- since the default implementation of String()
-// for EvaluationReason returns a shorter string that doesn't include every property.
-func EqualReason(reason ldreason.EvaluationReason) m.Matcher {
-	return m.JSONEqual(reason)
 }
 
 func EvalAllFlagsStateMap() m.MatcherTransform {
@@ -145,7 +144,7 @@ func Header(name string) m.MatcherTransform {
 
 func JSONPropertyKeysCanOnlyBe(keys ...string) m.Matcher {
 	jsonKeys := func(value interface{}) []string {
-		return ldvalue.Parse(jsonhelpers.ToJSON(value)).Keys()
+		return ldvalue.Parse(jsonhelpers.ToJSON(value)).Keys(nil)
 	}
 	return m.New(
 		func(value interface{}) bool {
@@ -177,69 +176,8 @@ func JSONPropertyNullOrAbsent(name string) m.Matcher {
 	return m.JSONOptProperty(name).Should(m.BeNil())
 }
 
-func JSONMatchesUser(user lduser.User, withOptionalMobileProperties bool) m.Matcher {
-	var ms []m.Matcher
-	keys := make([]string, 0)
-	private := make([]string, 0)
-	for _, attr := range []lduser.UserAttribute{
-		lduser.KeyAttribute, lduser.NameAttribute, lduser.FirstNameAttribute, lduser.LastNameAttribute,
-		lduser.EmailAttribute, lduser.CountryAttribute, lduser.IPAttribute, lduser.AvatarAttribute,
-		lduser.AnonymousAttribute, lduser.SecondaryKeyAttribute,
-	} {
-		keys = append(keys, string(attr))
-		if value := user.GetAttribute(attr); value.IsDefined() {
-			ms = append(ms, m.JSONProperty(string(attr)).Should(m.JSONEqual(value)))
-		} else {
-			ms = append(ms, JSONPropertyNullOrAbsent(string(attr)))
-		}
-		if user.IsPrivateAttribute(attr) {
-			private = append(private, string(attr))
-		}
-	}
-	keys = append(keys, "custom", "privateAttributeNames")
-	custom := user.GetAllCustomMap().AsMap()
-	ms = append(ms, JSONUserCustomAttributesProperty(custom, withOptionalMobileProperties))
-	if len(private) == 0 {
-		ms = append(ms, m.JSONOptProperty("privateAttributeNames").Should(m.AnyOf(m.BeNil(), m.JSONStrEqual("[]"))))
-	} else {
-		var nameMatchers []m.Matcher
-		for _, p := range private {
-			nameMatchers = append(nameMatchers, m.Equal(p))
-		}
-		ms = append(ms, m.JSONProperty("privateAttributeNames").Should(
-			m.JSONArray().Should(m.ItemsInAnyOrder(nameMatchers...))))
-	}
-	ms = append(ms, JSONPropertyKeysCanOnlyBe(keys...))
-	return m.AllOf(ms...)
-}
-
-func JSONUserCustomAttributesProperty(customAttrs map[string]ldvalue.Value, withOptionalMobileProps bool) m.Matcher {
-	// The funny logic here is because in mobile SDKs only, the SDK is allowed to add extra
-	// "device" and "os" properties, whose exact values don't matter for our purposes.
-	customCanBe := []m.Matcher{}
-	if len(customAttrs) == 0 {
-		customCanBe = append(customCanBe, m.BeNil(), m.JSONStrEqual("{}"))
-		if withOptionalMobileProps {
-			customCanBe = append(customCanBe,
-				m.MapOf(
-					m.KV("device", m.Not(m.BeNil())),
-					m.KV("os", m.Not(m.BeNil())),
-				))
-		}
-		return m.JSONOptProperty("custom").Should(m.AnyOf(customCanBe...))
-	}
-	customCanBe = append(customCanBe, m.JSONEqual(customAttrs))
-	if withOptionalMobileProps {
-		props := make([]m.KeyValueMatcher, 0, len(customAttrs)+2)
-		for k, v := range customAttrs {
-			props = append(props, m.KV(k, m.JSONEqual(v)))
-		}
-		props = append(props,
-			m.KV("device", m.Not(m.BeNil())),
-			m.KV("os", m.Not(m.BeNil())))
-		customCanBe = append(customCanBe, m.MapOf(props...))
-	}
-	return m.JSONProperty("custom").Should(m.AnyOf(customCanBe...))
+func JSONPropertyNullOrAbsentOrEqualTo(name string, emptyValue interface{}) m.Matcher {
+	return m.JSONOptProperty(name).Should(m.AnyOf(m.BeNil(), m.JSONEqual(emptyValue)))
 }
 
 func SortedStrings() m.MatcherTransform {

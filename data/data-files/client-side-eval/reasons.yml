@@ -1,0 +1,52 @@
+---
+name: evaluation reasons - <NAME>
+
+parameters:
+  - NAME: off
+    REASON: { kind: "OFF" }
+  
+  - NAME: fallthrough
+    REASON: { kind: "FALLTHROUGH" }
+
+  - NAME: fallthrough experiment
+    REASON: { kind: "FALLTHROUGH", isExperiment: true }
+
+  - NAME: target match
+    REASON: { kind: "TARGET_MATCH" }
+
+  - NAME: rule match
+    REASON: { kind: "RULE_MATCH", ruleIndex: 1, ruleId: "id" }
+
+  - NAME: rule match experiment
+    REASON: { kind: "RULE_MATCH", ruleIndex: 1, ruleId: "id", isExperiment: true }
+  
+  - NAME: prerequisite failed
+    REASON: { kind: "PREREQUISITE_FAILED", prereqKey: "failedkey" }
+  
+  # The following errors are the only ones that would actually be returned by LD in flag data;
+  # all other errors are ones that come from invalid parameters being passed to the SDK
+
+  - NAME: error MALFORMED_FLAG
+    REASON: { kind: "ERROR", "errorKind": "MALFORMED_FLAG" }
+
+  - NAME: error MALFORMED_FLAG
+    REASON: { kind: "ERROR", "errorKind": "EXCEPTION" }
+
+sdkData:
+  flag-key:
+    version: 1
+    value: true
+    variation: 0
+    reason: <REASON>
+
+context:
+  kind: user
+  key: user-key
+
+evaluations:
+  - flagKey: flag-key
+    default: false
+    expect:
+      value: true
+      variationIndex: 0
+      reason: <REASON>

@@ -1,15 +1,17 @@
 package sdktests
 
 import (
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/data"
+	"github.com/launchdarkly/sdk-test-harness/v2/data/testmodel"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldreason"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldtime"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
 )
 
 func doServerSideEvalTests(t *ldtest.T) {
@@ -20,14 +22,18 @@ func doServerSideEvalTests(t *ldtest.T) {
 }
 
 func runParameterizedServerSideEvalTests(t *ldtest.T) {
-	parameterizedTests := CommonEvalParameterizedTestRunner[mockld.ServerSDKData]{}
+	parameterizedTests := CommonEvalParameterizedTestRunner[mockld.ServerSDKData]{
+		SDKConfigurers:       func(testSuite testmodel.EvalTestSuite[mockld.ServerSDKData]) []SDKConfigurer { return nil },
+		FilterSDKData:        nil,
+		FilterExpectedReason: nil,
+	}
 	parameterizedTests.RunAll(t, "server-side-eval")
 }
 
 func runParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
-	defaultValues := DefaultValueByTypeFactory()
+	defaultValues := data.MakeValueFactoryBySDKValueType()
 	flagKey := "some-flag"
-	user := lduser.NewUser("user-key")
+	context := ldcontext.New("user-key")
 	expectedReason := ldreason.NewEvalReasonError(ldreason.EvalErrorClientNotReady)
 
 	dataSource := NewSDKDataSource(t, mockld.BlockingUnavailableSDKData(mockld.ServerSideSDK))
@@ -43,7 +49,7 @@ func runParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
 			t.Run("evaluate flag without detail", func(t *ldtest.T) {
 				result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 					FlagKey:      flagKey,
-					User:         o.Some(user),
+					Context:      o.Some(context),
 					ValueType:    valueType,
 					DefaultValue: defaultValue,
 				})
@@ -53,7 +59,7 @@ func runParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
 			t.Run("evaluate flag with detail", func(t *ldtest.T) {
 				result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 					FlagKey:      flagKey,
-					User:         o.Some(user),
+					Context:      o.Some(context),
 					ValueType:    valueType,
 					DefaultValue: defaultValue,
 					Detail:       true,

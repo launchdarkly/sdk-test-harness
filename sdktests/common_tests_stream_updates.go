@@ -4,19 +4,18 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldbuilders"
+	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldmodel"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"github.com/launchdarkly/sdk-test-harness/framework/helpers"
-	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
-	"gopkg.in/launchdarkly/go-sdk-common.v2/lduser"
-	"gopkg.in/launchdarkly/go-sdk-common.v2/ldvalue"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldbuilders"
-	"gopkg.in/launchdarkly/go-server-sdk-evaluation.v1/ldmodel"
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,7 +33,7 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 	versionBefore := 100
 	valueBefore, valueAfter := ldvalue.String("valueBefore"), ldvalue.String("valueAfter")
 	defaultValue := ldvalue.String("defaultValue")
-	user := lduser.NewUser("user-key")
+	context := ldcontext.New("context-key")
 
 	versionDeltaDesc := func(delta int) string {
 		switch {
@@ -65,7 +64,7 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 				stream, configurers := c.setupDataSources(t, dataBefore)
 				client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 
-				actualValue1 := basicEvaluateFlag(t, client, flagKey, user, defaultValue)
+				actualValue1 := basicEvaluateFlag(t, client, flagKey, context, defaultValue)
 				m.In(t).Assert(actualValue1, m.JSONEqual(valueBefore))
 
 				_, _ = stream.Endpoint().AwaitConnection(time.Second)
@@ -83,18 +82,18 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 				}
 
 				if shouldApply {
-					pollUntilFlagValueUpdated(t, client, flagKey, user, valueBefore, expectedValueIfUpdated, defaultValue)
+					pollUntilFlagValueUpdated(t, client, flagKey, context, valueBefore, expectedValueIfUpdated, defaultValue)
 				} else {
 					require.Never(
 						t,
-						checkForUpdatedValue(t, client, flagKey, user, valueBefore, expectedValueIfUpdated, defaultValue),
+						checkForUpdatedValue(t, client, flagKey, context, valueBefore, expectedValueIfUpdated, defaultValue),
 						time.Millisecond*100,
 						time.Millisecond*20,
 						"flag value was updated, but it should not have been",
 					)
 				}
 
-				allFlags := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{User: o.Some(user)})
+				allFlags := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 				if shouldApply {
 					if isDelete {
 						assert.NotContains(t, allFlags.State, flagKey)
@@ -112,11 +111,11 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 
 				t.Run(segmentTestDesc, func(t *ldtest.T) {
 					segmentBefore := ldbuilders.NewSegmentBuilder(segmentKey).Version(versionBefore).
-						Included(user.GetKey()).Build()
+						Included(context.Key()).Build()
 					segmentAfter := ldbuilders.NewSegmentBuilder(segmentKey).Version(versionAfter).
-						Build() // user is not included in segmentAfter
+						Build() // context is not included in segmentAfter
 
-					// Configure this flag so that if the user is included in the segment, it returns variation 0
+					// Configure this flag so that if the context is included in the segment, it returns variation 0
 					// (valueBefore); otherwise it returns variation 1 (valueAfter).
 					flag := makeFlagToCheckSegmentMatch(flagKey, segmentKey, valueAfter, valueBefore)
 
@@ -124,7 +123,7 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 					stream := NewSDKDataSource(t, dataBefore)
 					client := NewSDKClient(t, c.baseSDKConfigurationPlus(stream)...)
 
-					actualValue1 := basicEvaluateFlag(t, client, flagKey, user, ldvalue.Null())
+					actualValue1 := basicEvaluateFlag(t, client, flagKey, context, ldvalue.Null())
 					m.In(t).Assert(actualValue1, m.JSONEqual(valueBefore))
 
 					if isDelete {
@@ -134,17 +133,17 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 					}
 
 					// If we successfully delete the segment, the effect is the same as if we had updated the
-					// segment to not include the user. SDKs should treat "segment not found" as equivalent to
-					// "user not included in segment"; they should _not_ treat this as an error that would
+					// segment to not include the context. SDKs should treat "segment not found" as equivalent to
+					// "context not included in segment"; they should _not_ treat this as an error that would
 					// make the flag return a default value.
 					expectedValueIfUpdated := valueAfter
 
 					if shouldApply {
-						pollUntilFlagValueUpdated(t, client, flagKey, user, valueBefore, valueAfter, defaultValue)
+						pollUntilFlagValueUpdated(t, client, flagKey, context, valueBefore, valueAfter, defaultValue)
 					} else {
 						require.Never(
 							t,
-							checkForUpdatedValue(t, client, flagKey, user, valueBefore, expectedValueIfUpdated, defaultValue),
+							checkForUpdatedValue(t, client, flagKey, context, valueBefore, expectedValueIfUpdated, defaultValue),
 							time.Millisecond*100,
 							time.Millisecond*20,
 							"flag value was updated, but it should not have been",
@@ -164,7 +163,7 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 			stream, configurers := c.setupDataSources(t, nil)
 			client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 
-			actualValue1 := basicEvaluateFlag(t, client, flagKey, user, defaultValue)
+			actualValue1 := basicEvaluateFlag(t, client, flagKey, context, defaultValue)
 			m.In(t).Assert(actualValue1, m.JSONEqual(defaultValue))
 
 			_, _ = stream.Endpoint().AwaitConnection(time.Second)
@@ -175,9 +174,9 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 				// A delete for an unknown flag should be persisted by the SDK so it knows this version was
 				// deleted. A subsequent update for the same flag with an equal or lower version should be ignored.
 				stream.StreamingService().PushUpdate("flags", flagKey, updateData)
-				helpers.RequireNever(
+				h.RequireNever(
 					t,
-					checkForUpdatedValue(t, client, flagKey, user, defaultValue, valueAfter, defaultValue),
+					checkForUpdatedValue(t, client, flagKey, context, defaultValue, valueAfter, defaultValue),
 					time.Millisecond*100,
 					time.Millisecond*20,
 					"flag update after deletion should have been ignored due to version; deletion was not persisted",
@@ -185,7 +184,7 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 			} else {
 				stream.StreamingService().PushUpdate("flags", flagKey, updateData)
 
-				pollUntilFlagValueUpdated(t, client, flagKey, user, defaultValue, valueAfter, defaultValue)
+				pollUntilFlagValueUpdated(t, client, flagKey, context, defaultValue, valueAfter, defaultValue)
 			}
 		})
 
@@ -193,14 +192,14 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 			t.Run(fmt.Sprintf("segment %s for previously nonexistent segment is applied", operationDesc), func(t *ldtest.T) {
 				version := 100
 				segment := ldbuilders.NewSegmentBuilder(segmentKey).Version(version).
-					Included(user.GetKey()).Build()
+					Included(context.Key()).Build()
 				flag := makeFlagToCheckSegmentMatch(flagKey, segmentKey, valueBefore, valueAfter)
 
 				dataBefore := mockld.NewServerSDKDataBuilder().Flag(flag).Build() // data does *not* include segment yet
 				stream := NewSDKDataSource(t, dataBefore)
 				client := NewSDKClient(t, c.baseSDKConfigurationPlus(stream)...)
 
-				actualValue1 := basicEvaluateFlag(t, client, flagKey, user, ldvalue.Null())
+				actualValue1 := basicEvaluateFlag(t, client, flagKey, context, ldvalue.Null())
 				m.In(t).Assert(actualValue1, m.JSONEqual(valueBefore))
 
 				if isDelete {
@@ -211,7 +210,7 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 					stream.StreamingService().PushUpdate("segments", segmentKey, jsonhelpers.ToJSON(segment))
 					require.Never(
 						t,
-						checkForUpdatedValue(t, client, flagKey, user, valueBefore, valueAfter, defaultValue),
+						checkForUpdatedValue(t, client, flagKey, context, valueBefore, valueAfter, defaultValue),
 						time.Millisecond*100,
 						time.Millisecond*20,
 						"segment update after deletion should have been ignored due to version; deletion was not persisted",
@@ -220,7 +219,7 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 					stream.StreamingService().PushUpdate("segments", segmentKey, jsonhelpers.ToJSON(segment))
 
 					// Now that the segment exists, the flag should return the "after" value
-					pollUntilFlagValueUpdated(t, client, flagKey, user, valueBefore, valueAfter, defaultValue)
+					pollUntilFlagValueUpdated(t, client, flagKey, context, valueBefore, valueAfter, defaultValue)
 				}
 			})
 		}

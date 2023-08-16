@@ -3,9 +3,9 @@ package sdktests
 import (
 	"strings"
 
-	h "github.com/launchdarkly/sdk-test-harness/framework/helpers"
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/mockld"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
@@ -28,16 +28,16 @@ func doClientSidePollRequestTest(t *ldtest.T) {
 		case mockld.RokuSDK:
 			fallthrough
 		case mockld.MobileSDK:
-			mobileGetPathPrefix := strings.TrimSuffix(mockld.PollingPathMobileGet, mockld.PollingPathUserBase64Param)
+			mobileGetPathPrefix := strings.TrimSuffix(mockld.PollingPathMobileGet, mockld.PollingPathContextBase64Param)
 			return h.IfElse(method == flagRequestREPORT,
 				m.Equal(mockld.PollingPathMobileReport),
 				m.StringHasPrefix(mobileGetPathPrefix))
-			// details of base64-encoded user data are tested separately
+			// details of base64-encoded context data are tested separately
 
 		case mockld.JSClientSDK:
 			jsGetPathPrefix := strings.TrimSuffix(
 				strings.ReplaceAll(mockld.PollingPathJSClientGet, mockld.PollingPathEnvIDParam, envIDOrMobileKey),
-				mockld.PollingPathUserBase64Param, // details of base64-encoded user data are tested separately
+				mockld.PollingPathContextBase64Param, // details of base64-encoded context data are tested separately
 			)
 			jsReportPath := strings.ReplaceAll(mockld.PollingPathJSClientReport, mockld.PollingPathEnvIDParam, envIDOrMobileKey)
 			return h.IfElse(method == flagRequestREPORT,
@@ -53,5 +53,5 @@ func doClientSidePollRequestTest(t *ldtest.T) {
 	getPath := h.IfElse(sdkKind == mockld.MobileSDK || sdkKind == mockld.RokuSDK,
 		mockld.PollingPathMobileGet,
 		strings.ReplaceAll(mockld.PollingPathJSClientGet, mockld.PollingPathEnvIDParam, envIDOrMobileKey))
-	pollTests.RequestUserProperties(t, getPath)
+	pollTests.RequestContextProperties(t, getPath)
 }

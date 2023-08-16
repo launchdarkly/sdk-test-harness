@@ -1,0 +1,220 @@
+---
+  name: segment match
+  
+  constants:
+    IS_MATCH:
+      value: true
+      variationIndex: 0
+      reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "ruleid" }
+    IS_NOT_MATCH:
+      value: false
+      variationIndex: 1
+      reason: { kind: "FALLTHROUGH" }
+    boolean_flag_base: &boolean_flag_base
+      on: true
+      variations: [ true, false ]
+      offVariation: 1
+      fallthrough: { variation: 1 }
+  
+  sdkData:
+    flags:
+      flag-using-segment1:
+        <<: *boolean_flag_base
+        rules:
+          - id: ruleid
+            variation: 0
+            clauses:
+              - { attribute: "", op: "segmentMatch", values: [ "segment1" ]}
+
+      negated-flag-using-segment1:
+        <<: *boolean_flag_base
+        rules:
+          - id: ruleid
+            variation: 0
+            clauses:
+              - { attribute: "", op: "segmentMatch", values: [ "segment1" ], negate: true}
+  
+      flag-using-segment1-and-segment2:
+        <<: *boolean_flag_base
+        rules:
+          - id: ruleid
+            variation: 0
+            clauses:
+              - { attribute: "", op: "segmentMatch", values: [ "segment1", "segment2" ]}
+  
+      flag-using-segment-with-context-kinds:
+        <<: *boolean_flag_base
+        rules:
+          - id: ruleid
+            variation: 0
+            clauses:
+              - { attribute: "", op: "segmentMatch", values: [ "segment-with-context-kinds" ]}
+  
+      flag-using-unknown-segment:
+        <<: *boolean_flag_base
+        rules:
+          - id: ruleid
+            variation: 0
+            clauses:
+              - { attribute: "", op: "segmentMatch", values: [ "segment99" ]}
+  
+      flag-using-segment3:
+        <<: *boolean_flag_base
+        rules:
+          - id: ruleid
+            variation: 0
+            clauses:
+              - { attribute: "", op: "segmentMatch", values: [ "segment3" ]}
+  
+    segments:
+      segment1:
+        included: [ "user-included-in-segment" ]
+        excluded: [ "user-excluded-from-segment" ]
+        rules:
+          - clauses:
+              - { attribute: "segment1RuleShouldMatch", op: "in", values: [ true ] }
+  
+      segment2:
+        rules:
+          - clauses:
+              - { attribute: "segment2RuleShouldMatch", op: "in", values: [ true ] }
+  
+      segment-with-context-kinds:
+        included: [ "included-user-key" ]
+        excluded: [ "excluded-user-key" ]
+        includedContexts:
+          - { contextKind: "kind1", values: [ "included-kind1-key" ] }
+          - { contextKind: "kind2", values: [ "included-kind2-key" ] }
+        excludedContexts:
+          - { contextKind: "kind1", values: [ "excluded-kind1-key" ] }
+          - { contextKind: "kind2", values: [ "excluded-kind2-key" ] }
+        rules:
+          - { clauses: [ { attribute: "match-user-rule", op: "in", values: [ true ] } ] }
+          - { clauses: [ { contextKind: "kind1", attribute: "match-kind1-rule", op: "in", values: [ true ] } ] }
+  
+      segment3:
+        salt: salty
+        rules:
+          - id: ruleid
+            clauses:
+              - { attribute: "segment3RuleShouldMatch", op: "in", values: [ true ] }
+            #Bucket value for segment3.salty.user-key + 5
+            #The value will be 36563 for segment3.salty.unmatching-key
+            weight: 14955
+  
+  evaluations:
+    - name: user matches via include
+      flagKey: flag-using-segment1
+      context: { key: "user-included-in-segment" }
+      expect: <IS_MATCH>
+
+    # User matches the segment and the flag rule negates it making it not a match.
+    - name: user matched via include can be negated
+      flagKey: negated-flag-using-segment1
+      context: { key: "user-included-in-segment" }
+      expect: <IS_NOT_MATCH>
+
+    - name: user matches via include in multi-kind user
+      flagKey: flag-using-segment1
+      context: { kind: "multi", user: {key: "user-included-in-segment"}, org: { key: "org-key"} }
+      expect: <IS_MATCH>
+  
+    - name: user matches via rule
+      flagKey: flag-using-segment1
+      context:
+        key: "some-user"
+        custom: { "segment1RuleShouldMatch": true }
+      expect: <IS_MATCH>
+  
+    - name: user matches via rule but is excluded
+      flagKey: flag-using-segment1
+      context:
+        key: "user-excluded-from-segment"
+        custom: { "segment1RuleShouldMatch": true }
+      expect: <IS_NOT_MATCH>
+  
+    - name: user does not match and is not included
+      flagKey: flag-using-segment1
+      context: { key: "some-user" }
+      expect: <IS_NOT_MATCH>
+
+    # User does not match, but it can be made into a match by negation.
+    - name: user does not match and can be negated
+      flagKey: negated-flag-using-segment1
+      context: { key: "some-key" }
+      expect: <IS_MATCH>
+  
+    - name: clause matches if any of the segments match
+      flagKey: flag-using-segment1-and-segment2
+      context:
+        key: "user-key"
+        custom: { "segment2RuleShouldMatch": true }
+      expect: <IS_MATCH>
+  
+    - name: unknown segment is non-match, not an error
+      flagKey: flag-using-unknown-segment
+      context: { key: "user-key" }
+      expect: <IS_NOT_MATCH>
+  
+    - name: included list is specific to user kind
+      flagKey: flag-using-segment-with-context-kinds
+      context: { kind: "kind1", key: "included-user-key" }
+      expect: <IS_NOT_MATCH>
+  
+    - name: includedContexts match for non-default context kind
+      flagKey: flag-using-segment-with-context-kinds
+      context: { kind: "kind1", key: "included-kind1-key" }
+      expect: <IS_MATCH>
+  
+    - name: includedContexts non-match for default context kind
+      flagKey: flag-using-segment-with-context-kinds
+      context: { kind: "user", key: "included-kind1-key" }
+      expect: <IS_NOT_MATCH>
+  
+    - name: includedContexts non-match for non-default context kind
+      flagKey: flag-using-segment-with-context-kinds
+      context: { kind: "kind2", key: "included-kind1-key" }
+      expect: <IS_NOT_MATCH>
+  
+    - name: excluded list is specific to user kind
+      flagKey: flag-using-segment-with-context-kinds
+      context: { kind: "kind1", key: "excluded-user-key", match-kind1-rule: true }
+      expect: <IS_MATCH>
+  
+    - name: rule match for non-default context kind
+      flagKey: flag-using-segment-with-context-kinds
+      context: { kind: "kind1", key: "some-other-key", match-kind1-rule: true }
+      expect: <IS_MATCH>
+  
+    - name: excludedContexts match for non-default context kind
+      flagKey: flag-using-segment-with-context-kinds
+      context: { kind: "kind1", key: "excluded-kind1-key", match-kind1-rule: true }
+      expect: <IS_NOT_MATCH>
+  
+    - name: excludedContexts non-match for default context kind
+      flagKey: flag-using-segment-with-context-kinds
+      context: { kind: "user", key: "excluded-kind1-key", match-user-rule: true }
+      expect: <IS_MATCH>
+  
+    - name: excludedContexts non-match for non-default context kind
+      # is matched by kind1 rule; is not matched by exclude for kind2 despite key
+      flagKey: flag-using-segment-with-context-kinds
+      context: { kind: "kind1", key: "excluded-kind2-key", match-kind1-rule: true }
+      expect: <IS_MATCH>
+  
+    - name: key does not bucket into segment
+      flagKey: flag-using-segment3
+      context:
+        key: unmatching-key
+        kind: user
+        segment3RuleShouldMatch: true
+      expect: <IS_NOT_MATCH>
+  
+    - name: key does bucket into segment
+      flagKey: flag-using-segment3
+      context:
+        kind: user
+        key: user-key
+        segment3RuleShouldMatch: true
+      expect: <IS_MATCH>
+  

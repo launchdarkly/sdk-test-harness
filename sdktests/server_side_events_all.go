@@ -1,8 +1,8 @@
 package sdktests
 
 import (
-	"github.com/launchdarkly/sdk-test-harness/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
@@ -16,9 +16,8 @@ func doServerSideEventTests(t *ldtest.T) {
 	t.Run("experimentation", doServerSideExperimentationEventTests)
 	t.Run("identify events", doServerSideIdentifyEventTests)
 	t.Run("custom events", doServerSideCustomEventTests)
-	t.Run("alias events", doServerSideAliasEventTests)
 	t.Run("index events", doServerSideIndexEventTests)
-	t.Run("user properties", doServerSideEventUserTests)
+	t.Run("context properties", doServerSideEventContextTests)
 	t.Run("event capacity", doServerSideEventBufferTests)
 	t.Run("disabling", doServerSideEventDisableTest)
 }
@@ -32,8 +31,9 @@ func doServerSideEventRequestTests(t *ldtest.T) {
 		}))
 
 	eventTests.RequestMethodAndHeaders(t, sdkKey, m.AllOf(
-		Header("X-LaunchDarkly-Event-Schema").Should(m.Equal(regularEventSchema)),
+		Header("X-LaunchDarkly-Event-Schema").Should(m.Equal(currentEventSchema)),
 		Header("X-LaunchDarkly-Payload-Id").Should(m.Not(m.Equal(""))),
+		Header("Content-Type").Should(m.Equal("application/json")),
 	))
 
 	eventTests.RequestURLPath(t, m.Equal("/bulk"))
@@ -51,14 +51,9 @@ func doServerSideCustomEventTests(t *ldtest.T) {
 		CustomEvents(t)
 }
 
-func doServerSideAliasEventTests(t *ldtest.T) {
-	NewCommonEventTests(t, "doServerSideAliasEventTests").
-		AliasEvents(t)
-}
-
-func doServerSideEventUserTests(t *ldtest.T) {
-	NewCommonEventTests(t, "doServerSideEventUserTests").
-		EventUsers(t)
+func doServerSideEventContextTests(t *ldtest.T) {
+	NewCommonEventTests(t, "doServerSideEventContextTests").
+		EventContexts(t)
 }
 
 func doServerSideEventBufferTests(t *ldtest.T) {
