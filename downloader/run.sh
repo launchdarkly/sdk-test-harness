@@ -12,12 +12,12 @@ set -e
 # /bin/sh and the commands, "grep", "sed", "curl", and "tar".
 
 case "$(uname -s)" in
-    Linux*)     OS_TYPE=Linux;;
-    Darwin*)    OS_TYPE=Darwin;;
-    CYGWIN*)    OS_TYPE=Windows;;
-    MINGW*)     OS_TYPE=Windows;;
-    MSYS_NT*)   OS_TYPE=Windows;;
-    *)          OS_TYPE="UNKNOWN"
+  Linux*)     OS_TYPE=Linux;;
+  Darwin*)    OS_TYPE=Darwin;;
+  CYGWIN*)    OS_TYPE=Windows;;
+  MINGW*)     OS_TYPE=Windows;;
+  MSYS_NT*)   OS_TYPE=Windows;;
+  *)          OS_TYPE="UNKNOWN"
 esac
 
 if [ "${OS_TYPE}" = "UNKNOWN" ]; then
@@ -26,8 +26,8 @@ if [ "${OS_TYPE}" = "UNKNOWN" ]; then
 fi
 
 case "${OS_TYPE}" in
- Windows) EXTENSION="zip" ;;
- *) EXTENSION="tar.gz" ;;
+  Windows) EXTENSION="zip" ;;
+  *) EXTENSION="tar.gz" ;;
 esac
 
 RELEASES_API_URL=https://api.github.com/repos/launchdarkly/sdk-test-harness/releases
