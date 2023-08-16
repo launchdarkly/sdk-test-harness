@@ -11,9 +11,28 @@ set -e
 # appropriate for the current OS and architecture. It cannot be used in Windows. It requires
 # /bin/sh and the commands, "grep", "sed", "curl", and "tar".
 
+case "$(uname -s)" in
+  Linux*)     OS_TYPE=Linux;;
+  Darwin*)    OS_TYPE=Darwin;;
+  CYGWIN*)    OS_TYPE=Windows;;
+  MINGW*)     OS_TYPE=Windows;;
+  MSYS_NT*)   OS_TYPE=Windows;;
+  *)          OS_TYPE="UNKNOWN"
+esac
+
+if [ "${OS_TYPE}" = "UNKNOWN" ]; then
+  echo 'Unrecognized or unsupport operating system. Supported Mac, Linux, Windows (MSYS, MINGW, CYGWIN)' >&2
+  exit 1
+fi
+
+case "${OS_TYPE}" in
+  Windows) EXTENSION="zip" ;;
+  *) EXTENSION="tar.gz" ;;
+esac
+
 RELEASES_API_URL=https://api.github.com/repos/launchdarkly/sdk-test-harness/releases
 RELEASES_SITE_URL=https://github.com/launchdarkly/sdk-test-harness/releases
-EXECUTABLE_ARCHIVE_NAME=sdk-test-harness_$(uname -s)_$(uname -m).tar.gz
+EXECUTABLE_ARCHIVE_NAME="sdk-test-harness_${OS_TYPE}_$(uname -m).${EXTENSION}"
 
 if [ -z "${VERSION}" -o -z "${PARAMS}" ]; then
   echo 'You must specify a version string in $VERSION and command parameters in $PARAMS' >&2
@@ -47,8 +66,12 @@ if [ ! -x "${EXECUTABLE}" ]; then
   rm -rf "${TEMP_DIR}"
   mkdir "${TEMP_DIR}"
   echo "Downloading ${DOWNLOAD_URL}"
-  curl --fail -s -L -o "${TEMP_DIR}/archive.tar.gz" "${DOWNLOAD_URL}" || (echo "Download failed" >&2; exit 1)
-  tar -xf "${TEMP_DIR}/archive.tar.gz" -C "${TEMP_DIR}"
+  curl --fail -s -L -o "${TEMP_DIR}/archive.${EXTENSION}" "${DOWNLOAD_URL}" || (echo "Download failed" >&2; exit 1)
+  if [ "${EXTENSION}" = "zip" ]; then
+    unzip "${TEMP_DIR}/archive.${EXTENSION}" -d "${TEMP_DIR}"
+  else
+    tar -xf "${TEMP_DIR}/archive.${EXTENSION}" -C "${TEMP_DIR}"
+  fi
 fi
 
 sh -c "${EXECUTABLE} $PARAMS"
