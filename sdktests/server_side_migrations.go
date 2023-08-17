@@ -194,7 +194,7 @@ func runTrackLatencyTests(t *ldtest.T) {
 					m.AllOf(
 						m.JSONProperty("key").Should(m.Equal("migration-key")),
 						m.JSONProperty("default").Should(m.Equal("dualwrite")),
-						m.JSONProperty("value").Should(m.Equal(testParam.Stage)),
+						m.JSONProperty("value").Should(m.Equal(string(testParam.Stage))),
 						m.JSONProperty("variation").Should(m.Equal(stageToVariationIndex(testParam.Stage))),
 						m.JSONProperty("reason").Should(
 							m.JSONProperty("kind").Should(m.Equal("FALLTHROUGH")),
@@ -423,7 +423,7 @@ func runTrackConsistencyTests(t *ldtest.T) {
 					m.AllOf(
 						m.JSONProperty("key").Should(m.Equal("migration-key")),
 						m.JSONProperty("default").Should(m.Equal("dualwrite")),
-						m.JSONProperty("value").Should(m.Equal(testParam.Stage)),
+						m.JSONProperty("value").Should(m.Equal(string(testParam.Stage))),
 						m.JSONProperty("variation").Should(m.Equal(stageToVariationIndex(testParam.Stage))),
 						m.JSONProperty("reason").Should(
 							m.JSONProperty("kind").Should(m.Equal("FALLTHROUGH")),
