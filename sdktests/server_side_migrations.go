@@ -7,6 +7,7 @@ import (
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldmigration"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldbuilders"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
@@ -24,6 +25,7 @@ func doServerSideMigrationTests(t *ldtest.T) {
 	t.Run("use correct origins", runUseCorrectOriginsTests)
 	t.Run("track latency correctly", runTrackLatencyTests)
 	t.Run("track errors correctly", runTrackErrorsTests)
+	t.Run("track consistency correctly", runTrackConsistencyTests)
 }
 
 func runMigrationVariationTests(t *ldtest.T) {
@@ -323,6 +325,112 @@ func runTrackErrorsTests(t *ldtest.T) {
 						),
 					),
 				),
+			}
+
+			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(
+				IsIndexEventForContext(context),
+				IsSummaryEvent(),
+				IsValidMigrationOpEventWithConditions(
+					context,
+					opEventMatchers...,
+				),
+			))
+		})
+	}
+}
+
+func runTrackConsistencyTests(t *ldtest.T) {
+	handler := func(response string) func(w http.ResponseWriter, req *http.Request) {
+		return func(w http.ResponseWriter, req *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(response))
+		}
+	}
+
+	testParams := []struct {
+		Operation    ldmigration.MigrationOp
+		Stage        ldmigration.MigrationStage
+		IsConsistent ldvalue.OptionalBool
+		OldHandler   http.HandlerFunc
+		NewHandler   http.HandlerFunc
+	}{
+		// Read operations
+		{Operation: ldmigration.Read, Stage: ldmigration.Off, OldHandler: handler("LaunchDarkly"), NewHandler: handler("LaunchDarkly"), IsConsistent: ldvalue.NewOptionalBoolFromPointer(nil)},
+		{Operation: ldmigration.Read, Stage: ldmigration.DualWrite, OldHandler: handler("LaunchDarkly"), NewHandler: handler("LaunchDarkly"), IsConsistent: ldvalue.NewOptionalBoolFromPointer(nil)},
+
+		{Operation: ldmigration.Read, Stage: ldmigration.Shadow, OldHandler: handler("LaunchDarkly"), NewHandler: handler("LaunchDarkly"), IsConsistent: ldvalue.NewOptionalBool(true)},
+		{Operation: ldmigration.Read, Stage: ldmigration.Shadow, OldHandler: handler("LaunchDarkly"), NewHandler: handler("Catamorphic"), IsConsistent: ldvalue.NewOptionalBool(false)},
+		{Operation: ldmigration.Read, Stage: ldmigration.Shadow, OldHandler: handler("Catamorphic"), NewHandler: handler("LaunchDarkly"), IsConsistent: ldvalue.NewOptionalBool(false)},
+
+		{Operation: ldmigration.Read, Stage: ldmigration.Live, OldHandler: handler("LaunchDarkly"), NewHandler: handler("LaunchDarkly"), IsConsistent: ldvalue.NewOptionalBool(true)},
+		{Operation: ldmigration.Read, Stage: ldmigration.Live, OldHandler: handler("LaunchDarkly"), NewHandler: handler("Catamorphic"), IsConsistent: ldvalue.NewOptionalBool(false)},
+		{Operation: ldmigration.Read, Stage: ldmigration.Live, OldHandler: handler("Catamorphic"), NewHandler: handler("LaunchDarkly"), IsConsistent: ldvalue.NewOptionalBool(false)},
+
+		{Operation: ldmigration.Read, Stage: ldmigration.RampDown, OldHandler: handler("LaunchDarkly"), NewHandler: handler("LaunchDarkly"), IsConsistent: ldvalue.NewOptionalBoolFromPointer(nil)},
+		{Operation: ldmigration.Read, Stage: ldmigration.Complete, OldHandler: handler("LaunchDarkly"), NewHandler: handler("LaunchDarkly"), IsConsistent: ldvalue.NewOptionalBoolFromPointer(nil)},
+
+		// Write operations -- we never run a consistency check for this
+		{Operation: ldmigration.Write, Stage: ldmigration.Off, OldHandler: handler("LaunchDarkly"), NewHandler: handler("LaunchDarkly"), IsConsistent: ldvalue.NewOptionalBoolFromPointer(nil)},
+		{Operation: ldmigration.Write, Stage: ldmigration.DualWrite, OldHandler: handler("LaunchDarkly"), NewHandler: handler("LaunchDarkly"), IsConsistent: ldvalue.NewOptionalBoolFromPointer(nil)},
+		{Operation: ldmigration.Write, Stage: ldmigration.Shadow, OldHandler: handler("LaunchDarkly"), NewHandler: handler("LaunchDarkly"), IsConsistent: ldvalue.NewOptionalBoolFromPointer(nil)},
+		{Operation: ldmigration.Write, Stage: ldmigration.Live, OldHandler: handler("LaunchDarkly"), NewHandler: handler("LaunchDarkly"), IsConsistent: ldvalue.NewOptionalBoolFromPointer(nil)},
+		{Operation: ldmigration.Write, Stage: ldmigration.RampDown, OldHandler: handler("LaunchDarkly"), NewHandler: handler("LaunchDarkly"), IsConsistent: ldvalue.NewOptionalBoolFromPointer(nil)},
+		{Operation: ldmigration.Write, Stage: ldmigration.Complete, OldHandler: handler("LaunchDarkly"), NewHandler: handler("LaunchDarkly"), IsConsistent: ldvalue.NewOptionalBoolFromPointer(nil)},
+	}
+
+	for _, testParam := range testParams {
+		t.Run(fmt.Sprintf("%s errors for %s", testParam.Operation, testParam.Stage), func(t *ldtest.T) {
+			client, events := createClient(t, int(testParam.Stage))
+
+			service := mockld.NewMigrationCallbackService(requireContext(t).harness, t.DebugLogger(), testParam.OldHandler, testParam.NewHandler)
+			t.Defer(service.Close)
+
+			context := ldcontext.New("key")
+
+			params := servicedef.MigrationOperationParams{
+				Key:                "migration-key",
+				Context:            context,
+				DefaultStage:       ldmigration.DualWrite,
+				ReadExecutionOrder: ldmigration.Concurrently,
+				OldEndpoint:        service.OldEndpoint().BaseURL(),
+				NewEndpoint:        service.NewEndpoint().BaseURL(),
+				Operation:          testParam.Operation,
+				TrackConsistency:   true,
+			}
+
+			_ = client.MigrationOperation(t, params)
+			client.FlushEvents(t)
+
+			var matcher m.Matcher
+
+			if consistent, ok := testParam.IsConsistent.Get(); ok {
+				matcher = m.ItemsInAnyOrder(
+					m.AllOf(
+						m.JSONProperty("key").Should(m.Equal("consistent")),
+						m.JSONProperty("value").Should(m.Equal(consistent)),
+						m.JSONProperty("samplingRatio").Should(m.Equal(1)),
+					),
+				)
+			} else {
+				matcher = m.Length().Should(m.Equal(0))
+			}
+
+			opEventMatchers := []m.Matcher{
+				m.JSONOptProperty("samplingRatio").Should(m.BeNil()),
+				m.JSONProperty("operation").Should(m.Equal(testParam.Operation.String())),
+				m.JSONProperty("evaluation").Should(
+					m.AllOf(
+						m.JSONProperty("key").Should(m.Equal("migration-key")),
+						m.JSONProperty("default").Should(m.Equal("dualwrite")),
+						m.JSONProperty("value").Should(m.Equal(testParam.Stage.String())),
+						m.JSONProperty("variation").Should(m.Equal(int(testParam.Stage))),
+						m.JSONProperty("reason").Should(
+							m.JSONProperty("kind").Should(m.Equal("FALLTHROUGH")),
+						),
+					),
+				),
+				m.JSONProperty("measurements").Should(matcher),
 			}
 
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
