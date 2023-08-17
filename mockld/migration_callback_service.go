@@ -11,10 +11,10 @@ import (
 
 type CallHistory struct {
 	callOrder int
-	origin    ldmigration.MigrationOrigin
+	origin    ldmigration.Origin
 }
 
-func (c *CallHistory) GetOrigin() ldmigration.MigrationOrigin {
+func (c *CallHistory) GetOrigin() ldmigration.Origin {
 	return c.origin
 }
 
@@ -58,7 +58,7 @@ func NewMigrationCallbackService(
 	return m
 }
 
-func (m *MigrationCallbackService) trackCallHistory(origin ldmigration.MigrationOrigin) {
+func (m *MigrationCallbackService) trackCallHistory(origin ldmigration.Origin) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 

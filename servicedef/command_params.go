@@ -128,9 +128,9 @@ type SecureModeHashResponse struct {
 }
 
 type MigrationVariationParams struct {
-	Key          string                     `json:"key"`
-	Context      ldcontext.Context          `json:"context"`
-	DefaultStage ldmigration.MigrationStage `json:"defaultStage"`
+	Key          string
+	Context      ldcontext.Context
+	DefaultStage ldmigration.Stage `json:"defaultStage"`
 }
 
 type MigrationVariationResponse struct {
@@ -140,9 +140,9 @@ type MigrationVariationResponse struct {
 type MigrationOperationParams struct {
 	Key                string                     `json:"key"`
 	Context            ldcontext.Context          `json:"context"`
-	DefaultStage       ldmigration.MigrationStage `json:"defaultStage"`
+	DefaultStage       ldmigration.Stage          `json:"defaultStage"`
 	ReadExecutionOrder ldmigration.ExecutionOrder `json:"readExecutionOrder"`
-	Operation          ldmigration.MigrationOp    `json:"operation"`
+	Operation          ldmigration.Operation      `json:"operation"`
 	OldEndpoint        string                     `json:"oldEndpoint"`
 	NewEndpoint        string                     `json:"newEndpoint"`
 	TrackLatency       bool                       `json:"trackLatency"`

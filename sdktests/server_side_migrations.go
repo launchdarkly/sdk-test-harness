@@ -29,7 +29,7 @@ func doServerSideMigrationTests(t *ldtest.T) {
 }
 
 func runMigrationVariationTests(t *ldtest.T) {
-	stages := []ldmigration.MigrationStage{ldmigration.Off, ldmigration.DualWrite, ldmigration.Shadow, ldmigration.Live, ldmigration.RampDown, ldmigration.Complete}
+	stages := []ldmigration.Stage{ldmigration.Off, ldmigration.DualWrite, ldmigration.Shadow, ldmigration.Live, ldmigration.RampDown, ldmigration.Complete}
 
 	for _, stage := range stages {
 		client, events := createClient(t, int(stage))
@@ -56,26 +56,26 @@ func runMigrationVariationTests(t *ldtest.T) {
 
 func runUseCorrectOriginsTests(t *ldtest.T) {
 	testParams := []struct {
-		Operation        ldmigration.MigrationOp
-		Stage            ldmigration.MigrationStage
+		Operation        ldmigration.Operation
+		Stage            ldmigration.Stage
 		ExpectedResult   string
-		ExpectedRequests []ldmigration.MigrationOrigin
+		ExpectedRequests []ldmigration.Origin
 	}{
 		// Read operations
-		{Operation: ldmigration.Read, Stage: ldmigration.Off, ExpectedResult: "old read", ExpectedRequests: []ldmigration.MigrationOrigin{ldmigration.Old}},
-		{Operation: ldmigration.Read, Stage: ldmigration.DualWrite, ExpectedResult: "old read", ExpectedRequests: []ldmigration.MigrationOrigin{ldmigration.Old}},
-		{Operation: ldmigration.Read, Stage: ldmigration.Shadow, ExpectedResult: "old read", ExpectedRequests: []ldmigration.MigrationOrigin{ldmigration.Old, ldmigration.New}},
-		{Operation: ldmigration.Read, Stage: ldmigration.Live, ExpectedResult: "new read", ExpectedRequests: []ldmigration.MigrationOrigin{ldmigration.New, ldmigration.Old}},
-		{Operation: ldmigration.Read, Stage: ldmigration.RampDown, ExpectedResult: "new read", ExpectedRequests: []ldmigration.MigrationOrigin{ldmigration.New}},
-		{Operation: ldmigration.Read, Stage: ldmigration.Complete, ExpectedResult: "new read", ExpectedRequests: []ldmigration.MigrationOrigin{ldmigration.New}},
+		{Operation: ldmigration.Read, Stage: ldmigration.Off, ExpectedResult: "old read", ExpectedRequests: []ldmigration.Origin{ldmigration.Old}},
+		{Operation: ldmigration.Read, Stage: ldmigration.DualWrite, ExpectedResult: "old read", ExpectedRequests: []ldmigration.Origin{ldmigration.Old}},
+		{Operation: ldmigration.Read, Stage: ldmigration.Shadow, ExpectedResult: "old read", ExpectedRequests: []ldmigration.Origin{ldmigration.Old, ldmigration.New}},
+		{Operation: ldmigration.Read, Stage: ldmigration.Live, ExpectedResult: "new read", ExpectedRequests: []ldmigration.Origin{ldmigration.New, ldmigration.Old}},
+		{Operation: ldmigration.Read, Stage: ldmigration.RampDown, ExpectedResult: "new read", ExpectedRequests: []ldmigration.Origin{ldmigration.New}},
+		{Operation: ldmigration.Read, Stage: ldmigration.Complete, ExpectedResult: "new read", ExpectedRequests: []ldmigration.Origin{ldmigration.New}},
 
 		// Write operations
-		{Operation: ldmigration.Write, Stage: ldmigration.Off, ExpectedResult: "old read", ExpectedRequests: []ldmigration.MigrationOrigin{ldmigration.Old}},
-		{Operation: ldmigration.Write, Stage: ldmigration.DualWrite, ExpectedResult: "old read", ExpectedRequests: []ldmigration.MigrationOrigin{ldmigration.Old, ldmigration.New}},
-		{Operation: ldmigration.Write, Stage: ldmigration.Shadow, ExpectedResult: "old read", ExpectedRequests: []ldmigration.MigrationOrigin{ldmigration.Old, ldmigration.New}},
-		{Operation: ldmigration.Write, Stage: ldmigration.Live, ExpectedResult: "new read", ExpectedRequests: []ldmigration.MigrationOrigin{ldmigration.New, ldmigration.Old}},
-		{Operation: ldmigration.Write, Stage: ldmigration.RampDown, ExpectedResult: "new read", ExpectedRequests: []ldmigration.MigrationOrigin{ldmigration.New, ldmigration.Old}},
-		{Operation: ldmigration.Write, Stage: ldmigration.Complete, ExpectedResult: "new read", ExpectedRequests: []ldmigration.MigrationOrigin{ldmigration.New}},
+		{Operation: ldmigration.Write, Stage: ldmigration.Off, ExpectedResult: "old read", ExpectedRequests: []ldmigration.Origin{ldmigration.Old}},
+		{Operation: ldmigration.Write, Stage: ldmigration.DualWrite, ExpectedResult: "old read", ExpectedRequests: []ldmigration.Origin{ldmigration.Old, ldmigration.New}},
+		{Operation: ldmigration.Write, Stage: ldmigration.Shadow, ExpectedResult: "old read", ExpectedRequests: []ldmigration.Origin{ldmigration.Old, ldmigration.New}},
+		{Operation: ldmigration.Write, Stage: ldmigration.Live, ExpectedResult: "new read", ExpectedRequests: []ldmigration.Origin{ldmigration.New, ldmigration.Old}},
+		{Operation: ldmigration.Write, Stage: ldmigration.RampDown, ExpectedResult: "new read", ExpectedRequests: []ldmigration.Origin{ldmigration.New, ldmigration.Old}},
+		{Operation: ldmigration.Write, Stage: ldmigration.Complete, ExpectedResult: "new read", ExpectedRequests: []ldmigration.Origin{ldmigration.New}},
 	}
 
 	for _, testParam := range testParams {
@@ -137,8 +137,8 @@ func runTrackLatencyTests(t *ldtest.T) {
 	onlyNew := []m.Matcher{m.JSONOptProperty("old").Should(m.BeNil()), m.JSONOptProperty("new").Should(m.Not(m.BeNil()))}
 
 	testParams := []struct {
-		Operation      ldmigration.MigrationOp
-		Stage          ldmigration.MigrationStage
+		Operation      ldmigration.Operation
+		Stage          ldmigration.Stage
 		ValuesMatchers []m.Matcher
 	}{
 		// Read operations
@@ -177,7 +177,7 @@ func runTrackLatencyTests(t *ldtest.T) {
 				Key:                "migration-key",
 				Context:            context,
 				DefaultStage:       ldmigration.DualWrite,
-				ReadExecutionOrder: ldmigration.Concurrently,
+				ReadExecutionOrder: ldmigration.Concurrent,
 				OldEndpoint:        service.OldEndpoint().BaseURL(),
 				NewEndpoint:        service.NewEndpoint().BaseURL(),
 				Operation:          testParam.Operation,
@@ -237,8 +237,8 @@ func runTrackErrorsTests(t *ldtest.T) {
 	successfulHandler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
 
 	testParams := []struct {
-		Operation      ldmigration.MigrationOp
-		Stage          ldmigration.MigrationStage
+		Operation      ldmigration.Operation
+		Stage          ldmigration.Stage
 		ValuesMatchers []m.Matcher
 		OldHandler     http.HandlerFunc
 		NewHandler     http.HandlerFunc
@@ -289,7 +289,7 @@ func runTrackErrorsTests(t *ldtest.T) {
 				Key:                "migration-key",
 				Context:            context,
 				DefaultStage:       ldmigration.DualWrite,
-				ReadExecutionOrder: ldmigration.Concurrently,
+				ReadExecutionOrder: ldmigration.Concurrent,
 				OldEndpoint:        service.OldEndpoint().BaseURL(),
 				NewEndpoint:        service.NewEndpoint().BaseURL(),
 				Operation:          testParam.Operation,
@@ -349,8 +349,8 @@ func runTrackConsistencyTests(t *ldtest.T) {
 	}
 
 	testParams := []struct {
-		Operation    ldmigration.MigrationOp
-		Stage        ldmigration.MigrationStage
+		Operation    ldmigration.Operation
+		Stage        ldmigration.Stage
 		IsConsistent ldvalue.OptionalBool
 		OldHandler   http.HandlerFunc
 		NewHandler   http.HandlerFunc
@@ -392,7 +392,7 @@ func runTrackConsistencyTests(t *ldtest.T) {
 				Key:                "migration-key",
 				Context:            context,
 				DefaultStage:       ldmigration.DualWrite,
-				ReadExecutionOrder: ldmigration.Concurrently,
+				ReadExecutionOrder: ldmigration.Concurrent,
 				OldEndpoint:        service.OldEndpoint().BaseURL(),
 				NewEndpoint:        service.NewEndpoint().BaseURL(),
 				Operation:          testParam.Operation,
@@ -458,7 +458,7 @@ func createClient(t *ldtest.T, variationIndex int) (*SDKClient, *SDKEventSink) {
 	return client, events
 }
 
-func stageToVariationIndex(stage ldmigration.MigrationStage) int {
+func stageToVariationIndex(stage ldmigration.Stage) int {
 	switch stage {
 	case ldmigration.Off:
 		return 0
