@@ -32,7 +32,7 @@ func runMigrationVariationTests(t *ldtest.T) {
 	stages := []ldmigration.Stage{ldmigration.Off, ldmigration.DualWrite, ldmigration.Shadow, ldmigration.Live, ldmigration.RampDown, ldmigration.Complete}
 
 	for _, stage := range stages {
-		client, events := createClient(t, int(stage))
+		client, events := createClient(t, stageToVariationIndex(stage))
 		context := ldcontext.New("key")
 
 		params := servicedef.MigrationVariationParams{
@@ -50,7 +50,7 @@ func runMigrationVariationTests(t *ldtest.T) {
 			IsSummaryEvent(),
 		))
 
-		assert.Equal(t, stage.String(), response.Result)
+		assert.Equal(t, stage, response.Result)
 	}
 }
 
@@ -80,7 +80,7 @@ func runUseCorrectOriginsTests(t *ldtest.T) {
 
 	for _, testParam := range testParams {
 		t.Run(fmt.Sprintf("%s %s", testParam.Operation, testParam.Stage), func(t *ldtest.T) {
-			client, _ := createClient(t, int(testParam.Stage))
+			client, _ := createClient(t, stageToVariationIndex(testParam.Stage))
 
 			service := mockld.NewMigrationCallbackService(
 				requireContext(t).harness,
@@ -160,7 +160,7 @@ func runTrackLatencyTests(t *ldtest.T) {
 
 	for _, testParam := range testParams {
 		t.Run(fmt.Sprintf("%s latency for %s", testParam.Operation, testParam.Stage), func(t *ldtest.T) {
-			client, events := createClient(t, int(testParam.Stage))
+			client, events := createClient(t, stageToVariationIndex(testParam.Stage))
 
 			callback := func(w http.ResponseWriter, req *http.Request) {
 				time.Sleep(10 * time.Millisecond)
@@ -194,8 +194,8 @@ func runTrackLatencyTests(t *ldtest.T) {
 					m.AllOf(
 						m.JSONProperty("key").Should(m.Equal("migration-key")),
 						m.JSONProperty("default").Should(m.Equal("dualwrite")),
-						m.JSONProperty("value").Should(m.Equal(testParam.Stage.String())),
-						m.JSONProperty("variation").Should(m.Equal(int(testParam.Stage))),
+						m.JSONProperty("value").Should(m.Equal(testParam.Stage)),
+						m.JSONProperty("variation").Should(m.Equal(stageToVariationIndex(testParam.Stage))),
 						m.JSONProperty("reason").Should(
 							m.JSONProperty("kind").Should(m.Equal("FALLTHROUGH")),
 						),
@@ -278,7 +278,7 @@ func runTrackErrorsTests(t *ldtest.T) {
 
 	for _, testParam := range testParams {
 		t.Run(fmt.Sprintf("%s errors for %s", testParam.Operation, testParam.Stage), func(t *ldtest.T) {
-			client, events := createClient(t, int(testParam.Stage))
+			client, events := createClient(t, stageToVariationIndex(testParam.Stage))
 
 			service := mockld.NewMigrationCallbackService(requireContext(t).harness, t.DebugLogger(), testParam.OldHandler, testParam.NewHandler)
 			t.Defer(service.Close)
@@ -306,8 +306,8 @@ func runTrackErrorsTests(t *ldtest.T) {
 					m.AllOf(
 						m.JSONProperty("key").Should(m.Equal("migration-key")),
 						m.JSONProperty("default").Should(m.Equal("dualwrite")),
-						m.JSONProperty("value").Should(m.Equal(testParam.Stage.String())),
-						m.JSONProperty("variation").Should(m.Equal(int(testParam.Stage))),
+						m.JSONProperty("value").Should(m.Equal(testParam.Stage)),
+						m.JSONProperty("variation").Should(m.Equal(stageToVariationIndex(testParam.Stage))),
 						m.JSONProperty("reason").Should(
 							m.JSONProperty("kind").Should(m.Equal("FALLTHROUGH")),
 						),
@@ -381,7 +381,7 @@ func runTrackConsistencyTests(t *ldtest.T) {
 
 	for _, testParam := range testParams {
 		t.Run(fmt.Sprintf("%s errors for %s", testParam.Operation, testParam.Stage), func(t *ldtest.T) {
-			client, events := createClient(t, int(testParam.Stage))
+			client, events := createClient(t, stageToVariationIndex(testParam.Stage))
 
 			service := mockld.NewMigrationCallbackService(requireContext(t).harness, t.DebugLogger(), testParam.OldHandler, testParam.NewHandler)
 			t.Defer(service.Close)
@@ -423,8 +423,8 @@ func runTrackConsistencyTests(t *ldtest.T) {
 					m.AllOf(
 						m.JSONProperty("key").Should(m.Equal("migration-key")),
 						m.JSONProperty("default").Should(m.Equal("dualwrite")),
-						m.JSONProperty("value").Should(m.Equal(testParam.Stage.String())),
-						m.JSONProperty("variation").Should(m.Equal(int(testParam.Stage))),
+						m.JSONProperty("value").Should(m.Equal(testParam.Stage)),
+						m.JSONProperty("variation").Should(m.Equal(stageToVariationIndex(testParam.Stage))),
 						m.JSONProperty("reason").Should(
 							m.JSONProperty("kind").Should(m.Equal("FALLTHROUGH")),
 						),
