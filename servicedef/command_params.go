@@ -128,7 +128,7 @@ type SecureModeHashResponse struct {
 }
 
 type MigrationVariationParams struct {
-	Key          string `json:"key"`
+	Key          string            `json:"key"`
 	Context      ldcontext.Context `json:"context"`
 	DefaultStage ldmigration.Stage `json:"defaultStage"`
 }

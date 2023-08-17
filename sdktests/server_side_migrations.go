@@ -50,7 +50,7 @@ func runMigrationVariationTests(t *ldtest.T) {
 			IsSummaryEvent(),
 		))
 
-		assert.Equal(t, stage, response.Result)
+		assert.Equal(t, string(stage), response.Result)
 	}
 }
 
