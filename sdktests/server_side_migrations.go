@@ -189,7 +189,7 @@ func runTrackLatencyTests(t *ldtest.T) {
 
 			opEventMatchers := []m.Matcher{
 				m.JSONOptProperty("samplingRatio").Should(m.BeNil()),
-				m.JSONProperty("operation").Should(m.Equal(testParam.Operation.String())),
+				m.JSONProperty("operation").Should(m.Equal(testParam.Operation)),
 				m.JSONProperty("evaluation").Should(
 					m.AllOf(
 						m.JSONProperty("key").Should(m.Equal("migration-key")),
@@ -301,7 +301,7 @@ func runTrackErrorsTests(t *ldtest.T) {
 
 			opEventMatchers := []m.Matcher{
 				m.JSONOptProperty("samplingRatio").Should(m.BeNil()),
-				m.JSONProperty("operation").Should(m.Equal(testParam.Operation.String())),
+				m.JSONProperty("operation").Should(m.Equal(testParam.Operation)),
 				m.JSONProperty("evaluation").Should(
 					m.AllOf(
 						m.JSONProperty("key").Should(m.Equal("migration-key")),
@@ -418,7 +418,7 @@ func runTrackConsistencyTests(t *ldtest.T) {
 
 			opEventMatchers := []m.Matcher{
 				m.JSONOptProperty("samplingRatio").Should(m.BeNil()),
-				m.JSONProperty("operation").Should(m.Equal(testParam.Operation.String())),
+				m.JSONProperty("operation").Should(m.Equal(testParam.Operation)),
 				m.JSONProperty("evaluation").Should(
 					m.AllOf(
 						m.JSONProperty("key").Should(m.Equal("migration-key")),
