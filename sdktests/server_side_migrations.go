@@ -21,14 +21,15 @@ import (
 func doServerSideMigrationTests(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityMigrations)
 
-	t.Run("migration variation", runMigrationVariationTests)
-	t.Run("use correct origins", runUseCorrectOriginsTests)
-	t.Run("track latency correctly", runTrackLatencyTests)
-	t.Run("track errors correctly", runTrackErrorsTests)
-	t.Run("track consistency correctly", runTrackConsistencyTests)
+	t.Run("identifies correct stage from flag", identifyCorrectStageFromStringFlag)
+	t.Run("executes origins in correct order", executesOriginsInCorrectOrder)
+	t.Run("tracks latency", tracksLatency)
+	t.Run("tracks error metrics for failures", writeFailuresShouldGenerateErrorMetrics)
+	t.Run("tracks no errors on success", successfulHandlersShouldNotGenerateErrorMetrics)
+	t.Run("tracks consistency", trackConsistency)
 }
 
-func runMigrationVariationTests(t *ldtest.T) {
+func identifyCorrectStageFromStringFlag(t *ldtest.T) {
 	stages := []ldmigration.Stage{ldmigration.Off, ldmigration.DualWrite, ldmigration.Shadow, ldmigration.Live, ldmigration.RampDown, ldmigration.Complete}
 
 	for _, stage := range stages {
@@ -54,7 +55,7 @@ func runMigrationVariationTests(t *ldtest.T) {
 	}
 }
 
-func runUseCorrectOriginsTests(t *ldtest.T) {
+func executesOriginsInCorrectOrder(t *ldtest.T) {
 	testParams := []struct {
 		Operation        ldmigration.Operation
 		Stage            ldmigration.Stage
@@ -131,7 +132,7 @@ func runUseCorrectOriginsTests(t *ldtest.T) {
 	}
 }
 
-func runTrackLatencyTests(t *ldtest.T) {
+func tracksLatency(t *ldtest.T) {
 	onlyOld := []m.Matcher{m.JSONOptProperty("old").Should(m.Not(m.BeNil())), m.JSONOptProperty("new").Should(m.BeNil())}
 	both := []m.Matcher{m.JSONOptProperty("old").Should(m.Not(m.BeNil())), m.JSONOptProperty("new").Should(m.Not(m.BeNil()))}
 	onlyNew := []m.Matcher{m.JSONOptProperty("old").Should(m.BeNil()), m.JSONOptProperty("new").Should(m.Not(m.BeNil()))}
@@ -228,7 +229,7 @@ func runTrackLatencyTests(t *ldtest.T) {
 	}
 }
 
-func runTrackErrorsTests(t *ldtest.T) {
+func writeFailuresShouldGenerateErrorMetrics(t *ldtest.T) {
 	hasError := func(label string) m.Matcher { return m.JSONOptProperty(label).Should(m.Equal(true)) }
 	noError := func(label string) m.Matcher { return m.JSONOptProperty(label).Should(m.Equal(false)) }
 	isMissing := func(label string) m.Matcher { return m.JSONOptProperty(label).Should(m.BeNil()) }
@@ -243,22 +244,6 @@ func runTrackErrorsTests(t *ldtest.T) {
 		OldHandler     http.HandlerFunc
 		NewHandler     http.HandlerFunc
 	}{
-		// Read operations
-		{Operation: ldmigration.Read, Stage: ldmigration.Off, OldHandler: successfulHandler, NewHandler: successfulHandler, ValuesMatchers: []m.Matcher{noError("old"), isMissing("new")}},
-		{Operation: ldmigration.Read, Stage: ldmigration.DualWrite, OldHandler: successfulHandler, NewHandler: successfulHandler, ValuesMatchers: []m.Matcher{noError("old"), isMissing("new")}},
-		{Operation: ldmigration.Read, Stage: ldmigration.Shadow, OldHandler: successfulHandler, NewHandler: successfulHandler, ValuesMatchers: []m.Matcher{noError("old"), noError("new")}},
-		{Operation: ldmigration.Read, Stage: ldmigration.Live, OldHandler: successfulHandler, NewHandler: successfulHandler, ValuesMatchers: []m.Matcher{noError("old"), noError("new")}},
-		{Operation: ldmigration.Read, Stage: ldmigration.RampDown, OldHandler: successfulHandler, NewHandler: successfulHandler, ValuesMatchers: []m.Matcher{isMissing("old"), noError("new")}},
-		{Operation: ldmigration.Read, Stage: ldmigration.Complete, OldHandler: successfulHandler, NewHandler: successfulHandler, ValuesMatchers: []m.Matcher{isMissing("old"), noError("new")}},
-
-		// Write operations
-		{Operation: ldmigration.Write, Stage: ldmigration.Off, OldHandler: successfulHandler, NewHandler: successfulHandler, ValuesMatchers: []m.Matcher{noError("old"), isMissing("new")}},
-		{Operation: ldmigration.Write, Stage: ldmigration.DualWrite, OldHandler: successfulHandler, NewHandler: successfulHandler, ValuesMatchers: []m.Matcher{noError("old"), noError("new")}},
-		{Operation: ldmigration.Write, Stage: ldmigration.Shadow, OldHandler: successfulHandler, NewHandler: successfulHandler, ValuesMatchers: []m.Matcher{noError("old"), noError("new")}},
-		{Operation: ldmigration.Write, Stage: ldmigration.Live, OldHandler: successfulHandler, NewHandler: successfulHandler, ValuesMatchers: []m.Matcher{noError("old"), noError("new")}},
-		{Operation: ldmigration.Write, Stage: ldmigration.RampDown, OldHandler: successfulHandler, NewHandler: successfulHandler, ValuesMatchers: []m.Matcher{noError("old"), noError("new")}},
-		{Operation: ldmigration.Write, Stage: ldmigration.Complete, OldHandler: successfulHandler, NewHandler: successfulHandler, ValuesMatchers: []m.Matcher{isMissing("old"), noError("new")}},
-
 		// Write operations with authoritative failure
 		{Operation: ldmigration.Write, Stage: ldmigration.Off, OldHandler: failureHandler, NewHandler: successfulHandler, ValuesMatchers: []m.Matcher{hasError("old"), isMissing("new")}},
 		{Operation: ldmigration.Write, Stage: ldmigration.DualWrite, OldHandler: failureHandler, NewHandler: successfulHandler, ValuesMatchers: []m.Matcher{hasError("old"), isMissing("new")}},
@@ -340,7 +325,84 @@ func runTrackErrorsTests(t *ldtest.T) {
 	}
 }
 
-func runTrackConsistencyTests(t *ldtest.T) {
+func successfulHandlersShouldNotGenerateErrorMetrics(t *ldtest.T) {
+	successfulHandler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
+
+	testParams := []struct {
+		Operation ldmigration.Operation
+		Stage     ldmigration.Stage
+	}{
+		// Read operations
+		{Operation: ldmigration.Read, Stage: ldmigration.Off},
+		{Operation: ldmigration.Read, Stage: ldmigration.DualWrite},
+		{Operation: ldmigration.Read, Stage: ldmigration.Shadow},
+		{Operation: ldmigration.Read, Stage: ldmigration.Live},
+		{Operation: ldmigration.Read, Stage: ldmigration.RampDown},
+		{Operation: ldmigration.Read, Stage: ldmigration.Complete},
+
+		// Write operations
+		{Operation: ldmigration.Write, Stage: ldmigration.Off},
+		{Operation: ldmigration.Write, Stage: ldmigration.DualWrite},
+		{Operation: ldmigration.Write, Stage: ldmigration.Shadow},
+		{Operation: ldmigration.Write, Stage: ldmigration.Live},
+		{Operation: ldmigration.Write, Stage: ldmigration.RampDown},
+		{Operation: ldmigration.Write, Stage: ldmigration.Complete},
+	}
+
+	for _, testParam := range testParams {
+		t.Run(fmt.Sprintf("%s errors for %s", testParam.Operation, testParam.Stage), func(t *ldtest.T) {
+			client, events := createClient(t, stageToVariationIndex(testParam.Stage))
+
+			service := mockld.NewMigrationCallbackService(requireContext(t).harness, t.DebugLogger(), successfulHandler, successfulHandler)
+			t.Defer(service.Close)
+
+			context := ldcontext.New("key")
+
+			params := servicedef.MigrationOperationParams{
+				Key:                "migration-key",
+				Context:            context,
+				DefaultStage:       ldmigration.DualWrite,
+				ReadExecutionOrder: ldmigration.Concurrent,
+				OldEndpoint:        service.OldEndpoint().BaseURL(),
+				NewEndpoint:        service.NewEndpoint().BaseURL(),
+				Operation:          testParam.Operation,
+				TrackErrors:        true,
+			}
+
+			_ = client.MigrationOperation(t, params)
+			client.FlushEvents(t)
+
+			opEventMatchers := []m.Matcher{
+				m.JSONOptProperty("samplingRatio").Should(m.BeNil()),
+				m.JSONProperty("operation").Should(m.Equal(testParam.Operation)),
+				m.JSONProperty("evaluation").Should(
+					m.AllOf(
+						m.JSONProperty("key").Should(m.Equal("migration-key")),
+						m.JSONProperty("default").Should(m.Equal("dualwrite")),
+						m.JSONProperty("value").Should(m.Equal(testParam.Stage)),
+						m.JSONProperty("variation").Should(m.Equal(stageToVariationIndex(testParam.Stage))),
+						m.JSONProperty("reason").Should(
+							m.JSONProperty("kind").Should(m.Equal("FALLTHROUGH")),
+						),
+					),
+				),
+				m.JSONProperty("measurements").Should(m.Length().Should(m.Equal(0))),
+			}
+
+			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(
+				IsIndexEventForContext(context),
+				IsSummaryEvent(),
+				IsValidMigrationOpEventWithConditions(
+					context,
+					opEventMatchers...,
+				),
+			))
+		})
+	}
+}
+
+func trackConsistency(t *ldtest.T) {
 	handler := func(response string) func(w http.ResponseWriter, req *http.Request) {
 		return func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusOK)
