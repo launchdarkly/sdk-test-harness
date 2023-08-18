@@ -316,7 +316,7 @@ func runTrackErrorsTests(t *ldtest.T) {
 				m.JSONProperty("measurements").Should(
 					m.ItemsInAnyOrder(
 						m.AllOf(
-							m.JSONProperty("key").Should(m.Equal("errors")),
+							m.JSONProperty("key").Should(m.Equal("error")),
 							m.JSONProperty("values").Should(
 								m.AllOf(
 									testParam.ValuesMatchers...,
