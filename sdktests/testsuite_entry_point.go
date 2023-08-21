@@ -89,6 +89,7 @@ func doAllServerSideTests(t *ldtest.T) {
 	t.Run("tags", doServerSideTagsTests)
 	t.Run("secure mode hash", doServerSideSecureModeHashTests)
 	t.Run("context type", doSDKContextTypeTests)
+	t.Run("migrations", doServerSideMigrationTests)
 }
 
 func doAllClientSideTests(t *ldtest.T) {
