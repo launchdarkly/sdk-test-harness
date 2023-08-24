@@ -144,6 +144,13 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 			params = append(params, tagsTestParams{
 				tags: servicedef.SDKConfigTagsParams{
 					ApplicationID:      o.Some("ok"),
+					ApplicationVersion: o.Some("ok"),
+				},
+				expectedHeaderValue: tagNameAppID + "/ok " + tagNameAppVersion + "/ok",
+			})
+			params = append(params, tagsTestParams{
+				tags: servicedef.SDKConfigTagsParams{
+					ApplicationID:      o.Some("ok"),
 					ApplicationVersion: o.Some(badString),
 				},
 				expectedHeaderValue: tagNameAppID + "/ok",
