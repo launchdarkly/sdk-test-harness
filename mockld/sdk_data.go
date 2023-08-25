@@ -166,27 +166,46 @@ func normalizeSegment(key string, data json.RawMessage) (json.RawMessage, error)
 }
 
 type ServerSDKDataBuilder struct {
-	flags    map[string]json.RawMessage
-	segments map[string]json.RawMessage
+	flags           map[string]json.RawMessage
+	segments        map[string]json.RawMessage
+	configOverrides map[string]json.RawMessage
+	metrics         map[string]json.RawMessage
 }
 
 func NewServerSDKDataBuilder() *ServerSDKDataBuilder {
 	return &ServerSDKDataBuilder{
-		flags:    make(map[string]json.RawMessage),
-		segments: make(map[string]json.RawMessage),
+		flags:           make(map[string]json.RawMessage),
+		segments:        make(map[string]json.RawMessage),
+		configOverrides: make(map[string]json.RawMessage),
+		metrics:         make(map[string]json.RawMessage),
 	}
 }
 
 func (b *ServerSDKDataBuilder) Build() ServerSDKData {
 	flags := make(map[string]json.RawMessage)
 	segments := make(map[string]json.RawMessage)
+	configOverrides := make(map[string]json.RawMessage)
+	metrics := make(map[string]json.RawMessage)
+
 	for k, v := range b.flags {
 		flags[k] = v
 	}
 	for k, v := range b.segments {
 		segments[k] = v
 	}
-	return map[DataItemKind]map[string]json.RawMessage{"flags": flags, "segments": segments}
+	for k, v := range b.configOverrides {
+		configOverrides[k] = v
+	}
+	for k, v := range b.metrics {
+		metrics[k] = v
+	}
+
+	return map[DataItemKind]map[string]json.RawMessage{
+		"flags":                  flags,
+		"segments":               segments,
+		"configurationOverrides": configOverrides,
+		"metrics":                metrics,
+	}
 }
 
 func (b *ServerSDKDataBuilder) RawFlag(key string, data json.RawMessage) *ServerSDKDataBuilder {
@@ -209,6 +228,30 @@ func (b *ServerSDKDataBuilder) RawSegment(key string, data json.RawMessage) *Ser
 func (b *ServerSDKDataBuilder) Segment(segments ...ldmodel.Segment) *ServerSDKDataBuilder {
 	for _, segment := range segments {
 		b = b.RawSegment(segment.Key, jsonhelpers.ToJSON(segment))
+	}
+	return b
+}
+
+func (b *ServerSDKDataBuilder) RawConfigOverride(key string, data json.RawMessage) *ServerSDKDataBuilder {
+	b.configOverrides[key] = data
+	return b
+}
+
+func (b *ServerSDKDataBuilder) ConfigOverride(overrides ...ldmodel.ConfigOverride) *ServerSDKDataBuilder {
+	for _, override := range overrides {
+		b = b.RawConfigOverride(override.Key, jsonhelpers.ToJSON(override))
+	}
+	return b
+}
+
+func (b *ServerSDKDataBuilder) RawMetric(key string, data json.RawMessage) *ServerSDKDataBuilder {
+	b.configOverrides[key] = data
+	return b
+}
+
+func (b *ServerSDKDataBuilder) Metric(metrics ...ldmodel.Metric) *ServerSDKDataBuilder {
+	for _, metric := range metrics {
+		b = b.RawMetric(metric.Key, jsonhelpers.ToJSON(metric))
 	}
 	return b
 }
