@@ -245,7 +245,7 @@ func (b *ServerSDKDataBuilder) ConfigOverride(overrides ...ldmodel.ConfigOverrid
 }
 
 func (b *ServerSDKDataBuilder) RawMetric(key string, data json.RawMessage) *ServerSDKDataBuilder {
-	b.configOverrides[key] = data
+	b.metrics[key] = data
 	return b
 }
 
