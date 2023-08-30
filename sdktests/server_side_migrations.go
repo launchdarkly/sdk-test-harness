@@ -2,6 +2,7 @@ package sdktests
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 	"github.com/stretchr/testify/assert"
@@ -23,6 +25,7 @@ func doServerSideMigrationTests(t *ldtest.T) {
 
 	t.Run("identifies correct stage from flag", identifyCorrectStageFromStringFlag)
 	t.Run("executes reads", executesReads)
+	t.Run("payloads are passed through", payloadsArePassedThrough)
 	t.Run("executes origins in correct order", executesOriginsInCorrectOrder)
 	t.Run("tracks invoked", tracksInvoked)
 	t.Run("tracks latency", tracksLatency)
@@ -193,6 +196,89 @@ func executesReads(t *ldtest.T) {
 
 			assert.Equal(t, len(testParam.ExpectedRequests), len(service.GetCallHistory()))
 			assert.Equal(t, testParam.ExpectedResult, response.Result)
+		})
+	}
+}
+
+func payloadsArePassedThrough(t *ldtest.T) {
+	testParams := []struct {
+		Operation   ldmigration.Operation
+		Stage       ldmigration.Stage
+		ExpectedOld bool
+		ExpectedNew bool
+	}{
+		// Read operations
+		{Operation: ldmigration.Read, Stage: ldmigration.Off, ExpectedOld: true},
+		{Operation: ldmigration.Read, Stage: ldmigration.DualWrite, ExpectedOld: true},
+		{Operation: ldmigration.Read, Stage: ldmigration.Shadow, ExpectedOld: true, ExpectedNew: true},
+		{Operation: ldmigration.Read, Stage: ldmigration.Live, ExpectedOld: true, ExpectedNew: true},
+		{Operation: ldmigration.Read, Stage: ldmigration.RampDown, ExpectedNew: true},
+		{Operation: ldmigration.Read, Stage: ldmigration.Complete, ExpectedNew: true},
+
+		// Write operations
+		{Operation: ldmigration.Write, Stage: ldmigration.Off, ExpectedOld: true},
+		{Operation: ldmigration.Write, Stage: ldmigration.DualWrite, ExpectedOld: true, ExpectedNew: true},
+		{Operation: ldmigration.Write, Stage: ldmigration.Shadow, ExpectedOld: true, ExpectedNew: true},
+		{Operation: ldmigration.Write, Stage: ldmigration.Live, ExpectedOld: true, ExpectedNew: true},
+		{Operation: ldmigration.Write, Stage: ldmigration.RampDown, ExpectedOld: true, ExpectedNew: true},
+		{Operation: ldmigration.Write, Stage: ldmigration.Complete, ExpectedNew: true},
+	}
+
+	for _, testParam := range testParams {
+		t.Run(fmt.Sprintf("%s %s", testParam.Operation, testParam.Stage), func(t *ldtest.T) {
+			client, _ := createClient(t, stageToVariationIndex(testParam.Stage))
+			var oldBody string
+			var newBody string
+
+			service := mockld.NewMigrationCallbackService(
+				requireContext(t).harness,
+				t.DebugLogger(),
+				func(w http.ResponseWriter, req *http.Request) {
+					bytes, err := io.ReadAll(req.Body)
+					if err == nil {
+						oldBody = string(bytes)
+					}
+					w.WriteHeader(http.StatusOK)
+				},
+				func(w http.ResponseWriter, req *http.Request) {
+					bytes, err := io.ReadAll(req.Body)
+					if err == nil {
+						newBody = string(bytes)
+					}
+					w.WriteHeader(http.StatusOK)
+				},
+			)
+			t.Defer(service.Close)
+
+			context := ldcontext.New("key")
+
+			params := servicedef.MigrationOperationParams{
+				Key:          "migration-key",
+				Context:      context,
+				DefaultStage: ldmigration.Off,
+				Operation:    testParam.Operation,
+				OldEndpoint:  service.OldEndpoint().BaseURL(),
+				NewEndpoint:  service.NewEndpoint().BaseURL(),
+				Payload:      o.Some("example payload"),
+			}
+
+			client.MigrationOperation(t, params)
+
+			if testParam.ExpectedOld {
+				service.OldEndpoint().RequireConnection(t, 100*time.Millisecond)
+				assert.Equal(t, "example payload", oldBody)
+			} else {
+				service.OldEndpoint().RequireNoMoreConnections(t, 100*time.Millisecond)
+				assert.Empty(t, oldBody)
+			}
+
+			if testParam.ExpectedNew {
+				service.NewEndpoint().RequireConnection(t, 100*time.Millisecond)
+				assert.Equal(t, "example payload", newBody)
+			} else {
+				service.NewEndpoint().RequireNoMoreConnections(t, 100*time.Millisecond)
+				assert.Empty(t, newBody)
+			}
 		})
 	}
 }
