@@ -12,7 +12,7 @@ import (
 
 	"github.com/launchdarkly/go-jsonstream/v3/jreader"
 	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
-	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldmodel"
+	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldmodel"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 )
 

@@ -14,8 +14,8 @@ import (
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
-	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldbuilders"
-	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldmodel"
+	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldbuilders"
+	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldmodel"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 
 	"github.com/stretchr/testify/require"
