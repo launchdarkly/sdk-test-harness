@@ -12,7 +12,7 @@ require (
 	github.com/launchdarkly/go-test-helpers/v2 v2.3.2
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/exp v0.0.0-20220823124025-807a23277127
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	gopkg.in/yaml.v3 v3.0.0
 )
 
 require (
