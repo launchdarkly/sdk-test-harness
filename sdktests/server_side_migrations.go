@@ -259,6 +259,7 @@ func payloadsArePassedThrough(t *ldtest.T) {
 				Operation:    testParam.Operation,
 				OldEndpoint:  service.OldEndpoint().BaseURL(),
 				NewEndpoint:  service.NewEndpoint().BaseURL(),
+				ReadExecutionOrder: ldmigration.Concurrent,
 				Payload:      o.Some("example payload"),
 			}
 
