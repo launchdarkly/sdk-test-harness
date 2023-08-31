@@ -1,6 +1,8 @@
 package sdktests
 
 import (
+	"encoding/json"
+
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
@@ -49,6 +51,51 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 			matchIndexEvent(context),
 			IsSummaryEvent(),
 		))
+	})
+
+	t.Run("can disable", func(t *ldtest.T) {
+		t.Run("from feature event", func(t *ldtest.T) {
+			dataBuilder := mockld.NewServerSDKDataBuilder()
+			dataBuilder.RawFlag("flag1", json.RawMessage(`{"key": "flag1"}`))
+			dataBuilder.RawConfigOverride("indexSamplingRatio", json.RawMessage(`{"key": "indexSamplingRatio", "value": 0}`)).Build()
+
+			ds := NewSDKDataSource(t, dataBuilder.Build())
+			events := NewSDKEventSink(t)
+			client := NewSDKClient(t, ds, events)
+			context := ldcontext.New("key")
+
+			for i := 0; i < 3; i++ { // 3 = arbitrary number of repetitions to prove we're deduplicating
+				basicEvaluateFlag(t, client, "flag1", context, ldvalue.Null())
+			}
+
+			client.FlushEvents(t)
+
+			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+			m.In(t).Assert(payload, m.Items(IsSummaryEvent()))
+		})
+
+		t.Run("from custom event", func(t *ldtest.T) {
+			dataBuilder := mockld.NewServerSDKDataBuilder()
+			dataBuilder.RawFlag("flag1", json.RawMessage(`{"key": "flag1"}`))
+			dataBuilder.RawConfigOverride("indexSamplingRatio", json.RawMessage(`{"key": "indexSamplingRatio", "value": 0}`)).Build()
+
+			ds := NewSDKDataSource(t, dataBuilder.Build())
+			events := NewSDKEventSink(t)
+			client := NewSDKClient(t, ds, events)
+			context := ldcontext.New("key")
+
+			matchers := []m.Matcher{}
+			for i := 0; i < 3; i++ { // 3 = arbitrary number of repetitions to prove we're deduplicating
+				client.SendCustomEvent(t, servicedef.CustomEventParams{EventKey: "event1", Context: o.Some(context)})
+				matchers = append(matchers, IsCustomEvent())
+			}
+
+			client.FlushEvents(t)
+
+			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(matchers...))
+		})
+
 	})
 
 	t.Run("only one index event per evaluation context", func(t *ldtest.T) {

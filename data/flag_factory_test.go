@@ -10,6 +10,7 @@ import (
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	evaluation "github.com/launchdarkly/go-server-sdk-evaluation/v2"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldbuilders"
+	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldmodel"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 
 	"github.com/stretchr/testify/assert"
@@ -155,7 +156,7 @@ func TestFlagShouldProduceThisEvalReason(t *testing.T) {
 			}
 			FlagShouldProduceThisEvalReason(p.reason, shouldMatchParam...)(b)
 			flag := b.Build()
-			evaluator := evaluation.NewEvaluator(nil)
+			evaluator := evaluation.NewEvaluator(nullDataProvider{})
 			for _, c := range p.shouldMatch {
 				result := evaluator.Evaluate(&flag, c, nil)
 				m.In(t).For(c.String()).Assert(result.Detail.Reason, m.JSONEqual(p.reason))
@@ -167,3 +168,20 @@ func TestFlagShouldProduceThisEvalReason(t *testing.T) {
 		})
 	}
 }
+
+// The above test needs a data provider; otherwise the evaluation method is
+// going to fail when it queries for the indexSamplingRatio. Everything else it
+// can accomplish without a real data store.
+type nullDataProvider struct{}
+
+// GetConfigOverride implements evaluation.DataProvider.
+func (nullDataProvider) GetConfigOverride(key string) *ldmodel.ConfigOverride { return nil }
+
+// GetFeatureFlag implements evaluation.DataProvider.
+func (nullDataProvider) GetFeatureFlag(key string) *ldmodel.FeatureFlag { return nil }
+
+// GetMetric implements evaluation.DataProvider.
+func (nullDataProvider) GetMetric(key string) *ldmodel.Metric { return nil }
+
+// GetSegment implements evaluation.DataProvider.
+func (nullDataProvider) GetSegment(key string) *ldmodel.Segment { return nil }

@@ -20,6 +20,7 @@ import (
 
 func doServerSideSummaryEventTests(t *ldtest.T) {
 	t.Run("basic counter behavior", doServerSideSummaryEventBasicTest)
+	t.Run("sampling ratio", doServerSideSummarySamplingRatioTests)
 	t.Run("contextKinds", doServerSideSummaryEventContextKindsTest)
 	t.Run("unknown flag", doServerSideSummaryEventUnknownFlagTest)
 	t.Run("reset after each flush", doServerSideSummaryEventResetTest)
@@ -83,6 +84,111 @@ func doServerSideSummaryEventBasicTest(t *ldtest.T) {
 				m.KV("default", m.JSONEqual(default2)),
 				m.KV("counters", m.ItemsInAnyOrder(
 					flagCounter("value2a", 0, flag2.Version, 1),
+				)),
+				m.KV("contextKinds", anyContextKindsList()),
+			)),
+		)),
+	)
+}
+
+func doServerSideSummarySamplingRatioTests(t *ldtest.T) {
+	t.RequireCapability(servicedef.CapabilityEventSampling)
+
+	t.Run("flag can be excluded", flagIsExcludedFromSummaries)
+	t.Run("prereq can be excluded", flagPreqIsExcludedFromSummaries)
+}
+
+func flagIsExcludedFromSummaries(t *ldtest.T) {
+	flag1 := ldbuilders.NewFlagBuilder("flag1").
+		On(true).
+		Variations(ldvalue.String("value1a"), ldvalue.String("value1b")).
+		FallthroughVariation(0).
+		ExcludeFromSummaries(true).
+		Build()
+	flag2 := ldbuilders.NewFlagBuilder("flag2").
+		On(true).
+		Variations(ldvalue.String("value2a"), ldvalue.String("value2b")).
+		FallthroughVariation(0).
+		Build()
+
+	userA := ldcontext.New("user-a")
+	userB := ldcontext.New("user-b")
+	default1 := ldvalue.String("default1")
+	default2 := ldvalue.String("default2")
+
+	dataBuilder := mockld.NewServerSDKDataBuilder()
+	dataBuilder.Flag(flag1, flag2)
+
+	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	events := NewSDKEventSink(t)
+	client := NewSDKClient(t, dataSource, events)
+
+	// evaluations for flag1: two for o.Some(userA) producing value1a, one for o.Some(userB) producing value1b
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1.Key,
+		Context: o.Some(userA), DefaultValue: default1})
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1.Key,
+		Context: o.Some(userB), DefaultValue: default1})
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1.Key,
+		Context: o.Some(userA), DefaultValue: default1})
+
+	// evaluations for flag2: one for o.Some(userA) producing value2a
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag2.Key,
+		Context: o.Some(userA), DefaultValue: default2})
+
+	client.FlushEvents(t)
+	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+	m.In(t).Assert(payload, m.ItemsInAnyOrder(
+		IsIndexEvent(),
+		IsIndexEvent(),
+		IsValidSummaryEventWithFlags(
+			m.KV(flag2.Key, m.MapOf(
+				m.KV("default", m.JSONEqual(default2)),
+				m.KV("counters", m.ItemsInAnyOrder(
+					flagCounter("value2a", 0, flag2.Version, 1),
+				)),
+				m.KV("contextKinds", anyContextKindsList()),
+			)),
+		)),
+	)
+}
+
+func flagPreqIsExcludedFromSummaries(t *ldtest.T) {
+	flag1 := ldbuilders.NewFlagBuilder("flag1").
+		On(true).
+		Variations(ldvalue.Bool(true), ldvalue.Bool(false)).
+		FallthroughVariation(0).
+		ExcludeFromSummaries(true).
+		Build()
+	flag2 := ldbuilders.NewFlagBuilder("flag2").
+		On(true).
+		Variations(ldvalue.Bool(true), ldvalue.Bool(false)).
+		FallthroughVariation(0).
+		AddPrerequisite(flag1.Key, 0).
+		Build()
+
+	context := ldcontext.New("user-a")
+
+	dataBuilder := mockld.NewServerSDKDataBuilder()
+	dataBuilder.Flag(flag1, flag2)
+
+	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	events := NewSDKEventSink(t)
+	client := NewSDKClient(t, dataSource, events)
+
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag2.Key,
+		Context: o.Some(context), DefaultValue: ldvalue.Bool(false)})
+
+	client.FlushEvents(t)
+	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+	m.In(t).Assert(payload, m.ItemsInAnyOrder(
+		IsIndexEvent(),
+		IsValidSummaryEventWithFlags(
+			m.KV(flag2.Key, m.MapOf(
+				m.KV("default", m.JSONEqual(false)),
+				m.KV("counters", m.ItemsInAnyOrder(
+					flagCounter(true, 0, flag2.Version, 1),
 				)),
 				m.KV("contextKinds", anyContextKindsList()),
 			)),

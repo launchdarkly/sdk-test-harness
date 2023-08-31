@@ -8,6 +8,7 @@ import (
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"golang.org/x/exp/maps"
 
 	"github.com/launchdarkly/go-jsonstream/v3/jreader"
 	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
@@ -166,27 +167,33 @@ func normalizeSegment(key string, data json.RawMessage) (json.RawMessage, error)
 }
 
 type ServerSDKDataBuilder struct {
-	flags    map[string]json.RawMessage
-	segments map[string]json.RawMessage
+	flags           map[string]json.RawMessage
+	segments        map[string]json.RawMessage
+	configOverrides map[string]json.RawMessage
+	metrics         map[string]json.RawMessage
 }
 
 func NewServerSDKDataBuilder() *ServerSDKDataBuilder {
 	return &ServerSDKDataBuilder{
-		flags:    make(map[string]json.RawMessage),
-		segments: make(map[string]json.RawMessage),
+		flags:           make(map[string]json.RawMessage),
+		segments:        make(map[string]json.RawMessage),
+		configOverrides: make(map[string]json.RawMessage),
+		metrics:         make(map[string]json.RawMessage),
 	}
 }
 
 func (b *ServerSDKDataBuilder) Build() ServerSDKData {
-	flags := make(map[string]json.RawMessage)
-	segments := make(map[string]json.RawMessage)
-	for k, v := range b.flags {
-		flags[k] = v
+	flags := maps.Clone(b.flags)
+	segments := maps.Clone(b.segments)
+	configOverrides := maps.Clone(b.configOverrides)
+	metrics := maps.Clone(b.metrics)
+
+	return map[DataItemKind]map[string]json.RawMessage{
+		"flags":                  flags,
+		"segments":               segments,
+		"configurationOverrides": configOverrides,
+		"metrics":                metrics,
 	}
-	for k, v := range b.segments {
-		segments[k] = v
-	}
-	return map[DataItemKind]map[string]json.RawMessage{"flags": flags, "segments": segments}
 }
 
 func (b *ServerSDKDataBuilder) RawFlag(key string, data json.RawMessage) *ServerSDKDataBuilder {
@@ -209,6 +216,30 @@ func (b *ServerSDKDataBuilder) RawSegment(key string, data json.RawMessage) *Ser
 func (b *ServerSDKDataBuilder) Segment(segments ...ldmodel.Segment) *ServerSDKDataBuilder {
 	for _, segment := range segments {
 		b = b.RawSegment(segment.Key, jsonhelpers.ToJSON(segment))
+	}
+	return b
+}
+
+func (b *ServerSDKDataBuilder) RawConfigOverride(key string, data json.RawMessage) *ServerSDKDataBuilder {
+	b.configOverrides[key] = data
+	return b
+}
+
+func (b *ServerSDKDataBuilder) ConfigOverride(overrides ...ldmodel.ConfigOverride) *ServerSDKDataBuilder {
+	for _, override := range overrides {
+		b = b.RawConfigOverride(override.Key, jsonhelpers.ToJSON(override))
+	}
+	return b
+}
+
+func (b *ServerSDKDataBuilder) RawMetric(key string, data json.RawMessage) *ServerSDKDataBuilder {
+	b.metrics[key] = data
+	return b
+}
+
+func (b *ServerSDKDataBuilder) Metric(metrics ...ldmodel.Metric) *ServerSDKDataBuilder {
+	for _, metric := range metrics {
+		b = b.RawMetric(metric.Key, jsonhelpers.ToJSON(metric))
 	}
 	return b
 }

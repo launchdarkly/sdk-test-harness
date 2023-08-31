@@ -39,13 +39,15 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 	)
 	malformedFlag := ldbuilders.NewFlagBuilder("bad-flag").Version(1).
 		On(false).OffVariation(-1).TrackEvents(true).Build()
+	zeroSamplingRatioFlag := ldbuilders.NewFlagBuilder("zero-sampling-ratio").Version(1).
+		On(true).Variations(ldvalue.Bool(true), ldvalue.Bool(false)).SamplingRatio(0).Build()
 
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	for _, valueType := range getValueTypesToTest(t) {
 		dataBuilder.Flag(untrackedFlags.MakeFlagForValueType(valueType))
 		dataBuilder.Flag(trackedFlags.MakeFlagForValueType(valueType))
 	}
-	dataBuilder.Flag(malformedFlag)
+	dataBuilder.Flag(malformedFlag, zeroSamplingRatioFlag)
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
@@ -159,6 +161,27 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 		}
 	})
 
+	t.Run("disable full feature event for tracked flag through sampling", func(t *ldtest.T) {
+		t.RequireCapability(servicedef.CapabilityEventSampling)
+
+		context := ldcontext.New("example")
+
+		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+			FlagKey:      zeroSamplingRatioFlag.Key,
+			Context:      o.Some(context),
+			ValueType:    servicedef.ValueTypeBool,
+			DefaultValue: ldvalue.Bool(false),
+			Detail:       false,
+		})
+		client.FlushEvents(t)
+
+		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+		m.In(t).Assert(payload, m.ItemsInAnyOrder(
+			IsIndexEventForContext(context),
+			IsSummaryEvent(),
+		))
+	})
+
 	t.Run("evaluating all flags generates no events", func(t *ldtest.T) {
 		_ = client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
 			Context: o.Some(contexts.NextUniqueContext()),
@@ -267,6 +290,41 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 	}
 
 	doDebugEventTestCases(t, doDebugTest)
+
+	t.Run("index sampling can disable debug event", func(t *ldtest.T) {
+		t.RequireCapability(servicedef.CapabilityEventSampling)
+
+		zeroSamplingRatioFlag := ldbuilders.NewFlagBuilder("zero-sampling-ratio").Version(1).
+			On(true).Variations(ldvalue.Bool(true), ldvalue.Bool(false)).
+			FallthroughVariation(0).
+			SamplingRatio(0).Build()
+
+		dataBuilder := mockld.NewServerSDKDataBuilder()
+		dataBuilder.Flag(zeroSamplingRatioFlag)
+		dataSource := NewSDKDataSource(t, dataBuilder.Build())
+
+		events := NewSDKEventSink(t)
+		client := NewSDKClient(t, dataSource, events)
+
+		context := contexts.NextUniqueContext()
+		result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+			FlagKey:      zeroSamplingRatioFlag.Key,
+			Context:      o.Some(context),
+			ValueType:    servicedef.ValueTypeBool,
+			DefaultValue: ldvalue.Bool(false),
+			Detail:       false,
+		})
+		m.In(t).Assert(result.Value, m.JSONEqual(ldvalue.Bool(true)))
+
+		client.FlushEvents(t)
+		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+		m.In(t).Assert(payload, m.ItemsInAnyOrder(
+			IsIndexEventForContext(context),
+			EventHasKind("summary"),
+		))
+	})
+
 }
 
 func doDebugEventTestCases(
