@@ -324,7 +324,6 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 			EventHasKind("summary"),
 		))
 	})
-
 }
 
 func doDebugEventTestCases(

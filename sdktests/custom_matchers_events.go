@@ -106,7 +106,15 @@ func IsValidSummaryEventWithFlags(keyValueMatchers ...m.KeyValueMatcher) m.Match
 }
 
 func IsValidMigrationOpEventWithConditions(context ldcontext.Context, matchers ...m.Matcher) m.Matcher {
-	propertyKeys := []string{"kind", "operation", "creationDate", "samplingRatio", "contextKeys", "evaluation", "measurements"}
+	propertyKeys := []string{
+		"kind",
+		"operation",
+		"creationDate",
+		"samplingRatio",
+		"contextKeys",
+		"evaluation",
+		"measurements",
+	}
 
 	return m.AllOf(
 		append(
