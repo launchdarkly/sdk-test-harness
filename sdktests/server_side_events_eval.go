@@ -40,7 +40,7 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 	malformedFlag := ldbuilders.NewFlagBuilder("bad-flag").Version(1).
 		On(false).OffVariation(-1).TrackEvents(true).Build()
 	zeroSamplingRatioFlag := ldbuilders.NewFlagBuilder("zero-sampling-ratio").Version(1).
-		On(true).Variations(ldvalue.Bool(true), ldvalue.Bool(false)).SamplingRatio(ldvalue.NewOptionalInt(0)).Build()
+		On(true).Variations(ldvalue.Bool(true), ldvalue.Bool(false)).SamplingRatio(0).Build()
 
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	for _, valueType := range getValueTypesToTest(t) {
@@ -297,7 +297,7 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 		zeroSamplingRatioFlag := ldbuilders.NewFlagBuilder("zero-sampling-ratio").Version(1).
 			On(true).Variations(ldvalue.Bool(true), ldvalue.Bool(false)).
 			FallthroughVariation(0).
-			SamplingRatio(ldvalue.NewOptionalInt(0)).Build()
+			SamplingRatio(0).Build()
 
 		dataBuilder := mockld.NewServerSDKDataBuilder()
 		dataBuilder.Flag(zeroSamplingRatioFlag)

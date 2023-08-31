@@ -8,6 +8,7 @@ import (
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"golang.org/x/exp/maps"
 
 	"github.com/launchdarkly/go-jsonstream/v3/jreader"
 	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
@@ -182,23 +183,10 @@ func NewServerSDKDataBuilder() *ServerSDKDataBuilder {
 }
 
 func (b *ServerSDKDataBuilder) Build() ServerSDKData {
-	flags := make(map[string]json.RawMessage)
-	segments := make(map[string]json.RawMessage)
-	configOverrides := make(map[string]json.RawMessage)
-	metrics := make(map[string]json.RawMessage)
-
-	for k, v := range b.flags {
-		flags[k] = v
-	}
-	for k, v := range b.segments {
-		segments[k] = v
-	}
-	for k, v := range b.configOverrides {
-		configOverrides[k] = v
-	}
-	for k, v := range b.metrics {
-		metrics[k] = v
-	}
+	flags := maps.Clone(b.flags)
+	segments := maps.Clone(b.segments)
+	configOverrides := maps.Clone(b.configOverrides)
+	metrics := maps.Clone(b.metrics)
 
 	return map[DataItemKind]map[string]json.RawMessage{
 		"flags":                  flags,
