@@ -24,6 +24,7 @@ func doServerSideMigrationTests(t *ldtest.T) {
 	t.Run("identifies correct stage from flag", identifyCorrectStageFromStringFlag)
 	t.Run("executes reads", executesReads)
 	t.Run("executes origins in correct order", executesOriginsInCorrectOrder)
+	t.Run("tracks invoked", tracksInvoked)
 	t.Run("tracks latency", tracksLatency)
 	t.Run("tracks error metrics for failures", writeFailuresShouldGenerateErrorMetrics)
 	t.Run("tracks no errors on success", successfulHandlersShouldNotGenerateErrorMetrics)
@@ -196,6 +197,98 @@ func executesReads(t *ldtest.T) {
 	}
 }
 
+func tracksInvoked(t *ldtest.T) {
+	onlyOld := []m.Matcher{m.JSONOptProperty("old").Should(m.Not(m.BeNil())), m.JSONOptProperty("new").Should(m.BeNil())}
+	both := []m.Matcher{m.JSONOptProperty("old").Should(m.Not(m.BeNil())), m.JSONOptProperty("new").Should(m.Not(m.BeNil()))}
+	onlyNew := []m.Matcher{m.JSONOptProperty("old").Should(m.BeNil()), m.JSONOptProperty("new").Should(m.Not(m.BeNil()))}
+
+	testParams := []struct {
+		Operation      ldmigration.Operation
+		Stage          ldmigration.Stage
+		ValuesMatchers []m.Matcher
+	}{
+		// Read operations
+		{Operation: ldmigration.Read, Stage: ldmigration.Off, ValuesMatchers: onlyOld},
+		{Operation: ldmigration.Read, Stage: ldmigration.DualWrite, ValuesMatchers: onlyOld},
+		{Operation: ldmigration.Read, Stage: ldmigration.Shadow, ValuesMatchers: both},
+		{Operation: ldmigration.Read, Stage: ldmigration.Live, ValuesMatchers: both},
+		{Operation: ldmigration.Read, Stage: ldmigration.RampDown, ValuesMatchers: onlyNew},
+		{Operation: ldmigration.Read, Stage: ldmigration.Complete, ValuesMatchers: onlyNew},
+
+		// Write operations
+		{Operation: ldmigration.Write, Stage: ldmigration.Off, ValuesMatchers: onlyOld},
+		{Operation: ldmigration.Write, Stage: ldmigration.DualWrite, ValuesMatchers: both},
+		{Operation: ldmigration.Write, Stage: ldmigration.Shadow, ValuesMatchers: both},
+		{Operation: ldmigration.Write, Stage: ldmigration.Live, ValuesMatchers: both},
+		{Operation: ldmigration.Write, Stage: ldmigration.RampDown, ValuesMatchers: both},
+		{Operation: ldmigration.Write, Stage: ldmigration.Complete, ValuesMatchers: onlyNew},
+	}
+
+	for _, testParam := range testParams {
+		t.Run(fmt.Sprintf("%s invoked for %s", testParam.Operation, testParam.Stage), func(t *ldtest.T) {
+			client, events := createClient(t, stageToVariationIndex(testParam.Stage))
+
+			callback := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
+
+			service := mockld.NewMigrationCallbackService(requireContext(t).harness, t.DebugLogger(), callback, callback)
+			t.Defer(service.Close)
+
+			context := ldcontext.New("key")
+
+			params := servicedef.MigrationOperationParams{
+				Key:                "migration-key",
+				Context:            context,
+				DefaultStage:       ldmigration.DualWrite,
+				ReadExecutionOrder: ldmigration.Concurrent,
+				OldEndpoint:        service.OldEndpoint().BaseURL(),
+				NewEndpoint:        service.NewEndpoint().BaseURL(),
+				Operation:          testParam.Operation,
+			}
+
+			_ = client.MigrationOperation(t, params)
+			client.FlushEvents(t)
+
+			opEventMatchers := []m.Matcher{
+				m.JSONOptProperty("samplingRatio").Should(m.BeNil()),
+				m.JSONProperty("operation").Should(m.Equal(string(testParam.Operation))),
+				m.JSONProperty("evaluation").Should(
+					m.AllOf(
+						m.JSONProperty("key").Should(m.Equal("migration-key")),
+						m.JSONProperty("default").Should(m.Equal("dualwrite")),
+						m.JSONProperty("value").Should(m.Equal(string(testParam.Stage))),
+						m.JSONProperty("variation").Should(m.Equal(stageToVariationIndex(testParam.Stage))),
+						m.JSONProperty("reason").Should(
+							m.JSONProperty("kind").Should(m.Equal("FALLTHROUGH")),
+						),
+					),
+				),
+				m.JSONProperty("measurements").Should(
+					m.ItemsInAnyOrder(
+						m.AllOf(
+							m.JSONProperty("key").Should(m.Equal("invoked")),
+							m.JSONProperty("values").Should(
+								m.AllOf(
+									testParam.ValuesMatchers...,
+								),
+							),
+						),
+					),
+				),
+			}
+
+			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(
+				IsIndexEventForContext(context),
+				IsSummaryEvent(),
+				IsValidMigrationOpEventWithConditions(
+					context,
+					opEventMatchers...,
+				),
+			))
+		})
+	}
+}
+
 func tracksLatency(t *ldtest.T) {
 	onlyOld := []m.Matcher{m.JSONOptProperty("old").Should(m.Not(m.BeNil())), m.JSONOptProperty("new").Should(m.BeNil())}
 	both := []m.Matcher{m.JSONOptProperty("old").Should(m.Not(m.BeNil())), m.JSONOptProperty("new").Should(m.Not(m.BeNil()))}
@@ -268,6 +361,7 @@ func tracksLatency(t *ldtest.T) {
 				),
 				m.JSONProperty("measurements").Should(
 					m.ItemsInAnyOrder(
+						m.JSONProperty("key").Should(m.Equal("invoked")),
 						m.AllOf(
 							m.JSONProperty("key").Should(m.Equal("latency_ms")),
 							m.JSONProperty("values").Should(
@@ -361,6 +455,7 @@ func writeFailuresShouldGenerateErrorMetrics(t *ldtest.T) {
 				),
 				m.JSONProperty("measurements").Should(
 					m.ItemsInAnyOrder(
+						m.JSONProperty("key").Should(m.Equal("invoked")),
 						m.AllOf(
 							m.JSONProperty("key").Should(m.Equal("error")),
 							m.JSONProperty("values").Should(
@@ -447,7 +542,7 @@ func successfulHandlersShouldNotGenerateErrorMetrics(t *ldtest.T) {
 						),
 					),
 				),
-				m.JSONProperty("measurements").Should(m.Length().Should(m.Equal(0))),
+				m.JSONProperty("measurements").Should(m.Length().Should(m.Equal(1))),
 			}
 
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
@@ -529,6 +624,7 @@ func trackConsistency(t *ldtest.T) {
 
 			if consistent, ok := testParam.IsConsistent.Get(); ok {
 				matcher = m.ItemsInAnyOrder(
+					m.JSONProperty("key").Should(m.Equal("invoked")),
 					m.AllOf(
 						m.JSONProperty("key").Should(m.Equal("consistent")),
 						m.JSONProperty("value").Should(m.Equal(consistent)),
@@ -536,7 +632,7 @@ func trackConsistency(t *ldtest.T) {
 					),
 				)
 			} else {
-				matcher = m.Length().Should(m.Equal(0))
+				matcher = m.Length().Should(m.Equal(1))
 			}
 
 			opEventMatchers := []m.Matcher{
