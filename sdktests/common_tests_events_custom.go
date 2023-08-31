@@ -80,7 +80,10 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 		context := ldcontext.New("example")
 
 		dataBuilder := mockld.NewServerSDKDataBuilder()
-		dataBuilder.RawMetric("zero-sampled-event", json.RawMessage(`{"key":"zero-sampled-event", "samplingRatio": 0, "version": 1}`))
+		dataBuilder.RawMetric(
+			"zero-sampled-event",
+			json.RawMessage(`{"key":"zero-sampled-event", "samplingRatio": 0, "version": 1}`),
+		)
 		data := dataBuilder.Build()
 
 		dataSource := NewSDKDataSource(t, data)

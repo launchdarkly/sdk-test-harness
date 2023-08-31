@@ -57,7 +57,10 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 		t.Run("from feature event", func(t *ldtest.T) {
 			dataBuilder := mockld.NewServerSDKDataBuilder()
 			dataBuilder.RawFlag("flag1", json.RawMessage(`{"key": "flag1"}`))
-			dataBuilder.RawConfigOverride("indexSamplingRatio", json.RawMessage(`{"key": "indexSamplingRatio", "value": 0}`)).Build()
+			dataBuilder.RawConfigOverride(
+				"indexSamplingRatio",
+				json.RawMessage(`{"key": "indexSamplingRatio", "value": 0}`),
+			).Build()
 
 			ds := NewSDKDataSource(t, dataBuilder.Build())
 			events := NewSDKEventSink(t)
@@ -77,7 +80,10 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 		t.Run("from custom event", func(t *ldtest.T) {
 			dataBuilder := mockld.NewServerSDKDataBuilder()
 			dataBuilder.RawFlag("flag1", json.RawMessage(`{"key": "flag1"}`))
-			dataBuilder.RawConfigOverride("indexSamplingRatio", json.RawMessage(`{"key": "indexSamplingRatio", "value": 0}`)).Build()
+			dataBuilder.RawConfigOverride(
+				"indexSamplingRatio",
+				json.RawMessage(`{"key": "indexSamplingRatio", "value": 0}`),
+			).Build()
 
 			ds := NewSDKDataSource(t, dataBuilder.Build())
 			events := NewSDKEventSink(t)
@@ -95,7 +101,6 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 			m.In(t).Assert(payload, m.ItemsInAnyOrder(matchers...))
 		})
-
 	})
 
 	t.Run("only one index event per evaluation context", func(t *ldtest.T) {
