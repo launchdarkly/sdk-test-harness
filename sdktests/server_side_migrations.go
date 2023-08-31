@@ -253,14 +253,14 @@ func payloadsArePassedThrough(t *ldtest.T) {
 			context := ldcontext.New("key")
 
 			params := servicedef.MigrationOperationParams{
-				Key:          "migration-key",
-				Context:      context,
-				DefaultStage: ldmigration.Off,
-				Operation:    testParam.Operation,
-				OldEndpoint:  service.OldEndpoint().BaseURL(),
-				NewEndpoint:  service.NewEndpoint().BaseURL(),
+				Key:                "migration-key",
+				Context:            context,
+				DefaultStage:       ldmigration.Off,
+				Operation:          testParam.Operation,
+				OldEndpoint:        service.OldEndpoint().BaseURL(),
+				NewEndpoint:        service.NewEndpoint().BaseURL(),
 				ReadExecutionOrder: ldmigration.Concurrent,
-				Payload:      o.Some("example payload"),
+				Payload:            o.Some("example payload"),
 			}
 
 			client.MigrationOperation(t, params)
