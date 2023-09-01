@@ -60,6 +60,14 @@ For tests that involve Big Segments, the test harness will provide parameters in
 
 This means that the SDK has its own type for evaluation contexts (as opposed to just representing them as a JSON-equivalent generic data structure) and convert that type to and from JSON.
 
+#### Capability `"event-sampling"`
+
+This means that the SDK supports event sampling; the SDK can limit the number of certain events based on payloads received from upstream services.
+
+#### Capability `"migrations"`
+
+This means that the SDK supports technology migrations, a feature which allows customers to migrate between data sources using well-defined migration stages.
+
 #### Capability `"secure-mode-hash"`
 
 This means that the SDK has a function/method for computing a secure mode hash from a context.
@@ -314,6 +322,42 @@ If `command` is "getBigSegmentStoreStatus", the test service should tell the SDK
 The request body, if any, is irrelevant.
 
 The response should be a JSON object with two boolean properties, `available` and `stale`.
+
+#### Migration variation
+
+If `command` is "migrationVariation", the test service should tell the SDK to report the current migration stage.
+
+The request body will contain the following properties:
+
+* `key` (string, required) The migration flag key
+* `context` (object, required) The context used to determine the migration
+* `defaultStage` (string, required) The default migration stage to use as a fallback value
+
+The response is a JSON payload with a single property `result` which contains the stage appropriate for that migration and context.
+
+#### Migration operation
+
+If `command` is "migrationOperation", the test service should instrument the SDK's migration kit and execute either a read or write option.
+
+The request body will contain the following properties:
+
+* `key` (string, required) The migration flag key
+* `context` (object, required) The context used to determine the migration
+* `defaultStage` (string, required) The default migration stage to use as a fallback value
+* `readExecutionOrder` (string, required) Can be "serial", "concurrent", or "random".
+* `operation` (string, required) Can be "read" or "write".
+* `oldEndpoint` (string, required) The endpoint to post and read from for the old migration origin.
+* `newEndpoint` (string, required) The endpoint to post and read from for the old migration origin.
+* `payload` (string, optional) An optional payload to provide to the operation method.
+* `trackLatency` (bool, required) A flag to determine if the migrator should track latency.
+* `trackErrors` (bool, required) A flag to determine if the migrator should track errors.
+* `trackConsistency` (bool, required) A flag to determine if the migrator should enable read comparisons. The results will always be simple strings to make for easy comparisons across languages.
+
+The response is a JSON payload with a single property `result`.
+
+* If the operation fails, `result` should contain an error description.
+* If the migration operation was a `read`, the `result` field should contain the result of the read method.
+* If the operation was a `write`, the `result` field should contain the result of the authoritative write.
 
 ### Close client: `DELETE <URL of SDK client instance>`
 
