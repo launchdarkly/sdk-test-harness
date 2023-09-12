@@ -729,7 +729,10 @@ func tracksConsistencyCorrectlyBasedOnStage(t *ldtest.T) {
 					m.AllOf(
 						m.JSONProperty("key").Should(m.Equal("consistent")),
 						m.JSONProperty("value").Should(m.Equal(consistent)),
-						m.JSONProperty("samplingRatio").Should(m.Equal(1)),
+						m.AnyOf(
+							m.JSONProperty("samplingRatio").Should(m.Equal(1)),
+							m.JSONOptProperty("samplingRatio").Should(m.BeNil()),
+						),
 					),
 				)
 			} else {
