@@ -55,6 +55,8 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 
 	t.Run("can disable", func(t *ldtest.T) {
 		t.RequireCapability(servicedef.CapabilityEventSampling)
+		t.RequireCapability(servicedef.CapabilityConfigOverrideKind)
+
 		t.Run("from feature event", func(t *ldtest.T) {
 			dataBuilder := mockld.NewServerSDKDataBuilder()
 			dataBuilder.RawFlag("flag1", json.RawMessage(`{"key": "flag1"}`))
