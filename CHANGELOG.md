@@ -2,6 +2,18 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.1.2] - 2023-08-30
+### Fixed:
+- Relaxing content-type for server events. Java will include a charset. This is not required for application/json (because it is UTF-8 by its own standard), but it isn't explicitly forbidden.
+
+## [2.1.1] - 2023-08-24
+### Added:
+- Downloader support for windows.
+
+### Fixed:
+- Relaxing context type test, now contains application/json
+- Updated tags tests to account for fallback when id is invalid
+
 ## [2.1] - 2023-08-15
 ### Added:
 - Add polling test with large payload size.

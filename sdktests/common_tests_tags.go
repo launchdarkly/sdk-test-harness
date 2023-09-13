@@ -19,9 +19,10 @@ import (
 const maxTagValueLength = 64
 
 type tagsTestParams struct {
-	description         string
-	tags                servicedef.SDKConfigTagsParams
-	expectedHeaderValue string
+	description           string
+	tags                  servicedef.SDKConfigTagsParams
+	expectedHeaderValue   string
+	unexpectedHeaderValue string
 }
 
 // CommonTagsTests groups together event-related test methods that are shared between server-side and client-side.
@@ -122,7 +123,13 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 			}
 			if request, err := dataSource.Endpoint().AwaitConnection(time.Second); err == nil {
 				headerTags := request.Headers.Get("X-LaunchDarkly-Tags")
-				assert.Equal(t, p.expectedHeaderValue, headerTags, "for input tags: %s", jsonhelpers.ToJSONString(tags))
+				if p.expectedHeaderValue != "" {
+					assert.Equal(t, p.expectedHeaderValue, headerTags, "for input tags: %s", jsonhelpers.ToJSONString(tags))
+				}
+
+				if p.unexpectedHeaderValue != "" {
+					assert.NotContains(t, p.unexpectedHeaderValue, headerTags, "for input tags: %s", jsonhelpers.ToJSONString(tags))
+				}
 			} else {
 				assert.Fail(t, "timed out waiting for request", "for input tags: %s", jsonhelpers.ToJSONString(tags))
 			}
@@ -137,6 +144,13 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 			params = append(params, tagsTestParams{
 				tags: servicedef.SDKConfigTagsParams{
 					ApplicationID:      o.Some("ok"),
+					ApplicationVersion: o.Some("ok"),
+				},
+				expectedHeaderValue: tagNameAppID + "/ok " + tagNameAppVersion + "/ok",
+			})
+			params = append(params, tagsTestParams{
+				tags: servicedef.SDKConfigTagsParams{
+					ApplicationID:      o.Some("ok"),
 					ApplicationVersion: o.Some(badString),
 				},
 				expectedHeaderValue: tagNameAppID + "/ok",
@@ -144,9 +158,9 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 			params = append(params, tagsTestParams{
 				tags: servicedef.SDKConfigTagsParams{
 					ApplicationID:      o.Some(badString),
-					ApplicationVersion: o.Some("ok"),
+					ApplicationVersion: o.Some("iShouldntBeSeenBecauseInvalidIDTriggersFallback"),
 				},
-				expectedHeaderValue: tagNameAppVersion + "/ok",
+				unexpectedHeaderValue: "iShouldntBeSeenBecauseInvalidIDTriggersFallback",
 			})
 		}
 		runPermutations(t, params)
@@ -177,9 +191,9 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 			{
 				tags: servicedef.SDKConfigTagsParams{
 					ApplicationID:      o.Some(badString),
-					ApplicationVersion: o.Some(goodString),
+					ApplicationVersion: o.Some("iShouldntBeSeenBecauseInvalidIDTriggersFallback"),
 				},
-				expectedHeaderValue: tagNameAppVersion + "/" + goodString,
+				unexpectedHeaderValue: "iShouldntBeSeenBecauseInvalidIDTriggersFallback",
 			},
 		}
 		runPermutations(t, params)

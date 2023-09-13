@@ -31,7 +31,7 @@ func doClientSideEventRequestTests(t *ldtest.T) {
 	eventTests.RequestMethodAndHeaders(t, envIDOrMobileKey, m.AllOf(
 		Header("X-LaunchDarkly-Event-Schema").Should(m.Equal(currentEventSchema)),
 		Header("X-LaunchDarkly-Payload-Id").Should(m.Not(m.Equal(""))),
-		Header("Content-Type").Should(m.Equal("application/json")),
+		Header("Content-Type").Should(m.StringContains("application/json")),
 	))
 
 	requestPathMatcher := h.IfElse(
