@@ -386,35 +386,50 @@ func tracksLatency(t *ldtest.T) {
 	onlyNew := []m.Matcher{m.JSONOptProperty("old").Should(m.BeNil()), m.JSONOptProperty("new").Should(m.Not(m.BeNil()))}
 
 	testParams := []struct {
+		Label          string
 		Operation      ldmigration.Operation
 		Stage          ldmigration.Stage
 		ValuesMatchers []m.Matcher
+		StatusCode     int
 	}{
 		// Read operations
-		{Operation: ldmigration.Read, Stage: ldmigration.Off, ValuesMatchers: onlyOld},
-		{Operation: ldmigration.Read, Stage: ldmigration.DualWrite, ValuesMatchers: onlyOld},
-		{Operation: ldmigration.Read, Stage: ldmigration.Shadow, ValuesMatchers: both},
-		{Operation: ldmigration.Read, Stage: ldmigration.Live, ValuesMatchers: both},
-		{Operation: ldmigration.Read, Stage: ldmigration.RampDown, ValuesMatchers: onlyNew},
-		{Operation: ldmigration.Read, Stage: ldmigration.Complete, ValuesMatchers: onlyNew},
+		{Label: "for read in stage off", Operation: ldmigration.Read, Stage: ldmigration.Off, ValuesMatchers: onlyOld, StatusCode: http.StatusOK},
+		{Label: "for read in stage dual write", Operation: ldmigration.Read, Stage: ldmigration.DualWrite, ValuesMatchers: onlyOld, StatusCode: http.StatusOK},
+		{Label: "for read in stage shadow", Operation: ldmigration.Read, Stage: ldmigration.Shadow, ValuesMatchers: both, StatusCode: http.StatusOK},
+		{Label: "for read in stage live", Operation: ldmigration.Read, Stage: ldmigration.Live, ValuesMatchers: both, StatusCode: http.StatusOK},
+		{Label: "for read in stage ramp down", Operation: ldmigration.Read, Stage: ldmigration.RampDown, ValuesMatchers: onlyNew, StatusCode: http.StatusOK},
+		{Label: "for read in stage complete", Operation: ldmigration.Read, Stage: ldmigration.Complete, ValuesMatchers: onlyNew, StatusCode: http.StatusOK},
+
+		{Label: "unless read in stage off fails", Operation: ldmigration.Read, Stage: ldmigration.Off, ValuesMatchers: onlyOld, StatusCode: http.StatusBadRequest},
+		{Label: "unless read in stage dual write fails", Operation: ldmigration.Read, Stage: ldmigration.DualWrite, ValuesMatchers: onlyOld, StatusCode: http.StatusBadRequest},
+		{Label: "unless read in stage shadow fails", Operation: ldmigration.Read, Stage: ldmigration.Shadow, ValuesMatchers: both, StatusCode: http.StatusBadRequest},
+		{Label: "unless read in stage live fails", Operation: ldmigration.Read, Stage: ldmigration.Live, ValuesMatchers: both, StatusCode: http.StatusBadRequest},
+		{Label: "unless read in stage ramp down fails", Operation: ldmigration.Read, Stage: ldmigration.RampDown, ValuesMatchers: onlyNew, StatusCode: http.StatusBadRequest},
+		{Label: "unless read in stage complete fails", Operation: ldmigration.Read, Stage: ldmigration.Complete, ValuesMatchers: onlyNew, StatusCode: http.StatusBadRequest},
 
 		// Write operations
-		{Operation: ldmigration.Write, Stage: ldmigration.Off, ValuesMatchers: onlyOld},
-		{Operation: ldmigration.Write, Stage: ldmigration.DualWrite, ValuesMatchers: both},
-		{Operation: ldmigration.Write, Stage: ldmigration.Shadow, ValuesMatchers: both},
-		{Operation: ldmigration.Write, Stage: ldmigration.Live, ValuesMatchers: both},
-		{Operation: ldmigration.Write, Stage: ldmigration.RampDown, ValuesMatchers: both},
-		{Operation: ldmigration.Write, Stage: ldmigration.Complete, ValuesMatchers: onlyNew},
+		{Label: "for write in stage off", Operation: ldmigration.Write, Stage: ldmigration.Off, ValuesMatchers: onlyOld, StatusCode: http.StatusOK},
+		{Label: "for write in stage dual write", Operation: ldmigration.Write, Stage: ldmigration.DualWrite, ValuesMatchers: both, StatusCode: http.StatusOK},
+		{Label: "for write in stage shadow", Operation: ldmigration.Write, Stage: ldmigration.Shadow, ValuesMatchers: both, StatusCode: http.StatusOK},
+		{Label: "for write in stage live", Operation: ldmigration.Write, Stage: ldmigration.Live, ValuesMatchers: both, StatusCode: http.StatusOK},
+		{Label: "for write in stage ramp down", Operation: ldmigration.Write, Stage: ldmigration.RampDown, ValuesMatchers: both, StatusCode: http.StatusOK},
+		{Label: "for write in stage complete", Operation: ldmigration.Write, Stage: ldmigration.Complete, ValuesMatchers: onlyNew, StatusCode: http.StatusOK},
+
+		{Label: "unless write in stage off fails", Operation: ldmigration.Write, Stage: ldmigration.Off, ValuesMatchers: onlyOld, StatusCode: http.StatusBadRequest},
+		{Label: "unless write in stage dual write fails", Operation: ldmigration.Write, Stage: ldmigration.DualWrite, ValuesMatchers: onlyOld, StatusCode: http.StatusBadRequest},
+		{Label: "unless write in stage shadow fails", Operation: ldmigration.Write, Stage: ldmigration.Shadow, ValuesMatchers: onlyOld, StatusCode: http.StatusBadRequest},
+		{Label: "unless write in stage live fails", Operation: ldmigration.Write, Stage: ldmigration.Live, ValuesMatchers: onlyNew, StatusCode: http.StatusBadRequest},
+		{Label: "unless write in stage ramp down fails", Operation: ldmigration.Write, Stage: ldmigration.RampDown, ValuesMatchers: onlyNew, StatusCode: http.StatusBadRequest},
+		{Label: "unless write in stage complete fails", Operation: ldmigration.Write, Stage: ldmigration.Complete, ValuesMatchers: onlyNew, StatusCode: http.StatusBadRequest},
 	}
 
 	for _, testParam := range testParams {
-		t.Run(fmt.Sprintf("%s latency for %s", testParam.Operation, testParam.Stage), func(t *ldtest.T) {
+		t.Run(testParam.Label, func(t *ldtest.T) {
 			client, events := createClient(t, stageToVariationIndex(testParam.Stage))
 
 			callback := func(w http.ResponseWriter, req *http.Request) {
 				time.Sleep(10 * time.Millisecond)
-				w.WriteHeader(http.StatusOK)
-				w.Write([]byte("result")) // nolint:errcheck,gosec
+				w.WriteHeader(testParam.StatusCode)
 			}
 
 			service := mockld.NewMigrationCallbackService(requireContext(t).harness, t.DebugLogger(), callback, callback)
@@ -655,6 +670,7 @@ func successfulHandlersShouldNotGenerateErrorMetrics(t *ldtest.T) {
 func trackConsistency(t *ldtest.T) {
 	t.Run("checks for correct stage", tracksConsistencyCorrectlyBasedOnStage)
 	t.Run("check ratio can disable", tracksConsistencyIsDisabledByCheckRatio)
+	t.Run("unless callbacks fail", tracksConsistencyIsDisabledIfCallbackFails)
 }
 
 func disableOpEventWithSamplingRatio(t *ldtest.T) {
@@ -831,6 +847,83 @@ func tracksConsistencyCorrectlyBasedOnStage(t *ldtest.T) {
 
 func tracksConsistencyIsDisabledByCheckRatio(t *ldtest.T) {
 	handler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
+
+	testParams := []struct {
+		Operation ldmigration.Operation
+		Stage     ldmigration.Stage
+	}{
+		// Read operations
+		{Operation: ldmigration.Read, Stage: ldmigration.Off},
+		{Operation: ldmigration.Read, Stage: ldmigration.DualWrite},
+		{Operation: ldmigration.Read, Stage: ldmigration.Shadow},
+		{Operation: ldmigration.Read, Stage: ldmigration.Live},
+		{Operation: ldmigration.Read, Stage: ldmigration.RampDown},
+		{Operation: ldmigration.Read, Stage: ldmigration.Complete},
+
+		// Write operations -- we never run a consistency check for this
+		{Operation: ldmigration.Write, Stage: ldmigration.Off},
+		{Operation: ldmigration.Write, Stage: ldmigration.DualWrite},
+		{Operation: ldmigration.Write, Stage: ldmigration.Shadow},
+		{Operation: ldmigration.Write, Stage: ldmigration.Live},
+		{Operation: ldmigration.Write, Stage: ldmigration.RampDown},
+		{Operation: ldmigration.Write, Stage: ldmigration.Complete},
+	}
+
+	for _, testParam := range testParams {
+		t.Run(fmt.Sprintf("%s consistency for %s", testParam.Operation, testParam.Stage), func(t *ldtest.T) {
+			client, events := createClient(t, stageToVariationIndex(testParam.Stage))
+
+			service := mockld.NewMigrationCallbackService(requireContext(t).harness, t.DebugLogger(), handler, handler)
+			t.Defer(service.Close)
+
+			context := ldcontext.New("key")
+
+			params := servicedef.MigrationOperationParams{
+				Key:                "no-consistency-check",
+				Context:            context,
+				DefaultStage:       ldmigration.DualWrite,
+				ReadExecutionOrder: ldmigration.Concurrent,
+				OldEndpoint:        service.OldEndpoint().BaseURL(),
+				NewEndpoint:        service.NewEndpoint().BaseURL(),
+				Operation:          testParam.Operation,
+				TrackConsistency:   true,
+			}
+
+			_ = client.MigrationOperation(t, params)
+			client.FlushEvents(t)
+
+			opEventMatchers := []m.Matcher{
+				m.JSONOptProperty("samplingRatio").Should(m.BeNil()),
+				m.JSONProperty("operation").Should(m.Equal(string(testParam.Operation))),
+				m.JSONProperty("evaluation").Should(
+					m.AllOf(
+						m.JSONProperty("key").Should(m.Equal("no-consistency-check")),
+						m.JSONProperty("default").Should(m.Equal("dualwrite")),
+						m.JSONProperty("value").Should(m.Equal(string(testParam.Stage))),
+						m.JSONProperty("variation").Should(m.Equal(stageToVariationIndex(testParam.Stage))),
+						m.JSONProperty("reason").Should(
+							m.JSONProperty("kind").Should(m.Equal("FALLTHROUGH")),
+						),
+					),
+				),
+				m.JSONProperty("measurements").Should(m.Items(m.JSONProperty("key").Should(m.Equal("invoked")))),
+			}
+
+			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(
+				IsIndexEventForContext(context),
+				IsSummaryEvent(),
+				IsValidMigrationOpEventWithConditions(
+					context,
+					opEventMatchers...,
+				),
+			))
+		})
+	}
+}
+
+func tracksConsistencyIsDisabledIfCallbackFails(t *ldtest.T) {
+	handler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusConflict) }
 
 	testParams := []struct {
 		Operation ldmigration.Operation
