@@ -34,6 +34,7 @@ func doServerSideMigrationTests(t *ldtest.T) {
 	t.Run("tracks error metrics for failures", writeFailuresShouldGenerateErrorMetrics)
 	t.Run("tracks no errors on success", successfulHandlersShouldNotGenerateErrorMetrics)
 	t.Run("tracks consistency", trackConsistency)
+	t.Run("sampling ratio can disable op event", disableOpEventWithSamplingRatio)
 }
 
 func identifyCorrectStageFromStringFlag(t *ldtest.T) {
@@ -656,6 +657,65 @@ func trackConsistency(t *ldtest.T) {
 	t.Run("check ratio can disable", tracksConsistencyIsDisabledByCheckRatio)
 }
 
+func disableOpEventWithSamplingRatio(t *ldtest.T) {
+	t.RequireCapability(servicedef.CapabilityEventSampling)
+
+	handler := func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}
+
+	testParams := []struct {
+		Operation ldmigration.Operation
+		Stage     ldmigration.Stage
+	}{
+		{Operation: ldmigration.Read, Stage: ldmigration.Off},
+		{Operation: ldmigration.Read, Stage: ldmigration.DualWrite},
+		{Operation: ldmigration.Read, Stage: ldmigration.Shadow},
+		{Operation: ldmigration.Read, Stage: ldmigration.Live},
+		{Operation: ldmigration.Read, Stage: ldmigration.RampDown},
+		{Operation: ldmigration.Read, Stage: ldmigration.Complete},
+
+		{Operation: ldmigration.Write, Stage: ldmigration.Off},
+		{Operation: ldmigration.Write, Stage: ldmigration.DualWrite},
+		{Operation: ldmigration.Write, Stage: ldmigration.Shadow},
+		{Operation: ldmigration.Write, Stage: ldmigration.Live},
+		{Operation: ldmigration.Write, Stage: ldmigration.RampDown},
+		{Operation: ldmigration.Write, Stage: ldmigration.Complete},
+	}
+
+	for _, testParam := range testParams {
+		t.Run(fmt.Sprintf("%s for %s", testParam.Operation, testParam.Stage), func(t *ldtest.T) {
+			client, events := createClient(t, stageToVariationIndex(testParam.Stage))
+
+			service := mockld.NewMigrationCallbackService(
+				requireContext(t).harness, t.DebugLogger(), handler, handler)
+			t.Defer(service.Close)
+
+			context := ldcontext.New("key")
+
+			params := servicedef.MigrationOperationParams{
+				Key:                "no-sampling-ratio",
+				Context:            context,
+				DefaultStage:       ldmigration.DualWrite,
+				ReadExecutionOrder: ldmigration.Concurrent,
+				OldEndpoint:        service.OldEndpoint().BaseURL(),
+				NewEndpoint:        service.NewEndpoint().BaseURL(),
+				Operation:          testParam.Operation,
+				TrackConsistency:   true,
+			}
+
+			_ = client.MigrationOperation(t, params)
+			client.FlushEvents(t)
+
+			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(
+				IsIndexEventForContext(context),
+				IsSummaryEvent(),
+			))
+		})
+	}
+}
+
 func tracksConsistencyCorrectlyBasedOnStage(t *ldtest.T) {
 	handler := func(response string) func(w http.ResponseWriter, req *http.Request) {
 		return func(w http.ResponseWriter, req *http.Request) {
@@ -858,8 +918,15 @@ func createClient(t *ldtest.T, variationIndex int) (*SDKClient, *SDKEventSink) {
 		FallthroughVariation(variationIndex).
 		MigrationFlagParameters(ldbuilders.NewMigrationFlagParametersBuilder().CheckRatio(0).Build()).
 		Build()
+	noSamplingRatioFlag := ldbuilders.NewFlagBuilder("no-sampling-ratio").
+		On(true).
+		SamplingRatio(0).
+		Variations(data.MakeStandardMigrationStages()...).
+		FallthroughVariation(variationIndex).
+		MigrationFlagParameters(ldbuilders.NewMigrationFlagParametersBuilder().CheckRatio(0).Build()).
+		Build()
 	dataBuilder := mockld.NewServerSDKDataBuilder()
-	dataBuilder.Flag(migrationFlag, noConsistencyCheckFlag)
+	dataBuilder.Flag(migrationFlag, noConsistencyCheckFlag, noSamplingRatioFlag)
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)

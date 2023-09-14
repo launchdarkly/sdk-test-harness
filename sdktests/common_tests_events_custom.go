@@ -77,6 +77,7 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 	t.Run("custom events can be disabled through metric values", func(t *ldtest.T) {
 		t.RequireCapability(servicedef.CapabilityAllFlagsWithReasons)
 		t.RequireCapability(servicedef.CapabilityEventSampling)
+		t.RequireCapability(servicedef.CapabilityMetricKind)
 
 		context := ldcontext.New("example")
 

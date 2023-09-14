@@ -291,7 +291,7 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 
 	doDebugEventTestCases(t, doDebugTest)
 
-	t.Run("index sampling can disable debug event", func(t *ldtest.T) {
+	t.Run("sampling ratio can disable debug event", func(t *ldtest.T) {
 		t.RequireCapability(servicedef.CapabilityEventSampling)
 
 		zeroSamplingRatioFlag := ldbuilders.NewFlagBuilder("zero-sampling-ratio").Version(1).
