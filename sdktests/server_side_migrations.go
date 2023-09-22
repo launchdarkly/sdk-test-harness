@@ -35,7 +35,8 @@ func doServerSideMigrationTests(t *ldtest.T) {
 	t.Run("tracks no errors on success", withExecutionOrders(successfulHandlersShouldNotGenerateErrorMetrics))
 	t.Run("tracks consistency", trackConsistency)
 	t.Run("sampling ratio can disable op event", disableOpEventWithSamplingRatio)
-	t.Run("uses default stage when appropriate", usesDefaultWhenAppropriate)
+	t.Run("migrationVariation uses default stage when appropriate", usesDefaultWhenAppropriate)
+	t.Run("migration events for missing flags", itHandlesMigrationEventsForMissingFlags)
 }
 
 func withExecutionOrders(test func(*ldtest.T, ldmigration.ExecutionOrder)) func(t *ldtest.T) {
@@ -401,6 +402,7 @@ func tracksInvoked(t *ldtest.T, order ldmigration.ExecutionOrder) {
 						m.JSONProperty("default").Should(m.Equal("dualwrite")),
 						m.JSONProperty("value").Should(m.Equal(string(testParam.Stage))),
 						m.JSONProperty("variation").Should(m.Equal(stageToVariationIndex(testParam.Stage))),
+						m.JSONProperty("version").Should(m.Equal(0)),
 						m.JSONProperty("reason").Should(
 							m.JSONProperty("kind").Should(m.Equal("FALLTHROUGH")),
 						),
@@ -703,6 +705,85 @@ func successfulHandlersShouldNotGenerateErrorMetrics(t *ldtest.T, order ldmigrat
 						m.JSONProperty("reason").Should(
 							m.JSONProperty("kind").Should(m.Equal("FALLTHROUGH")),
 						),
+					),
+				),
+				m.JSONProperty("measurements").Should(m.Length().Should(m.Equal(1))),
+			}
+
+			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(
+				IsIndexEventForContext(context),
+				IsSummaryEvent(),
+				IsValidMigrationOpEventWithConditions(
+					context,
+					opEventMatchers...,
+				),
+			))
+		})
+	}
+}
+
+func itHandlesMigrationEventsForMissingFlags(t *ldtest.T) {
+	successfulHandler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
+
+	testParams := []struct {
+		Operation ldmigration.Operation
+		Stage     ldmigration.Stage
+	}{
+		// Read operations
+		{Operation: ldmigration.Read, Stage: ldmigration.Off},
+		{Operation: ldmigration.Read, Stage: ldmigration.DualWrite},
+		{Operation: ldmigration.Read, Stage: ldmigration.Shadow},
+		{Operation: ldmigration.Read, Stage: ldmigration.Live},
+		{Operation: ldmigration.Read, Stage: ldmigration.RampDown},
+		{Operation: ldmigration.Read, Stage: ldmigration.Complete},
+
+		// Write operations
+		{Operation: ldmigration.Write, Stage: ldmigration.Off},
+		{Operation: ldmigration.Write, Stage: ldmigration.DualWrite},
+		{Operation: ldmigration.Write, Stage: ldmigration.Shadow},
+		{Operation: ldmigration.Write, Stage: ldmigration.Live},
+		{Operation: ldmigration.Write, Stage: ldmigration.RampDown},
+		{Operation: ldmigration.Write, Stage: ldmigration.Complete},
+	}
+
+	for _, testParam := range testParams {
+		t.Run(fmt.Sprintf("%s errors for %s", testParam.Operation, testParam.Stage), func(t *ldtest.T) {
+			// Variation index does not matter for this test.
+			client, events := createClient(t, 0)
+
+			service := mockld.NewMigrationCallbackService(requireContext(t).harness, t.DebugLogger(), successfulHandler, successfulHandler)
+			t.Defer(service.Close)
+
+			context := ldcontext.New("key")
+
+			params := servicedef.MigrationOperationParams{
+				Key:                "missing-key",
+				Context:            context,
+				DefaultStage:       testParam.Stage,
+				ReadExecutionOrder: ldmigration.Concurrent,
+				OldEndpoint:        service.OldEndpoint().BaseURL(),
+				NewEndpoint:        service.NewEndpoint().BaseURL(),
+				Operation:          testParam.Operation,
+				TrackErrors:        true,
+			}
+
+			_ = client.MigrationOperation(t, params)
+			client.FlushEvents(t)
+
+			opEventMatchers := []m.Matcher{
+				m.JSONOptProperty("samplingRatio").Should(m.BeNil()),
+				m.JSONProperty("operation").Should(m.Equal(string(testParam.Operation))),
+				m.JSONProperty("evaluation").Should(
+					m.AllOf(
+						m.JSONProperty("key").Should(m.Equal("missing-key")),
+						m.JSONProperty("default").Should(m.Equal(string(testParam.Stage))),
+						m.JSONProperty("value").Should(m.Equal(string(testParam.Stage))),
+						// TODO: Ensure no version or variation.
+						m.JSONProperty("reason").Should(m.AllOf(
+							m.JSONProperty("kind").Should(m.Equal("ERROR")),
+							m.JSONProperty("errorKind").Should(m.Equal("FLAG_NOT_FOUND")),
+						)),
 					),
 				),
 				m.JSONProperty("measurements").Should(m.Length().Should(m.Equal(1))),
