@@ -779,7 +779,7 @@ func itHandlesMigrationEventsForMissingFlags(t *ldtest.T) {
 						m.JSONProperty("key").Should(m.Equal("missing-key")),
 						m.JSONProperty("default").Should(m.Equal(string(testParam.Stage))),
 						m.JSONProperty("value").Should(m.Equal(string(testParam.Stage))),
-						// TODO: Ensure no version or variation.
+
 						m.JSONProperty("reason").Should(m.AllOf(
 							m.JSONProperty("kind").Should(m.Equal("ERROR")),
 							m.JSONProperty("errorKind").Should(m.Equal("FLAG_NOT_FOUND")),
