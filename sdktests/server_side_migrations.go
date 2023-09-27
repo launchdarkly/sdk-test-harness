@@ -88,7 +88,7 @@ func usesDefaultWhenAppropriate(t *ldtest.T) {
 		description string
 	}{
 		{"missing-key", "Variation for a non-existent flag"},
-		{"missing-key", "Flag variation with invalid stage"},
+		{"invalid-stage", "Flag variation with invalid stage"},
 		{"wrong-type", "Flag variation which is the wrong type"}}
 	for _, scenario := range scenarios {
 		t.Run(scenario.description, func(t *ldtest.T) {
