@@ -29,12 +29,30 @@ func doServerSideMigrationTests(t *ldtest.T) {
 	t.Run("executes reads", executesReads)
 	t.Run("payloads are passed through", payloadsArePassedThrough)
 	t.Run("executes origins in correct order", executesOriginsInCorrectOrder)
-	t.Run("tracks invoked", tracksInvoked)
-	t.Run("tracks latency", tracksLatency)
-	t.Run("tracks error metrics for failures", writeFailuresShouldGenerateErrorMetrics)
-	t.Run("tracks no errors on success", successfulHandlersShouldNotGenerateErrorMetrics)
+	t.Run("tracks invoked", withExecutionOrders(tracksInvoked))
+	t.Run("tracks latency", withExecutionOrders(tracksLatency))
+	t.Run("tracks error metrics for failures", withExecutionOrders(writeFailuresShouldGenerateErrorMetrics))
+	t.Run("tracks no errors on success", withExecutionOrders(successfulHandlersShouldNotGenerateErrorMetrics))
 	t.Run("tracks consistency", trackConsistency)
 	t.Run("sampling ratio can disable op event", disableOpEventWithSamplingRatio)
+	t.Run("migrationVariation uses default stage when appropriate", usesDefaultWhenAppropriate)
+	t.Run("migration events for missing flags", itHandlesMigrationEventsForMissingFlags)
+}
+
+func withExecutionOrders(test func(*ldtest.T, ldmigration.ExecutionOrder)) func(t *ldtest.T) {
+	executionOrders := []ldmigration.ExecutionOrder{
+		ldmigration.Concurrent,
+		ldmigration.Serial,
+		ldmigration.Random,
+	}
+
+	return func(t *ldtest.T) {
+		for _, order := range executionOrders {
+			t.Run(fmt.Sprintf("with execution order %v", order), func(t *ldtest.T) {
+				test(t, order)
+			})
+		}
+	}
 }
 
 func identifyCorrectStageFromStringFlag(t *ldtest.T) {
@@ -60,6 +78,43 @@ func identifyCorrectStageFromStringFlag(t *ldtest.T) {
 		))
 
 		assert.EqualValues(t, stage, response.Result)
+	}
+}
+
+func usesDefaultWhenAppropriate(t *ldtest.T) {
+	stages := []ldmigration.Stage{ldmigration.Off, ldmigration.DualWrite, ldmigration.Shadow, ldmigration.Live, ldmigration.RampDown, ldmigration.Complete}
+	scenarios := []struct {
+		key         string
+		description string
+	}{
+		{"missing-key", "Variation for a non-existent flag"},
+		{"invalid-stage", "Flag variation with invalid stage"},
+		{"wrong-type", "Flag variation which is the wrong type"}}
+	for _, scenario := range scenarios {
+		t.Run(scenario.description, func(t *ldtest.T) {
+			for _, stage := range stages {
+				// Variation index does not matter for this one.
+				client, events := createClient(t, 0)
+				context := ldcontext.New("key")
+
+				params := servicedef.MigrationVariationParams{
+					Key:          scenario.key,
+					Context:      context,
+					DefaultStage: stage,
+				}
+				response := client.MigrationVariation(t, params)
+
+				client.FlushEvents(t)
+
+				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+				m.In(t).Assert(payload, m.ItemsInAnyOrder(
+					IsIndexEventForContext(context),
+					IsSummaryEvent(),
+				))
+
+				assert.EqualValues(t, stage, response.Result)
+			}
+		})
 	}
 }
 
@@ -89,11 +144,11 @@ func executesOriginsInCorrectOrder(t *ldtest.T) {
 				t.DebugLogger(),
 				func(w http.ResponseWriter, req *http.Request) {
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("old read")) // nolint:errcheck,gosec
+					_, _ = w.Write([]byte("old read")) // nolint:errcheck,gosec
 				},
 				func(w http.ResponseWriter, req *http.Request) {
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("new read")) // nolint:errcheck,gosec
+					_, _ = w.Write([]byte("new read")) // nolint:errcheck,gosec
 				},
 			)
 			t.Defer(service.Close)
@@ -158,11 +213,11 @@ func executesReads(t *ldtest.T) {
 				t.DebugLogger(),
 				func(w http.ResponseWriter, req *http.Request) {
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("old read")) // nolint:errcheck,gosec
+					_, _ = w.Write([]byte("old read")) // nolint:errcheck,gosec
 				},
 				func(w http.ResponseWriter, req *http.Request) {
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("new read")) // nolint:errcheck,gosec
+					_, _ = w.Write([]byte("new read")) // nolint:errcheck,gosec
 				},
 			)
 			t.Defer(service.Close)
@@ -287,7 +342,7 @@ func payloadsArePassedThrough(t *ldtest.T) {
 	}
 }
 
-func tracksInvoked(t *ldtest.T) {
+func tracksInvoked(t *ldtest.T, order ldmigration.ExecutionOrder) {
 	onlyOld := []m.Matcher{m.JSONOptProperty("old").Should(m.Not(m.BeNil())), m.JSONOptProperty("new").Should(m.BeNil())}
 	both := []m.Matcher{m.JSONOptProperty("old").Should(m.Not(m.BeNil())), m.JSONOptProperty("new").Should(m.Not(m.BeNil()))}
 	onlyNew := []m.Matcher{m.JSONOptProperty("old").Should(m.BeNil()), m.JSONOptProperty("new").Should(m.Not(m.BeNil()))}
@@ -329,7 +384,7 @@ func tracksInvoked(t *ldtest.T) {
 				Key:                "migration-key",
 				Context:            context,
 				DefaultStage:       ldmigration.DualWrite,
-				ReadExecutionOrder: ldmigration.Concurrent,
+				ReadExecutionOrder: order,
 				OldEndpoint:        service.OldEndpoint().BaseURL(),
 				NewEndpoint:        service.NewEndpoint().BaseURL(),
 				Operation:          testParam.Operation,
@@ -347,6 +402,7 @@ func tracksInvoked(t *ldtest.T) {
 						m.JSONProperty("default").Should(m.Equal("dualwrite")),
 						m.JSONProperty("value").Should(m.Equal(string(testParam.Stage))),
 						m.JSONProperty("variation").Should(m.Equal(stageToVariationIndex(testParam.Stage))),
+						m.JSONProperty("version").Should(m.Equal(0)),
 						m.JSONProperty("reason").Should(
 							m.JSONProperty("kind").Should(m.Equal("FALLTHROUGH")),
 						),
@@ -380,7 +436,7 @@ func tracksInvoked(t *ldtest.T) {
 }
 
 // nolint:dupl // Invokes and latency happen to share the same setup, but should be tested independently.
-func tracksLatency(t *ldtest.T) {
+func tracksLatency(t *ldtest.T, order ldmigration.ExecutionOrder) {
 	onlyOld := []m.Matcher{m.JSONOptProperty("old").Should(m.Not(m.BeNil())), m.JSONOptProperty("new").Should(m.BeNil())}
 	both := []m.Matcher{m.JSONOptProperty("old").Should(m.Not(m.BeNil())), m.JSONOptProperty("new").Should(m.Not(m.BeNil()))}
 	onlyNew := []m.Matcher{m.JSONOptProperty("old").Should(m.BeNil()), m.JSONOptProperty("new").Should(m.Not(m.BeNil()))}
@@ -441,7 +497,7 @@ func tracksLatency(t *ldtest.T) {
 				Key:                "migration-key",
 				Context:            context,
 				DefaultStage:       ldmigration.DualWrite,
-				ReadExecutionOrder: ldmigration.Concurrent,
+				ReadExecutionOrder: order,
 				OldEndpoint:        service.OldEndpoint().BaseURL(),
 				NewEndpoint:        service.NewEndpoint().BaseURL(),
 				Operation:          testParam.Operation,
@@ -493,7 +549,7 @@ func tracksLatency(t *ldtest.T) {
 	}
 }
 
-func writeFailuresShouldGenerateErrorMetrics(t *ldtest.T) {
+func writeFailuresShouldGenerateErrorMetrics(t *ldtest.T, order ldmigration.ExecutionOrder) {
 	hasError := func(label string) m.Matcher { return m.JSONOptProperty(label).Should(m.Equal(true)) }
 	isMissingOrNoError := func(label string) m.Matcher { return JSONPropertyNullOrAbsentOrEqualTo(label, false) }
 
@@ -538,7 +594,7 @@ func writeFailuresShouldGenerateErrorMetrics(t *ldtest.T) {
 				Key:                "migration-key",
 				Context:            context,
 				DefaultStage:       ldmigration.DualWrite,
-				ReadExecutionOrder: ldmigration.Concurrent,
+				ReadExecutionOrder: order,
 				OldEndpoint:        service.OldEndpoint().BaseURL(),
 				NewEndpoint:        service.NewEndpoint().BaseURL(),
 				Operation:          testParam.Operation,
@@ -590,7 +646,7 @@ func writeFailuresShouldGenerateErrorMetrics(t *ldtest.T) {
 	}
 }
 
-func successfulHandlersShouldNotGenerateErrorMetrics(t *ldtest.T) {
+func successfulHandlersShouldNotGenerateErrorMetrics(t *ldtest.T, order ldmigration.ExecutionOrder) {
 	successfulHandler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
 
 	testParams := []struct {
@@ -627,7 +683,7 @@ func successfulHandlersShouldNotGenerateErrorMetrics(t *ldtest.T) {
 				Key:                "migration-key",
 				Context:            context,
 				DefaultStage:       ldmigration.DualWrite,
-				ReadExecutionOrder: ldmigration.Concurrent,
+				ReadExecutionOrder: order,
 				OldEndpoint:        service.OldEndpoint().BaseURL(),
 				NewEndpoint:        service.NewEndpoint().BaseURL(),
 				Operation:          testParam.Operation,
@@ -667,10 +723,90 @@ func successfulHandlersShouldNotGenerateErrorMetrics(t *ldtest.T) {
 	}
 }
 
+func itHandlesMigrationEventsForMissingFlags(t *ldtest.T) {
+	successfulHandler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
+
+	testParams := []struct {
+		Operation ldmigration.Operation
+		Stage     ldmigration.Stage
+	}{
+		// Read operations
+		{Operation: ldmigration.Read, Stage: ldmigration.Off},
+		{Operation: ldmigration.Read, Stage: ldmigration.DualWrite},
+		{Operation: ldmigration.Read, Stage: ldmigration.Shadow},
+		{Operation: ldmigration.Read, Stage: ldmigration.Live},
+		{Operation: ldmigration.Read, Stage: ldmigration.RampDown},
+		{Operation: ldmigration.Read, Stage: ldmigration.Complete},
+
+		// Write operations
+		{Operation: ldmigration.Write, Stage: ldmigration.Off},
+		{Operation: ldmigration.Write, Stage: ldmigration.DualWrite},
+		{Operation: ldmigration.Write, Stage: ldmigration.Shadow},
+		{Operation: ldmigration.Write, Stage: ldmigration.Live},
+		{Operation: ldmigration.Write, Stage: ldmigration.RampDown},
+		{Operation: ldmigration.Write, Stage: ldmigration.Complete},
+	}
+
+	for _, testParam := range testParams {
+		t.Run(fmt.Sprintf("%s errors for %s", testParam.Operation, testParam.Stage), func(t *ldtest.T) {
+			// Variation index does not matter for this test.
+			client, events := createClient(t, 0)
+
+			service := mockld.NewMigrationCallbackService(requireContext(t).harness, t.DebugLogger(), successfulHandler, successfulHandler)
+			t.Defer(service.Close)
+
+			context := ldcontext.New("key")
+
+			params := servicedef.MigrationOperationParams{
+				Key:                "missing-key",
+				Context:            context,
+				DefaultStage:       testParam.Stage,
+				ReadExecutionOrder: ldmigration.Concurrent,
+				OldEndpoint:        service.OldEndpoint().BaseURL(),
+				NewEndpoint:        service.NewEndpoint().BaseURL(),
+				Operation:          testParam.Operation,
+				TrackErrors:        true,
+			}
+
+			_ = client.MigrationOperation(t, params)
+			client.FlushEvents(t)
+
+			opEventMatchers := []m.Matcher{
+				m.JSONOptProperty("samplingRatio").Should(m.BeNil()),
+				m.JSONProperty("operation").Should(m.Equal(string(testParam.Operation))),
+				m.JSONProperty("evaluation").Should(
+					m.AllOf(
+						m.JSONProperty("key").Should(m.Equal("missing-key")),
+						m.JSONProperty("default").Should(m.Equal(string(testParam.Stage))),
+						m.JSONProperty("value").Should(m.Equal(string(testParam.Stage))),
+						m.JSONOptProperty("variation").Should(m.BeNil()),
+						m.JSONOptProperty("version").Should(m.BeNil()),
+						m.JSONProperty("reason").Should(m.AllOf(
+							m.JSONProperty("kind").Should(m.Equal("ERROR")),
+							m.JSONProperty("errorKind").Should(m.Equal("FLAG_NOT_FOUND")),
+						)),
+					),
+				),
+				m.JSONProperty("measurements").Should(m.Length().Should(m.Equal(1))),
+			}
+
+			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(
+				IsIndexEventForContext(context),
+				IsSummaryEvent(),
+				IsValidMigrationOpEventWithConditions(
+					context,
+					opEventMatchers...,
+				),
+			))
+		})
+	}
+}
+
 func trackConsistency(t *ldtest.T) {
-	t.Run("checks for correct stage", tracksConsistencyCorrectlyBasedOnStage)
-	t.Run("check ratio can disable", tracksConsistencyIsDisabledByCheckRatio)
-	t.Run("unless callbacks fail", tracksConsistencyIsDisabledIfCallbackFails)
+	t.Run("checks for correct stage", withExecutionOrders(tracksConsistencyCorrectlyBasedOnStage))
+	t.Run("check ratio can disable", withExecutionOrders(tracksConsistencyIsDisabledByCheckRatio))
+	t.Run("unless callbacks fail", withExecutionOrders(tracksConsistencyIsDisabledIfCallbackFails))
 }
 
 func disableOpEventWithSamplingRatio(t *ldtest.T) {
@@ -732,11 +868,11 @@ func disableOpEventWithSamplingRatio(t *ldtest.T) {
 	}
 }
 
-func tracksConsistencyCorrectlyBasedOnStage(t *ldtest.T) {
+func tracksConsistencyCorrectlyBasedOnStage(t *ldtest.T, order ldmigration.ExecutionOrder) {
 	handler := func(response string) func(w http.ResponseWriter, req *http.Request) {
 		return func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(response)) // nolint:errcheck,gosec
+			_, _ = w.Write([]byte(response)) // nolint:errcheck,gosec
 		}
 	}
 	ld := handler("LaunchDarkly")
@@ -787,7 +923,7 @@ func tracksConsistencyCorrectlyBasedOnStage(t *ldtest.T) {
 				Key:                "migration-key",
 				Context:            context,
 				DefaultStage:       ldmigration.DualWrite,
-				ReadExecutionOrder: ldmigration.Concurrent,
+				ReadExecutionOrder: order,
 				OldEndpoint:        service.OldEndpoint().BaseURL(),
 				NewEndpoint:        service.NewEndpoint().BaseURL(),
 				Operation:          testParam.Operation,
@@ -845,7 +981,7 @@ func tracksConsistencyCorrectlyBasedOnStage(t *ldtest.T) {
 	}
 }
 
-func tracksConsistencyIsDisabledByCheckRatio(t *ldtest.T) {
+func tracksConsistencyIsDisabledByCheckRatio(t *ldtest.T, order ldmigration.ExecutionOrder) {
 	handler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
 
 	testParams := []struct {
@@ -882,7 +1018,7 @@ func tracksConsistencyIsDisabledByCheckRatio(t *ldtest.T) {
 				Key:                "no-consistency-check",
 				Context:            context,
 				DefaultStage:       ldmigration.DualWrite,
-				ReadExecutionOrder: ldmigration.Concurrent,
+				ReadExecutionOrder: order,
 				OldEndpoint:        service.OldEndpoint().BaseURL(),
 				NewEndpoint:        service.NewEndpoint().BaseURL(),
 				Operation:          testParam.Operation,
@@ -922,7 +1058,7 @@ func tracksConsistencyIsDisabledByCheckRatio(t *ldtest.T) {
 	}
 }
 
-func tracksConsistencyIsDisabledIfCallbackFails(t *ldtest.T) {
+func tracksConsistencyIsDisabledIfCallbackFails(t *ldtest.T, order ldmigration.ExecutionOrder) {
 	handler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusConflict) }
 
 	testParams := []struct {
@@ -959,7 +1095,7 @@ func tracksConsistencyIsDisabledIfCallbackFails(t *ldtest.T) {
 				Key:                "no-consistency-check",
 				Context:            context,
 				DefaultStage:       ldmigration.DualWrite,
-				ReadExecutionOrder: ldmigration.Concurrent,
+				ReadExecutionOrder: order,
 				OldEndpoint:        service.OldEndpoint().BaseURL(),
 				NewEndpoint:        service.NewEndpoint().BaseURL(),
 				Operation:          testParam.Operation,
@@ -1018,8 +1154,16 @@ func createClient(t *ldtest.T, variationIndex int) (*SDKClient, *SDKEventSink) {
 		FallthroughVariation(variationIndex).
 		MigrationFlagParameters(ldbuilders.NewMigrationFlagParametersBuilder().CheckRatio(0).Build()).
 		Build()
+	invalidStageFlag := ldbuilders.NewFlagBuilder("invalid-stage").
+		On(true).
+		Variations(ldvalue.String("grief")).FallthroughVariation(0).
+		Build()
+	wrongTypeFlag := ldbuilders.NewFlagBuilder("wrong-type").
+		On(true).
+		Variations(ldvalue.Bool(true)).FallthroughVariation(0).
+		Build()
 	dataBuilder := mockld.NewServerSDKDataBuilder()
-	dataBuilder.Flag(migrationFlag, noConsistencyCheckFlag, noSamplingRatioFlag)
+	dataBuilder.Flag(migrationFlag, noConsistencyCheckFlag, noSamplingRatioFlag, invalidStageFlag, wrongTypeFlag)
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
