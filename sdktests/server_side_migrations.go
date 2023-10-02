@@ -37,6 +37,7 @@ func doServerSideMigrationTests(t *ldtest.T) {
 	t.Run("sampling ratio can disable op event", disableOpEventWithSamplingRatio)
 	t.Run("migrationVariation uses default stage when appropriate", usesDefaultWhenAppropriate)
 	t.Run("migration events for missing flags", itHandlesMigrationEventsForMissingFlags)
+	t.Run("uses wrong type for non-migration flag", itHandlesNonMigrationFlags)
 }
 
 func withExecutionOrders(test func(*ldtest.T, ldmigration.ExecutionOrder)) func(t *ldtest.T) {
@@ -803,6 +804,85 @@ func itHandlesMigrationEventsForMissingFlags(t *ldtest.T) {
 	}
 }
 
+func itHandlesNonMigrationFlags(t *ldtest.T) {
+	successfulHandler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
+
+	testParams := []struct {
+		Operation ldmigration.Operation
+		Stage     ldmigration.Stage
+	}{
+		// Read operations
+		{Operation: ldmigration.Read, Stage: ldmigration.Off},
+		{Operation: ldmigration.Read, Stage: ldmigration.DualWrite},
+		{Operation: ldmigration.Read, Stage: ldmigration.Shadow},
+		{Operation: ldmigration.Read, Stage: ldmigration.Live},
+		{Operation: ldmigration.Read, Stage: ldmigration.RampDown},
+		{Operation: ldmigration.Read, Stage: ldmigration.Complete},
+
+		// Write operations
+		{Operation: ldmigration.Write, Stage: ldmigration.Off},
+		{Operation: ldmigration.Write, Stage: ldmigration.DualWrite},
+		{Operation: ldmigration.Write, Stage: ldmigration.Shadow},
+		{Operation: ldmigration.Write, Stage: ldmigration.Live},
+		{Operation: ldmigration.Write, Stage: ldmigration.RampDown},
+		{Operation: ldmigration.Write, Stage: ldmigration.Complete},
+	}
+
+	for _, testParam := range testParams {
+		t.Run(fmt.Sprintf("%s with wrong type with default of %s", testParam.Operation, testParam.Stage), func(t *ldtest.T) {
+			// Variation index does not matter for this test.
+			client, events := createClient(t, 0)
+
+			service := mockld.NewMigrationCallbackService(requireContext(t).harness, t.DebugLogger(), successfulHandler, successfulHandler)
+			t.Defer(service.Close)
+
+			context := ldcontext.New("key")
+
+			params := servicedef.MigrationOperationParams{
+				Key:                "wrong-type",
+				Context:            context,
+				DefaultStage:       testParam.Stage,
+				ReadExecutionOrder: ldmigration.Concurrent,
+				OldEndpoint:        service.OldEndpoint().BaseURL(),
+				NewEndpoint:        service.NewEndpoint().BaseURL(),
+				Operation:          testParam.Operation,
+			}
+
+			_ = client.MigrationOperation(t, params)
+			client.FlushEvents(t)
+
+			opEventMatchers := []m.Matcher{
+				m.JSONOptProperty("samplingRatio").Should(m.BeNil()),
+				m.JSONProperty("operation").Should(m.Equal(string(testParam.Operation))),
+				m.JSONProperty("evaluation").Should(
+					m.AllOf(
+						m.JSONProperty("key").Should(m.Equal("wrong-type")),
+						m.JSONProperty("default").Should(m.Equal(string(testParam.Stage))),
+						m.JSONProperty("value").Should(m.Equal(string(testParam.Stage))),
+						m.JSONOptProperty("variation").Should(m.BeNil()),
+						m.JSONOptProperty("version").Should(m.Equal(10)),
+						m.JSONProperty("reason").Should(m.AllOf(
+							m.JSONProperty("kind").Should(m.Equal("ERROR")),
+							m.JSONProperty("errorKind").Should(m.Equal("WRONG_TYPE")),
+						)),
+					),
+				),
+				m.JSONProperty("measurements").Should(m.Length().Should(m.Equal(1))),
+			}
+
+			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(
+				IsIndexEventForContext(context),
+				IsSummaryEvent(),
+				IsValidMigrationOpEventWithConditions(
+					context,
+					opEventMatchers...,
+				),
+			))
+		})
+	}
+}
+
 func trackConsistency(t *ldtest.T) {
 	t.Run("checks for correct stage", withExecutionOrders(tracksConsistencyCorrectlyBasedOnStage))
 	t.Run("check ratio can disable", withExecutionOrders(tracksConsistencyIsDisabledByCheckRatio))
@@ -1161,6 +1241,7 @@ func createClient(t *ldtest.T, variationIndex int) (*SDKClient, *SDKEventSink) {
 	wrongTypeFlag := ldbuilders.NewFlagBuilder("wrong-type").
 		On(true).
 		Variations(ldvalue.Bool(true)).FallthroughVariation(0).
+		Version(10).
 		Build()
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(migrationFlag, noConsistencyCheckFlag, noSamplingRatioFlag, invalidStageFlag, wrongTypeFlag)
