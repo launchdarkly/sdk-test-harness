@@ -58,12 +58,13 @@ func HasNoContextObject() m.Matcher {
 	return JSONPropertyNullOrAbsent("context")
 }
 
-func IsIndexEvent() m.Matcher    { return EventHasKind("index") }
-func IsIdentifyEvent() m.Matcher { return EventHasKind("identify") }
-func IsFeatureEvent() m.Matcher  { return EventHasKind("feature") }
-func IsDebugEvent() m.Matcher    { return EventHasKind("debug") }
-func IsCustomEvent() m.Matcher   { return EventHasKind("custom") }
-func IsSummaryEvent() m.Matcher  { return EventHasKind("summary") }
+func IsIndexEvent() m.Matcher       { return EventHasKind("index") }
+func IsIdentifyEvent() m.Matcher    { return EventHasKind("identify") }
+func IsFeatureEvent() m.Matcher     { return EventHasKind("feature") }
+func IsDebugEvent() m.Matcher       { return EventHasKind("debug") }
+func IsCustomEvent() m.Matcher      { return EventHasKind("custom") }
+func IsSummaryEvent() m.Matcher     { return EventHasKind("summary") }
+func IsMigrationOpEvent() m.Matcher { return EventHasKind("migration_op") }
 
 func IsIndexEventForContext(context ldcontext.Context) m.Matcher {
 	return m.AllOf(IsIndexEvent(), HasContextObjectWithMatchingKeys(context))
@@ -102,4 +103,26 @@ func IsValidSummaryEventWithFlags(keyValueMatchers ...m.KeyValueMatcher) m.Match
 		JSONPropertyKeysCanOnlyBe("kind", "startDate", "endDate", "features"),
 		m.JSONProperty("features").Should(m.MapOf(keyValueMatchers...)),
 	)
+}
+
+func IsValidMigrationOpEventWithConditions(context ldcontext.Context, matchers ...m.Matcher) m.Matcher {
+	propertyKeys := []string{
+		"kind",
+		"operation",
+		"creationDate",
+		"samplingRatio",
+		"contextKeys",
+		"evaluation",
+		"measurements",
+	}
+
+	return m.AllOf(
+		append(
+			[]m.Matcher{
+				IsMigrationOpEvent(),
+				HasAnyCreationDate(),
+				JSONPropertyKeysCanOnlyBe(propertyKeys...),
+				HasContextKeys(context),
+			},
+			matchers...)...)
 }

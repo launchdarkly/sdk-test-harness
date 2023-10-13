@@ -4,7 +4,7 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
-	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldmodel"
+	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldmodel"
 )
 
 type GenericFactory[ParamT, ResultT any] interface {

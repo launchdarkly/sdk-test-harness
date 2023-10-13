@@ -87,3 +87,15 @@ func MakeStandardTestValues() []ldvalue.Value {
 		ldvalue.ObjectBuild().Set("a", ldvalue.Int(1)).Build(),
 	}
 }
+
+// MakeStandardMigrationStages returns a list of all valid migration stages in the order of progression.
+func MakeStandardMigrationStages() []ldvalue.Value {
+	return []ldvalue.Value{
+		ldvalue.String("off"),
+		ldvalue.String("dualwrite"),
+		ldvalue.String("shadow"),
+		ldvalue.String("live"),
+		ldvalue.String("rampdown"),
+		ldvalue.String("complete"),
+	}
+}

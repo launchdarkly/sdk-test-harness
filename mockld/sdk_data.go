@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"golang.org/x/exp/maps"
+
 	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
@@ -11,7 +13,7 @@ import (
 
 	"github.com/launchdarkly/go-jsonstream/v3/jreader"
 	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
-	"github.com/launchdarkly/go-server-sdk-evaluation/v2/ldmodel"
+	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldmodel"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 )
 
@@ -178,15 +180,13 @@ func NewServerSDKDataBuilder() *ServerSDKDataBuilder {
 }
 
 func (b *ServerSDKDataBuilder) Build() ServerSDKData {
-	flags := make(map[string]json.RawMessage)
-	segments := make(map[string]json.RawMessage)
-	for k, v := range b.flags {
-		flags[k] = v
+	flags := maps.Clone(b.flags)
+	segments := maps.Clone(b.segments)
+
+	return map[DataItemKind]map[string]json.RawMessage{
+		"flags":    flags,
+		"segments": segments,
 	}
-	for k, v := range b.segments {
-		segments[k] = v
-	}
-	return map[DataItemKind]map[string]json.RawMessage{"flags": flags, "segments": segments}
 }
 
 func (b *ServerSDKDataBuilder) RawFlag(key string, data json.RawMessage) *ServerSDKDataBuilder {

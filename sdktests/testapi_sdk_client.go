@@ -111,9 +111,9 @@ type SDKClient struct {
 // components such as SDKDataSource implement this interface so that they can insert the appropriate
 // base URIs into the configuration, so a common pattern is:
 //
-//     dataSource := NewSDKDataSource(t, ...)
-//     eventSink := NewSDKEventSink(t, ...)
-//     client := NewSDKClient(t, dataSource, eventSink)
+//	dataSource := NewSDKDataSource(t, ...)
+//	eventSink := NewSDKEventSink(t, ...)
+//	client := NewSDKClient(t, dataSource, eventSink)
 //
 // Since the client will attempt to connect to its data source and possibly send events as soon as it
 // starts up, the test fixtures must always be created first. You may reuse a previously created data
@@ -246,6 +246,46 @@ func (c *SDKClient) EvaluateAllFlags(
 		servicedef.CommandParams{
 			Command:     servicedef.CommandEvaluateAllFlags,
 			EvaluateAll: o.Some(params),
+		},
+		t.DebugLogger(),
+		&resp,
+	))
+	return resp
+}
+
+// MigrationVariation tells the SDK client to evaluate a feature flag
+// representing a migration. This corresponds to calling the SDK's
+// MigrationVariation method.
+//
+// Any error from the test service causes the test to terminate immediately.
+func (c *SDKClient) MigrationVariation(
+	t *ldtest.T, params servicedef.MigrationVariationParams,
+) servicedef.MigrationVariationResponse {
+	var resp servicedef.MigrationVariationResponse
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:            servicedef.CommandMigrationVariation,
+			MigrationVariation: o.Some(params),
+		},
+		t.DebugLogger(),
+		&resp,
+	))
+	return resp
+}
+
+// MigrationOperation tells the SDK client to evaluate a feature flag
+// representing a migration. This corresponds to calling the SDK's
+// MigrationOperation method.
+//
+// Any error from the test service causes the test to terminate immediately.
+func (c *SDKClient) MigrationOperation(
+	t *ldtest.T, params servicedef.MigrationOperationParams,
+) servicedef.MigrationOperationResponse {
+	var resp servicedef.MigrationOperationResponse
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:            servicedef.CommandMigrationOperation,
+			MigrationOperation: o.Some(params),
 		},
 		t.DebugLogger(),
 		&resp,

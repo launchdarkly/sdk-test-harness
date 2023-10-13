@@ -24,6 +24,8 @@ const (
 	CapabilityUserType          = "user-type"
 	CapabilityFiltering         = "filtering"
 	CapabilityAutoEnvAttributes = "auto-env-attributes"
+	CapabilityMigrations        = "migrations"
+	CapabilityEventSampling     = "event-sampling"
 )
 
 type StatusRep struct {
