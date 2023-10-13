@@ -64,14 +64,6 @@ This means that the SDK has its own type for evaluation contexts (as opposed to 
 
 This means that the SDK supports event sampling; the SDK can limit the number of certain events based on payloads received from upstream services.
 
-#### Capability `"config-override-kind"`
-
-This means that the SDK supports the additional top level data kind `configurationOverrides` which includes controls for index event sampling.
-
-#### Capability `"metric-kind"`
-
-This means that the SDK supports the additional top level data kind `metrics` which includes controls for sampling custom events.
-
 #### Capability `"migrations"`
 
 This means that the SDK supports technology migrations, a feature which allows customers to migrate between data sources using well-defined migration stages.

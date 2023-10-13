@@ -174,14 +174,8 @@ func TestFlagShouldProduceThisEvalReason(t *testing.T) {
 // can accomplish without a real data store.
 type nullDataProvider struct{}
 
-// GetConfigOverride implements evaluation.DataProvider.
-func (nullDataProvider) GetConfigOverride(key string) *ldmodel.ConfigOverride { return nil }
-
 // GetFeatureFlag implements evaluation.DataProvider.
 func (nullDataProvider) GetFeatureFlag(key string) *ldmodel.FeatureFlag { return nil }
-
-// GetMetric implements evaluation.DataProvider.
-func (nullDataProvider) GetMetric(key string) *ldmodel.Metric { return nil }
 
 // GetSegment implements evaluation.DataProvider.
 func (nullDataProvider) GetSegment(key string) *ldmodel.Segment { return nil }

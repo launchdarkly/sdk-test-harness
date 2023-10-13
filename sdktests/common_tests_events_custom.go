@@ -1,7 +1,6 @@
 package sdktests
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
-	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
@@ -72,52 +70,6 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 				m.In(t).Assert(payload, m.ItemsInAnyOrder(expectedEvents...))
 			})
 		}
-	})
-
-	t.Run("custom events can be disabled through metric values", func(t *ldtest.T) {
-		t.RequireCapability(servicedef.CapabilityAllFlagsWithReasons)
-		t.RequireCapability(servicedef.CapabilityEventSampling)
-		t.RequireCapability(servicedef.CapabilityMetricKind)
-
-		context := ldcontext.New("example")
-
-		dataBuilder := mockld.NewServerSDKDataBuilder()
-		dataBuilder.RawMetric(
-			"zero-sampled-event",
-			json.RawMessage(`{"key":"zero-sampled-event", "samplingRatio": 0, "version": 1}`),
-		)
-		data := dataBuilder.Build()
-
-		dataSource := NewSDKDataSource(t, data)
-		events := NewSDKEventSink(t)
-		client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
-
-		client.SendCustomEvent(t, servicedef.CustomEventParams{
-			EventKey:    "zero-sampled-event",
-			Context:     o.Some(context),
-			Data:        ldvalue.Bool(true),
-			MetricValue: o.Some(1.0),
-		})
-		client.SendCustomEvent(t, servicedef.CustomEventParams{
-			EventKey:    "default-sampled",
-			Context:     o.Some(context),
-			Data:        ldvalue.Bool(true),
-			MetricValue: o.Some(1.0),
-		})
-
-		client.FlushEvents(t)
-		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-
-		expectedEvents := []m.Matcher{
-			IsIndexEvent(),
-			m.AllOf(
-				IsCustomEvent(),
-				m.JSONProperty("key").Should(m.Equal("default-sampled")),
-				HasContextKeys(context),
-			),
-		}
-
-		m.In(t).Assert(payload, m.ItemsInAnyOrder(expectedEvents...))
 	})
 }
 
