@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.2.0] - 2023-10-13
+### Added:
+- Added new capabilities and tests associated with the upcoming technology migration support use case.
+
+### Fixed:
+- Added a missing user type capability guard to existing context conversion tests.
+
 ## [2.1.2] - 2023-08-30
 ### Fixed:
 - Relaxing content-type for server events. Java will include a charset. This is not required for application/json (because it is UTF-8 by its own standard), but it isn't explicitly forbidden.
