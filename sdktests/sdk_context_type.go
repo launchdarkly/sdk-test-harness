@@ -184,6 +184,7 @@ func doSDKContextConvertTests(t *ldtest.T) {
 	})
 
 	t.Run("old user to context", func(t *ldtest.T) {
+		t.RequireCapability(servicedef.CapabilityUserType)
 		type contextConversionParams struct {
 			in, out string // out only needs to be set if it's different from in
 		}
@@ -293,6 +294,7 @@ func doSDKContextConvertTests(t *ldtest.T) {
 	})
 
 	t.Run("invalid old user", func(t *ldtest.T) {
+		t.RequireCapability(servicedef.CapabilityUserType)
 		inputs := []string{
 			`{}`,
 			`{"key": true}`,
