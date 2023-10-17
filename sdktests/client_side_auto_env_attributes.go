@@ -151,7 +151,8 @@ func doClientSideAutoEnvAttributesEventsCollisionsTests(t *ldtest.T) {
 				// with one that contains application info. That's not correct, since auto env contexts should
 				// NOT overwrite user-provided contexts.
 
-				contextWithAutoEnvAndSuffix := contextWithTransformedKeys(contextWithAutoEnv1, func(key string) string { return key + "-no-overwrite" })
+				contextWithAutoEnvAndSuffix := contextWithTransformedKeys(contextWithAutoEnv1,
+					func(key string) string { return key + "-no-overwrite" })
 				client.SendIdentifyEvent(t, contextWithAutoEnvAndSuffix)
 				client.FlushEvents(t)
 
