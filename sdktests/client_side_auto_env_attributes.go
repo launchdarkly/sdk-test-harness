@@ -120,18 +120,19 @@ func doClientSideAutoEnvAttributesEventsCollisionsTests(t *ldtest.T) {
 	t.Run("does not overwrite", func(t *ldtest.T) {
 		for _, contexts := range contextFactories {
 			t.Run(contexts.Description(), func(t *ldtest.T) {
+				contextNoAutoEnv := contexts.NextUniqueContext()
+
+				// First, have the SDK startup with an arbitrary context that isn't decorated with additional
+				// auto env contexts. For example, a basic 'user'.
+
 				events := NewSDKEventSink(t)
 				client := NewSDKClient(t, base.baseSDKConfigurationPlus(
 					WithClientSideConfig(servicedef.SDKConfigClientSideParams{IncludeEnvironmentAttributes: opt.Some(true)}),
+					WithClientSideInitialContext(contextNoAutoEnv),
 					dataSource,
 					events)...)
 
-				// eliminate ignorable events
-				client.FlushEvents(t)
-
-				// get the SDK to generate a context with auto env attributes
-				contextNoAutoEnv := contexts.NextUniqueContext()
-				client.SendIdentifyEvent(t, contextNoAutoEnv)
+				// The SDK will generate an identify event, call flush to speed that up.
 				client.FlushEvents(t)
 				payload1 := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 				jsonWithAutoEnv1 := payload1[0].AsValue().GetByKey("context").JSONString()
@@ -141,13 +142,23 @@ func doClientSideAutoEnvAttributesEventsCollisionsTests(t *ldtest.T) {
 					t.Errorf("Expected to unmarshal context.", err)
 				}
 
-				// modify context keys, feed back into sdk and verify no overwriting occurs.
-				contextWithAutoEnvAndSuffix := contextWithTransformedKeys(contextWithAutoEnv1, func(key string) string { return key + ".no-overwrite" })
+				// Now we potentially have a multi-kind context that consists of the original 'user', plus whatever
+				// auto env contexts could be added - say, ld_application. We modify their keys and ask the SDK
+				// to Identify with the modified context.
+				//
+				// If the SDK is misbehaving, it will then *overwrite* the context kinds that correspond to
+				// auto-env contexts. For example, it will replace the ld_application that we've provided here
+				// with one that contains application info. That's not correct, since auto env contexts should
+				// NOT overwrite user-provided contexts.
+
+				contextWithAutoEnvAndSuffix := contextWithTransformedKeys(contextWithAutoEnv1, func(key string) string { return key + "no-overwrite" })
 				client.SendIdentifyEvent(t, contextWithAutoEnvAndSuffix)
 				client.FlushEvents(t)
-				payload2 := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-				m.In(t).Assert(payload2, m.Equal(payload1))
 
+				payload2 := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+				// The newly identified context should be equal to what we sent in. That is, contextWithAutoEnvAndSuffix
+				// should be equal to contextWithAutoEnv2. Otherwise, the SDK overwrote it.
 				jsonWithAutoEnv2 := payload2[0].AsValue().GetByKey("context").JSONString()
 				contextWithAutoEnv2 := ldcontext.Context{}
 				err = json.Unmarshal([]byte(jsonWithAutoEnv2), &contextWithAutoEnv2)
@@ -155,7 +166,7 @@ func doClientSideAutoEnvAttributesEventsCollisionsTests(t *ldtest.T) {
 					t.Errorf("Expected to unmarshal context.", err)
 				}
 
-				m.In(t).Assert(contextWithAutoEnv2, m.Equal(contextWithAutoEnv1))
+				m.In(t).Assert(contextWithAutoEnvAndSuffix, m.Equal(contextWithAutoEnv2))
 			})
 		}
 	})
