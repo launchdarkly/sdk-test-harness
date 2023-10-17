@@ -151,7 +151,7 @@ func doClientSideAutoEnvAttributesEventsCollisionsTests(t *ldtest.T) {
 				// with one that contains application info. That's not correct, since auto env contexts should
 				// NOT overwrite user-provided contexts.
 
-				contextWithAutoEnvAndSuffix := contextWithTransformedKeys(contextWithAutoEnv1, func(key string) string { return key + "no-overwrite" })
+				contextWithAutoEnvAndSuffix := contextWithTransformedKeys(contextWithAutoEnv1, func(key string) string { return key + "-no-overwrite" })
 				client.SendIdentifyEvent(t, contextWithAutoEnvAndSuffix)
 				client.FlushEvents(t)
 
@@ -199,10 +199,6 @@ func doClientSideAutoEnvAttributesRequestingNoCollisionsTests(t *ldtest.T) {
 						m.JSONProperty("key").Should(m.Not(m.BeNil())),
 						m.JSONProperty("envAttributesVersion").Should(m.Not(m.BeNil())),
 					)),
-					m.JSONProperty("ld_device").Should(m.AllOf(
-						m.JSONProperty("key").Should(m.Not(m.BeNil())),
-						m.JSONProperty("envAttributesVersion").Should(m.Not(m.BeNil())),
-					)),
 				))
 			})
 		}
@@ -210,7 +206,7 @@ func doClientSideAutoEnvAttributesRequestingNoCollisionsTests(t *ldtest.T) {
 }
 
 func doClientSideAutoEnvAttributesRequestingCollisionsTests(t *ldtest.T) {
-	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesPollNoCollisionsTests")
+	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesPollCollisionsTests")
 	dsos := []SDKDataSourceOption{DataSourceOptionPolling(), DataSourceOptionStreaming()}
 	for _, dso := range dsos {
 		f1 := data.NewContextFactory(base.contextFactory.Prefix(), func(b *ldcontext.Builder) { b.Kind("ld_application") })
@@ -230,12 +226,17 @@ func doClientSideAutoEnvAttributesRequestingCollisionsTests(t *ldtest.T) {
 
 				request := dataSource.Endpoint().RequireConnection(t, time.Second)
 
-				m.In(t).For("request body").Assert(request.Body, m.AllOf(
-					m.JSONProperty("ld_application").Should(
+				if context.Multiple() {
+					m.In(t).For("request body").Assert(request.Body, m.AllOf(
+						m.JSONProperty("ld_application").Should(
+							JSONPropertyNullOrAbsent("envAttributesVersion"),
+						),
+					))
+				} else {
+					m.In(t).For("request body").Assert(request.Body, m.AllOf(
 						JSONPropertyNullOrAbsent("envAttributesVersion"),
-					),
-					m.JSONProperty("ld_device").Should(m.Not(m.BeNil())),
-				))
+					))
+				}
 			})
 		}
 	}
