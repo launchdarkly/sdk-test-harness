@@ -2,6 +2,10 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.2.1] - 2023-10-17
+### Changed:
+- Auto Environment Attributes tests to handle ld_device being absent in certain SDKs.
+
 ## [2.2.0] - 2023-10-13
 ### Added:
 - Added new capabilities and tests associated with the upcoming technology migration support use case.
