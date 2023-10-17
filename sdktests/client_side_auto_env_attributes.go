@@ -139,7 +139,7 @@ func doClientSideAutoEnvAttributesEventsCollisionsTests(t *ldtest.T) {
 				contextWithAutoEnv1 := ldcontext.Context{}
 				err := json.Unmarshal([]byte(jsonWithAutoEnv1), &contextWithAutoEnv1)
 				if err != nil {
-					t.Errorf("Expected to unmarshal context.", err)
+					t.Errorf("Expected to unmarshal context. %v", err)
 				}
 
 				// Now we potentially have a multi-kind context that consists of the original 'user', plus whatever
@@ -163,7 +163,7 @@ func doClientSideAutoEnvAttributesEventsCollisionsTests(t *ldtest.T) {
 				contextWithAutoEnv2 := ldcontext.Context{}
 				err = json.Unmarshal([]byte(jsonWithAutoEnv2), &contextWithAutoEnv2)
 				if err != nil {
-					t.Errorf("Expected to unmarshal context.", err)
+					t.Errorf("Expected to unmarshal context. %v", err)
 				}
 
 				m.In(t).Assert(contextWithAutoEnvAndSuffix, m.Equal(contextWithAutoEnv2))
