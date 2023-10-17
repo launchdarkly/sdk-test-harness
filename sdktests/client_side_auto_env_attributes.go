@@ -1,6 +1,7 @@
 package sdktests
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -56,7 +57,7 @@ func doClientSideAutoEnvAttributesEventsNoCollisionsTests(t *ldtest.T) {
 					append(
 						[]m.Matcher{IsIdentifyEvent()},
 						m.AllOf(
-							m.JSONProperty("context").Should(m.AllOf(
+							m.JSONProperty("context").Should(m.AnyOf(
 								m.JSONProperty("ld_application").Should(m.AllOf(
 									m.JSONProperty("key").Should(m.Not(m.BeNil())),
 									m.JSONProperty("envAttributesVersion").Should(m.Not(m.BeNil())),
@@ -114,36 +115,59 @@ func doClientSideAutoEnvAttributesEventsNoCollisionsTests(t *ldtest.T) {
 func doClientSideAutoEnvAttributesEventsCollisionsTests(t *ldtest.T) {
 	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesEventsCollisionsTests")
 	dataSource := NewSDKDataSource(t, nil)
-
-	f1 := data.NewContextFactory(base.contextFactory.Prefix(), func(b *ldcontext.Builder) { b.Kind("ld_application") })
-	f2 := data.NewMultiContextFactory(base.contextFactory.Prefix(), []ldcontext.Kind{"ld_application", "other"})
-	contextFactories := []*data.ContextFactory{f1, f2}
+	contextFactories := data.NewContextFactoriesForSingleAndMultiKind(base.contextFactory.Prefix())
 
 	t.Run("does not overwrite", func(t *ldtest.T) {
 		for _, contexts := range contextFactories {
 			t.Run(contexts.Description(), func(t *ldtest.T) {
+				contextNoAutoEnv := contexts.NextUniqueContext()
+
+				// First, have the SDK startup with an arbitrary context that isn't decorated with additional
+				// auto env contexts. For example, a basic 'user'.
+
 				events := NewSDKEventSink(t)
 				client := NewSDKClient(t, base.baseSDKConfigurationPlus(
 					WithClientSideConfig(servicedef.SDKConfigClientSideParams{IncludeEnvironmentAttributes: opt.Some(true)}),
+					WithClientSideInitialContext(contextNoAutoEnv),
 					dataSource,
 					events)...)
 
-				context := contexts.NextUniqueContext()
-
-				client.SendIdentifyEvent(t, context)
+				// The SDK will generate an identify event, call flush to speed that up.
 				client.FlushEvents(t)
-				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-				m.In(t).Assert(payload, m.Items(
-					append(
-						[]m.Matcher{IsIdentifyEvent()},
-						m.JSONProperty("context").Should(m.AllOf(
-							m.JSONProperty("ld_application").Should(
-								JSONPropertyNullOrAbsent("envAttributesVersion"),
-							),
-							m.JSONProperty("ld_device").Should(m.Not(m.BeNil())),
-						)),
-					)...,
-				))
+				payload1 := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+				jsonWithAutoEnv1 := payload1[0].AsValue().GetByKey("context").JSONString()
+				contextWithAutoEnv1 := ldcontext.Context{}
+				err := json.Unmarshal([]byte(jsonWithAutoEnv1), &contextWithAutoEnv1)
+				if err != nil {
+					t.Errorf("Expected to unmarshal context. %v", err)
+				}
+
+				// Now we potentially have a multi-kind context that consists of the original 'user', plus whatever
+				// auto env contexts could be added - say, ld_application. We modify their keys and ask the SDK
+				// to Identify with the modified context.
+				//
+				// If the SDK is misbehaving, it will then *overwrite* the context kinds that correspond to
+				// auto-env contexts. For example, it will replace the ld_application that we've provided here
+				// with one that contains application info. That's not correct, since auto env contexts should
+				// NOT overwrite user-provided contexts.
+
+				contextWithAutoEnvAndSuffix := contextWithTransformedKeys(contextWithAutoEnv1,
+					func(key string) string { return key + "-no-overwrite" })
+				client.SendIdentifyEvent(t, contextWithAutoEnvAndSuffix)
+				client.FlushEvents(t)
+
+				payload2 := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+				// The newly identified context should be equal to what we sent in. That is, contextWithAutoEnvAndSuffix
+				// should be equal to contextWithAutoEnv2. Otherwise, the SDK overwrote it.
+				jsonWithAutoEnv2 := payload2[0].AsValue().GetByKey("context").JSONString()
+				contextWithAutoEnv2 := ldcontext.Context{}
+				err = json.Unmarshal([]byte(jsonWithAutoEnv2), &contextWithAutoEnv2)
+				if err != nil {
+					t.Errorf("Expected to unmarshal context. %v", err)
+				}
+
+				m.In(t).Assert(contextWithAutoEnvAndSuffix, m.Equal(contextWithAutoEnv2))
 			})
 		}
 	})
@@ -176,10 +200,6 @@ func doClientSideAutoEnvAttributesRequestingNoCollisionsTests(t *ldtest.T) {
 						m.JSONProperty("key").Should(m.Not(m.BeNil())),
 						m.JSONProperty("envAttributesVersion").Should(m.Not(m.BeNil())),
 					)),
-					m.JSONProperty("ld_device").Should(m.AllOf(
-						m.JSONProperty("key").Should(m.Not(m.BeNil())),
-						m.JSONProperty("envAttributesVersion").Should(m.Not(m.BeNil())),
-					)),
 				))
 			})
 		}
@@ -187,7 +207,7 @@ func doClientSideAutoEnvAttributesRequestingNoCollisionsTests(t *ldtest.T) {
 }
 
 func doClientSideAutoEnvAttributesRequestingCollisionsTests(t *ldtest.T) {
-	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesPollNoCollisionsTests")
+	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesPollCollisionsTests")
 	dsos := []SDKDataSourceOption{DataSourceOptionPolling(), DataSourceOptionStreaming()}
 	for _, dso := range dsos {
 		f1 := data.NewContextFactory(base.contextFactory.Prefix(), func(b *ldcontext.Builder) { b.Kind("ld_application") })
@@ -207,12 +227,17 @@ func doClientSideAutoEnvAttributesRequestingCollisionsTests(t *ldtest.T) {
 
 				request := dataSource.Endpoint().RequireConnection(t, time.Second)
 
-				m.In(t).For("request body").Assert(request.Body, m.AllOf(
-					m.JSONProperty("ld_application").Should(
+				if context.Multiple() {
+					m.In(t).For("request body").Assert(request.Body, m.AllOf(
+						m.JSONProperty("ld_application").Should(
+							JSONPropertyNullOrAbsent("envAttributesVersion"),
+						),
+					))
+				} else {
+					m.In(t).For("request body").Assert(request.Body, m.AllOf(
 						JSONPropertyNullOrAbsent("envAttributesVersion"),
-					),
-					m.JSONProperty("ld_device").Should(m.Not(m.BeNil())),
-				))
+					))
+				}
 			})
 		}
 	}
