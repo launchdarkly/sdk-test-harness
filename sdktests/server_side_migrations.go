@@ -49,6 +49,10 @@ func withExecutionOrders(test func(*ldtest.T, ldmigration.ExecutionOrder)) func(
 
 	return func(t *ldtest.T) {
 		for _, order := range executionOrders {
+			if t.Capabilities().Has(servicedef.CapabilityPHP) && order == ldmigration.Concurrent {
+				continue
+			}
+
 			t.Run(fmt.Sprintf("with execution order %v", order), func(t *ldtest.T) {
 				test(t, order)
 			})
@@ -72,12 +76,7 @@ func identifyCorrectStageFromStringFlag(t *ldtest.T) {
 
 		client.FlushEvents(t)
 
-		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-		m.In(t).Assert(payload, m.ItemsInAnyOrder(
-			IsIndexEventForContext(context),
-			IsSummaryEvent(),
-		))
-
+		expectEvents(t, events, context)
 		assert.EqualValues(t, stage, response.Result)
 	}
 }
@@ -107,12 +106,7 @@ func usesDefaultWhenAppropriate(t *ldtest.T) {
 
 				client.FlushEvents(t)
 
-				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-				m.In(t).Assert(payload, m.ItemsInAnyOrder(
-					IsIndexEventForContext(context),
-					IsSummaryEvent(),
-				))
-
+				expectEvents(t, events, context)
 				assert.EqualValues(t, stage, response.Result)
 			}
 		})
@@ -423,15 +417,13 @@ func tracksInvoked(t *ldtest.T, order ldmigration.ExecutionOrder) {
 				),
 			}
 
-			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				IsIndexEventForContext(context),
-				IsSummaryEvent(),
+			expectEvents(
+				t, events, context,
 				IsValidMigrationOpEventWithConditions(
 					context,
 					opEventMatchers...,
 				),
-			))
+			)
 		})
 	}
 }
@@ -537,15 +529,13 @@ func tracksLatency(t *ldtest.T, order ldmigration.ExecutionOrder) {
 				),
 			}
 
-			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				IsIndexEventForContext(context),
-				IsSummaryEvent(),
+			expectEvents(
+				t, events, context,
 				IsValidMigrationOpEventWithConditions(
 					context,
 					opEventMatchers...,
 				),
-			))
+			)
 		})
 	}
 }
@@ -634,15 +624,13 @@ func writeFailuresShouldGenerateErrorMetrics(t *ldtest.T, order ldmigration.Exec
 				),
 			}
 
-			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				IsIndexEventForContext(context),
-				IsSummaryEvent(),
+			expectEvents(
+				t, events, context,
 				IsValidMigrationOpEventWithConditions(
 					context,
 					opEventMatchers...,
 				),
-			))
+			)
 		})
 	}
 }
@@ -711,15 +699,13 @@ func successfulHandlersShouldNotGenerateErrorMetrics(t *ldtest.T, order ldmigrat
 				m.JSONProperty("measurements").Should(m.Length().Should(m.Equal(1))),
 			}
 
-			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				IsIndexEventForContext(context),
-				IsSummaryEvent(),
+			expectEvents(
+				t, events, context,
 				IsValidMigrationOpEventWithConditions(
 					context,
 					opEventMatchers...,
 				),
-			))
+			)
 		})
 	}
 }
@@ -791,15 +777,13 @@ func itHandlesMigrationEventsForMissingFlags(t *ldtest.T) {
 				m.JSONProperty("measurements").Should(m.Length().Should(m.Equal(1))),
 			}
 
-			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				IsIndexEventForContext(context),
-				IsSummaryEvent(),
+			expectEvents(
+				t, events, context,
 				IsValidMigrationOpEventWithConditions(
 					context,
 					opEventMatchers...,
 				),
-			))
+			)
 		})
 	}
 }
@@ -870,15 +854,13 @@ func itHandlesNonMigrationFlags(t *ldtest.T) {
 				m.JSONProperty("measurements").Should(m.Length().Should(m.Equal(1))),
 			}
 
-			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				IsIndexEventForContext(context),
-				IsSummaryEvent(),
+			expectEvents(
+				t, events, context,
 				IsValidMigrationOpEventWithConditions(
 					context,
 					opEventMatchers...,
 				),
-			))
+			)
 		})
 	}
 }
@@ -939,11 +921,13 @@ func disableOpEventWithSamplingRatio(t *ldtest.T) {
 			_ = client.MigrationOperation(t, params)
 			client.FlushEvents(t)
 
-			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				IsIndexEventForContext(context),
-				IsSummaryEvent(),
-			))
+			// PHP doesn't send index or summary events, so all events are
+			// suppressed when setting the sampling ratio to 0.
+			if t.Capabilities().Has(servicedef.CapabilityPHP) {
+				events.ExpectNoAnalyticsEvents(t, time.Millisecond*200)
+			} else {
+				expectEvents(t, events, context)
+			}
 		})
 	}
 }
@@ -1048,15 +1032,13 @@ func tracksConsistencyCorrectlyBasedOnStage(t *ldtest.T, order ldmigration.Execu
 				m.JSONProperty("measurements").Should(matcher),
 			}
 
-			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				IsIndexEventForContext(context),
-				IsSummaryEvent(),
+			expectEvents(
+				t, events, context,
 				IsValidMigrationOpEventWithConditions(
 					context,
 					opEventMatchers...,
 				),
-			))
+			)
 		})
 	}
 }
@@ -1125,15 +1107,13 @@ func tracksConsistencyIsDisabledByCheckRatio(t *ldtest.T, order ldmigration.Exec
 				m.JSONProperty("measurements").Should(m.Items(m.JSONProperty("key").Should(m.Equal("invoked")))),
 			}
 
-			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				IsIndexEventForContext(context),
-				IsSummaryEvent(),
+			expectEvents(
+				t, events, context,
 				IsValidMigrationOpEventWithConditions(
 					context,
 					opEventMatchers...,
 				),
-			))
+			)
 		})
 	}
 }
@@ -1202,15 +1182,13 @@ func tracksConsistencyIsDisabledIfCallbackFails(t *ldtest.T, order ldmigration.E
 				m.JSONProperty("measurements").Should(m.Items(m.JSONProperty("key").Should(m.Equal("invoked")))),
 			}
 
-			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				IsIndexEventForContext(context),
-				IsSummaryEvent(),
+			expectEvents(
+				t, events, context,
 				IsValidMigrationOpEventWithConditions(
 					context,
 					opEventMatchers...,
 				),
-			))
+			)
 		})
 	}
 }
@@ -1270,4 +1248,15 @@ func stageToVariationIndex(stage ldmigration.Stage) int {
 	default:
 		return 0
 	}
+}
+
+func expectEvents(t *ldtest.T, events *SDKEventSink, context ldcontext.Context, matchers ...m.Matcher) {
+	if t.Capabilities().Has(servicedef.CapabilityPHP) {
+		matchers = append(matchers, IsFeatureEvent())
+	} else {
+		matchers = append(matchers, IsIndexEventForContext(context), IsSummaryEvent())
+	}
+
+	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+	m.In(t).Assert(payload, m.ItemsInAnyOrder(matchers...))
 }
