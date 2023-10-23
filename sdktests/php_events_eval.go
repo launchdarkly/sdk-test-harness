@@ -11,6 +11,7 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
 	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
@@ -80,6 +81,9 @@ func doPHPFeatureEventTests(t *ldtest.T) {
 			dataBuilder.Flag(factory.MakeFlagForValueType(valueType))
 		}
 	}
+	excludeFromSummaries := ldbuilders.NewFlagBuilder("exclude-from-summaries").Version(1).
+		On(true).Variations(ldvalue.Bool(true), ldvalue.Bool(false)).ExcludeFromSummaries(true).Build()
+	dataBuilder.Flag(excludeFromSummaries)
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
@@ -163,4 +167,25 @@ func doPHPFeatureEventTests(t *ldtest.T) {
 		client.FlushEvents(t)
 		events.ExpectNoAnalyticsEvents(t, time.Millisecond*200)
 	})
+
+	if t.Capabilities().Has(servicedef.CapabilityEventSampling) {
+		t.Run("exclude from summaries is set correctly", func(t *ldtest.T) {
+			context := ldcontext.New("user-key")
+			client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+				FlagKey:      excludeFromSummaries.Key,
+				Context:      o.Some(context),
+				ValueType:    servicedef.ValueTypeBool,
+				DefaultValue: ldvalue.Bool(false),
+				Detail:       false,
+			})
+
+			client.FlushEvents(t)
+
+			propMatchers := []m.Matcher{m.JSONProperty("excludeFromSummaries").Should(m.Equal(true))}
+			matchFeatureEvent := IsValidFeatureEventWithConditions(true, context, propMatchers...)
+
+			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+			m.In(t).Assert(payload, m.Items(matchFeatureEvent))
+		})
+	}
 }

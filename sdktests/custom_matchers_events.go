@@ -82,7 +82,7 @@ func IsValidFeatureEventWithConditions(isPHP bool, context ldcontext.Context, ma
 	propertyKeys := []string{"kind", "creationDate", "key", "version",
 		"value", "variation", "reason", "default", "prereqOf"}
 	if isPHP {
-		propertyKeys = append(propertyKeys, "trackEvents", "debugEventsUntilDate", "context")
+		propertyKeys = append(propertyKeys, "trackEvents", "debugEventsUntilDate", "context", "excludeFromSummaries")
 	} else {
 		propertyKeys = append(propertyKeys, "contextKeys")
 	}
