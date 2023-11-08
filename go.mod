@@ -1,4 +1,4 @@
-module github.com/launchdarkly/sdk-test-harness/v2
+module github.com/launchdarkly/sdk-test-harness/v3
 
 go 1.18
 

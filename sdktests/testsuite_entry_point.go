@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/harness"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 )
 
 func RunSDKTestSuite(

@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework"
 
 	"github.com/fatih/color"
 )

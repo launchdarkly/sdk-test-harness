@@ -3,7 +3,8 @@ version: 2
 branches:
   - name: main
   - name: v2
-  
+  - name: v3
+
 jobs:
   - docker:
       image: cimg/go:1.18

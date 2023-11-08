@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework"
 )
 
 const httpListenerTimeout = time.Second * 10

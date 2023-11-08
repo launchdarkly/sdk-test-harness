@@ -3,7 +3,7 @@ package sdktests
 import (
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	h "github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
 )
 
 // These are used with the matchers API to make assertions about JSON event data. The value

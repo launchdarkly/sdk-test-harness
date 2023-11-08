@@ -2,8 +2,8 @@ package sdktests
 
 import (
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 )
 
 // Although the PHP SDK is a server-side SDK, it has different analytics event behavior than

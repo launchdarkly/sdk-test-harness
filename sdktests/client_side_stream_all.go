@@ -3,9 +3,9 @@ package sdktests
 import (
 	"strings"
 
-	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	h "github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )

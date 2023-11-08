@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework"
 
 	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
 

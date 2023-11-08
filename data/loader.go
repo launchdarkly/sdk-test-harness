@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 

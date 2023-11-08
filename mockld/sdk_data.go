@@ -8,8 +8,8 @@ import (
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
-	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
-	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	h "github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
+	o "github.com/launchdarkly/sdk-test-harness/v3/framework/opt"
 
 	"github.com/launchdarkly/go-jsonstream/v3/jreader"
 	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
