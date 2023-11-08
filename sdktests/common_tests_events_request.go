@@ -12,7 +12,7 @@ import (
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
 
-const currentEventSchema = "4"
+const currentEventSchema = "5"
 const phpEventSchema = "2"
 
 func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string, headersMatcher m.Matcher) {

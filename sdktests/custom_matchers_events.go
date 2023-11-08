@@ -3,7 +3,6 @@ package sdktests
 import (
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	h "github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
 )
 
 // These are used with the matchers API to make assertions about JSON event data. The value
@@ -84,7 +83,7 @@ func IsValidFeatureEventWithConditions(isPHP bool, context ldcontext.Context, ma
 	if isPHP {
 		propertyKeys = append(propertyKeys, "trackEvents", "debugEventsUntilDate", "context", "excludeFromSummaries")
 	} else {
-		propertyKeys = append(propertyKeys, "contextKeys")
+		propertyKeys = append(propertyKeys, "context")
 	}
 	return m.AllOf(
 		append(
@@ -92,7 +91,7 @@ func IsValidFeatureEventWithConditions(isPHP bool, context ldcontext.Context, ma
 				IsFeatureEvent(),
 				HasAnyCreationDate(),
 				JSONPropertyKeysCanOnlyBe(propertyKeys...),
-				h.IfElse(isPHP, HasContextObjectWithMatchingKeys(context), HasContextKeys(context)),
+				HasContextObjectWithMatchingKeys(context),
 			},
 			matchers...)...)
 }
