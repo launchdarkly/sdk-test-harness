@@ -1,10 +1,10 @@
 package sdktests
 
 import (
-	"github.com/launchdarkly/sdk-test-harness/v2/data"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v3/data"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v3/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )

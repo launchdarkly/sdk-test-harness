@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework"
 )
 
 // TestServiceInfo is status information returned by the test service from the initial status query.

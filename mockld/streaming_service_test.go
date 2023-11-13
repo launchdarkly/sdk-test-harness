@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	h "github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
 
 	"github.com/launchdarkly/eventsource"
 	"github.com/launchdarkly/go-sdk-common/v3/ldlog"

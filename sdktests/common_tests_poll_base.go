@@ -1,7 +1,7 @@
 package sdktests
 
 import (
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
 )
 
 // CommonPollingTests groups together polling-related test methods that are shared between server-side

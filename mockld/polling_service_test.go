@@ -10,7 +10,7 @@ import (
 
 	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	h "github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldlog"
 	"github.com/launchdarkly/go-sdk-common/v3/ldlogtest"
