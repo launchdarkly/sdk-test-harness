@@ -60,6 +60,10 @@ For tests that involve Big Segments, the test harness will provide parameters in
 
 This means that the SDK has its own type for evaluation contexts (as opposed to just representing them as a JSON-equivalent generic data structure) and convert that type to and from JSON.
 
+#### Capability `"context-comparison"`
+
+This means that the SDK has the ability to construct and compare two contexts for equality.
+
 #### Capability `"event-sampling"`
 
 This means that the SDK supports event sampling; the SDK can limit the number of certain events based on payloads received from upstream services.
@@ -314,6 +318,27 @@ The `contextConvert` property in the request body will be a JSON object with the
 * `input` (string, required): A string that should be treated as JSON.
 
 The response body and response status are the same as for the `contextBuild` command.
+
+#### Comparison contexts for equality
+
+If `command` is `"contextComparison"`, the test service should construct two separate contexts using the definitions provided in the payload. These contexts should then be compared for equality.
+
+The test harness will only send this command if the test service has the `"context-comparison"` capability.
+
+The `contextComparison` property in the request body will be a JSON object with these properties:
+
+* `context1` (object): One of two contexts which should be constructed and compared.
+  * `single` (object, optional): If present, this is a JSON object with properties for a single-kind context. The test service should pass these values to the corresponding builder methods if they are present.
+    * `kind` (string, optional): Even though a context always has a kind, this is optional because the builder should use `"user"` as a default.
+    * `key` (string, required)
+    * `properties` (array, optional): If present, this contains an array of context property definitions. If the SDK has a builder for a context, these should be applied in the order sent. Each property definition contains a name and value field.
+    * `privateAttributes` (array, optional): if present, this contains an array of private attribute definitions. Each attribute has a `literal` field to designate how the `value` property should be interpreted.
+  * `multi` (array, optional): If present, this is an array of objects in the same format as shown for `single` above, for a multi-kind context. Only one of `single` or `multi` will be present.
+* `context2` (object): The second of two contexts which should be constructed and compared. Structure is identical to `context1`.
+
+The response should be a JSON object with these properties:
+
+* `equals` (boolean): True if the contexts are equal; false otherwise.
 
 #### Get big segment store status
 

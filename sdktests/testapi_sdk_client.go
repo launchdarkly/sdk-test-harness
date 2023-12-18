@@ -380,6 +380,22 @@ func (c *SDKClient) ContextConvert(
 	return resp
 }
 
+// ContextComparison tells the test service to use the SDK's context builder to
+// build two different contexts and compare them for equality.
+func (c *SDKClient) ContextComparison(t *ldtest.T, params servicedef.ContextComparisonPairParams,
+) servicedef.ContextComparisonResponse {
+	var resp servicedef.ContextComparisonResponse
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:           servicedef.CommandContextComparison,
+			ContextComparison: o.Some(params),
+		},
+		t.DebugLogger(),
+		&resp,
+	))
+	return resp
+}
+
 // GetSecureModeHash tells the SDK client to calculate a secure mode hash for a context. The test
 // harness will only call this method if the test service has the "secure-mode-hash" capability.
 func (c *SDKClient) GetSecureModeHash(t *ldtest.T, context ldcontext.Context) string {

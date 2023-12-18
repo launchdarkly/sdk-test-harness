@@ -18,9 +18,14 @@ import (
 )
 
 func doSDKContextTypeTests(t *ldtest.T) {
-	t.RequireCapability(servicedef.CapabilityContextType)
-	t.Run("build", doSDKContextBuildTests)
-	t.Run("convert", doSDKContextConvertTests)
+	if t.Capabilities().Has(servicedef.CapabilityContextType) {
+		t.Run("build", doSDKContextBuildTests)
+		t.Run("convert", doSDKContextConvertTests)
+	}
+
+	if t.Capabilities().Has(servicedef.CapabilityContextComparison) {
+		t.Run("compare", doSDKContextComparisonTests)
+	}
 }
 
 // Note: even though these tests don't involve an SDK client instance actually doing anything, so neither
@@ -311,5 +316,193 @@ func doSDKContextConvertTests(t *ldtest.T) {
 				assert.NotEqual(t, "", resp.Error)
 			})
 		}
+	})
+}
+
+func doSDKContextComparisonTests(t *ldtest.T) {
+	dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+	client := NewSDKClient(t, dataSource)
+	address := ldvalue.ObjectBuild().SetString("street", "123 Easy St").SetString("city", "Anytown").Build()
+	privateAttributes := []servicedef.PrivateAttribute{
+		{Value: "/address/street", Literal: false},
+		{Value: "name", Literal: false},
+	}
+
+	t.Run("single contexts", func(t *ldtest.T) {
+		t.Run("are equal when identical", func(t *ldtest.T) {
+			instructions := []servicedef.PropertyDefinition{
+				{Name: "name", Value: ldvalue.String("Example name")},
+				{Name: "address", Value: address},
+			}
+			param := servicedef.ContextComparisonPairParams{
+				Context1: servicedef.ContextComparisonParams{
+					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key",
+						Properties: instructions, PrivateAttributes: privateAttributes},
+				},
+				Context2: servicedef.ContextComparisonParams{
+					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key",
+						Properties: instructions, PrivateAttributes: privateAttributes},
+				},
+			}
+
+			resp := client.ContextComparison(t, param)
+			m.In(t).Assert(resp.Equals, m.Equal(true))
+		})
+
+		t.Run("are equal when properties are out of order", func(t *ldtest.T) {
+			param := servicedef.ContextComparisonPairParams{
+				Context1: servicedef.ContextComparisonParams{
+					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key",
+						Properties: []servicedef.PropertyDefinition{
+							{Name: "name", Value: ldvalue.String("Example name")},
+							{Name: "address", Value: address},
+						}},
+				},
+				Context2: servicedef.ContextComparisonParams{
+					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key",
+						Properties: []servicedef.PropertyDefinition{
+							{Name: "address", Value: address},
+							{Name: "name", Value: ldvalue.String("Example name")},
+						}},
+				},
+			}
+
+			resp := client.ContextComparison(t, param)
+			m.In(t).Assert(resp.Equals, m.Equal(true))
+		})
+
+		t.Run("are equal when private attributes are out of order", func(t *ldtest.T) {
+			outOfOrderPrivateAttributes := []servicedef.PrivateAttribute{
+				{Value: "name", Literal: false},
+				{Value: "/address/street", Literal: false},
+			}
+
+			param := servicedef.ContextComparisonPairParams{
+				Context1: servicedef.ContextComparisonParams{
+					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key",
+						PrivateAttributes: privateAttributes},
+				},
+				Context2: servicedef.ContextComparisonParams{
+					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key",
+						PrivateAttributes: outOfOrderPrivateAttributes},
+				},
+			}
+
+			resp := client.ContextComparison(t, param)
+			m.In(t).Assert(resp.Equals, m.Equal(true))
+		})
+
+		t.Run("are equal when private attributes are equivalent", func(t *ldtest.T) {
+			param := servicedef.ContextComparisonPairParams{
+				Context1: servicedef.ContextComparisonParams{
+					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key",
+						PrivateAttributes: []servicedef.PrivateAttribute{{Value: "/address/street", Literal: true}}},
+				},
+				Context2: servicedef.ContextComparisonParams{
+					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key",
+						PrivateAttributes: []servicedef.PrivateAttribute{{Value: "/~1address~1street", Literal: false}}},
+				},
+			}
+
+			resp := client.ContextComparison(t, param)
+			m.In(t).Assert(resp.Equals, m.Equal(true))
+		})
+
+		t.Run("are different if kinds are different", func(t *ldtest.T) {
+			param := servicedef.ContextComparisonPairParams{
+				Context1: servicedef.ContextComparisonParams{
+					Single: &servicedef.ContextComparisonSingleParams{Kind: "org", Key: "same-key"},
+				},
+				Context2: servicedef.ContextComparisonParams{
+					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "same-key"},
+				},
+			}
+
+			resp := client.ContextComparison(t, param)
+			m.In(t).Assert(resp.Equals, m.Equal(false))
+		})
+
+		t.Run("are different if custom attribute map is not identical", func(t *ldtest.T) {
+			customAttributeBuilder := ldvalue.ObjectBuild().SetString("example string", "hi").SetInt("example int", 1)
+
+			param := servicedef.ContextComparisonPairParams{
+				Context1: servicedef.ContextComparisonParams{
+					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key",
+						Properties: []servicedef.PropertyDefinition{
+							{Name: "custom", Value: customAttributeBuilder.Build()},
+						}},
+				},
+				Context2: servicedef.ContextComparisonParams{
+					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key",
+						Properties: []servicedef.PropertyDefinition{
+							{Name: "custom", Value: customAttributeBuilder.SetBool("extra-parameter", true).Build()},
+						}},
+				},
+			}
+
+			resp := client.ContextComparison(t, param)
+			m.In(t).Assert(resp.Equals, m.Equal(false))
+		})
+	})
+
+	t.Run("multi contexts", func(t *ldtest.T) {
+		userContext := &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key"}
+		orgContext := &servicedef.ContextComparisonSingleParams{Kind: "org", Key: "org-key"}
+		deviceContext := &servicedef.ContextComparisonSingleParams{Kind: "device", Key: "device-key"}
+
+		t.Run("are equal when contexts are out of order", func(t *ldtest.T) {
+			param := servicedef.ContextComparisonPairParams{
+				Context1: servicedef.ContextComparisonParams{
+					Multi: []servicedef.ContextComparisonSingleParams{*userContext, *orgContext},
+				},
+				Context2: servicedef.ContextComparisonParams{
+					Multi: []servicedef.ContextComparisonSingleParams{*orgContext, *userContext},
+				},
+			}
+
+			resp := client.ContextComparison(t, param)
+			m.In(t).Assert(resp.Equals, m.Equal(true))
+		})
+
+		t.Run("with one kind are equivalent to that single kind context", func(t *ldtest.T) {
+			param := servicedef.ContextComparisonPairParams{
+				Context1: servicedef.ContextComparisonParams{
+					Multi: []servicedef.ContextComparisonSingleParams{*userContext},
+				},
+				Context2: servicedef.ContextComparisonParams{Single: userContext},
+			}
+
+			resp := client.ContextComparison(t, param)
+			m.In(t).Assert(resp.Equals, m.Equal(true))
+		})
+
+		t.Run("are not equal if one has more contexts", func(t *ldtest.T) {
+			param := servicedef.ContextComparisonPairParams{
+				Context1: servicedef.ContextComparisonParams{
+					Multi: []servicedef.ContextComparisonSingleParams{*userContext, *orgContext},
+				},
+				Context2: servicedef.ContextComparisonParams{
+					Multi: []servicedef.ContextComparisonSingleParams{*userContext, *orgContext, *deviceContext},
+				},
+			}
+
+			resp := client.ContextComparison(t, param)
+			m.In(t).Assert(resp.Equals, m.Equal(false))
+		})
+
+		t.Run("are not equal if one is different", func(t *ldtest.T) {
+			differentUserContext := &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key2"}
+			param := servicedef.ContextComparisonPairParams{
+				Context1: servicedef.ContextComparisonParams{
+					Multi: []servicedef.ContextComparisonSingleParams{*userContext, *orgContext},
+				},
+				Context2: servicedef.ContextComparisonParams{
+					Multi: []servicedef.ContextComparisonSingleParams{*differentUserContext, *orgContext},
+				},
+			}
+
+			resp := client.ContextComparison(t, param)
+			m.In(t).Assert(resp.Equals, m.Equal(false))
+		})
 	})
 }

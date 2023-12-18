@@ -21,6 +21,7 @@ const (
 	CommandGetBigSegmentStoreStatus = "getBigSegmentStoreStatus"
 	CommandContextBuild             = "contextBuild"
 	CommandContextConvert           = "contextConvert"
+	CommandContextComparison        = "contextComparison"
 	CommandSecureModeHash           = "secureModeHash"
 	CommandMigrationVariation       = "migrationVariation"
 	CommandMigrationOperation       = "migrationOperation"
@@ -37,16 +38,17 @@ const (
 )
 
 type CommandParams struct {
-	Command            string                            `json:"command"`
-	Evaluate           o.Maybe[EvaluateFlagParams]       `json:"evaluate,omitempty"`
-	EvaluateAll        o.Maybe[EvaluateAllFlagsParams]   `json:"evaluateAll,omitempty"`
-	CustomEvent        o.Maybe[CustomEventParams]        `json:"customEvent,omitempty"`
-	IdentifyEvent      o.Maybe[IdentifyEventParams]      `json:"identifyEvent,omitempty"`
-	ContextBuild       o.Maybe[ContextBuildParams]       `json:"contextBuild,omitempty"`
-	ContextConvert     o.Maybe[ContextConvertParams]     `json:"contextConvert,omitempty"`
-	SecureModeHash     o.Maybe[SecureModeHashParams]     `json:"secureModeHash,omitempty"`
-	MigrationVariation o.Maybe[MigrationVariationParams] `json:"migrationVariation,omitempty"`
-	MigrationOperation o.Maybe[MigrationOperationParams] `json:"migrationOperation,omitempty"`
+	Command            string                               `json:"command"`
+	Evaluate           o.Maybe[EvaluateFlagParams]          `json:"evaluate,omitempty"`
+	EvaluateAll        o.Maybe[EvaluateAllFlagsParams]      `json:"evaluateAll,omitempty"`
+	CustomEvent        o.Maybe[CustomEventParams]           `json:"customEvent,omitempty"`
+	IdentifyEvent      o.Maybe[IdentifyEventParams]         `json:"identifyEvent,omitempty"`
+	ContextBuild       o.Maybe[ContextBuildParams]          `json:"contextBuild,omitempty"`
+	ContextConvert     o.Maybe[ContextConvertParams]        `json:"contextConvert,omitempty"`
+	ContextComparison  o.Maybe[ContextComparisonPairParams] `json:"contextComparison,omitempty"`
+	SecureModeHash     o.Maybe[SecureModeHashParams]        `json:"secureModeHash,omitempty"`
+	MigrationVariation o.Maybe[MigrationVariationParams]    `json:"migrationVariation,omitempty"`
+	MigrationOperation o.Maybe[MigrationOperationParams]    `json:"migrationOperation,omitempty"`
 }
 
 type EvaluateFlagParams struct {
@@ -116,6 +118,37 @@ type ContextBuildResponse struct {
 
 type ContextConvertParams struct {
 	Input string `json:"input"`
+}
+
+type ContextComparisonPairParams struct {
+	Context1 ContextComparisonParams `json:"context1"`
+	Context2 ContextComparisonParams `json:"context2"`
+}
+
+type ContextComparisonParams struct {
+	Single *ContextComparisonSingleParams  `json:"single,omitempty"`
+	Multi  []ContextComparisonSingleParams `json:"multi,omitempty"`
+}
+
+type ContextComparisonSingleParams struct {
+	Kind              string               `json:"kind"`
+	Key               string               `json:"key"`
+	Properties        []PropertyDefinition `json:"properties,omitempty"`
+	PrivateAttributes []PrivateAttribute   `json:"privateAttributes:omitempty"`
+}
+
+type PropertyDefinition struct {
+	Name  string        `json:"name"`
+	Value ldvalue.Value `json:"value,omitempty"`
+}
+
+type PrivateAttribute struct {
+	Value   string `json:"value"`
+	Literal bool   `json:"literal"`
+}
+
+type ContextComparisonResponse struct {
+	Equals bool `json:"equals"`
 }
 
 type SecureModeHashParams struct {

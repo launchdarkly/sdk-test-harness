@@ -17,6 +17,7 @@ const (
 
 	CapabilityBigSegments       = "big-segments"
 	CapabilityContextType       = "context-type"
+	CapabilityContextComparison = "context-comparison"
 	CapabilitySecureModeHash    = "secure-mode-hash"
 	CapabilityServerSidePolling = "server-side-polling"
 	CapabilityServiceEndpoints  = "service-endpoints"
