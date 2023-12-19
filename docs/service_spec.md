@@ -329,8 +329,8 @@ The `contextComparison` property in the request body will be a JSON object with 
 
 * `context1` (object): One of two contexts which should be constructed and compared. Contains a single field, `single` or `multi`.
   * `single` (object, optional): If present, this is a JSON object with properties for a single-kind context. The test service should pass these values to the corresponding builder methods if they are present.
-    * `kind` (string, optional): Even though a context always has a kind, this is optional because the builder should use `"user"` as a default.
-    * `key` (string, required)
+    * `kind` (string, required): Defines the context's kind property.
+    * `key` (string, required): Defines the context's key property.
     * `properties` (array, optional): If present, this contains an array of context property definitions. If the SDK has a builder for a context, these should be applied in the order sent. Each property definition contains a name and value field.
     * `privateAttributes` (array, optional): if present, this contains an array of private attribute definitions. Each attribute has a `literal` field to designate how the `value` property should be interpreted.
   * `multi` (array, optional): If present, this is an array of objects in the same format as shown for `single` above, for a multi-kind context. Only one of `single` or `multi` will be present.
