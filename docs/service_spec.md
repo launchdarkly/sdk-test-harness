@@ -332,7 +332,7 @@ The `contextComparison` property in the request body will be a JSON object with 
     * `kind` (string, required): Defines the context's kind property.
     * `key` (string, required): Defines the context's key property.
     * `properties` (array, optional): If present, this contains an array of context property definitions. If the SDK has a builder for a context, these should be applied in the order sent. Each property definition contains a name and value field.
-    * `privateAttributes` (array, optional): if present, this contains an array of private attribute definitions. Each attribute has a `literal` field to designate how the `value` property should be interpreted.
+    * `privateAttributes` (array, optional): if present, this contains an array of private attribute definitions. Each attribute has a `literal` field to designate how the `value` property should be interpreted. If `literal` is true, the value is an attribute name, rather than an attribute reference. For example, `{"value" : "/foo/bar", "literal" : "true"}` means the attribute named `/foo/bar` rather than a nested object named `bar` under the `foo` object.
   * `multi` (array, optional): If present, this is an array of objects in the same format as shown for `single` above, for a multi-kind context. Only one of `single` or `multi` will be present.
 * `context2` (object): The second of two contexts which should be constructed and compared. Structure is identical to `context1`.
 
