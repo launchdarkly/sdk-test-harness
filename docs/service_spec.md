@@ -327,7 +327,7 @@ The test harness will only send this command if the test service has the `"conte
 
 The `contextComparison` property in the request body will be a JSON object with these properties:
 
-* `context1` (object): One of two contexts which should be constructed and compared.
+* `context1` (object): One of two contexts which should be constructed and compared. Contains a single field, `single` or `multi`.
   * `single` (object, optional): If present, this is a JSON object with properties for a single-kind context. The test service should pass these values to the corresponding builder methods if they are present.
     * `kind` (string, optional): Even though a context always has a kind, this is optional because the builder should use `"user"` as a default.
     * `key` (string, required)
