@@ -131,13 +131,13 @@ type ContextComparisonParams struct {
 }
 
 type ContextComparisonSingleParams struct {
-	Kind              string               `json:"kind"`
-	Key               string               `json:"key"`
-	Properties        []PropertyDefinition `json:"properties,omitempty"`
-	PrivateAttributes []PrivateAttribute   `json:"privateAttributes:omitempty"`
+	Kind              string                `json:"kind"`
+	Key               string                `json:"key"`
+	Attributes        []AttributeDefinition `json:"attributes,omitempty"`
+	PrivateAttributes []PrivateAttribute    `json:"privateAttributes:omitempty"`
 }
 
-type PropertyDefinition struct {
+type AttributeDefinition struct {
 	Name  string        `json:"name"`
 	Value ldvalue.Value `json:"value,omitempty"`
 }

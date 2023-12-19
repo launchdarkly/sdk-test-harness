@@ -330,18 +330,18 @@ func doSDKContextComparisonTests(t *ldtest.T) {
 
 	t.Run("single contexts", func(t *ldtest.T) {
 		t.Run("are equal when identical", func(t *ldtest.T) {
-			instructions := []servicedef.PropertyDefinition{
+			attributes := []servicedef.AttributeDefinition{
 				{Name: "name", Value: ldvalue.String("Example name")},
 				{Name: "address", Value: address},
 			}
 			param := servicedef.ContextComparisonPairParams{
 				Context1: servicedef.ContextComparisonParams{
 					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key",
-						Properties: instructions, PrivateAttributes: privateAttributes},
+						Attributes: attributes, PrivateAttributes: privateAttributes},
 				},
 				Context2: servicedef.ContextComparisonParams{
 					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key",
-						Properties: instructions, PrivateAttributes: privateAttributes},
+						Attributes: attributes, PrivateAttributes: privateAttributes},
 				},
 			}
 
@@ -353,14 +353,14 @@ func doSDKContextComparisonTests(t *ldtest.T) {
 			param := servicedef.ContextComparisonPairParams{
 				Context1: servicedef.ContextComparisonParams{
 					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key",
-						Properties: []servicedef.PropertyDefinition{
+						Attributes: []servicedef.AttributeDefinition{
 							{Name: "name", Value: ldvalue.String("Example name")},
 							{Name: "address", Value: address},
 						}},
 				},
 				Context2: servicedef.ContextComparisonParams{
 					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key",
-						Properties: []servicedef.PropertyDefinition{
+						Attributes: []servicedef.AttributeDefinition{
 							{Name: "address", Value: address},
 							{Name: "name", Value: ldvalue.String("Example name")},
 						}},
@@ -428,13 +428,13 @@ func doSDKContextComparisonTests(t *ldtest.T) {
 			param := servicedef.ContextComparisonPairParams{
 				Context1: servicedef.ContextComparisonParams{
 					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key",
-						Properties: []servicedef.PropertyDefinition{
+						Attributes: []servicedef.AttributeDefinition{
 							{Name: "custom", Value: customAttributeBuilder.Build()},
 						}},
 				},
 				Context2: servicedef.ContextComparisonParams{
 					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key",
-						Properties: []servicedef.PropertyDefinition{
+						Attributes: []servicedef.AttributeDefinition{
 							{Name: "custom", Value: customAttributeBuilder.SetBool("extra-parameter", true).Build()},
 						}},
 				},
