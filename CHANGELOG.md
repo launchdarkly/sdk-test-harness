@@ -2,6 +2,12 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.3.0] - 2023-12-20
+### Added:
+- Add test verifying PHP's behavior with summary exclusion.
+- Add PHP support for migration tests.
+- Add context-comparison capability for testing context equality.
+
 ## [2.2.1] - 2023-10-17
 ### Changed:
 - Auto Environment Attributes tests to handle ld_device being absent in certain SDKs.
