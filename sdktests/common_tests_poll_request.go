@@ -233,7 +233,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 				request := dataSource.Endpoint().RequireConnection(t, time.Second)
 				m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal("")))
 
-				client.Close()
+				_ = client.Close()
 
 				dataSource = NewSDKDataSource(t, nil, DataSourceOptionPolling())
 				client = NewSDKClient(t, c.baseSDKConfigurationPlus(
@@ -244,7 +244,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 
 				request = dataSource.Endpoint().RequireConnection(t, time.Second)
 				m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal(context.FullyQualifiedKey())))
-				client.Close()
+				_ = client.Close()
 			}
 		})
 
@@ -267,7 +267,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 					request := dataSource.Endpoint().RequireConnection(t, time.Second)
 					m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal("")))
 
-					client.Close()
+					_ = client.Close()
 				}
 
 				// Then re-initialize each context, verifying the e-tag is right for each.
@@ -282,7 +282,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 					request := dataSource.Endpoint().RequireConnection(t, time.Second)
 					m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal(context.FullyQualifiedKey())))
 
-					client.Close()
+					_ = client.Close()
 				}
 			}
 		})
@@ -312,7 +312,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 				request := dataSource.Endpoint().RequireConnection(t, time.Second)
 				m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal("")))
 
-				client.Close()
+				_ = client.Close()
 
 				dataSource = NewSDKDataSource(t, nil, DataSourceOptionPolling())
 				client = NewSDKClient(t, c.baseSDKConfigurationPlus(
@@ -324,7 +324,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 				request = dataSource.Endpoint().RequireConnection(t, time.Second)
 				m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal("")))
 
-				client.Close()
+				_ = client.Close()
 			}
 		})
 
@@ -345,7 +345,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 				request := dataSource.Endpoint().RequireConnection(t, time.Second)
 				m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal("")))
 
-				client.Close()
+				_ = client.Close()
 
 				// Initializing a new instance with a streaming mode connection. This should not affect the cached e-tag
 				dataSource = NewSDKDataSource(t, nil, DataSourceOptionStreaming())
@@ -356,7 +356,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 				)...)
 
 				request = dataSource.Endpoint().RequireConnection(t, time.Second)
-				client.Close()
+				_ = client.Close()
 
 				// So setup another polling client and make sure the e-tag value is blank.
 				dataSource = NewSDKDataSource(t, nil, DataSourceOptionPolling())
@@ -368,7 +368,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 
 				request = dataSource.Endpoint().RequireConnection(t, time.Second)
 				m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal(context.FullyQualifiedKey())))
-				client.Close()
+				_ = client.Close()
 			}
 		})
 	})
