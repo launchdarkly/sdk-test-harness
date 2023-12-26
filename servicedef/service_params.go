@@ -27,6 +27,7 @@ const (
 	CapabilityAutoEnvAttributes = "auto-env-attributes"
 	CapabilityMigrations        = "migrations"
 	CapabilityEventSampling     = "event-sampling"
+	CapabilityETagCaching       = "etag-caching"
 )
 
 type StatusRep struct {

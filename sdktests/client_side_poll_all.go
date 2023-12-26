@@ -6,6 +6,7 @@ import (
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
@@ -22,6 +23,9 @@ func doClientSidePollRequestTest(t *ldtest.T) {
 		WithCredential(envIDOrMobileKey))
 
 	pollTests.RequestMethodAndHeaders(t, envIDOrMobileKey)
+	if t.Capabilities().Has(servicedef.CapabilityETagCaching) {
+		pollTests.InitialRequestIncludesCorrectEtag(t)
+	}
 
 	requestPathMatcher := func(method flagRequestMethod) m.Matcher {
 		switch sdkKind {
