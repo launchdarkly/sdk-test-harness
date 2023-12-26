@@ -243,7 +243,10 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 				)...)
 
 				request = dataSource.Endpoint().RequireConnection(t, time.Second)
-				m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal(context.FullyQualifiedKey())))
+				m.In(t).For("request headers").Assert(
+					request.Headers,
+					Header("If-None-Match").Should(m.Equal(context.FullyQualifiedKey())),
+				)
 				_ = client.Close()
 			}
 		})
@@ -280,7 +283,10 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 					)...)
 
 					request := dataSource.Endpoint().RequireConnection(t, time.Second)
-					m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal(context.FullyQualifiedKey())))
+					m.In(t).For("request headers").Assert(
+						request.Headers,
+						Header("If-None-Match").Should(m.Equal(context.FullyQualifiedKey())),
+					)
 
 					_ = client.Close()
 				}
@@ -367,7 +373,10 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 				)...)
 
 				request = dataSource.Endpoint().RequireConnection(t, time.Second)
-				m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal(context.FullyQualifiedKey())))
+				m.In(t).For("request headers").Assert(
+					request.Headers,
+					Header("If-None-Match").Should(m.Equal(context.FullyQualifiedKey())),
+				)
 				_ = client.Close()
 			}
 		})
