@@ -2,6 +2,10 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.4.0] - 2023-12-29
+### Added:
+- Added testing and supporting capability for re-using e-tag headers across re-starts.
+
 ## [2.3.0] - 2023-12-20
 ### Added:
 - Add test verifying PHP's behavior with summary exclusion.
