@@ -212,3 +212,173 @@ func (c CommonPollingTests) RequestContextProperties(t *ldtest.T, getPath string
 		}
 	})
 }
+
+func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
+	contexts := data.NewContextFactory("etag-header")
+
+	t.Run("e-tag", func(t *ldtest.T) {
+		t.Run("is not set on initial request", func(t *ldtest.T) {
+			for _, method := range c.availableFlagRequestMethods() {
+				context := contexts.NextUniqueContext()
+
+				dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
+				dataSource.pollingService.SetEtag(context.FullyQualifiedKey())
+
+				client := NewSDKClient(t, c.baseSDKConfigurationPlus(
+					WithClientSideInitialContext(context),
+					c.withFlagRequestMethod(method),
+					dataSource,
+				)...)
+
+				request := dataSource.Endpoint().RequireConnection(t, time.Second)
+				m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal("")))
+
+				_ = client.Close()
+
+				dataSource = NewSDKDataSource(t, nil, DataSourceOptionPolling())
+				client = NewSDKClient(t, c.baseSDKConfigurationPlus(
+					WithClientSideInitialContext(context),
+					c.withFlagRequestMethod(method),
+					dataSource,
+				)...)
+
+				request = dataSource.Endpoint().RequireConnection(t, time.Second)
+				m.In(t).For("request headers").Assert(
+					request.Headers,
+					Header("If-None-Match").Should(m.Equal(context.FullyQualifiedKey())),
+				)
+				_ = client.Close()
+			}
+		})
+
+		t.Run("is different for different contexts", func(t *ldtest.T) {
+			for _, method := range c.availableFlagRequestMethods() {
+				context1 := contexts.NextUniqueContext()
+				context2 := contexts.NextUniqueContext()
+				contexts := []ldcontext.Context{context1, context2}
+
+				for _, context := range contexts {
+					// Initialize and close clients with multiple contexts. Each one should use a different e-tag value
+					dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
+					dataSource.pollingService.SetEtag(context.FullyQualifiedKey())
+					client := NewSDKClient(t, c.baseSDKConfigurationPlus(
+						WithClientSideInitialContext(context),
+						c.withFlagRequestMethod(method),
+						dataSource,
+					)...)
+
+					request := dataSource.Endpoint().RequireConnection(t, time.Second)
+					m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal("")))
+
+					_ = client.Close()
+				}
+
+				// Then re-initialize each context, verifying the e-tag is right for each.
+				for _, context := range contexts {
+					dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
+					client := NewSDKClient(t, c.baseSDKConfigurationPlus(
+						WithClientSideInitialContext(context),
+						c.withFlagRequestMethod(method),
+						dataSource,
+					)...)
+
+					request := dataSource.Endpoint().RequireConnection(t, time.Second)
+					m.In(t).For("request headers").Assert(
+						request.Headers,
+						Header("If-None-Match").Should(m.Equal(context.FullyQualifiedKey())),
+					)
+
+					_ = client.Close()
+				}
+			}
+		})
+
+		t.Run("considers the full context hash", func(t *ldtest.T) {
+			for _, method := range c.availableFlagRequestMethods() {
+				context1 := contexts.NextUniqueContext()
+
+				// These attributes would affect a full context hash, but not the fully qualified key.
+				builder := ldcontext.NewBuilderFromContext(context1)
+				builder.Name("context 2")
+				builder.SetInt("age", 42)
+				builder.SetString("favorite color", "purple")
+				context2 := builder.Build()
+
+				m.In(t).Assert(context1.FullyQualifiedKey(), m.Equal(context2.FullyQualifiedKey()))
+
+				// Initialize and close clients with multiple contexts. Each one should use a different e-tag value
+				dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
+				dataSource.pollingService.SetEtag(context1.FullyQualifiedKey())
+				client := NewSDKClient(t, c.baseSDKConfigurationPlus(
+					WithClientSideInitialContext(context1),
+					c.withFlagRequestMethod(method),
+					dataSource,
+				)...)
+
+				request := dataSource.Endpoint().RequireConnection(t, time.Second)
+				m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal("")))
+
+				_ = client.Close()
+
+				dataSource = NewSDKDataSource(t, nil, DataSourceOptionPolling())
+				client = NewSDKClient(t, c.baseSDKConfigurationPlus(
+					WithClientSideInitialContext(context2),
+					c.withFlagRequestMethod(method),
+					dataSource,
+				)...)
+
+				request = dataSource.Endpoint().RequireConnection(t, time.Second)
+				m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal("")))
+
+				_ = client.Close()
+			}
+		})
+
+		t.Run("is not reset if streaming is used", func(t *ldtest.T) {
+			for _, method := range c.availableFlagRequestMethods() {
+				context := contexts.NextUniqueContext()
+
+				// Setup an initial polling request with a defined e-tag value
+				dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
+				dataSource.pollingService.SetEtag(context.FullyQualifiedKey())
+
+				client := NewSDKClient(t, c.baseSDKConfigurationPlus(
+					WithClientSideInitialContext(context),
+					c.withFlagRequestMethod(method),
+					dataSource,
+				)...)
+
+				request := dataSource.Endpoint().RequireConnection(t, time.Second)
+				m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal("")))
+
+				_ = client.Close()
+
+				// Initializing a new instance with a streaming mode connection. This should not affect the cached e-tag
+				dataSource = NewSDKDataSource(t, nil, DataSourceOptionStreaming())
+				client = NewSDKClient(t, c.baseSDKConfigurationPlus(
+					WithClientSideInitialContext(context),
+					c.withFlagRequestMethod(method),
+					dataSource,
+				)...)
+
+				request = dataSource.Endpoint().RequireConnection(t, time.Second)
+				_ = client.Close()
+
+				// So setup another polling client and make sure the e-tag value is blank.
+				dataSource = NewSDKDataSource(t, nil, DataSourceOptionPolling())
+				client = NewSDKClient(t, c.baseSDKConfigurationPlus(
+					WithClientSideInitialContext(context),
+					c.withFlagRequestMethod(method),
+					dataSource,
+				)...)
+
+				request = dataSource.Endpoint().RequireConnection(t, time.Second)
+				m.In(t).For("request headers").Assert(
+					request.Headers,
+					Header("If-None-Match").Should(m.Equal(context.FullyQualifiedKey())),
+				)
+				_ = client.Close()
+			}
+		})
+	})
+}
