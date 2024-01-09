@@ -214,7 +214,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 						payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 						eventMatchers := []m.Matcher{
 							m.AllOf(
-								IsValidFeatureEventWithConditions(true, context,
+								IsValidFeatureEventWithConditions(t, true, context,
 									m.JSONProperty("context").Should(outputMatcher(context))),
 							),
 						}

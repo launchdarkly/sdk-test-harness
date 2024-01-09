@@ -140,7 +140,7 @@ func doPHPFeatureEventTests(t *ldtest.T) {
 								h.IfElse(fs.withDebug, m.JSONEqual(debugDate), m.BeNil()),
 							),
 						}
-						matchFeatureEvent := IsValidFeatureEventWithConditions(true, context, propMatchers...)
+						matchFeatureEvent := IsValidFeatureEventWithConditions(t, true, context, propMatchers...)
 
 						payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 						m.In(t).Assert(payload, m.Items(matchFeatureEvent))
@@ -182,7 +182,7 @@ func doPHPFeatureEventTests(t *ldtest.T) {
 			client.FlushEvents(t)
 
 			propMatchers := []m.Matcher{m.JSONProperty("excludeFromSummaries").Should(m.Equal(true))}
-			matchFeatureEvent := IsValidFeatureEventWithConditions(true, context, propMatchers...)
+			matchFeatureEvent := IsValidFeatureEventWithConditions(t, true, context, propMatchers...)
 
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 			m.In(t).Assert(payload, m.Items(matchFeatureEvent))
