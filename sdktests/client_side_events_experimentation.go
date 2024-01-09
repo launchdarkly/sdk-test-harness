@@ -61,7 +61,7 @@ func doClientSideExperimentationEventTests(t *ldtest.T) {
 			payload := eventSink.ExpectAnalyticsEvents(t, time.Second)
 
 			matchFeatureEvent := IsValidFeatureEventWithConditions(
-				false, context,
+				t, false, context,
 				m.JSONProperty("key").Should(m.Equal(flagKey)),
 				m.JSONProperty("version").Should(m.Equal(flagVersion)),
 				m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),

@@ -4,6 +4,8 @@ import (
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 )
 
 // These are used with the matchers API to make assertions about JSON event data. The value
@@ -78,21 +80,28 @@ func IsCustomEventForEventKey(key string) m.Matcher {
 	return m.AllOf(IsCustomEvent(), m.JSONProperty("key").Should(m.Equal(key)))
 }
 
-func IsValidFeatureEventWithConditions(isPHP bool, context ldcontext.Context, matchers ...m.Matcher) m.Matcher {
+func IsValidFeatureEventWithConditions(
+	t *ldtest.T, isPHP bool, context ldcontext.Context, matchers ...m.Matcher) m.Matcher {
 	propertyKeys := []string{"kind", "creationDate", "key", "version",
 		"value", "variation", "reason", "default", "prereqOf"}
-	if isPHP {
+
+	canInlineContexts := t.Capabilities().Has(servicedef.CapabilityInlineContext)
+	switch {
+	case isPHP:
 		propertyKeys = append(propertyKeys, "trackEvents", "debugEventsUntilDate", "context", "excludeFromSummaries")
-	} else {
+	case canInlineContexts:
+		propertyKeys = append(propertyKeys, "context")
+	default:
 		propertyKeys = append(propertyKeys, "contextKeys")
 	}
+
 	return m.AllOf(
 		append(
 			[]m.Matcher{
 				IsFeatureEvent(),
 				HasAnyCreationDate(),
 				JSONPropertyKeysCanOnlyBe(propertyKeys...),
-				h.IfElse(isPHP, HasContextObjectWithMatchingKeys(context), HasContextKeys(context)),
+				h.IfElse(isPHP || canInlineContexts, HasContextObjectWithMatchingKeys(context), HasContextKeys(context)),
 			},
 			matchers...)...)
 }

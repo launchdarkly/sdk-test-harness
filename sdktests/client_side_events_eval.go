@@ -100,7 +100,7 @@ func doClientSideFeatureEventTests(t *ldtest.T) {
 				client.FlushEvents(t)
 
 				matchFeatureEvent := IsValidFeatureEventWithConditions(
-					false, context,
+					t, false, context,
 					m.JSONProperty("key").Should(m.Equal(flag.Key)),
 					m.JSONProperty("version").Should(m.Equal(flag.Version)),
 					m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),

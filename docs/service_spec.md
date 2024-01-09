@@ -72,6 +72,10 @@ This means that the SDK supports caching of the e-tag header between client rest
 
 This means that the SDK supports event sampling; the SDK can limit the number of certain events based on payloads received from upstream services.
 
+#### Capability `"inline-context"`
+
+v4 of the event schema originally required a `contextKeys` property on all feature events. This event format was later broadened to accept either `contextKeys` or `contexts`. It is preferred that SDKs send over the `context` value. Opting into this capability will ensure the appropriate property is set.
+
 #### Capability `"migrations"`
 
 This means that the SDK supports technology migrations, a feature which allows customers to migrate between data sources using well-defined migration stages.
