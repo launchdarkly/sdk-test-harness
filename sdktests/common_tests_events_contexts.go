@@ -20,7 +20,7 @@ type eventContextTestParams struct {
 	eventsConfig     servicedef.SDKConfigEventParams
 	contextFactory   func(string) *data.ContextFactory
 	outputContext    func(ldcontext.Context) ldcontext.Context
-	redactedShouldBe []string
+	redactedShouldBe map[string][]string
 }
 
 func makeEventContextTestParams() []eventContextTestParams {
@@ -70,7 +70,7 @@ func makeEventContextTestParams() []eventContextTestParams {
 					SetValue("b", ldvalue.Null()).
 					Build()
 			},
-			redactedShouldBe: []string{"name", "b"},
+			redactedShouldBe: map[string][]string{"user": {"name", "b"}},
 		},
 		{
 			name: "single-kind, specific private attributes",
@@ -92,7 +92,7 @@ func makeEventContextTestParams() []eventContextTestParams {
 					SetValue("b", ldvalue.Null()).
 					Build()
 			},
-			redactedShouldBe: []string{"name", "b"},
+			redactedShouldBe: map[string][]string{"user": {"name", "b"}},
 		},
 		{
 			name: "single-kind, private attribute nested property",
@@ -114,7 +114,7 @@ func makeEventContextTestParams() []eventContextTestParams {
 					SetValue("c", ldvalue.Parse([]byte(`{"prop1": {"sub1": true}, "prop2": {"sub2": 5}}`))).
 					Build()
 			},
-			redactedShouldBe: []string{"/b/prop1", "/c/prop2/sub1"},
+			redactedShouldBe: map[string][]string{"user": {"/b/prop1", "/c/prop2/sub1"}},
 		},
 	}
 	// Add some test cases to verify that all possible value types can be used for a

@@ -161,6 +161,112 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 		}
 	})
 
+	if t.Capabilities().Has(servicedef.CapabilityAnonymousRedaction) {
+		t.Run("single-kind anonymous context redacts all attributes", func(t *ldtest.T) {
+			anonymousFactory := data.NewContextFactory("anonymous", func(b *ldcontext.Builder) {
+				b.Anonymous(true)
+				b.Name("Example name")
+				b.SetString("setup", "Why do programmers always confused Halloween and Christmas?")
+				b.SetString("punchline", "Because OCT 31 = DEC 25")
+			})
+
+			for _, valueType := range getValueTypesToTest(t) {
+				t.Run(testDescFromType(valueType), func(t *ldtest.T) {
+					flag := trackedFlags.ReuseFlagForValueType(valueType)
+					expectedValue := flagValues(valueType)
+					context := anonymousFactory.NextUniqueContext()
+					resp := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+						FlagKey:      flag.Key,
+						Context:      o.Some(context),
+						ValueType:    valueType,
+						DefaultValue: defaultValues(valueType),
+						Detail:       false,
+					})
+
+					// If the evaluation didn't return the expected value, then the rest of the test is moot
+					if !m.In(t).Assert(expectedValue, m.JSONEqual(resp.Value)) {
+						require.Fail(t, "evaluation unexpectedly returned wrong value")
+					}
+
+					client.FlushEvents(t)
+
+					expectedContext := ldcontext.NewBuilderFromContext(context).
+						SetValue("name", ldvalue.Null()).
+						SetValue("setup", ldvalue.Null()).
+						SetValue("punchline", ldvalue.Null()).
+						Build()
+
+					matcher := JSONMatchesEventContext(expectedContext, map[string][]string{"user": {"name", "setup", "punchline"}})
+
+					payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+					m.In(t).Assert(payload, m.ItemsInAnyOrder(
+						IsIndexEventForContext(context),
+						IsValidFeatureEventWithConditions(t, false, context, m.JSONProperty("context").Should(matcher)),
+						EventHasKind("summary"),
+					))
+				})
+			}
+		})
+
+		t.Run("multi-kind with anonymous context redacts attributes appropriately", func(t *ldtest.T) {
+			userContextFactory := data.NewContextFactory("user", func(b *ldcontext.Builder) {
+				b.Anonymous(true)
+				b.Kind("user")
+				b.Name("User name")
+				b.SetString("setup", "Why do programmers always confused Halloween and Christmas?")
+				b.SetString("punchline", "Because OCT 31 = DEC 25")
+			})
+			orgContextFactory := data.NewContextFactory("user", func(b *ldcontext.Builder) {
+				b.Name("Org name")
+				b.Kind("org")
+				b.SetString("setup", "Why did the edge server go bankrupt?")
+				b.SetString("punchline", "Because it ran out of cache")
+			})
+
+			for _, valueType := range getValueTypesToTest(t) {
+				t.Run(testDescFromType(valueType), func(t *ldtest.T) {
+					userContext := userContextFactory.NextUniqueContext()
+					orgContext := orgContextFactory.NextUniqueContext()
+
+					multiContext := ldcontext.NewMultiBuilder().Add(userContext).Add(orgContext).Build()
+					flag := trackedFlags.ReuseFlagForValueType(valueType)
+					expectedValue := flagValues(valueType)
+					resp := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+						FlagKey:      flag.Key,
+						Context:      o.Some(multiContext),
+						ValueType:    valueType,
+						DefaultValue: defaultValues(valueType),
+						Detail:       false,
+					})
+
+					// If the evaluation didn't return the expected value, then the rest of the test is moot
+					if !m.In(t).Assert(expectedValue, m.JSONEqual(resp.Value)) {
+						require.Fail(t, "evaluation unexpectedly returned wrong value")
+					}
+
+					client.FlushEvents(t)
+
+					expectedUser := ldcontext.NewBuilderFromContext(userContext).
+						SetValue("name", ldvalue.Null()).
+						SetValue("setup", ldvalue.Null()).
+						SetValue("punchline", ldvalue.Null()).
+						Build()
+
+					expectedMultiKind := ldcontext.NewMultiBuilder().Add(expectedUser).Add(orgContext).Build()
+
+					matcher := JSONMatchesEventContext(expectedMultiKind, map[string][]string{"user": {"name", "setup", "punchline"}})
+
+					payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+					m.In(t).Assert(payload, m.ItemsInAnyOrder(
+						IsIndexEventForContext(multiContext),
+						IsValidFeatureEventWithConditions(t, false, multiContext, m.JSONProperty("context").Should(matcher)),
+						EventHasKind("summary"),
+					))
+				})
+			}
+		})
+	}
+
 	t.Run("disable full feature event for tracked flag through sampling", func(t *ldtest.T) {
 		t.RequireCapability(servicedef.CapabilityEventSampling)
 
