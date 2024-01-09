@@ -124,7 +124,7 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 					reason = ldreason.NewEvalReasonError(ldreason.EvalErrorMalformedFlag)
 				}
 				matchFeatureEvent := IsValidFeatureEventWithConditions(
-					false, context,
+					t, false, context,
 					m.JSONProperty("key").Should(m.Equal(flag.Key)),
 					m.JSONProperty("version").Should(m.Equal(flag.Version)),
 					m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),
@@ -432,7 +432,7 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 
 			eventMatchers := []m.Matcher{
 				IsValidFeatureEventWithConditions(
-					isPHP, context,
+					t, isPHP, context,
 					m.JSONProperty("key").Should(m.Equal(flag1.Key)),
 					m.JSONProperty("version").Should(m.Equal(flag1.Version)),
 					m.JSONProperty("value").Should(m.Equal("value1")),
@@ -441,7 +441,7 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 					JSONPropertyNullOrAbsent("prereqOf"),
 				),
 				IsValidFeatureEventWithConditions(
-					isPHP, context,
+					t, isPHP, context,
 					m.JSONProperty("key").Should(m.Equal(flag2.Key)),
 					m.JSONProperty("version").Should(m.Equal(flag2.Version)),
 					m.JSONProperty("value").Should(m.Equal("ok2")),
@@ -451,7 +451,7 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 					m.JSONOptProperty("prereqOf").Should(m.Equal("flag1")),
 				),
 				IsValidFeatureEventWithConditions(
-					isPHP, context,
+					t, isPHP, context,
 					m.JSONProperty("key").Should(m.Equal(flag3.Key)),
 					m.JSONProperty("version").Should(m.Equal(flag3.Version)),
 					m.JSONProperty("value").Should(m.Equal("ok3")),

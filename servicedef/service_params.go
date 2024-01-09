@@ -28,6 +28,7 @@ const (
 	CapabilityMigrations        = "migrations"
 	CapabilityEventSampling     = "event-sampling"
 	CapabilityETagCaching       = "etag-caching"
+	CapabilityInlineContext     = "inline-context"
 )
 
 type StatusRep struct {

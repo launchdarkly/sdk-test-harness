@@ -81,7 +81,7 @@ func doServerSideExperimentationEventTests(t *ldtest.T) {
 
 			eventMatchers := []m.Matcher{
 				IsValidFeatureEventWithConditions(
-					isPHP, context,
+					t, isPHP, context,
 					m.JSONProperty("key").Should(m.Equal(flag.Key)),
 					m.JSONProperty("version").Should(m.Equal(flag.Version)),
 					m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),
