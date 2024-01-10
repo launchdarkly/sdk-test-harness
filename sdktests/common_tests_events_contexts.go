@@ -15,12 +15,14 @@ import (
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
 
+type redactedAttrsByKind map[string][]string
+
 type eventContextTestParams struct {
 	name             string
 	eventsConfig     servicedef.SDKConfigEventParams
 	contextFactory   func(string) *data.ContextFactory
 	outputContext    func(ldcontext.Context) ldcontext.Context
-	redactedShouldBe map[string][]string
+	redactedShouldBe redactedAttrsByKind
 }
 
 func makeEventContextTestParams() []eventContextTestParams {
@@ -70,7 +72,7 @@ func makeEventContextTestParams() []eventContextTestParams {
 					SetValue("b", ldvalue.Null()).
 					Build()
 			},
-			redactedShouldBe: map[string][]string{"user": {"name", "b"}},
+			redactedShouldBe: redactedAttrsByKind{"user": {"name", "b"}},
 		},
 		{
 			name: "single-kind, specific private attributes",
@@ -92,7 +94,7 @@ func makeEventContextTestParams() []eventContextTestParams {
 					SetValue("b", ldvalue.Null()).
 					Build()
 			},
-			redactedShouldBe: map[string][]string{"user": {"name", "b"}},
+			redactedShouldBe: redactedAttrsByKind{"user": {"name", "b"}},
 		},
 		{
 			name: "single-kind, private attribute nested property",
@@ -114,7 +116,7 @@ func makeEventContextTestParams() []eventContextTestParams {
 					SetValue("c", ldvalue.Parse([]byte(`{"prop1": {"sub1": true}, "prop2": {"sub2": 5}}`))).
 					Build()
 			},
-			redactedShouldBe: map[string][]string{"user": {"/b/prop1", "/c/prop2/sub1"}},
+			redactedShouldBe: redactedAttrsByKind{"user": {"/b/prop1", "/c/prop2/sub1"}},
 		},
 	}
 	// Add some test cases to verify that all possible value types can be used for a
