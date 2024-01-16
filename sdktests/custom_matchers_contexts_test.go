@@ -130,7 +130,7 @@ func TestJSONMatchesEventContext(t *testing.T) {
 	type testParams struct {
 		c                ldcontext.Context
 		input            string
-		redactedShouldBe []string
+		redactedShouldBe map[string][]string
 	}
 
 	t.Run("match", func(t *testing.T) {
@@ -150,7 +150,7 @@ func TestJSONMatchesEventContext(t *testing.T) {
 			{
 				c:                ldcontext.New("a"),
 				input:            `{"kind": "user", "key": "a", "_meta": {"redactedAttributes": ["b", "c"]}}`,
-				redactedShouldBe: []string{"c", "b"},
+				redactedShouldBe: map[string][]string{"user": {"c", "b"}},
 			},
 		} {
 			t.Run(p.input, func(t *testing.T) {
@@ -164,17 +164,17 @@ func TestJSONMatchesEventContext(t *testing.T) {
 			{
 				c:                ldcontext.New("a"),
 				input:            `{"kind": "user", "key": "a"}`,
-				redactedShouldBe: []string{"b"},
+				redactedShouldBe: map[string][]string{"user": {"b"}},
 			},
 			{
 				c:                ldcontext.New("a"),
 				input:            `{"kind": "user", "key": "a", "_meta": {"redactedAttributes": ["b", "c"]}}`,
-				redactedShouldBe: []string{"b"},
+				redactedShouldBe: map[string][]string{"user": {"b"}},
 			},
 			{
 				c:                ldcontext.NewBuilder("a").Private("b").Build(),
 				input:            `{"kind": "user", "key": "a", "_meta": {"privateAttributes": ["b"]}}`,
-				redactedShouldBe: []string{"b"},
+				redactedShouldBe: map[string][]string{"user": {"b"}},
 			},
 		} {
 			t.Run(p.input, func(t *testing.T) {

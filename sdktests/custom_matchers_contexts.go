@@ -25,12 +25,15 @@ func JSONMatchesContext(context ldcontext.Context) m.Matcher {
 // The matcher should be tolerant of all allowable variants: for instance, it is legal to include
 // `"anonymous": false` in the representation rather than omitting anonymous, and attribute names that
 // appear in redactedAttributes could either use the literal syntax or the slash syntax.
-func JSONMatchesEventContext(context ldcontext.Context, redactedShouldBe []string) m.Matcher {
+func JSONMatchesEventContext(context ldcontext.Context, redactedShouldBe map[string][]string) m.Matcher {
 	return jsonMatchesContext(context, true, redactedShouldBe)
 }
 
-func jsonMatchesContext(topLevelContext ldcontext.Context, isEventContext bool, redactedShouldBe []string) m.Matcher {
+func jsonMatchesContext(
+	topLevelContext ldcontext.Context, isEventContext bool, redactedShouldBe map[string][]string,
+) m.Matcher {
 	matchSingleKind := func(c ldcontext.Context, kindIsKnown bool) m.Matcher {
+		var kind = c.Kind()
 		var keys []string
 		var ms []m.Matcher
 		if !kindIsKnown {
@@ -54,8 +57,10 @@ func jsonMatchesContext(topLevelContext ldcontext.Context, isEventContext bool, 
 		var meta []m.Matcher
 		requireMeta := false
 		if isEventContext {
-			if len(redactedShouldBe) != 0 {
-				meta = append(meta, m.JSONProperty("redactedAttributes").Should(RedactedAttributesAre(redactedShouldBe...)))
+			redactedAttributes, ok := redactedShouldBe[string(kind)]
+
+			if ok && len(redactedAttributes) != 0 {
+				meta = append(meta, m.JSONProperty("redactedAttributes").Should(RedactedAttributesAre(redactedAttributes...)))
 				requireMeta = true
 			} else {
 				meta = append(meta, JSONPropertyNullOrAbsentOrEqualTo("redactedAttributes", ldvalue.ArrayOf()))
