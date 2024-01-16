@@ -50,6 +50,10 @@ This means that the SDK's method for evaluating all flags at once has an option 
 
 This means that the SDK's method for evaluating all flags at once has an option for filtering the result to only include evaluation reason data if the SDK will need it for events (due to event tracking or debugging or an experiment). This is only applicable to server-side SDKs.
 
+#### Capability `"anonymous-redaction"`
+
+This means that the SDK will redact all attributes from an anonymous context when encoding it as part of a feature event. Other events will not be affected.
+
 #### Capability `"big-segments"`
 
 This means that the SDK supports Big Segments and can be configured with a custom Big Segment store. This is only applicable to server-side SDKs.
