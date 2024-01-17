@@ -28,7 +28,7 @@ func (srv *RokuServer) Wrap(h http.Handler) http.Handler {
 			return
 		}
 
-		userJSONBase64 := base64.StdEncoding.EncodeToString(userJSON)
+		userJSONBase64 := base64.URLEncoding.EncodeToString(userJSON)
 
 		req.Method = "GET"
 		req.Header.Set("Authorization", *srv.mobileKey)
