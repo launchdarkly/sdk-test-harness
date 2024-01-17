@@ -216,7 +216,7 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 				b.SetString("setup", "Why do programmers always confused Halloween and Christmas?")
 				b.SetString("punchline", "Because OCT 31 = DEC 25")
 			})
-			orgContextFactory := data.NewContextFactory("user", func(b *ldcontext.Builder) {
+			orgContextFactory := data.NewContextFactory("org", func(b *ldcontext.Builder) {
 				b.Name("Org name")
 				b.Kind("org")
 				b.SetString("setup", "Why did the edge server go bankrupt?")
