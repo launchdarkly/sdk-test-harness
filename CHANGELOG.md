@@ -2,6 +2,10 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.4.1] - 2024-01-18
+### Fixed:
+- Fixes issue in custom events test in which server payloads were sent to client SDKs.
+
 ## [2.4.0] - 2023-12-29
 ### Added:
 - Added testing and supporting capability for re-using e-tag headers across re-starts.
