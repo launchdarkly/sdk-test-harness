@@ -17,7 +17,6 @@ import (
 )
 
 const defaultPort = 8111
-const statusQueryTimeout = time.Second * 10
 
 //go:embed VERSION
 var versionString string // comes from the VERSION file which we update for each release
@@ -57,7 +56,7 @@ func run(params commandParams) (*ldtest.Results, error) {
 		params.serviceURL,
 		params.host,
 		params.port,
-		statusQueryTimeout,
+		time.Duration(params.queryTimeoutSeconds)*time.Second,
 		mainDebugLogger,
 		os.Stdout,
 	)
