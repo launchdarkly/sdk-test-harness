@@ -6,7 +6,6 @@ import (
 
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
@@ -34,7 +33,7 @@ func doSDKContextTypeTests(t *ldtest.T) {
 // at a client instance.
 
 func doSDKContextBuildTests(t *ldtest.T) {
-	dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+	dataSource := NewSDKDataSource(t, nil)
 	client := NewSDKClient(t, dataSource)
 
 	optStr := func(s string) *string { return &s }
@@ -114,7 +113,7 @@ func doSDKContextBuildTests(t *ldtest.T) {
 }
 
 func doSDKContextConvertTests(t *ldtest.T) {
-	dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+	dataSource := NewSDKDataSource(t, nil)
 	client := NewSDKClient(t, dataSource)
 
 	basicInputPlusProps := func(extraProps string) string {
@@ -320,7 +319,7 @@ func doSDKContextConvertTests(t *ldtest.T) {
 }
 
 func doSDKContextComparisonTests(t *ldtest.T) {
-	dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+	dataSource := NewSDKDataSource(t, nil)
 	client := NewSDKClient(t, dataSource)
 	address := ldvalue.ObjectBuild().SetString("street", "123 Easy St").SetString("city", "Anytown").Build()
 	privateAttributes := []servicedef.PrivateAttribute{

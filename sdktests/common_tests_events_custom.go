@@ -8,7 +8,6 @@ import (
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
@@ -38,7 +37,7 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 			t.Run(contexts.Description(), func(t *ldtest.T) {
 				context := contexts.NextUniqueContext()
 
-				dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+				dataSource := NewSDKDataSource(t, nil)
 				events := NewSDKEventSink(t)
 				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 
