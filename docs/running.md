@@ -19,6 +19,7 @@ Options besides `-url`:
 * `-record-failures` - record failed test IDs to the given file. Recorded tests can be skipped by the next run of 
 the harness via `-skip-from`.
 * `-skip-from` - skips any test IDs recorded in the specified file. May be used in conjunction with `-record-failures`
+* `-status-timeout` - how many seconds to attempt to query to the test service before failing
 
 For `-run`, `-skip`, and tests referenced via `-skip-from`, the rules for pattern matching are as follows:
 
@@ -27,6 +28,7 @@ For `-run`, `-skip`, and tests referenced via `-skip-from`, the rules for patter
 * However, `(` and `)` will always be treated as literal characters, not regular expression operators. This is because some tests may have parens in their names. If you want "or" behavior, instead of `-run (a|b)` just use `-run a -run b` (in other words, there is an implied "or" for multiple values).
 * If `-run` specifies a test that has subtests, then all of its subtests are also run.
 * If `-skip`/`-skip-from` specifies a test that has subtests, then all of its subtests are also skipped.
+* `-status-timeout` is effectively a timeout for the starting of the test service. If the test service and harness are started at the same time, then this allows for time for compilation or startup of the test service.
 
 ## Output
 

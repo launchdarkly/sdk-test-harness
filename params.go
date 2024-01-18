@@ -9,16 +9,17 @@ import (
 )
 
 type commandParams struct {
-	serviceURL       string
-	port             int
-	host             string
-	filters          ldtest.RegexFilters
-	stopServiceAtEnd bool
-	debug            bool
-	debugAll         bool
-	jUnitFile        string
-	recordFailures   string
-	skipFile         string
+	serviceURL          string
+	port                int
+	host                string
+	filters             ldtest.RegexFilters
+	stopServiceAtEnd    bool
+	debug               bool
+	debugAll            bool
+	jUnitFile           string
+	recordFailures      string
+	skipFile            string
+	queryTimeoutSeconds int
 }
 
 func (c *commandParams) Read(args []string) bool {
@@ -36,6 +37,8 @@ func (c *commandParams) Read(args []string) bool {
 		"recorded tests can be skipped by the next run of the harness via -skip-from")
 	fs.StringVar(&c.skipFile, "skip-from", "", "skips any test IDs recorded in the specified file.\n"+
 		"may be used in conjunction with -record-failures")
+	fs.IntVar(&c.queryTimeoutSeconds, "status-timeout", 10, "how many seconds to attempt to query to "+
+		"the test service before failing")
 
 	if err := fs.Parse(args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, err)
