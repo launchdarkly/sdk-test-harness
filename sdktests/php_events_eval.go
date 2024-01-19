@@ -167,9 +167,7 @@ func doPHPFeatureEventTests(t *ldtest.T) {
 						malformed: false,
 					}].ReuseFlagForValueType(valueType)
 					var expectedValue ldvalue.Value
-					// var expectedVariation o.Maybe[int]
 					expectedValue = flagValues(valueType)
-					// expectedVariation = o.Some(0)
 					context := anonymousFactory.NextUniqueContext()
 					resp := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 						FlagKey:      flag.Key,
@@ -230,9 +228,7 @@ func doPHPFeatureEventTests(t *ldtest.T) {
 						malformed: false,
 					}].ReuseFlagForValueType(valueType)
 					var expectedValue ldvalue.Value
-					// var expectedVariation o.Maybe[int]
 					expectedValue = flagValues(valueType)
-					// expectedVariation = o.Some(0)
 					resp := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 						FlagKey:      flag.Key,
 						Context:      o.Some(multiContext),
