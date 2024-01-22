@@ -13,7 +13,7 @@ import (
 )
 
 const currentEventSchema = "4"
-const phpEventSchema = "2"
+const phpLegacyEventSchema = "2"
 
 func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string, headersMatcher m.Matcher) {
 	t.Run("method and headers", func(t *ldtest.T) {

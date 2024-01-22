@@ -34,7 +34,14 @@ func doPHPEventRequestTests(t *ldtest.T) {
 		}))
 
 	eventTests.RequestMethodAndHeaders(t, sdkKey,
-		Header("X-LaunchDarkly-Event-Schema").Should(m.Equal(phpEventSchema)))
+		m.AnyOf(
+			Header("X-LaunchDarkly-Event-Schema").Should(m.Equal(phpLegacyEventSchema)),
+			m.AllOf(
+				Header("X-LaunchDarkly-Event-Schema").Should(m.Equal(currentEventSchema)),
+				Header("X-LaunchDarkly-Unsummarized").Should(m.Not(m.BeNil())),
+			),
+		),
+	)
 
 	eventTests.RequestURLPath(t, m.Equal("/bulk"))
 }
