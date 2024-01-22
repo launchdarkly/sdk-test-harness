@@ -51,7 +51,6 @@ func makeEventContextTestParams() []eventContextTestParams {
 					b.Kind("org")
 					b.Name("a")
 					b.SetString("b", "c")
-					b.Anonymous(true)
 				})
 			},
 		},
