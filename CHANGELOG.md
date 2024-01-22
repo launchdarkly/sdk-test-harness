@@ -2,6 +2,12 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.6.0] - 2024-01-22
+### Added:
+- Added optional capability for sending inlined contexts in feature events.
+- Added optional capability for redacting anonymous contexts in feature events.
+- Added support for PHP sending event schema v4 formats.
+
 ## [2.5.0] - 2024-01-18
 ### Added:
 - Added the ability to specify the timeout for the status query during startup.
