@@ -35,10 +35,10 @@ func doPHPEventRequestTests(t *ldtest.T) {
 
 	eventTests.RequestMethodAndHeaders(t, sdkKey,
 		m.AnyOf(
-			Header("X-LaunchDarkly-Event-Schema").Should(m.Equal(phpEventSchema)),
+			Header("X-LaunchDarkly-Event-Schema").Should(m.Equal(phpLegacyEventSchema)),
 			m.AllOf(
 				Header("X-LaunchDarkly-Event-Schema").Should(m.Equal(currentEventSchema)),
-				Header("X-LaunchDarkly-Summarized").Should(m.Not(m.BeNil())),
+				Header("X-LaunchDarkly-Unsummarized").Should(m.Not(m.BeNil())),
 			),
 		),
 	)
