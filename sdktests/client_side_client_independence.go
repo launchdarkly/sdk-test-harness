@@ -19,8 +19,10 @@ import (
 func doClientSideClientIndependenceTests(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityClientIndependence)
 	t.Run("same environments evaluate same", doClientSideClientIndependenceTestsSameEnvironment)
-	t.Run("different environments evaluate independently", doClientSideClientIndependenceTestsMultipleEnvironmentsIndependent)
-	t.Run("client A manipulated, client B unaffected", doClientSideClientIndependenceTestsClientAManipulatedClientBUnaffected)
+	t.Run("different environments evaluate independently",
+		doClientSideClientIndependenceTestsMultipleEnvironmentsIndependent)
+	t.Run("client A manipulated, client B unaffected",
+		doClientSideClientIndependenceTestsClientAManipulatedClientBUnaffected)
 }
 
 // This test verifies two clients on the same environment have the same evaluations
@@ -270,7 +272,7 @@ func doClientSideClientIndependenceTestsClientAManipulatedClientBUnaffected(t *l
 		require.Fail(t, "evaluation unexpectedly returned wrong value")
 	}
 
-	clientA.Close()
+	_ = clientA.Close()
 	// verify client B is unaffected by closing client A
 	resp = clientB.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 		FlagKey:      flag2Key,
