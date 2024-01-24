@@ -100,6 +100,7 @@ func doAllClientSideTests(t *ldtest.T) {
 	t.Run("tags", doClientSideTagsTests)
 	t.Run("context type", doSDKContextTypeTests)
 	t.Run("autoEnvAttributes", doClientSideAutoEnvAttributesTests)
+	t.Run("client independence", doClientSideClientIndependenceTests)
 }
 
 func doAllPHPTests(t *ldtest.T) {
