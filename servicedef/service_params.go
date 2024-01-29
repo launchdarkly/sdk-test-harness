@@ -3,13 +3,14 @@ package servicedef
 import "github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 
 const (
-	CapabilityClientSide    = "client-side"
-	CapabilityServerSide    = "server-side"
-	CapabilityStronglyTyped = "strongly-typed"
-	CapabilityMobile        = "mobile"
-	CapabilityPHP           = "php"
-	CapabilityRoku          = "roku"
-	CapabilitySingleton     = "singleton"
+	CapabilityClientSide         = "client-side"
+	CapabilityServerSide         = "server-side"
+	CapabilityStronglyTyped      = "strongly-typed"
+	CapabilityMobile             = "mobile"
+	CapabilityPHP                = "php"
+	CapabilityRoku               = "roku"
+	CapabilitySingleton          = "singleton"
+	CapabilityClientIndependence = "client-independence"
 
 	CapabilityAllFlagsWithReasons                = "all-flags-with-reasons"
 	CapabilityAllFlagsClientSideOnly             = "all-flags-client-side-only"
