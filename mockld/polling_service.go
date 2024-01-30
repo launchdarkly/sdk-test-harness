@@ -52,14 +52,12 @@ type PollingService struct {
 func NewPollingService(
 	initialData SDKData,
 	sdkKind SDKKind,
-	enableGzipCompression bool,
 	debugLogger framework.Logger,
 ) *PollingService {
 	p := &PollingService{
-		sdkKind:               sdkKind,
-		currentData:           initialData,
-		debugLogger:           debugLogger,
-		enableGzipCompression: enableGzipCompression,
+		sdkKind:     sdkKind,
+		currentData: initialData,
+		debugLogger: debugLogger,
 	}
 
 	pollHandler := p.standardPollingHandler()
@@ -87,6 +85,11 @@ func NewPollingService(
 	}
 	p.handler = router
 
+	return p
+}
+
+func (p *PollingService) WithGzipCompression(enable bool) *PollingService {
+	p.enableGzipCompression = enable
 	return p
 }
 

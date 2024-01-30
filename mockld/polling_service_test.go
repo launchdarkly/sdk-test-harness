@@ -93,7 +93,7 @@ func doPollingServiceTests(
 	testLog.Loggers.SetMinLevel(ldlog.Debug)
 	defer testLog.DumpIfTestFailed(t)
 
-	service := NewPollingService(initialData, sdkKind, false, testLog.Loggers.ForLevel(ldlog.Debug))
+	service := NewPollingService(initialData, sdkKind, testLog.Loggers.ForLevel(ldlog.Debug))
 
 	httphelpers.WithServer(service, func(server *httptest.Server) {
 		req, _ := http.NewRequest(httpMethod, server.URL+urlPath, nil)
