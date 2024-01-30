@@ -89,7 +89,8 @@ func NewSDKDataSourceWithoutEndpoint(t *ldtest.T, data mockld.SDKData, options .
 	defaultIsPolling := sdkKind == mockld.JSClientSDK || sdkKind == mockld.PHPSDK
 	d := &SDKDataSource{}
 	if config.polling.Value() || (!config.polling.IsDefined() && defaultIsPolling) {
-		d.pollingService = mockld.NewPollingService(data, sdkKind, t.DebugLogger())
+		d.pollingService = mockld.NewPollingService(data, sdkKind, t.DebugLogger()).
+			WithGzipCompression(t.Capabilities().Has(servicedef.CapabilityPollingGzip))
 	} else {
 		d.streamingService = mockld.NewStreamingService(data, sdkKind, t.DebugLogger())
 	}
