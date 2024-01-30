@@ -2,6 +2,10 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.8.0] - 2024-01-30
+### Added:
+- Add test to verify SDK polling behavior with `Accept-Encoding: gzip`.
+
 ## [2.7.0] - 2024-01-29
 ### Added:
 - Added optional capability `client-independence` for SDKs that support multiple client instances being used at the same time.
