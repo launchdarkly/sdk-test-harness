@@ -126,7 +126,8 @@ func (p *PollingService) pollingHandler(getDataFn func(*PollingService, *http.Re
 			w.Header().Add("Etag", etag)
 		}
 
-		if p.enableGzipCompression && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		switch {
+		case p.enableGzipCompression && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip"):
 			w.Header().Add("Content-Encoding", "gzip")
 			w.WriteHeader(http.StatusOK)
 			gzipWriter := gzip.NewWriter(w)
@@ -136,10 +137,11 @@ func (p *PollingService) pollingHandler(getDataFn func(*PollingService, *http.Re
 			if err := gzipWriter.Flush(); err != nil {
 				p.debugLogger.Printf("failed to flush gzip writer stream: %v", err)
 			}
-		} else if p.enableGzipCompression {
+
+		case p.enableGzipCompression:
 			w.WriteHeader(http.StatusBadRequest)
 			p.debugLogger.Printf("gzip compression was enabled, but the required accept-encoding header was not set.")
-		} else {
+		default:
 			w.WriteHeader(http.StatusOK)
 			if _, err := w.Write(data); err != nil {
 				p.debugLogger.Printf("failed to write polling body to writer: %v", err)
