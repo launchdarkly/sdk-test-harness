@@ -31,6 +31,7 @@ const (
 	CapabilityETagCaching        = "etag-caching"
 	CapabilityInlineContext      = "inline-context"
 	CapabilityAnonymousRedaction = "anonymous-redaction"
+	CapabilityPollingGzip        = "polling-gzip"
 )
 
 type StatusRep struct {

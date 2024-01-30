@@ -1,8 +1,10 @@
 package mockld
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
@@ -38,23 +40,26 @@ const (
 )
 
 type PollingService struct {
-	sdkKind     SDKKind
-	currentData SDKData
-	currentEtag string
-	handler     http.Handler
-	debugLogger framework.Logger
-	lock        sync.RWMutex
+	sdkKind               SDKKind
+	currentData           SDKData
+	currentEtag           string
+	handler               http.Handler
+	enableGzipCompression bool
+	debugLogger           framework.Logger
+	lock                  sync.RWMutex
 }
 
 func NewPollingService(
 	initialData SDKData,
 	sdkKind SDKKind,
+	enableGzipCompression bool,
 	debugLogger framework.Logger,
 ) *PollingService {
 	p := &PollingService{
-		sdkKind:     sdkKind,
-		currentData: initialData,
-		debugLogger: debugLogger,
+		sdkKind:               sdkKind,
+		currentData:           initialData,
+		debugLogger:           debugLogger,
+		enableGzipCompression: enableGzipCompression,
 	}
 
 	pollHandler := p.standardPollingHandler()
@@ -117,8 +122,22 @@ func (p *PollingService) pollingHandler(getDataFn func(*PollingService, *http.Re
 		if etag != "" {
 			w.Header().Add("Etag", etag)
 		}
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(data)
+
+		if p.enableGzipCompression && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			w.Header().Add("Content-Encoding", "gzip")
+			w.WriteHeader(http.StatusOK)
+			gzipWriter := gzip.NewWriter(w)
+			_, _ = gzipWriter.Write(data)
+			_ = gzipWriter.Flush()
+			return
+		} else if p.enableGzipCompression {
+			w.WriteHeader(http.StatusBadRequest)
+			p.debugLogger.Printf("gzip compression was enabled, but the required accept-encoding header was not set.")
+			return
+		} else {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(data)
+		}
 	})
 }
 

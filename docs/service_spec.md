@@ -84,6 +84,10 @@ v4 of the event schema originally required a `contextKeys` property on all featu
 
 This means that the SDK supports technology migrations, a feature which allows customers to migrate between data sources using well-defined migration stages.
 
+#### Capability `"polling-gzip"`
+
+This means the SDK is requesting gzip compression support on polling payloads. The SDK is expected to set the `Accept-Encoding` header to `gzip` in addition to enabling this capability.
+
 #### Capability `"secure-mode-hash"`
 
 This means that the SDK has a function/method for computing a secure mode hash from a context.
