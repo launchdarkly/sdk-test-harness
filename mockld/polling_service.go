@@ -134,7 +134,7 @@ func (p *PollingService) pollingHandler(getDataFn func(*PollingService, *http.Re
 			if _, err := gzipWriter.Write(data); err != nil {
 				p.debugLogger.Printf("failed to write to polling body gzip writer: %v", err)
 			}
-			if err := gzipWriter.Flush(); err != nil {
+			if err := gzipWriter.Close(); err != nil {
 				p.debugLogger.Printf("failed to flush gzip writer stream: %v", err)
 			}
 
