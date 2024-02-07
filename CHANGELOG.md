@@ -2,6 +2,10 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.8.1] - 2024-02-07
+### Fixed:
+- Closed the gzip writer which flushes the gzip footer. Previously the footer would have been missing.
+
 ## [2.8.0] - 2024-01-30
 ### Added:
 - Add test to verify SDK polling behavior with `Accept-Encoding: gzip`.
