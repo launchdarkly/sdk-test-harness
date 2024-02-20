@@ -5,9 +5,6 @@ builds:
   - CGO_ENABLED=0
   main: .
   binary: sdk-test-harness
-  ldflags:
-  - -s -w -X internal.version.Version={{.Version}}
-
   goos:
     - darwin
     - linux
