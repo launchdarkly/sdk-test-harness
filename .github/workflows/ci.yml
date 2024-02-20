@@ -14,11 +14,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: 1.18
-      - name: Run tests
-        run: make test
-      - name: Run linter
-        run: make lint
+      - uses: ./.github/actions/ci

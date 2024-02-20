@@ -1,0 +1,22 @@
+name: CI Workflow
+description: 'Shared CI workflow.'
+inputs:
+  run_linter:
+    description: 'If true, run linter, otherwise only run unit tests.'
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: 1.18
+    - name: Run tests
+      shell: bash
+      run: make test
+    - name: Run linter
+      if: ${{ inputs.run_linter == 'true' }}
+      shell: bash
+      run: make lint
