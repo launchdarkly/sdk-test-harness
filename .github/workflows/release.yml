@@ -5,6 +5,12 @@ on:
         required: true
         description: 'The tag to upload release artifacts to.'
         type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'The tag to upload release artifacts to.'
+        required: true
+        type: string
 
 jobs:
   release-sdk-test-harness:
@@ -21,4 +27,4 @@ jobs:
     - uses: ./.github/actions/publish
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{ github.event.inputs.tag }}
+        tag: ${{ inputs.tag }}
