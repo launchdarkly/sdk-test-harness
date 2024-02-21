@@ -88,23 +88,23 @@ func doClientSideAutoEnvAttributesEventsNoCollisionsTests(t *ldtest.T) {
 				client.FlushEvents(t)
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
-				context_matchers := []m.Matcher{
+				contextMatchers := []m.Matcher{
 					m.JSONOptProperty("ld_application").Should(m.BeNil()),
 					m.JSONOptProperty("ld_device").Should(m.BeNil()),
 				}
 
 				if context.Multiple() {
 					for _, c := range context.GetAllIndividualContexts(nil) {
-						context_matchers = append(context_matchers, m.JSONProperty(string(c.Kind())).Should(m.Not(m.BeNil())))
+						contextMatchers = append(contextMatchers, m.JSONProperty(string(c.Kind())).Should(m.Not(m.BeNil())))
 					}
 				} else {
-					context_matchers = append(context_matchers, m.JSONProperty("kind").Should(m.Equal(string(context.Kind()))))
+					contextMatchers = append(contextMatchers, m.JSONProperty("kind").Should(m.Equal(string(context.Kind()))))
 				}
 
 				m.In(t).Assert(payload, m.Items(
 					append(
 						[]m.Matcher{IsIdentifyEvent()},
-						m.JSONProperty("context").Should(m.AllOf(context_matchers...)),
+						m.JSONProperty("context").Should(m.AllOf(contextMatchers...)),
 					)...,
 				))
 			})
