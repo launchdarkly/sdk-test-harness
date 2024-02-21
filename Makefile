@@ -3,7 +3,7 @@ GORELEASER_VERSION=v1.7.0
 GORELEASER_DOWNLOAD_URL=https://github.com/goreleaser/goreleaser/releases/download/v1.7.0/goreleaser_$(shell uname)_$(shell uname -m).tar.gz
 GORELEASER=./bin/goreleaser/goreleaser
 
-GOLANGCI_LINT_VERSION=v1.45.2
+GOLANGCI_LINT_VERSION=v1.56.2
 
 LINTER=./bin/golangci-lint
 LINTER_VERSION_FILE=./bin/.golangci-lint-version-$(GOLANGCI_LINT_VERSION)
