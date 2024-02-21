@@ -3,7 +3,7 @@
     "." : {
       "release-type" : "go",
       "bump-minor-pre-major" : true,
-      "boostrap-sha" : "12774d23187e79d802083368132ea95b64a45cca",
+      "boostrap-sha" : "b244281d769f355998ec7e7c9da7f15344d8c92d",
       "versioning" : "default",
       "include-component-in-tag" : false,
       "extra-files" : [
