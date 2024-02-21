@@ -2,6 +2,14 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.8.3](https://github.com/launchdarkly/sdk-test-harness/compare/v2.8.2...v2.8.3) (2024-02-21)
+
+
+### Bug Fixes
+
+* **deps:** upgrade to Go to 1.22, upgrade golanglintci to 1.56 ([4159378](https://github.com/launchdarkly/sdk-test-harness/commit/41593789eaa2c29e8046bda2c82813565938cdb3))
+* remove bootstrap-sha from release-please-config.json ([#196](https://github.com/launchdarkly/sdk-test-harness/issues/196)) ([7bc0a38](https://github.com/launchdarkly/sdk-test-harness/commit/7bc0a382446adc1181a7b9ddf6f8a8d3ce9f31ce))
+
 ## [2.8.2](https://github.com/launchdarkly/sdk-test-harness/compare/v2.8.1...v2.8.2) (2024-02-21)
 
 
