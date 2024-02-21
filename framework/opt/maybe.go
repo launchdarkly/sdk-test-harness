@@ -55,8 +55,7 @@ func (m Maybe[V]) OrElse(valueIfUndefined V) V {
 // result of fmt.Sprintf with "%v".
 func (m Maybe[V]) String() string {
 	if m.defined {
-		var v interface{}
-		v = m.value
+		v := interface{}(m.value)
 		if s, ok := v.(fmt.Stringer); ok {
 			return s.String()
 		}
