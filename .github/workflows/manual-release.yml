@@ -8,7 +8,7 @@ on:
         type: string
 
 jobs:
-  release-sdk-test-harness:
+  manual-release:
     uses: ./.github/workflows/release.yml
     with:
       token: ${{ secrets.GITHUB_TOKEN }}

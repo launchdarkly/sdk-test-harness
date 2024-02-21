@@ -37,13 +37,12 @@ archives:
     # For Linux & MacOS, we'll use the same OS and architecture strings that are returned by
     # "uname -s" and "uname -m". So, for instance, the amd64 Linux build will be called
     # "sdk-test-harness_Linux_x86_64.tar.gz".
-    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
-    replacements:
-      darwin: Darwin
-      linux: Linux
-      windows: Windows
-      386: i386
-      amd64: x86_64
+    name_template: >-
+      {{- .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
 
     files:
       - LICENSE.txt
