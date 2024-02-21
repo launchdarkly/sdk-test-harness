@@ -1,12 +1,14 @@
 on:
   workflow_call:
     inputs:
-      token:
-        required: true
-        type: string
       tag:
         required: true
+        description: 'The tag to upload release artifacts to.'
         type: string
+    secrets:
+      token:
+        required: true
+        description: 'GitHub token'
 
 jobs:
   release-sdk-test-harness:
@@ -20,5 +22,5 @@ jobs:
         run_linter: 'false'
     - uses: ./.github/actions/publish
       with:
-        token: ${{ github.event.inputs.token }}
+        token: ${{ secrets.token }}
         tag: ${{ github.event.inputs.tag }}
