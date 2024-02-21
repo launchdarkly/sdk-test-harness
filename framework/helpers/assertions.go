@@ -4,7 +4,8 @@ import (
 	"time"
 )
 
-// PollForSpecificResultValue calls testFn repeatedly at intervals until the expected value is seen or the timeout elapses.
+// PollForSpecificResultValue calls testFn repeatedly at intervals until the expected value is seen or the timeout
+// elapses.
 // Returns true if the value was matched, false if timed out.
 func PollForSpecificResultValue[V comparable](
 	testFn func() V,
