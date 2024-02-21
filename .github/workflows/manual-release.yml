@@ -1,0 +1,15 @@
+name: Publish Artifacts
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to upload artifacts to.'
+        required: true
+        type: string
+
+jobs:
+  manual-release:
+    uses: ./.github/workflows/release.yml
+    with:
+      token: ${{ secrets.GITHUB_TOKEN }}
+      tag: ${{ inputs.tag }}

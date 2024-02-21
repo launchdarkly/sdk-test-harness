@@ -1,0 +1,17 @@
+name: Run CI
+on:
+  push:
+    branches: [ 'v2' ]
+    paths-ignore:
+      - '**.md' # Do not need to run CI for markdown changes.
+  pull_request:
+    branches: [ 'v2', 'feat/**' ]
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci
