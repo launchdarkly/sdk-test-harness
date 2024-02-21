@@ -1,11 +1,9 @@
 on:
   workflow_call:
     inputs:
-      token:
-        required: true
-        type: string
       tag:
         required: true
+        description: 'The tag to upload release artifacts to.'
         type: string
 
 jobs:
@@ -15,10 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Needed for goreleaser to inspect tags.
     - uses: ./.github/actions/ci
       with:
         run_linter: 'false'
     - uses: ./.github/actions/publish
       with:
-        token: ${{ github.event.inputs.token }}
+        token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.event.inputs.tag }}

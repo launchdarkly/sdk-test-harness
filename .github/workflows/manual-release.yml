@@ -11,5 +11,4 @@ jobs:
   manual-release:
     uses: ./.github/workflows/release.yml
     with:
-      token: ${{ secrets.GITHUB_TOKEN }}
       tag: ${{ inputs.tag }}
