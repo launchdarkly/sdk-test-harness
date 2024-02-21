@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.8.2](https://github.com/launchdarkly/sdk-test-harness/compare/v2.8.1...v2.8.2) (2024-02-21)
+
+
+### Bug Fixes
+
+* **deps:** upgrade to Go to 1.22, upgrade golanglintci to 1.56 ([4159378](https://github.com/launchdarkly/sdk-test-harness/commit/41593789eaa2c29e8046bda2c82813565938cdb3))
+
 ## [2.8.1] - 2024-02-07
 ### Fixed:
 - Closed the gzip writer which flushes the gzip footer. Previously the footer would have been missing.
