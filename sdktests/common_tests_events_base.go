@@ -19,6 +19,7 @@ func NewCommonEventTests(t *ldtest.T, testName string, baseSDKConfigurers ...SDK
 	return CommonEventTests{newCommonTestsBase(t, testName, baseSDKConfigurers...)}
 }
 
+//nolint:unused // May not be used now, but could be helpful in new tests.
 func (c CommonEventTests) discardIdentifyEventIfClientSide(t *ldtest.T, client *SDKClient, events *SDKEventSink) {
 	if c.isClientSide {
 		client.FlushEvents(t)
@@ -36,6 +37,7 @@ func (c CommonEventTests) initialEventPayloadExpectations() []m.Matcher {
 	return []m.Matcher{IsIdentifyEvent()}
 }
 
+//nolint:unused // May not be used now, but could be helpful in new tests.
 func (c CommonEventTests) eventsWithIndexEventIfAppropriate(matchers ...m.Matcher) []m.Matcher {
 	// Server-side SDKs (excluding PHP) send an index event for each never-before-seen user. Client-side
 	// SDKs and the PHP SDK do not.
@@ -45,12 +47,14 @@ func (c CommonEventTests) eventsWithIndexEventIfAppropriate(matchers ...m.Matche
 	return append([]m.Matcher{IsIndexEvent()}, matchers...)
 }
 
+//nolint:unused // May not be used now, but could be helpful in new tests.
 func (c CommonEventTests) eventsWithIndexEventAndSummaryEventIfAppropriate(matchers ...m.Matcher) []m.Matcher {
 	return c.eventsWithSummaryEventIfAppropriate(
 		c.eventsWithIndexEventIfAppropriate(matchers...)...,
 	)
 }
 
+//nolint:unused // May not be used now, but could be helpful in new tests.
 func (c CommonEventTests) eventsWithSummaryEventIfAppropriate(matchers ...m.Matcher) []m.Matcher {
 	// The PHP SDK is the only one that never sends a summary event.
 	if c.isPHP {

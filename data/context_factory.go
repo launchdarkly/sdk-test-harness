@@ -100,11 +100,11 @@ func (f *ContextFactory) SetKeyDisambiguatorValueSameAs(f1 *ContextFactory) {
 // Each will have an appropriate Description, so the logic for running a test against each one can look
 // like this:
 //
-//     for _, contexts := range data.NewContextFactoriesForSingleAndMultiKind("NameOfTest") {
-//         t.Run(contexts.Description(), func(t *testing.T) {
-//             context := contexts.NextUniqueContext() // do something with this
-//         })
-//     }
+//	for _, contexts := range data.NewContextFactoriesForSingleAndMultiKind("NameOfTest") {
+//	    t.Run(contexts.Description(), func(t *testing.T) {
+//	        context := contexts.NextUniqueContext() // do something with this
+//	    })
+//	}
 func NewContextFactoriesForSingleAndMultiKind(
 	prefix string, builderActions ...func(*ldcontext.Builder),
 ) []*ContextFactory {
@@ -130,11 +130,11 @@ func NewContextFactoriesForSingleAndMultiKind(
 // Each will have an appropriate Description, so the logic for running a test against each one can look
 // like this:
 //
-//     for _, contexts := range data.NewContextFactoriesForExercisingAllAttributes("NameOfTest") {
-//         t.Run(contexts.Description(), func(t *testing.T) {
-//             context := contexts.NextUniqueContext() // do something with this
-//         })
-//     }
+//	for _, contexts := range data.NewContextFactoriesForExercisingAllAttributes("NameOfTest") {
+//	    t.Run(contexts.Description(), func(t *testing.T) {
+//	        context := contexts.NextUniqueContext() // do something with this
+//	    })
+//	}
 func NewContextFactoriesForExercisingAllAttributes(
 	prefix string,
 ) []*ContextFactory {

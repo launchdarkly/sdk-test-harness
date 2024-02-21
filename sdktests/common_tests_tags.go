@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
@@ -48,7 +47,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 	}
 
 	withTagsConfig := func(tags servicedef.SDKConfigTagsParams) SDKConfigurer {
-		return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(config *servicedef.SDKConfigParams) error {
+		return h.ConfigOptionFunc[servicedef.SDKConfigParams](func(config *servicedef.SDKConfigParams) error {
 			config.Tags = o.Some(tags)
 			return nil
 		})
@@ -171,7 +170,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 
 		makeStringOfLength := func(n int) string {
 			// makes nice strings that look like "12345678901234" etc. so it's easier to see when one is longer than another
-			b := make([]byte, n, n)
+			b := make([]byte, n)
 			for i := 0; i < n; i++ {
 				b[i] = byte('0' + ((i + 1) % 10))
 			}

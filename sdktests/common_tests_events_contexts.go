@@ -227,7 +227,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 
 					if user := representContextAsOldUser(t, context); user != nil {
 						t.Run("with old user", func(t *ldtest.T) {
-							_ = basicEvaluateFlagWithOldUser(t, client, flagKey, user, defaultValue)
+							basicEvaluateFlagWithOldUser(t, client, flagKey, user, defaultValue)
 							verifyResult(t)
 						})
 					}
@@ -263,7 +263,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 							if c.isClientSide {
 								client.SendIdentifyEventWithOldUser(t, user)
 							}
-							_ = basicEvaluateFlagWithOldUser(t, client, debuggedFlagKey, user, defaultValue)
+							basicEvaluateFlagWithOldUser(t, client, debuggedFlagKey, user, defaultValue)
 							client.FlushEvents(t)
 							payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 							eventMatchers := []m.Matcher{debugEventMatcher, IsSummaryEvent()}

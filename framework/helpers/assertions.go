@@ -4,7 +4,8 @@ import (
 	"time"
 )
 
-// Calls testFn repeatedly at intervals until the expected value is seen or the timeout elapses.
+// PollForSpecificResultValue calls testFn repeatedly at intervals until the expected value is seen or the timeout
+// elapses.
 // Returns true if the value was matched, false if timed out.
 func PollForSpecificResultValue[V comparable](
 	testFn func() V,
@@ -28,7 +29,7 @@ func PollForSpecificResultValue[V comparable](
 	}
 }
 
-// Equivalent to assert.Eventually from stretchr/testify/assert, except that it does not use a
+// AssertEventually is equivalent to assert.Eventually from stretchr/testify/assert, except that it does not use a
 // separate goroutine so it does not cause problems with our test framework. It calls testFn
 // repeatedly at intervals until it gets a true value; if the timeout elapses, the test fails.
 func AssertEventually(
@@ -46,7 +47,7 @@ func AssertEventually(
 	return false
 }
 
-// Equivalent to require.Eventually from stretchr/testify/assert, except that it does not use a
+// RequireEventually is equivalent to require.Eventually from stretchr/testify/assert, except that it does not use a
 // separate goroutine so it does not cause problems with our test framework. It calls testFn
 // repeatedly at intervals until it gets a true value; if the timeout elapses, the test fails
 // and immediately exits.
@@ -63,7 +64,7 @@ func RequireEventually(
 	}
 }
 
-// Equivalent to assert.Never from stretchr/testify/assert, except that it does not use a
+// AssertNever is equivalent to assert.Never from stretchr/testify/assert, except that it does not use a
 // separate goroutine so it does not cause problems with our test framework. It calls testFn
 // repeatedly at intervals until either the timeout elapses or it receives a true value; if
 // it receives a true value, the test fails.
@@ -82,7 +83,7 @@ func AssertNever(
 	return true
 }
 
-// Equivalent to require.Never from stretchr/testify/assert, except that it does not use a
+// RequireNever is equivalent to require.Never from stretchr/testify/assert, except that it does not use a
 // separate goroutine so it does not cause problems with our test framework. It calls testFn
 // repeatedly at intervals until either the timeout elapses or it receives a true value; if
 // it receives a true value, the test fails and exits immediately

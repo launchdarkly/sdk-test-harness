@@ -108,6 +108,7 @@ func startServer(port int, handler http.Handler) error {
 			}
 			handler.ServeHTTP(w, r)
 		}),
+		ReadHeaderTimeout: 10 * time.Second, // arbitrary but non-infinite timeout to avoid Slowloris Attack
 	}
 	go func() {
 		if err := server.ListenAndServe(); err != nil {

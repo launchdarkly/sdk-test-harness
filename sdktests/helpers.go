@@ -52,14 +52,13 @@ func basicEvaluateFlagWithOldUser(
 	flagKey string,
 	user json.RawMessage,
 	defaultValue ldvalue.Value,
-) ldvalue.Value {
-	result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+) {
+	client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 		FlagKey:      flagKey,
 		User:         user,
 		ValueType:    servicedef.ValueTypeAny,
 		DefaultValue: defaultValue,
 	})
-	return result.Value
 }
 
 // computeExpectedBucketValue implements the bucketing hash value calculation as per the evaluation spec,

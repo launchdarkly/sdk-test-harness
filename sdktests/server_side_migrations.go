@@ -1,4 +1,4 @@
-// nolint:lll,dupl
+//nolint:lll,dupl
 package sdktests
 
 import (
@@ -139,11 +139,11 @@ func executesOriginsInCorrectOrder(t *ldtest.T) {
 				t.DebugLogger(),
 				func(w http.ResponseWriter, req *http.Request) {
 					w.WriteHeader(http.StatusOK)
-					_, _ = w.Write([]byte("old read")) // nolint:errcheck,gosec
+					_, _ = w.Write([]byte("old read"))
 				},
 				func(w http.ResponseWriter, req *http.Request) {
 					w.WriteHeader(http.StatusOK)
-					_, _ = w.Write([]byte("new read")) // nolint:errcheck,gosec
+					_, _ = w.Write([]byte("new read"))
 				},
 			)
 			t.Defer(service.Close)
@@ -208,11 +208,11 @@ func executesReads(t *ldtest.T) {
 				t.DebugLogger(),
 				func(w http.ResponseWriter, req *http.Request) {
 					w.WriteHeader(http.StatusOK)
-					_, _ = w.Write([]byte("old read")) // nolint:errcheck,gosec
+					_, _ = w.Write([]byte("old read"))
 				},
 				func(w http.ResponseWriter, req *http.Request) {
 					w.WriteHeader(http.StatusOK)
-					_, _ = w.Write([]byte("new read")) // nolint:errcheck,gosec
+					_, _ = w.Write([]byte("new read"))
 				},
 			)
 			t.Defer(service.Close)
@@ -428,7 +428,7 @@ func tracksInvoked(t *ldtest.T, order ldmigration.ExecutionOrder) {
 	}
 }
 
-// nolint:dupl // Invokes and latency happen to share the same setup, but should be tested independently.
+//nolint:dupl // Invokes and latency happen to share the same setup, but should be tested independently.
 func tracksLatency(t *ldtest.T, order ldmigration.ExecutionOrder) {
 	onlyOld := []m.Matcher{m.JSONOptProperty("old").Should(m.Not(m.BeNil())), m.JSONOptProperty("new").Should(m.BeNil())}
 	both := []m.Matcher{m.JSONOptProperty("old").Should(m.Not(m.BeNil())), m.JSONOptProperty("new").Should(m.Not(m.BeNil()))}
@@ -936,7 +936,7 @@ func tracksConsistencyCorrectlyBasedOnStage(t *ldtest.T, order ldmigration.Execu
 	handler := func(response string) func(w http.ResponseWriter, req *http.Request) {
 		return func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(response)) // nolint:errcheck,gosec
+			_, _ = w.Write([]byte(response))
 		}
 	}
 	ld := handler("LaunchDarkly")
