@@ -17,9 +17,7 @@ import (
 )
 
 const defaultPort = 8111
-
-//go:embed VERSION
-var versionString string // comes from the VERSION file which we update for each release
+const versionString string = "2.8.1" // {{ x-release-please-version }}
 
 func main() {
 	fmt.Printf("sdk-test-harness v%s\n", strings.TrimSpace(versionString))
