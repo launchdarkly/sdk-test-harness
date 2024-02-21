@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
@@ -48,7 +47,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 	}
 
 	withTagsConfig := func(tags servicedef.SDKConfigTagsParams) SDKConfigurer {
-		return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(config *servicedef.SDKConfigParams) error {
+		return h.ConfigOptionFunc[servicedef.SDKConfigParams](func(config *servicedef.SDKConfigParams) error {
 			config.Tags = o.Some(tags)
 			return nil
 		})
