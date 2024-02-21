@@ -12,5 +12,3 @@ jobs:
     uses: ./.github/workflows/release.yml
     with:
       tag: ${{ inputs.tag }}
-    secrets:
-      token: ${{ secrets.GITHUB_TOKEN }}

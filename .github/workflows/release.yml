@@ -5,10 +5,6 @@ on:
         required: true
         description: 'The tag to upload release artifacts to.'
         type: string
-    secrets:
-      token:
-        required: true
-        description: 'GitHub token'
 
 jobs:
   release-sdk-test-harness:
@@ -24,5 +20,5 @@ jobs:
         run_linter: 'false'
     - uses: ./.github/actions/publish
       with:
-        token: ${{ secrets.token }}
+        token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.event.inputs.tag }}
