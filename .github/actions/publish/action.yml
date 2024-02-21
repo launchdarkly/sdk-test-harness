@@ -11,9 +11,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Git clean
-      shell: bash
-      run: git clean -f
     - name: Run Goreleaser
       uses: goreleaser/goreleaser-action@v5
       with:
