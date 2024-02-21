@@ -171,7 +171,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 
 		makeStringOfLength := func(n int) string {
 			// makes nice strings that look like "12345678901234" etc. so it's easier to see when one is longer than another
-			b := make([]byte, n, n)
+			b := make([]byte, n)
 			for i := 0; i < n; i++ {
 				b[i] = byte('0' + ((i + 1) % 10))
 			}
