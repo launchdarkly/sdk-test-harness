@@ -1,6 +1,6 @@
 # SDK test harness
 
-[![CircleCI](https://circleci.com/gh/launchdarkly/sdk-test-harness.svg?style=shield)](https://circleci.com/gh/launchdarkly/sdk-test-harness)
+[![Actions Status](https://github.com/launchdarkly/sdk-test-harness/actions/workflows/ci.yml/badge.svg)](https://github.com/launchdarkly/sdk-test-harness/actions/workflows/ci.yml)
 
 This tool runs standardized test suites for LaunchDarkly SDKs.
 
