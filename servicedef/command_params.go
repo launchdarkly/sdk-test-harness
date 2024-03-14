@@ -187,3 +187,24 @@ type MigrationOperationParams struct {
 type MigrationOperationResponse struct {
 	Result string `json:"result"`
 }
+
+type HookStage string
+
+const (
+	BeforeEvaluation HookStage = "beforeEvaluation"
+	AfterEvaluation  HookStage = "afterEvaluation"
+)
+
+type EvaluationHookContext struct {
+	FlagKey      string            `json:"flagKey"`
+	Context      ldcontext.Context `json:"context"`
+	DefaultValue ldvalue.Value     `json:"defaultValue"`
+	Method       string            `json:"method"`
+}
+
+type HookExecutionPayload struct {
+	EvaluationHookContext o.Maybe[EvaluationHookContext]    `json:"evaluationHookContext"`
+	EvaluationHookData    o.Maybe[map[string]ldvalue.Value] `json:"evaluationHookData"`
+	EvaluationDetail      o.Maybe[EvaluateFlagResponse]     `json:"evaluationDetail"`
+	Stage                 o.Maybe[HookStage]                `json:"stage"`
+}
