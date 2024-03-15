@@ -2,6 +2,7 @@ package servicedef
 
 import (
 	"encoding/json"
+
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"

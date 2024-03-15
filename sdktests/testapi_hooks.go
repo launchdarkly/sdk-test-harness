@@ -1,6 +1,8 @@
 package sdktests
 
 import (
+	"time"
+
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
@@ -9,7 +11,6 @@ import (
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
-	"time"
 )
 
 type HookInstance struct {
@@ -61,7 +62,8 @@ func (h *Hooks) Close() {
 	}
 }
 
-func (h *Hooks) ExpectCall(t *ldtest.T, hookName string, receiveTimeout time.Duration, matcher func(payload servicedef.HookExecutionPayload) bool) {
+func (h *Hooks) ExpectCall(t *ldtest.T, hookName string, receiveTimeout time.Duration,
+	matcher func(payload servicedef.HookExecutionPayload) bool) {
 	for {
 		maybeValue := helpers.TryReceive(h.instances[hookName].hookService.CallChannel, receiveTimeout)
 		if !maybeValue.IsDefined() {

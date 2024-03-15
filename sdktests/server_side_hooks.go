@@ -4,13 +4,17 @@ import (
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldmigration"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
+
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldbuilders"
+
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+
 	"github.com/stretchr/testify/assert"
+
 	"time"
 )
 
@@ -267,7 +271,8 @@ func beforeEvaluationDataPropagatesToAfterMigration(t *ldtest.T) {
 	})
 }
 
-func createClientForHooks(t *ldtest.T, instances []string, hookData map[servicedef.HookStage]map[string]ldvalue.Value) (*SDKClient, *Hooks) {
+func createClientForHooks(t *ldtest.T, instances []string,
+	hookData map[servicedef.HookStage]map[string]ldvalue.Value) (*SDKClient, *Hooks) {
 	boolFlag := ldbuilders.NewFlagBuilder("bool-flag").
 		Variations(ldvalue.Bool(false), ldvalue.Bool(true)).
 		FallthroughVariation(1).On(true).Build()

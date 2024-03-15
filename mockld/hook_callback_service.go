@@ -2,11 +2,12 @@ package mockld
 
 import (
 	"encoding/json"
+	"io"
+	"net/http"
+
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
-	"io"
-	"net/http"
 )
 
 type HookCallbackService struct {
@@ -47,7 +48,8 @@ func NewHookCallbackService(
 		w.WriteHeader(http.StatusOK)
 	})
 
-	h.payloadEndpoint = testHarness.NewMockEndpoint(endpointHandler, logger, harness.MockEndpointDescription("hook payload"))
+	h.payloadEndpoint = testHarness.NewMockEndpoint(
+		endpointHandler, logger, harness.MockEndpointDescription("hook payload"))
 
 	return h
 }
