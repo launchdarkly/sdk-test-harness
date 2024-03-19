@@ -78,10 +78,12 @@ type SDKConfigClientSideParams struct {
 	IncludeEnvironmentAttributes o.Maybe[bool]              `json:"includeEnvironmentAttributes,omitempty"`
 }
 
+type SDKConfigEvaluationHookData map[string]ldvalue.Value
+
 type SDKConfigHookInstance struct {
-	Name        string                                 `json:"name"`
-	CallbackURI string                                 `json:"callbackUri"`
-	Data        map[HookStage]map[string]ldvalue.Value `json:"data,omitempty"`
+	Name        string                                    `json:"name"`
+	CallbackURI string                                    `json:"callbackUri"`
+	Data        map[HookStage]SDKConfigEvaluationHookData `json:"data,omitempty"`
 }
 
 type SDKConfigHooksParams struct {

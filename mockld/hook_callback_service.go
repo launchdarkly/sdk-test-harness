@@ -37,13 +37,19 @@ func NewHookCallbackService(
 		bytes, err := io.ReadAll(req.Body)
 		logger.Printf("Received from hook: %s", string(bytes))
 		if err != nil {
+			logger.Printf("Could not read body from hook.")
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		var response servicedef.HookExecutionPayload
 		err = json.Unmarshal(bytes, &response)
-		if err == nil {
-			h.CallChannel <- response
+		if err != nil {
+			logger.Printf("Could not unmarshall hook payload.")
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
+
+		h.CallChannel <- response
 
 		w.WriteHeader(http.StatusOK)
 	})

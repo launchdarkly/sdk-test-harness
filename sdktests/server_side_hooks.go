@@ -14,8 +14,6 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	"github.com/stretchr/testify/assert"
-
-	"time"
 )
 
 func doServerSideHooksTests(t *ldtest.T) {
@@ -84,7 +82,7 @@ func variationTestParams(detail bool) []VariationParameters {
 			name:         "for json variation",
 			flagKey:      "json-flag",
 			defaultValue: ldvalue.ObjectBuild().Build(),
-			valueType:    servicedef.ValueTypeInt,
+			valueType:    servicedef.ValueTypeAny,
 			detail:       detail,
 		},
 	}
@@ -106,7 +104,7 @@ func executesBeforeEvaluationStageDetail(t *ldtest.T, detail bool) {
 				DefaultValue: testParam.defaultValue,
 			})
 
-			hooks.ExpectCall(t, hookName, 1*time.Second, func(payload servicedef.HookExecutionPayload) bool {
+			hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
 				if payload.Stage.Value() == servicedef.BeforeEvaluation {
 					hookContext := payload.EvaluationHookContext.Value()
 					assert.Equal(t, testParam.flagKey, hookContext.FlagKey)
@@ -133,7 +131,7 @@ func executesBeforeEvaluationStageMigration(t *ldtest.T) {
 	}
 	client.MigrationVariation(t, params)
 
-	hooks.ExpectCall(t, hookName, 1*time.Second, func(payload servicedef.HookExecutionPayload) bool {
+	hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
 		if payload.Stage.Value() == servicedef.BeforeEvaluation {
 			hookContext := payload.EvaluationHookContext.Value()
 			assert.Equal(t, flagKey, hookContext.FlagKey)
@@ -162,7 +160,7 @@ func executesAfterEvaluationStageDetail(t *ldtest.T, detail bool) {
 				Detail:       detail,
 			})
 
-			hooks.ExpectCall(t, hookName, 1*time.Second, func(payload servicedef.HookExecutionPayload) bool {
+			hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
 				if payload.Stage.Value() == servicedef.AfterEvaluation {
 					hookContext := payload.EvaluationHookContext.Value()
 					assert.Equal(t, testParam.flagKey, hookContext.FlagKey)
@@ -195,7 +193,7 @@ func executesAfterEvaluationStageMigration(t *ldtest.T) {
 	}
 	result := client.MigrationVariation(t, params)
 
-	hooks.ExpectCall(t, hookName, 1*time.Second, func(payload servicedef.HookExecutionPayload) bool {
+	hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
 		if payload.Stage.Value() == servicedef.AfterEvaluation {
 			hookContext := payload.EvaluationHookContext.Value()
 			assert.Equal(t, flagKey, hookContext.FlagKey)
@@ -213,8 +211,8 @@ func beforeEvaluationDataPropagatesToAfterDetail(t *ldtest.T, detail bool) {
 	testParams := variationTestParams(detail)
 
 	hookName := "beforeEvaluationDataPropagatesToAfterDetail"
-	hookData := make(map[servicedef.HookStage]map[string]ldvalue.Value)
-	hookData[servicedef.BeforeEvaluation] = make(map[string]ldvalue.Value)
+	hookData := make(map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData)
+	hookData[servicedef.BeforeEvaluation] = make(servicedef.SDKConfigEvaluationHookData)
 	hookData[servicedef.BeforeEvaluation]["someData"] = ldvalue.String("the hookData")
 
 	client, hooks := createClientForHooks(t, []string{hookName}, hookData)
@@ -230,7 +228,7 @@ func beforeEvaluationDataPropagatesToAfterDetail(t *ldtest.T, detail bool) {
 				Detail:       detail,
 			})
 
-			hooks.ExpectCall(t, hookName, 1*time.Second, func(payload servicedef.HookExecutionPayload) bool {
+			hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
 				if payload.Stage.Value() == servicedef.AfterEvaluation {
 					hookData := payload.EvaluationHookData.Value()
 					assert.Equal(t, ldvalue.String("the hookData"), hookData["someData"])
@@ -245,8 +243,8 @@ func beforeEvaluationDataPropagatesToAfterDetail(t *ldtest.T, detail bool) {
 
 func beforeEvaluationDataPropagatesToAfterMigration(t *ldtest.T) {
 	hookName := "beforeEvaluationDataPropagatesToAfterDetail"
-	hookData := make(map[servicedef.HookStage]map[string]ldvalue.Value)
-	hookData[servicedef.BeforeEvaluation] = make(map[string]ldvalue.Value)
+	hookData := make(map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData)
+	hookData[servicedef.BeforeEvaluation] = make(servicedef.SDKConfigEvaluationHookData)
 	hookData[servicedef.BeforeEvaluation]["someData"] = ldvalue.String("the hookData")
 
 	client, hooks := createClientForHooks(t, []string{hookName}, hookData)
@@ -260,7 +258,7 @@ func beforeEvaluationDataPropagatesToAfterMigration(t *ldtest.T) {
 	}
 	client.MigrationVariation(t, params)
 
-	hooks.ExpectCall(t, hookName, 1*time.Second, func(payload servicedef.HookExecutionPayload) bool {
+	hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
 		if payload.Stage.Value() == servicedef.AfterEvaluation {
 			hookData := payload.EvaluationHookData.Value()
 			assert.Equal(t, ldvalue.String("the hookData"), hookData["someData"])
@@ -272,7 +270,7 @@ func beforeEvaluationDataPropagatesToAfterMigration(t *ldtest.T) {
 }
 
 func createClientForHooks(t *ldtest.T, instances []string,
-	hookData map[servicedef.HookStage]map[string]ldvalue.Value) (*SDKClient, *Hooks) {
+	hookData map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData) (*SDKClient, *Hooks) {
 	boolFlag := ldbuilders.NewFlagBuilder("bool-flag").
 		Variations(ldvalue.Bool(false), ldvalue.Bool(true)).
 		FallthroughVariation(1).On(true).Build()

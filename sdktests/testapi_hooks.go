@@ -3,7 +3,6 @@ package sdktests
 import (
 	"time"
 
-	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
@@ -13,10 +12,12 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 )
 
+const hookReceiveTimeout = time.Second * 5
+
 type HookInstance struct {
 	name        string
 	hookService *mockld.HookCallbackService
-	data        map[servicedef.HookStage]map[string]ldvalue.Value
+	data        map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData
 }
 
 type Hooks struct {
@@ -27,7 +28,7 @@ func NewHooks(
 	testHarness *harness.TestHarness,
 	logger framework.Logger,
 	instances []string,
-	data map[servicedef.HookStage]map[string]ldvalue.Value,
+	data map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData,
 ) *Hooks {
 	hooks := &Hooks{
 		instances: make(map[string]HookInstance),
@@ -62,10 +63,10 @@ func (h *Hooks) Close() {
 	}
 }
 
-func (h *Hooks) ExpectCall(t *ldtest.T, hookName string, receiveTimeout time.Duration,
+func (h *Hooks) ExpectCall(t *ldtest.T, hookName string,
 	matcher func(payload servicedef.HookExecutionPayload) bool) {
 	for {
-		maybeValue := helpers.TryReceive(h.instances[hookName].hookService.CallChannel, receiveTimeout)
+		maybeValue := helpers.TryReceive(h.instances[hookName].hookService.CallChannel, hookReceiveTimeout)
 		if !maybeValue.IsDefined() {
 			t.Errorf("Timed out trying to receive hook execution data")
 			t.FailNow()
