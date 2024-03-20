@@ -195,7 +195,7 @@ const (
 	AfterEvaluation  HookStage = "afterEvaluation"
 )
 
-type EvaluationHookContext struct {
+type EvaluationSeriesContext struct {
 	FlagKey      string            `json:"flagKey"`
 	Context      ldcontext.Context `json:"context"`
 	DefaultValue ldvalue.Value     `json:"defaultValue"`
@@ -203,8 +203,8 @@ type EvaluationHookContext struct {
 }
 
 type HookExecutionPayload struct {
-	EvaluationHookContext o.Maybe[EvaluationHookContext]    `json:"evaluationHookContext"`
-	EvaluationHookData    o.Maybe[map[string]ldvalue.Value] `json:"evaluationHookData"`
-	EvaluationDetail      o.Maybe[EvaluateFlagResponse]     `json:"evaluationDetail"`
-	Stage                 o.Maybe[HookStage]                `json:"stage"`
+	EvaluationSeriesContext o.Maybe[EvaluationSeriesContext]  `json:"evaluationSeriesContext"`
+	EvaluationSeriesData    o.Maybe[map[string]ldvalue.Value] `json:"evaluationSeriesData"`
+	EvaluationDetail        o.Maybe[EvaluateFlagResponse]     `json:"evaluationDetail"`
+	Stage                   o.Maybe[HookStage]                `json:"stage"`
 }

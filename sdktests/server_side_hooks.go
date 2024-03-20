@@ -106,7 +106,7 @@ func executesBeforeEvaluationStageDetail(t *ldtest.T, detail bool) {
 
 			hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
 				if payload.Stage.Value() == servicedef.BeforeEvaluation {
-					hookContext := payload.EvaluationHookContext.Value()
+					hookContext := payload.EvaluationSeriesContext.Value()
 					assert.Equal(t, testParam.flagKey, hookContext.FlagKey)
 					assert.Equal(t, ldcontext.New("user-key"), hookContext.Context)
 					assert.Equal(t, testParam.defaultValue, hookContext.DefaultValue)
@@ -133,7 +133,7 @@ func executesBeforeEvaluationStageMigration(t *ldtest.T) {
 
 	hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
 		if payload.Stage.Value() == servicedef.BeforeEvaluation {
-			hookContext := payload.EvaluationHookContext.Value()
+			hookContext := payload.EvaluationSeriesContext.Value()
 			assert.Equal(t, flagKey, hookContext.FlagKey)
 			assert.Equal(t, ldcontext.New("user-key"), hookContext.Context)
 			assert.Equal(t, ldvalue.String(string(ldmigration.Off)), hookContext.DefaultValue)
@@ -162,7 +162,7 @@ func executesAfterEvaluationStageDetail(t *ldtest.T, detail bool) {
 
 			hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
 				if payload.Stage.Value() == servicedef.AfterEvaluation {
-					hookContext := payload.EvaluationHookContext.Value()
+					hookContext := payload.EvaluationSeriesContext.Value()
 					assert.Equal(t, testParam.flagKey, hookContext.FlagKey)
 					assert.Equal(t, ldcontext.New("user-key"), hookContext.Context)
 					assert.Equal(t, testParam.defaultValue, hookContext.DefaultValue)
@@ -195,7 +195,7 @@ func executesAfterEvaluationStageMigration(t *ldtest.T) {
 
 	hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
 		if payload.Stage.Value() == servicedef.AfterEvaluation {
-			hookContext := payload.EvaluationHookContext.Value()
+			hookContext := payload.EvaluationSeriesContext.Value()
 			assert.Equal(t, flagKey, hookContext.FlagKey)
 			assert.Equal(t, ldcontext.New("user-key"), hookContext.Context)
 			assert.Equal(t, ldvalue.String(string(ldmigration.Off)), hookContext.DefaultValue)
@@ -230,7 +230,7 @@ func beforeEvaluationDataPropagatesToAfterDetail(t *ldtest.T, detail bool) {
 
 			hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
 				if payload.Stage.Value() == servicedef.AfterEvaluation {
-					hookData := payload.EvaluationHookData.Value()
+					hookData := payload.EvaluationSeriesData.Value()
 					assert.Equal(t, ldvalue.String("the hookData"), hookData["someData"])
 					assert.Len(t, hookData, 1)
 					return true
@@ -260,7 +260,7 @@ func beforeEvaluationDataPropagatesToAfterMigration(t *ldtest.T) {
 
 	hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
 		if payload.Stage.Value() == servicedef.AfterEvaluation {
-			hookData := payload.EvaluationHookData.Value()
+			hookData := payload.EvaluationSeriesData.Value()
 			assert.Equal(t, ldvalue.String("the hookData"), hookData["someData"])
 			assert.Len(t, hookData, 1)
 			return true
