@@ -124,7 +124,7 @@ and will send a `?filter=name` query parameter along with streaming/polling requ
 For tests that involve filtering, the test harness will set the `filter` property of the `streaming` or `polling` configuration
 object. The property will either be omitted if no filter is requested, or a non-empty string if requested.
 
-### Capability `"evaluation-hooks"`
+#### Capability `"evaluation-hooks"`
 
 This means that the SDK has support for hooks and has the ability to register evaluation hooks.
 
@@ -134,12 +134,12 @@ A test hook must:
   - Implement the SDK hook interface.
   - Whenever an evaluation stage is called post information about that call to the `callbackUrl` of the hook.
     - The payload is an object with the following properties:
-      * `evaluationHookContext` (object, optional): If an evaluation stage was executed, then this should be the associated context.
+      * `evaluationSeriesContext` (object, optional): If an evaluation stage was executed, then this should be the associated context.
         * `flagKey` (string, required): The key of the flag being evaluated.
         * `context` (object, required): The evaluation context associated with the evaluation.
         * `defaultValue` (any): The default value for the evaluation.
         * `method` (string, required): The name of the evaluation emthod that was called.
-      * `evaluationHookData` (object, optional): The EvaluationHookData passed to the stage during execution.
+      * `evaluationSeriesData` (object, optional): The EvaluationSeriesData passed to the stage during execution.
       * `evaluationDetail` (object, optional): The details of the evaluation if executing an `afterEvaluation` stage.
         * `value` (any): The JSON value of the result.
         * `variationIndex` (int or null): The variation index of the result.
