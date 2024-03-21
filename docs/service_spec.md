@@ -124,7 +124,7 @@ and will send a `?filter=name` query parameter along with streaming/polling requ
 For tests that involve filtering, the test harness will set the `filter` property of the `streaming` or `polling` configuration
 object. The property will either be omitted if no filter is requested, or a non-empty string if requested.
 
-### Capability `"evaluation-hooks"`
+#### Capability `"evaluation-hooks"`
 
 This means that the SDK has support for hooks and has the ability to register evaluation hooks.
 
