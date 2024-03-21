@@ -44,7 +44,7 @@ func NewHookCallbackService(
 		var response servicedef.HookExecutionPayload
 		err = json.Unmarshal(bytes, &response)
 		if err != nil {
-			logger.Printf("Could not unmarshall hook payload.")
+			logger.Printf("Could not unmarshal hook payload.")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
