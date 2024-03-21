@@ -141,6 +141,9 @@ A test hook must:
         * `method` (string, required): The name of the evaluation emthod that was called.
       * `evaluationHookData` (object, optional): The EvaluationHookData passed to the stage during execution.
       * `evaluationDetail` (object, optional): The details of the evaluation if executing an `afterEvaluation` stage.
+        * `value` (any): The JSON value of the result.
+        * `variationIndex` (int or null): The variation index of the result.
+        * `reason` (object): The evaluation reason of the result.
       * `stage` (string, optional): If executing a stage, for example `beforeEvaluation`, this should be the stage.
   - Return data from the stages as specified via the `data` configuration. For instance the return value from the `beforeEvaluation` hook should be `data['beforeEvaluation']` merged with the input data for the stage.
 
