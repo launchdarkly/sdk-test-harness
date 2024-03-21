@@ -134,12 +134,12 @@ A test hook must:
   - Implement the SDK hook interface.
   - Whenever an evaluation stage is called post information about that call to the `callbackUrl` of the hook.
     - The payload is an object with the following properties:
-      * `evaluationHookContext` (object, optional): If an evaluation stage was executed, then this should be the associated context.
+      * `evaluationSeriesContext` (object, optional): If an evaluation stage was executed, then this should be the associated context.
         * `flagKey` (string, required): The key of the flag being evaluated.
         * `context` (object, required): The evaluation context associated with the evaluation.
         * `defaultValue` (any): The default value for the evaluation.
         * `method` (string, required): The name of the evaluation emthod that was called.
-      * `evaluationHookData` (object, optional): The EvaluationHookData passed to the stage during execution.
+      * `evaluationSeriesData` (object, optional): The EvaluationSeriesData passed to the stage during execution.
       * `evaluationDetail` (object, optional): The details of the evaluation if executing an `afterEvaluation` stage.
       * `stage` (string, optional): If executing a stage, for example `beforeEvaluation`, this should be the stage.
   - Return data from the stages as specified via the `data` configuration. For instance the return value from the `beforeEvaluation` hook should be `data['beforeEvaluation']` merged with the input data for the stage.
