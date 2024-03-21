@@ -49,7 +49,9 @@ func NewHookCallbackService(
 			return
 		}
 
-		h.CallChannel <- response
+		go func() {
+			h.CallChannel <- response
+		}()
 
 		w.WriteHeader(http.StatusOK)
 	})
