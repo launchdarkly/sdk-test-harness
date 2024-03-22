@@ -74,7 +74,7 @@ func variationTestParams(detail bool) []VariationParameters {
 		{
 			name:         "for int variation",
 			flagKey:      "number-flag",
-			defaultValue: ldvalue.Int(0xDEADBEEF),
+			defaultValue: ldvalue.Int(314159265),
 			valueType:    servicedef.ValueTypeInt,
 			detail:       detail,
 		},
