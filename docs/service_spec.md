@@ -124,6 +124,29 @@ and will send a `?filter=name` query parameter along with streaming/polling requ
 For tests that involve filtering, the test harness will set the `filter` property of the `streaming` or `polling` configuration
 object. The property will either be omitted if no filter is requested, or a non-empty string if requested.
 
+#### Capability `"evaluation-hooks"`
+
+This means that the SDK has support for hooks and has the ability to register evaluation hooks.
+
+For a test service to support hooks testing it must support a `test-hook`. The configuration will specify registering one or more `test-hooks`.
+
+A test hook must:
+  - Implement the SDK hook interface.
+  - Whenever an evaluation stage is called post information about that call to the `callbackUrl` of the hook.
+    - The payload is an object with the following properties:
+      * `evaluationSeriesContext` (object, optional): If an evaluation stage was executed, then this should be the associated context.
+        * `flagKey` (string, required): The key of the flag being evaluated.
+        * `context` (object, required): The evaluation context associated with the evaluation.
+        * `defaultValue` (any): The default value for the evaluation.
+        * `method` (string, required): The name of the evaluation emthod that was called.
+      * `evaluationSeriesData` (object, optional): The EvaluationSeriesData passed to the stage during execution.
+      * `evaluationDetail` (object, optional): The details of the evaluation if executing an `afterEvaluation` stage.
+        * `value` (any): The JSON value of the result.
+        * `variationIndex` (int or null): The variation index of the result.
+        * `reason` (object): The evaluation reason of the result.
+      * `stage` (string, optional): If executing a stage, for example `beforeEvaluation`, this should be the stage.
+  - Return data from the stages as specified via the `data` configuration. For instance the return value from the `beforeEvaluation` hook should be `data['beforeEvaluation']` merged with the input data for the stage.
+
 ### Stop test service: `DELETE /`
 
 The test harness sends this request at the end of a test run if you have specified `--stop-service-at-end` on the [command line](./running.md). The test service should simply quit. This is a convenience so CI scripts can simply start the test service in the background and assume it will be stopped for them.
@@ -164,6 +187,13 @@ A `POST` request indicates that the test harness wants to start an instance of t
     * `initialContext` (object, optional): The context properties to initialize the SDK with (unless `initialUser` is specified instead). The test service for a client-side SDK can assume that the test harness will _always_ set this: if the test logic does not explicitly provide a value, the test harness will add a default one.
     * `initialUser` (object, optional): Can be specified instead of `initialContext` to use an old-style user JSON representation.
     * `evaluationReasons`, `useReport` (boolean, optional): These correspond to the SDK configuration properties of the same names.
+  * `hooks` (object, optional): If specified this has the configuration for hooks.
+    * `hooks` (array, required): Contains configuration of one or more hooks, each item is an object with the following parameters.
+      * `name` (string, required): A name to associate with the hook.
+      * `callbackUri` (string, required): A callback URL that the hook should post data to.
+      * `data` (object, optional): Contains data which should return from different execution stages.
+        * `beforeEvaluation` (object, optional): A map of `string` to `ldvalue` items. This should be returned from the `beforeEvaluation` stage of the test hook.
+        * `afterEvaluation` (object, optional): A map of `string` to `ldvalue` items. This should be returned from the `afterEvaluation` stage of the test hook.
 
 The response to a valid request is any HTTP `2xx` status, with a `Location` header whose value is the URL of the test service resource representing this SDK client instance (that is, the one that would be used for "Close client" or "Send command" as described below).
 

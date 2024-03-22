@@ -3,6 +3,8 @@ package servicedef
 import (
 	"encoding/json"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
+
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
@@ -21,6 +23,7 @@ type SDKConfigParams struct {
 	BigSegments         o.Maybe[SDKConfigBigSegmentsParams]         `json:"bigSegments,omitempty"`
 	Tags                o.Maybe[SDKConfigTagsParams]                `json:"tags,omitempty"`
 	ClientSide          o.Maybe[SDKConfigClientSideParams]          `json:"clientSide,omitempty"`
+	Hooks               o.Maybe[SDKConfigHooksParams]               `json:"hooks,omitempty"`
 }
 
 type SDKConfigServiceEndpointsParams struct {
@@ -73,4 +76,16 @@ type SDKConfigClientSideParams struct {
 	EvaluationReasons            o.Maybe[bool]              `json:"evaluationReasons,omitempty"`
 	UseReport                    o.Maybe[bool]              `json:"useReport,omitempty"`
 	IncludeEnvironmentAttributes o.Maybe[bool]              `json:"includeEnvironmentAttributes,omitempty"`
+}
+
+type SDKConfigEvaluationHookData map[string]ldvalue.Value
+
+type SDKConfigHookInstance struct {
+	Name        string                                    `json:"name"`
+	CallbackURI string                                    `json:"callbackUri"`
+	Data        map[HookStage]SDKConfigEvaluationHookData `json:"data,omitempty"`
+}
+
+type SDKConfigHooksParams struct {
+	Hooks []SDKConfigHookInstance `json:"hooks"`
 }
