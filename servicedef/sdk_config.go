@@ -84,6 +84,7 @@ type SDKConfigHookInstance struct {
 	Name        string                                    `json:"name"`
 	CallbackURI string                                    `json:"callbackUri"`
 	Data        map[HookStage]SDKConfigEvaluationHookData `json:"data,omitempty"`
+	Errors      map[HookStage]o.Maybe[string]             `json:"errors,omitempty"`
 }
 
 type SDKConfigHooksParams struct {
