@@ -18,6 +18,7 @@ type HookInstance struct {
 	name        string
 	hookService *mockld.HookCallbackService
 	data        map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData
+	errors      map[servicedef.HookStage]o.Maybe[string]
 }
 
 type Hooks struct {
@@ -29,6 +30,7 @@ func NewHooks(
 	logger framework.Logger,
 	instances []string,
 	data map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData,
+	errors map[servicedef.HookStage]o.Maybe[string],
 ) *Hooks {
 	hooks := &Hooks{
 		instances: make(map[string]HookInstance),
@@ -38,6 +40,7 @@ func NewHooks(
 			name:        instance,
 			hookService: mockld.NewHookCallbackService(testHarness, logger),
 			data:        data,
+			errors:      errors,
 		}
 	}
 
@@ -51,6 +54,7 @@ func (h *Hooks) Configure(config *servicedef.SDKConfigParams) error {
 			Name:        instance.name,
 			CallbackURI: instance.hookService.GetURL(),
 			Data:        instance.data,
+			Errors:      instance.errors,
 		})
 	}
 	config.Hooks = o.Some(hookConfig)

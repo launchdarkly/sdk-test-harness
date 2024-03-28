@@ -22,6 +22,8 @@ func doServerSideHooksTests(t *ldtest.T) {
 	t.Run("executes afterEvaluation stage", executesAfterEvaluationStage)
 	t.Run("data propagates from before to after", beforeEvaluationDataPropagatesToAfter)
 	t.Run("data propagates from before to after for migrations", beforeEvaluationDataPropagatesToAfterMigration)
+	t.Run("an error in one stage does not prevent others from executing", errorsDoNotAffectSubsequentStages)
+
 }
 
 func executesBeforeEvaluationStage(t *ldtest.T) {
@@ -269,8 +271,56 @@ func beforeEvaluationDataPropagatesToAfterMigration(t *ldtest.T) {
 	})
 }
 
+// This test is meant to check Requirement HOOKS:1.3.7.
+func errorsDoNotAffectSubsequentStages(t *ldtest.T) {
+	t.RequireCapability(servicedef.CapabilityEvaluationHookErrors)
+
+	hookName := "fallibleHook"
+
+	// We're configuring the beforeEvaluation stage with some data, but we don't expect to see it propagated into afterEvaluation
+	// since we're also configuring beforeEvaluation to throw an exception (or return an error, whatever is appropriate for the language.)
+	hookData := map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData{
+		servicedef.BeforeEvaluation: map[string]ldvalue.Value{"this_value": ldvalue.String("should_not_be_received")},
+	}
+
+	client, hooks := createClientForHooksWithErrors(t, []string{hookName}, hookData, map[servicedef.HookStage]o.Maybe[string]{
+		servicedef.BeforeEvaluation: o.Some("something is rotten in the state of Denmark!"),
+	})
+
+	defer hooks.Close()
+
+	flagKey := "bool-flag"
+	client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+		FlagKey:      flagKey,
+		Context:      o.Some(ldcontext.New("user-key")),
+		ValueType:    servicedef.ValueTypeBool,
+		DefaultValue: ldvalue.Bool(false),
+	})
+
+	hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
+		if payload.Stage.Value() == servicedef.BeforeEvaluation {
+			t.Errorf("SDK implementation error: beforeEvaluation should not have caused a POST to the test harness; ensure exception is thrown/error returned in this stage")
+			return false
+		}
+		if payload.Stage.Value() == servicedef.AfterEvaluation {
+			// Requirement HOOKS:1.3.7.1 says that:
+			// "The client should use the data from the previous successful stage, or empty data if there is no previous stage."
+			// Since there are no other preceding stages besides beforeEvaluation, then the data should be empty.
+			hookData := payload.EvaluationSeriesData.Value()
+			assert.Len(t, hookData, 0)
+			return true
+		}
+		return false
+	})
+}
+
 func createClientForHooks(t *ldtest.T, instances []string,
 	hookData map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData) (*SDKClient, *Hooks) {
+	return createClientForHooksWithErrors(t, instances, hookData, nil)
+}
+
+func createClientForHooksWithErrors(t *ldtest.T, instances []string,
+	hookData map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData, hookErrors map[servicedef.HookStage]o.Maybe[string]) (*SDKClient, *Hooks) {
 	boolFlag := ldbuilders.NewFlagBuilder("bool-flag").
 		Variations(ldvalue.Bool(false), ldvalue.Bool(true)).
 		FallthroughVariation(1).On(true).Build()
@@ -296,7 +346,7 @@ func createClientForHooks(t *ldtest.T, instances []string,
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(boolFlag, numberFlag, stringFlag, jsonFlag, migrationFlag)
 
-	hooks := NewHooks(requireContext(t).harness, t.DebugLogger(), instances, hookData)
+	hooks := NewHooks(requireContext(t).harness, t.DebugLogger(), instances, hookData, hookErrors)
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
