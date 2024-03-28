@@ -277,8 +277,9 @@ func errorsDoNotAffectSubsequentStages(t *ldtest.T) {
 
 	hookName := "fallibleHook"
 
-	// We're configuring the beforeEvaluation stage with some data, but we don't expect to see it propagated into afterEvaluation
-	// since we're also configuring beforeEvaluation to throw an exception (or return an error, whatever is appropriate for the language.)
+	// We're configuring the beforeEvaluation stage with some data, but we don't expect
+	// to see it propagated into afterEvaluation since we're also configuring beforeEvaluation
+	// to throw an exception (or return an error, whatever is appropriate for the language.)
 	hookData := map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData{
 		servicedef.BeforeEvaluation: map[string]ldvalue.Value{"this_value": ldvalue.String("should_not_be_received")},
 	}
@@ -299,13 +300,17 @@ func errorsDoNotAffectSubsequentStages(t *ldtest.T) {
 
 	hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
 		if payload.Stage.Value() == servicedef.BeforeEvaluation {
-			t.Errorf("SDK implementation error: beforeEvaluation should not have caused a POST to the test harness; ensure exception is thrown/error returned in this stage")
+			t.Errorf("SDK implementation error: beforeEvaluation should not " +
+				"have caused a POST to the test harness; ensure exception is thrown/error " +
+				"returned in this stage")
 			return false
 		}
 		if payload.Stage.Value() == servicedef.AfterEvaluation {
 			// Requirement HOOKS:1.3.7.1 says that:
-			// "The client should use the data from the previous successful stage, or empty data if there is no previous stage."
-			// Since there are no other preceding stages besides beforeEvaluation, then the data should be empty.
+			// "The client should use the data from the previous successful stage,
+			//  or empty data if there is no previous stage."
+			// Since there are no other preceding stages besides beforeEvaluation, then the
+			// data should be empty.
 			hookData := payload.EvaluationSeriesData.Value()
 			assert.Len(t, hookData, 0)
 			return true
