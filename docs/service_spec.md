@@ -194,6 +194,9 @@ A `POST` request indicates that the test harness wants to start an instance of t
       * `data` (object, optional): Contains data which should return from different execution stages.
         * `beforeEvaluation` (object, optional): A map of `string` to `ldvalue` items. This should be returned from the `beforeEvaluation` stage of the test hook.
         * `afterEvaluation` (object, optional): A map of `string` to `ldvalue` items. This should be returned from the `afterEvaluation` stage of the test hook.
+      * `errors` (object, optional): Specifies that an error should be returned/exception thrown from a stage. The error message itself is not tested by the framework at this time, as it is not a specified behavior.
+        * `beforeEvaluation` (string, optional): The error/exception message that should be generated in the `beforeEvaluation` stage of the test hook. 
+        * `afterEvaluation` (string, optional): The error/exception message that should be generated in the `afterEvaluation` stage of the test hook.
 
 The response to a valid request is any HTTP `2xx` status, with a `Location` header whose value is the URL of the test service resource representing this SDK client instance (that is, the one that would be used for "Close client" or "Send command" as described below).
 
