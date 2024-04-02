@@ -1,8 +1,9 @@
 package sdktests
 
 import (
-	"github.com/stretchr/testify/assert"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"

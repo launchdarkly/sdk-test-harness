@@ -1,10 +1,11 @@
 package sdktests
 
 import (
+	"strconv"
+
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldmigration"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
-	"strconv"
 
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldbuilders"
 
@@ -321,7 +322,8 @@ func createClientForHooks(t *ldtest.T, instances []string,
 }
 
 func createClientForHooksWithErrors(t *ldtest.T, instances []string,
-	hookData map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData, hookErrors map[servicedef.HookStage]o.Maybe[string]) (*SDKClient, *Hooks) {
+	hookData map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData,
+	hookErrors map[servicedef.HookStage]o.Maybe[string]) (*SDKClient, *Hooks) {
 	boolFlag := ldbuilders.NewFlagBuilder("bool-flag").
 		Variations(ldvalue.Bool(false), ldvalue.Bool(true)).
 		FallthroughVariation(1).On(true).Build()
