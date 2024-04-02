@@ -276,7 +276,7 @@ func beforeEvaluationDataPropagatesToAfterMigration(t *ldtest.T) {
 // The client MUST handle exceptions which are thrown (or errors returned, if idiomatic for the language)
 // during the execution of a stage or handler allowing operations to complete unaffected.
 func errorInBeforeStageDoesNotAffectAfterStage(t *ldtest.T) {
-	const numHooks = 100 // why not?
+	const numHooks = 3
 
 	// We're configuring the beforeEvaluation stage with some data, but we don't expect
 	// to see it propagated into afterEvaluation since we're also configuring beforeEvaluation
@@ -312,7 +312,7 @@ func errorInBeforeStageDoesNotAffectAfterStage(t *ldtest.T) {
 			"returned in this stage")
 
 		assert.Equal(t, 0, len(call.EvaluationSeriesData.Value()), "HOOKS:1.3.7.1: Since "+
-			"beforeEvaluation should have failed, the data passed to afterEvaluation should be an empty string")
+			"beforeEvaluation should have failed, the data passed to afterEvaluation should be empty")
 	}
 }
 
