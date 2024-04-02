@@ -84,8 +84,12 @@ func (h *Hooks) ExpectCall(t *ldtest.T, hookName string,
 	}
 }
 
-func (h *Hooks) ExpectSingleCallForEachHook(t *ldtest.T, hookNames []string, count int) []servicedef.HookExecutionPayload {
+// ExpectAtLeastOneCallForEachHook waits for a single call from N hooks. If there are fewer calls recorded,
+// the test will fail. However, this helper cannot detect if there were more calls waiting to be recorded.
+func (h *Hooks) ExpectAtLeastOneCallForEachHook(t *ldtest.T, hookNames []string) []servicedef.HookExecutionPayload {
 	out := make(chan o.Maybe[servicedef.HookExecutionPayload])
+
+	totalCalls := len(hookNames)
 
 	for _, hookName := range hookNames {
 		go func(name string) {
@@ -93,14 +97,14 @@ func (h *Hooks) ExpectSingleCallForEachHook(t *ldtest.T, hookNames []string, cou
 		}(hookName)
 	}
 
-	payloads := make([]servicedef.HookExecutionPayload, 0)
-	for i := 0; i < count; i++ {
+	payloads := make([]servicedef.HookExecutionPayload, totalCalls)
+	for i := 0; i < totalCalls; i++ {
 		if val := <-out; val.IsDefined() {
 			payloads = append(payloads, val.Value())
 		}
 	}
 
-	assert.Len(t, payloads, count, "Expected %d hook calls, got %d", count, len(payloads))
+	assert.Len(t, payloads, totalCalls, "Expected %d hook calls, got %d", totalCalls, len(payloads))
 
 	return payloads
 }
