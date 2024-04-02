@@ -4,6 +4,7 @@ import (
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldmigration"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
+	"strconv"
 
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldbuilders"
 
@@ -22,8 +23,7 @@ func doServerSideHooksTests(t *ldtest.T) {
 	t.Run("executes afterEvaluation stage", executesAfterEvaluationStage)
 	t.Run("data propagates from before to after", beforeEvaluationDataPropagatesToAfter)
 	t.Run("data propagates from before to after for migrations", beforeEvaluationDataPropagatesToAfterMigration)
-	t.Run("an error in one stage does not prevent others from executing", errorsDoNotAffectSubsequentStages)
-
+	t.Run("an error in before stage does not affect after stage", errorInBeforeStageDoesNotAffectAfterStage)
 }
 
 func executesBeforeEvaluationStage(t *ldtest.T) {
@@ -272,10 +272,9 @@ func beforeEvaluationDataPropagatesToAfterMigration(t *ldtest.T) {
 }
 
 // This test is meant to check Requirement HOOKS:1.3.7.
-func errorsDoNotAffectSubsequentStages(t *ldtest.T) {
-	t.RequireCapability(servicedef.CapabilityEvaluationHookErrors)
+func errorInBeforeStageDoesNotAffectAfterStage(t *ldtest.T) {
 
-	hookName := "fallibleHook"
+	const numHooks = 100 // why not?
 
 	// We're configuring the beforeEvaluation stage with some data, but we don't expect
 	// to see it propagated into afterEvaluation since we're also configuring beforeEvaluation
@@ -284,7 +283,12 @@ func errorsDoNotAffectSubsequentStages(t *ldtest.T) {
 		servicedef.BeforeEvaluation: map[string]ldvalue.Value{"this_value": ldvalue.String("should_not_be_received")},
 	}
 
-	client, hooks := createClientForHooksWithErrors(t, []string{hookName}, hookData, map[servicedef.HookStage]o.Maybe[string]{
+	var names []string
+	for i := 0; i < numHooks; i++ {
+		names = append(names, "fallibleHook-"+strconv.Itoa(i))
+	}
+
+	client, hooks := createClientForHooksWithErrors(t, names, hookData, map[servicedef.HookStage]o.Maybe[string]{
 		servicedef.BeforeEvaluation: o.Some("something is rotten in the state of Denmark!"),
 	})
 
@@ -298,25 +302,17 @@ func errorsDoNotAffectSubsequentStages(t *ldtest.T) {
 		DefaultValue: ldvalue.Bool(false),
 	})
 
-	hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
-		if payload.Stage.Value() == servicedef.BeforeEvaluation {
-			t.Errorf("SDK implementation error: beforeEvaluation should not " +
-				"have caused a POST to the test harness; ensure exception is thrown/error " +
-				"returned in this stage")
-			return false
-		}
-		if payload.Stage.Value() == servicedef.AfterEvaluation {
-			// Requirement HOOKS:1.3.7.1 says that:
-			// "The client should use the data from the previous successful stage,
-			//  or empty data if there is no previous stage."
-			// Since there are no other preceding stages besides beforeEvaluation, then the
-			// data should be empty.
-			hookData := payload.EvaluationSeriesData.Value()
-			assert.Len(t, hookData, 0)
-			return true
-		}
-		return false
-	})
+	const numAfterCalls = numHooks
+	calls := hooks.ExpectSingleCallForEachHook(t, names, numAfterCalls)
+
+	for _, call := range calls {
+		assert.Equal(t, servicedef.AfterEvaluation, call.Stage.Value(), "HOOKS:1.3.7: beforeEvaluation "+
+			"should not have caused a POST to the test harness; ensure exception is thrown/error "+
+			"returned in this stage")
+
+		assert.Equal(t, 0, len(call.EvaluationSeriesData.Value()), "HOOKS:1.3.7.1: Since "+
+			"beforeEvaluation should have failed, the data passed to afterEvaluation should be an empty string")
+	}
 }
 
 func createClientForHooks(t *ldtest.T, instances []string,

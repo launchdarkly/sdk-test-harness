@@ -147,11 +147,6 @@ A test hook must:
       * `stage` (string, optional): If executing a stage, for example `beforeEvaluation`, this should be the stage.
   - Return data from the stages as specified via the `data` configuration. For instance the return value from the `beforeEvaluation` hook should be `data['beforeEvaluation']` merged with the input data for the stage.
 
-### Capability `evaluation-hooks:errors`
-
-This capability is only used if `evaluation-hooks` is enabled. It means that the SDK is capable of catching exceptions or errors generated within stage handlers of a hook,
-and is able to continue on without issue after handling that exception/error.
-
 ### Stop test service: `DELETE /`
 
 The test harness sends this request at the end of a test run if you have specified `--stop-service-at-end` on the [command line](./running.md). The test service should simply quit. This is a convenience so CI scripts can simply start the test service in the background and assume it will be stopped for them.
@@ -199,9 +194,6 @@ A `POST` request indicates that the test harness wants to start an instance of t
       * `data` (object, optional): Contains data which should return from different execution stages.
         * `beforeEvaluation` (object, optional): A map of `string` to `ldvalue` items. This should be returned from the `beforeEvaluation` stage of the test hook.
         * `afterEvaluation` (object, optional): A map of `string` to `ldvalue` items. This should be returned from the `afterEvaluation` stage of the test hook.
-      * `errors` (object, optional): Specifies that an error should be returned/exception thrown from a stage.
-        * `beforeEvaluation` (string, optional): The error/exception message that should be generated in the `beforeEvaluation` stage of the test hook.
-        * `afterEvaluation` (string, optional): The error/exception message that should be generated in the `afterEvaluation` stage of the test hook.
 
 The response to a valid request is any HTTP `2xx` status, with a `Location` header whose value is the URL of the test service resource representing this SDK client instance (that is, the one that would be used for "Close client" or "Send command" as described below).
 

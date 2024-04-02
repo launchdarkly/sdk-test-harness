@@ -1,6 +1,7 @@
 package sdktests
 
 import (
+	"github.com/stretchr/testify/assert"
 	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
@@ -81,4 +82,25 @@ func (h *Hooks) ExpectCall(t *ldtest.T, hookName string,
 			break
 		}
 	}
+}
+
+func (h *Hooks) ExpectSingleCallForEachHook(t *ldtest.T, hookNames []string, count int) []servicedef.HookExecutionPayload {
+	out := make(chan o.Maybe[servicedef.HookExecutionPayload])
+
+	for _, hookName := range hookNames {
+		go func(name string) {
+			out <- helpers.TryReceive(h.instances[name].hookService.CallChannel, hookReceiveTimeout)
+		}(hookName)
+	}
+
+	payloads := make([]servicedef.HookExecutionPayload, 0)
+	for i := 0; i < count; i++ {
+		if val := <-out; val.IsDefined() {
+			payloads = append(payloads, val.Value())
+		}
+	}
+
+	assert.Len(t, payloads, count, "Expected %d hook calls, got %d", count, len(payloads))
+
+	return payloads
 }
