@@ -271,7 +271,9 @@ func beforeEvaluationDataPropagatesToAfterMigration(t *ldtest.T) {
 	})
 }
 
-// This test is meant to check Requirement HOOKS:1.3.7.
+// This test is meant to check Requirement HOOKS:1.3.7:
+// The client MUST handle exceptions which are thrown (or errors returned, if idiomatic for the language)
+// during the execution of a stage or handler allowing operations to complete unaffected.
 func errorInBeforeStageDoesNotAffectAfterStage(t *ldtest.T) {
 
 	const numHooks = 100 // why not?
@@ -302,6 +304,8 @@ func errorInBeforeStageDoesNotAffectAfterStage(t *ldtest.T) {
 		DefaultValue: ldvalue.Bool(false),
 	})
 
+	// Since we shouldn't receive any beforeEvaluation calls, the number of calls to expect is simply
+	// the number of hooks configured.
 	const numAfterCalls = numHooks
 	calls := hooks.ExpectSingleCallForEachHook(t, names, numAfterCalls)
 
