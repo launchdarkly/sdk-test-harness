@@ -132,7 +132,8 @@ For a test service to support hooks testing it must support a `test-hook`. The c
 
 A test hook must:
   - Implement the SDK hook interface.
-  - Whenever an evaluation stage is called post information about that call to the `callbackUrl` of the hook.
+  - Whenever an evaluation stage is called POST information about that call to the `callbackUrl` of the hook.
+  - The POST should not take place if the hook was configured to return/throw an error for that stage (`errors` object in the configuration).
     - The payload is an object with the following properties:
       * `evaluationSeriesContext` (object, optional): If an evaluation stage was executed, then this should be the associated context.
         * `flagKey` (string, required): The key of the flag being evaluated.
