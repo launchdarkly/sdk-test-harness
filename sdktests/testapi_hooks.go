@@ -98,7 +98,7 @@ func (h *Hooks) ExpectAtLeastOneCallForEachHook(t *ldtest.T, hookNames []string)
 		}(hookName)
 	}
 
-	payloads := make([]servicedef.HookExecutionPayload, totalCalls)
+	var payloads []servicedef.HookExecutionPayload
 	for i := 0; i < totalCalls; i++ {
 		if val := <-out; val.IsDefined() {
 			payloads = append(payloads, val.Value())
