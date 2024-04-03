@@ -3,6 +3,8 @@ package sdktests
 import (
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
@@ -18,6 +20,7 @@ type HookInstance struct {
 	name        string
 	hookService *mockld.HookCallbackService
 	data        map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData
+	errors      map[servicedef.HookStage]o.Maybe[string]
 }
 
 type Hooks struct {
@@ -29,6 +32,7 @@ func NewHooks(
 	logger framework.Logger,
 	instances []string,
 	data map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData,
+	errors map[servicedef.HookStage]o.Maybe[string],
 ) *Hooks {
 	hooks := &Hooks{
 		instances: make(map[string]HookInstance),
@@ -38,6 +42,7 @@ func NewHooks(
 			name:        instance,
 			hookService: mockld.NewHookCallbackService(testHarness, logger),
 			data:        data,
+			errors:      errors,
 		}
 	}
 
@@ -51,6 +56,7 @@ func (h *Hooks) Configure(config *servicedef.SDKConfigParams) error {
 			Name:        instance.name,
 			CallbackURI: instance.hookService.GetURL(),
 			Data:        instance.data,
+			Errors:      instance.errors,
 		})
 	}
 	config.Hooks = o.Some(hookConfig)
@@ -77,4 +83,29 @@ func (h *Hooks) ExpectCall(t *ldtest.T, hookName string,
 			break
 		}
 	}
+}
+
+// ExpectAtLeastOneCallForEachHook waits for a single call from N hooks. If there are fewer calls recorded,
+// the test will fail. However, this helper cannot detect if there were more calls waiting to be recorded.
+func (h *Hooks) ExpectAtLeastOneCallForEachHook(t *ldtest.T, hookNames []string) []servicedef.HookExecutionPayload {
+	out := make(chan o.Maybe[servicedef.HookExecutionPayload])
+
+	totalCalls := len(hookNames)
+
+	for _, hookName := range hookNames {
+		go func(name string) {
+			out <- helpers.TryReceive(h.instances[name].hookService.CallChannel, hookReceiveTimeout)
+		}(hookName)
+	}
+
+	var payloads []servicedef.HookExecutionPayload
+	for i := 0; i < totalCalls; i++ {
+		if val := <-out; val.IsDefined() {
+			payloads = append(payloads, val.Value())
+		}
+	}
+
+	assert.Len(t, payloads, totalCalls, "Expected %d hook calls, got %d", totalCalls, len(payloads))
+
+	return payloads
 }
