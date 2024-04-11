@@ -32,6 +32,9 @@ func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string
 			headersMatcher,
 			c.authorizationHeaderMatcher(credential),
 		))
+		if t.Capabilities().Has(servicedef.CapabilityEventGzip) {
+			m.In(t).For("request headers").Assert(request.Headers, Header("Content-Encoding").Should(m.StringContains("gzip")))
+		}
 	})
 }
 
