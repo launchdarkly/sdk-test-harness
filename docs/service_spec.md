@@ -72,6 +72,10 @@ This means that the SDK has the ability to construct and compare two contexts fo
 
 This means that the SDK supports caching of the e-tag header between client restarts. Typical SDKs track the polling e-tag header and send it between subsequent requests. SDKs supporting this capability are able to persist that e-tag header for use even between complete client restarts.
 
+#### Capability `"event-gzip"`
+
+This means that the SDK supports gzip compression of event payloads.
+
 #### Capability `"event-sampling"`
 
 This means that the SDK supports event sampling; the SDK can limit the number of certain events based on payloads received from upstream services.
