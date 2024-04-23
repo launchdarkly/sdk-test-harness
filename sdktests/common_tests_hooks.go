@@ -8,6 +8,7 @@ import (
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldbuilders"
+	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldmodel"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
@@ -18,24 +19,30 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func doServerSideHooksTests(t *ldtest.T) {
+func doCommonHooksTests(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityEvaluationHooks)
 	t.Run("executes beforeEvaluation stage", executesBeforeEvaluationStage)
 	t.Run("executes afterEvaluation stage", executesAfterEvaluationStage)
-	t.Run("data propagates from before to after", beforeEvaluationDataPropagatesToAfter)
-	t.Run("data propagates from before to after for migrations", beforeEvaluationDataPropagatesToAfterMigration)
 	t.Run("an error in before stage does not affect after stage", errorInBeforeStageDoesNotAffectAfterStage)
+
+	t.Run("data propagates from before to after", beforeEvaluationDataPropagatesToAfter)
+	t.RequireCapability(servicedef.CapabilityMigrations)
+	t.Run("data propagates from before to after for migrations", beforeEvaluationDataPropagatesToAfterMigration)
 }
 
 func executesBeforeEvaluationStage(t *ldtest.T) {
 	t.Run("without detail", func(t *ldtest.T) { executesBeforeEvaluationStageDetail(t, false) })
 	t.Run("with detail", func(t *ldtest.T) { executesBeforeEvaluationStageDetail(t, true) })
+
+	t.RequireCapability(servicedef.CapabilityMigrations)
 	t.Run("for migrations", executesBeforeEvaluationStageMigration)
 }
 
 func executesAfterEvaluationStage(t *ldtest.T) {
 	t.Run("without detail", func(t *ldtest.T) { executesAfterEvaluationStageDetail(t, false) })
 	t.Run("with detail", func(t *ldtest.T) { executesAfterEvaluationStageDetail(t, true) })
+
+	t.RequireCapability(servicedef.CapabilityMigrations)
 	t.Run("for migrations", executesAfterEvaluationStageMigration)
 }
 
@@ -95,14 +102,24 @@ func executesBeforeEvaluationStageDetail(t *ldtest.T, detail bool) {
 	testParams := variationTestParams(detail)
 
 	hookName := "executesBeforeEvaluationStage"
-	client, hooks := createClientForHooks(t, []string{hookName}, nil)
+
+	context := ldcontext.New("user-key")
+	flagContext := o.Some(context)
+	configurers := []SDKConfigurer{}
+
+	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
+		configurers = append(configurers, WithClientSideInitialContext(context))
+		flagContext = o.None[ldcontext.Context]()
+	}
+
+	client, hooks := createClientForHooks(t, []string{hookName}, nil, configurers...)
 	defer hooks.Close()
 
 	for _, testParam := range testParams {
 		t.Run(testParam.name, func(t *ldtest.T) {
 			client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 				FlagKey:      testParam.flagKey,
-				Context:      o.Some(ldcontext.New("user-key")),
+				Context:      flagContext,
 				ValueType:    testParam.valueType,
 				DefaultValue: testParam.defaultValue,
 			})
@@ -111,7 +128,7 @@ func executesBeforeEvaluationStageDetail(t *ldtest.T, detail bool) {
 				if payload.Stage.Value() == servicedef.BeforeEvaluation {
 					hookContext := payload.EvaluationSeriesContext.Value()
 					assert.Equal(t, testParam.flagKey, hookContext.FlagKey)
-					assert.Equal(t, ldcontext.New("user-key"), hookContext.Context)
+					assert.Equal(t, context, hookContext.Context)
 					assert.Equal(t, testParam.defaultValue, hookContext.DefaultValue)
 					return true
 				}
@@ -150,14 +167,24 @@ func executesAfterEvaluationStageDetail(t *ldtest.T, detail bool) {
 	testParams := variationTestParams(detail)
 
 	hookName := "executesAfterEvaluationStage"
-	client, hooks := createClientForHooks(t, []string{hookName}, nil)
+
+	context := ldcontext.New("user-key")
+	flagContext := o.Some(context)
+	configurers := []SDKConfigurer{}
+
+	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
+		configurers = append(configurers, WithClientSideInitialContext(context))
+		flagContext = o.None[ldcontext.Context]()
+	}
+
+	client, hooks := createClientForHooks(t, []string{hookName}, nil, configurers...)
 	defer hooks.Close()
 
 	for _, testParam := range testParams {
 		t.Run(testParam.name, func(t *ldtest.T) {
 			result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 				FlagKey:      testParam.flagKey,
-				Context:      o.Some(ldcontext.New("user-key")),
+				Context:      flagContext,
 				ValueType:    testParam.valueType,
 				DefaultValue: testParam.defaultValue,
 				Detail:       detail,
@@ -167,10 +194,10 @@ func executesAfterEvaluationStageDetail(t *ldtest.T, detail bool) {
 				if payload.Stage.Value() == servicedef.AfterEvaluation {
 					hookContext := payload.EvaluationSeriesContext.Value()
 					assert.Equal(t, testParam.flagKey, hookContext.FlagKey)
-					assert.Equal(t, ldcontext.New("user-key"), hookContext.Context)
+					assert.Equal(t, context, hookContext.Context)
 					assert.Equal(t, testParam.defaultValue, hookContext.DefaultValue)
 					evaluationDetail := payload.EvaluationDetail.Value()
-					assert.Equal(t, result.Value, evaluationDetail.Value)
+					assert.Equal(t, evaluationDetail.Value, result.Value)
 					if detail {
 						assert.Equal(t, result.VariationIndex, evaluationDetail.VariationIndex)
 						assert.Equal(t, result.Reason, evaluationDetail.Reason)
@@ -218,14 +245,23 @@ func beforeEvaluationDataPropagatesToAfterDetail(t *ldtest.T, detail bool) {
 	hookData[servicedef.BeforeEvaluation] = make(servicedef.SDKConfigEvaluationHookData)
 	hookData[servicedef.BeforeEvaluation]["someData"] = ldvalue.String("the hookData")
 
-	client, hooks := createClientForHooks(t, []string{hookName}, hookData)
+	context := ldcontext.New("user-key")
+	flagContext := o.Some(context)
+	configurers := []SDKConfigurer{}
+
+	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
+		configurers = append(configurers, WithClientSideInitialContext(context))
+		flagContext = o.None[ldcontext.Context]()
+	}
+
+	client, hooks := createClientForHooks(t, []string{hookName}, hookData, configurers...)
 	defer hooks.Close()
 
 	for _, testParam := range testParams {
 		t.Run(testParam.name, func(t *ldtest.T) {
 			client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 				FlagKey:      testParam.flagKey,
-				Context:      o.Some(ldcontext.New("user-key")),
+				Context:      flagContext,
 				ValueType:    testParam.valueType,
 				DefaultValue: testParam.defaultValue,
 				Detail:       detail,
@@ -290,16 +326,25 @@ func errorInBeforeStageDoesNotAffectAfterStage(t *ldtest.T) {
 		names = append(names, "fallibleHook-"+strconv.Itoa(i))
 	}
 
+	context := ldcontext.New("user-key")
+	flagContext := o.Some(context)
+	configurers := []SDKConfigurer{}
+
+	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
+		configurers = append(configurers, WithClientSideInitialContext(context))
+		flagContext = o.None[ldcontext.Context]()
+	}
+
 	client, hooks := createClientForHooksWithErrors(t, names, hookData, map[servicedef.HookStage]o.Maybe[string]{
 		servicedef.BeforeEvaluation: o.Some("something is rotten in the state of Denmark!"),
-	})
+	}, configurers...)
 
 	defer hooks.Close()
 
 	flagKey := "bool-flag"
 	client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 		FlagKey:      flagKey,
-		Context:      o.Some(ldcontext.New("user-key")),
+		Context:      flagContext,
 		ValueType:    servicedef.ValueTypeBool,
 		DefaultValue: ldvalue.Bool(false),
 	})
@@ -317,13 +362,14 @@ func errorInBeforeStageDoesNotAffectAfterStage(t *ldtest.T) {
 }
 
 func createClientForHooks(t *ldtest.T, instances []string,
-	hookData map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData) (*SDKClient, *Hooks) {
-	return createClientForHooksWithErrors(t, instances, hookData, nil)
+	hookData map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData,
+	configurers ...SDKConfigurer) (*SDKClient, *Hooks) {
+	return createClientForHooksWithErrors(t, instances, hookData, nil, configurers...)
 }
 
 func createClientForHooksWithErrors(t *ldtest.T, instances []string,
 	hookData map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData,
-	hookErrors map[servicedef.HookStage]o.Maybe[string]) (*SDKClient, *Hooks) {
+	hookErrors map[servicedef.HookStage]o.Maybe[string], configurers ...SDKConfigurer) (*SDKClient, *Hooks) {
 	boolFlag := ldbuilders.NewFlagBuilder("bool-flag").
 		Variations(ldvalue.Bool(false), ldvalue.Bool(true)).
 		FallthroughVariation(1).On(true).Build()
@@ -346,13 +392,31 @@ func createClientForHooksWithErrors(t *ldtest.T, instances []string,
 		FallthroughVariation(1).
 		Build()
 
-	dataBuilder := mockld.NewServerSDKDataBuilder()
-	dataBuilder.Flag(boolFlag, numberFlag, stringFlag, jsonFlag, migrationFlag)
+	flags := []ldmodel.FeatureFlag{
+		boolFlag,
+		numberFlag,
+		stringFlag,
+		jsonFlag,
+		migrationFlag,
+	}
+
+	var dataSource *SDKDataSource
+	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
+		dataBuilder := mockld.NewClientSDKDataBuilder()
+		for _, flag := range flags {
+			dataBuilder.Flag(flag.Key, mockld.ClientSDKFlag{Value: flag.Variations[1]})
+		}
+		dataSource = NewSDKDataSource(t, dataBuilder.Build())
+	} else {
+		dataBuilder := mockld.NewServerSDKDataBuilder()
+		dataBuilder.Flag(flags...)
+		dataSource = NewSDKDataSource(t, dataBuilder.Build())
+	}
 
 	hooks := NewHooks(requireContext(t).harness, t.DebugLogger(), instances, hookData, hookErrors)
-
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
-	client := NewSDKClient(t, dataSource, hooks, events)
+
+	configurers = append(configurers, dataSource, hooks, events)
+	client := NewSDKClient(t, configurers...)
 	return client, hooks
 }
