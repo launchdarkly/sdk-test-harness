@@ -44,6 +44,13 @@ if [ -n "${GITHUB_TOKEN}" ]; then
   AUTH_HEADER="Authorization: Token ${GITHUB_TOKEN}"
 fi
 
+# Github rate-limits requests to its APIs. The effect is that sometimes the contract test step in CI
+# will fail spuriously when trying to find the list of releases.
+# If we provide an auth token, then we can avoid the rate limiting issues.
+if [ -n "${GITHUB_TOKEN}" ]; then
+  AUTH_HEADER="Authorization: Token ${GITHUB_TOKEN}"
+fi
+
 if [ -z "${VERSION}" -o -z "${PARAMS}" ]; then
   echo 'You must specify a version string in $VERSION and command parameters in $PARAMS' >&2
   exit 1
