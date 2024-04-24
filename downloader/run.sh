@@ -7,6 +7,9 @@ set -e
 # or a partial version (v1) in the environment variable VERSION, and any parameters you want to
 # pass to the command in PARAMS.
 #
+# Sometimes you will hit Github API rate limits when running this command. If you have a Github token,
+# pass it in environment variable GITHUB_TOKEN.
+#
 # This script can be used in either Linux or MacOS; it will download whichever binary is
 # appropriate for the current OS and architecture. It cannot be used in Windows. It requires
 # /bin/sh and the commands, "grep", "sed", "curl", and "tar".
@@ -34,6 +37,13 @@ RELEASES_API_URL=https://api.github.com/repos/launchdarkly/sdk-test-harness/rele
 RELEASES_SITE_URL=https://github.com/launchdarkly/sdk-test-harness/releases
 EXECUTABLE_ARCHIVE_NAME="sdk-test-harness_${OS_TYPE}_$(uname -m).${EXTENSION}"
 
+# Github rate-limits requests to its APIs. The effect is that sometimes the contract test step in CI
+# will fail spuriously when trying to find the list of releases.
+# If we provide an auth token, then we can avoid the rate limiting issues.
+if [ -n "${GITHUB_TOKEN}" ]; then
+  AUTH_HEADER="Authorization: Token ${GITHUB_TOKEN}"
+fi
+
 if [ -z "${VERSION}" -o -z "${PARAMS}" ]; then
   echo 'You must specify a version string in $VERSION and command parameters in $PARAMS' >&2
   exit 1
@@ -45,7 +55,12 @@ resolve_version() {
     echo "$1"
     exit
   fi
-  curl -s "${RELEASES_API_URL}" \
+  cmd="curl"
+  if [ -n "${AUTH_HEADER}" ]; then
+    cmd="${cmd} -H '${AUTH_HEADER}'"
+  fi
+  cmd="${cmd} -s ${RELEASES_API_URL}"
+  eval "$cmd" \
     | grep "tag_name" \
     | sed -e 's/.*:[^"]*"\([^"]*\).*/\1/' \
     | grep "^$1\." \
