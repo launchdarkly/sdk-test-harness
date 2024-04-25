@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.11.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.10.0...v2.11.0) (2024-04-24)
+
+
+### Features
+
+* allow passing Github Token to downloader script ([#206](https://github.com/launchdarkly/sdk-test-harness/issues/206)) ([22b2ba6](https://github.com/launchdarkly/sdk-test-harness/commit/22b2ba604d88d7be77fd6fe215f42f78531dece0))
+
 ## [2.10.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.9.0...v2.10.0) (2024-04-03)
 
 
