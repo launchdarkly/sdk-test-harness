@@ -33,6 +33,7 @@ const (
 	CapabilityAnonymousRedaction = "anonymous-redaction"
 	CapabilityPollingGzip        = "polling-gzip"
 	CapabilityEvaluationHooks    = "evaluation-hooks"
+	CapabilityTLS                = "tls"
 )
 
 type StatusRep struct {
