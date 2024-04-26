@@ -57,7 +57,7 @@ func NewTestHarness(
 	}
 	h.testServiceInfo = testServiceInfo
 
-	if err = startServer(testHarnessPort, http.HandlerFunc(h.serveHTTP)); err != nil {
+	if err = startServer(testHarnessPort, http.HandlerFunc(h.serveHTTP), false); err != nil {
 		return nil, err
 	}
 
@@ -98,7 +98,7 @@ func (h *TestHarness) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	h.mockEndpoints.serveHTTP(w, r)
 }
 
-func startServer(port int, handler http.Handler) error {
+func startServer(port int, handler http.Handler, serveTLS bool) error {
 	server := &http.Server{
 		Addr: fmt.Sprintf(":%d", port),
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -111,7 +111,13 @@ func startServer(port int, handler http.Handler) error {
 		ReadHeaderTimeout: 10 * time.Second, // arbitrary but non-infinite timeout to avoid Slowloris Attack
 	}
 	go func() {
-		if err := server.ListenAndServe(); err != nil {
+		var err error
+		if serveTLS {
+			err = server.ListenAndServeTLS("", "")
+		} else {
+			err = server.ListenAndServe()
+		}
+		if err != nil {
 			panic(err)
 		}
 	}()
