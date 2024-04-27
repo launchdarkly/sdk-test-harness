@@ -16,6 +16,7 @@ type SDKConfigParams struct {
 	StartWaitTimeMS     o.Maybe[ldtime.UnixMillisecondTime]         `json:"startWaitTimeMs,omitempty"`
 	InitCanFail         bool                                        `json:"initCanFail,omitempty"`
 	ServiceEndpoints    o.Maybe[SDKConfigServiceEndpointsParams]    `json:"serviceEndpoints,omitempty"`
+	TLS                 o.Maybe[SDKConfigTLSParams]                 `json:"tls,omitempty"`
 	Streaming           o.Maybe[SDKConfigStreamingParams]           `json:"streaming,omitempty"`
 	Polling             o.Maybe[SDKConfigPollingParams]             `json:"polling,omitempty"`
 	Events              o.Maybe[SDKConfigEventParams]               `json:"events,omitempty"`
@@ -26,6 +27,10 @@ type SDKConfigParams struct {
 	Hooks               o.Maybe[SDKConfigHooksParams]               `json:"hooks,omitempty"`
 }
 
+type SDKConfigTLSParams struct {
+	VerifyPeer               bool   `json:"verifyPeer,omitempty"`
+	CertificateAuthorityPath string `json:"certificateAuthorityPath,omitempty"`
+}
 type SDKConfigServiceEndpointsParams struct {
 	Streaming string `json:"streaming,omitempty"`
 	Polling   string `json:"polling,omitempty"`

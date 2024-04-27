@@ -26,7 +26,7 @@ func (c *commandParams) Read(args []string) bool {
 	fs := flag.NewFlagSet("", flag.ExitOnError)
 	fs.StringVar(&c.serviceURL, "url", "", "test service URL")
 	fs.StringVar(&c.host, "host", "localhost", "external hostname of the test harness")
-	fs.IntVar(&c.port, "port", defaultPort, "port that the test harness will listen on")
+	fs.IntVar(&c.port, "port", defaultPort, "http port that the test harness will listen on")
 	fs.Var(&c.filters.MustMatch, "run", "regex pattern(s) to select tests to run")
 	fs.Var(&c.filters.MustNotMatch, "skip", "regex pattern(s) to select tests not to run")
 	fs.BoolVar(&c.stopServiceAtEnd, "stop-service-at-end", false, "tell test service to exit after the test run")

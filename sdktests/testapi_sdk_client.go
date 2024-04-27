@@ -3,6 +3,7 @@ package sdktests
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync/atomic"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
@@ -158,6 +159,16 @@ func TryNewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) (*SDKClient, err
 			cs.InitialContext = o.Some(arbitraryInitialContexts.NextUniqueContext())
 			config.ClientSide = o.Some(cs)
 		}
+	}
+	if t.Capabilities().Has(servicedef.CapabilityTLS) {
+		config.TLS = o.Some(servicedef.SDKConfigTLSParams{
+			VerifyPeer: false,
+		})
+		config.ServiceEndpoints = o.Some(servicedef.SDKConfigServiceEndpointsParams{
+			Streaming: "https" + strings.TrimPrefix(config.ServiceEndpoints.Value().Streaming, "http"),
+			Polling:   "https" + strings.TrimPrefix(config.ServiceEndpoints.Value().Polling, "http"),
+			Events:    "https" + strings.TrimPrefix(config.ServiceEndpoints.Value().Events, "http"),
+		})
 	}
 	if err := validateSDKConfig(config); err != nil {
 		return nil, err

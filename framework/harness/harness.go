@@ -34,6 +34,7 @@ func NewTestHarness(
 	testServiceBaseURL string,
 	testHarnessExternalHostname string,
 	testHarnessPort int,
+	https bool,
 	statusQueryTimeout time.Duration,
 	debugLogger framework.Logger,
 	startupOutput io.Writer,
@@ -42,7 +43,12 @@ func NewTestHarness(
 		debugLogger = framework.NullLogger()
 	}
 
-	externalBaseURL := fmt.Sprintf("http://%s:%d", testHarnessExternalHostname, testHarnessPort)
+	protocol := "http"
+	if https {
+		protocol = "https"
+	}
+
+	externalBaseURL := fmt.Sprintf("%s://%s:%d", protocol, testHarnessExternalHostname, testHarnessPort)
 
 	h := &TestHarness{
 		testServiceBaseURL:         testServiceBaseURL,
@@ -57,8 +63,15 @@ func NewTestHarness(
 	}
 	h.testServiceInfo = testServiceInfo
 
-	if err = startServer(testHarnessPort, http.HandlerFunc(h.serveHTTP), false); err != nil {
-		return nil, err
+	if https {
+		// Start an https server. SDKs that support being configured to disable peer verification or
+		// trust a self-signed cert can use this instead of the plain http server.
+		startHTTPSServer(testHarnessPort, http.HandlerFunc(h.serveHTTP))
+		time.Sleep(1 * time.Second)
+	} else {
+		if err = startServer(testHarnessPort, http.HandlerFunc(h.serveHTTP)); err != nil {
+			return nil, err
+		}
 	}
 
 	return h, nil
@@ -98,7 +111,7 @@ func (h *TestHarness) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	h.mockEndpoints.serveHTTP(w, r)
 }
 
-func startServer(port int, handler http.Handler, serveTLS bool) error {
+func startServer(port int, handler http.Handler) error {
 	server := &http.Server{
 		Addr: fmt.Sprintf(":%d", port),
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -111,13 +124,7 @@ func startServer(port int, handler http.Handler, serveTLS bool) error {
 		ReadHeaderTimeout: 10 * time.Second, // arbitrary but non-infinite timeout to avoid Slowloris Attack
 	}
 	go func() {
-		var err error
-		if serveTLS {
-			err = server.ListenAndServeTLS("", "")
-		} else {
-			err = server.ListenAndServe()
-		}
-		if err != nil {
+		if err := server.ListenAndServe(); err != nil {
 			panic(err)
 		}
 	}()
@@ -138,4 +145,23 @@ func startServer(port int, handler http.Handler, serveTLS bool) error {
 			}
 		}
 	}
+}
+
+func startHTTPSServer(port int, handler http.Handler) {
+	server := &http.Server{
+		Addr: fmt.Sprintf(":%d", port),
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == "HEAD" {
+				w.WriteHeader(200)
+				return
+			}
+			handler.ServeHTTP(w, r)
+		}),
+		ReadHeaderTimeout: 10 * time.Second, // arbitrary but non-infinite timeout to avoid Slowloris Attack,
+	}
+	go func() {
+		if err := server.ListenAndServeTLS("certificate/cert.crt", "certificate/cert.key"); err != nil {
+			panic(err)
+		}
+	}()
 }
