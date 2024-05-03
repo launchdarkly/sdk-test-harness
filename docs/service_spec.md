@@ -199,7 +199,12 @@ A `POST` request indicates that the test harness wants to start an instance of t
        The error message itself is not tested by the framework at this time, as it is not a specified behavior.
         * `beforeEvaluation` (string, optional): The error/exception message that should be generated in the `beforeEvaluation` stage of the test hook. 
         * `afterEvaluation` (string, optional): The error/exception message that should be generated in the `afterEvaluation` stage of the test hook. 
-
+  * `tls` (object, optional): This specifies that the connection to the test harness will be over HTTPS.
+    * `verifyPeer` (bool, optional): If true, the SDK's TLS configuration should be set to verify the peer (i.e. the test harness)'s certificate. Otherwise,
+  it should not verify the peer.
+    * `certificateAuthorityPath` (string, optional): If present, contains a path to CA cert that the SDK should use to verify
+  the peer's certificate. If omitted, the SDK should use its default system CA cert store. 
+  
 The response to a valid request is any HTTP `2xx` status, with a `Location` header whose value is the URL of the test service resource representing this SDK client instance (that is, the one that would be used for "Close client" or "Send command" as described below).
 
 If any parameters are invalid, return HTTP `400`.
