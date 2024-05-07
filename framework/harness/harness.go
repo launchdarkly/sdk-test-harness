@@ -34,7 +34,6 @@ func NewTestHarness(
 	testServiceBaseURL string,
 	testHarnessExternalHostname string,
 	testHarnessPort int,
-	https bool,
 	statusQueryTimeout time.Duration,
 	debugLogger framework.Logger,
 	startupOutput io.Writer,
@@ -43,12 +42,7 @@ func NewTestHarness(
 		debugLogger = framework.NullLogger()
 	}
 
-	protocol := "http"
-	if https {
-		protocol = "https"
-	}
-
-	externalBaseURL := fmt.Sprintf("%s://%s:%d", protocol, testHarnessExternalHostname, testHarnessPort)
+	externalBaseURL := fmt.Sprintf("http://%s:%d", testHarnessExternalHostname, testHarnessPort)
 
 	h := &TestHarness{
 		testServiceBaseURL:         testServiceBaseURL,
@@ -63,15 +57,8 @@ func NewTestHarness(
 	}
 	h.testServiceInfo = testServiceInfo
 
-	if https {
-		// Start an https server. SDKs that support being configured to disable peer verification or
-		// trust a self-signed cert can use this instead of the plain http server.
-		startHTTPSServer(testHarnessPort, http.HandlerFunc(h.serveHTTP))
-		time.Sleep(1 * time.Second)
-	} else {
-		if err = startServer(testHarnessPort, http.HandlerFunc(h.serveHTTP)); err != nil {
-			return nil, err
-		}
+	if err := startServer(testHarnessPort, http.HandlerFunc(h.serveHTTP)); err != nil {
+		return nil, err
 	}
 
 	return h, nil

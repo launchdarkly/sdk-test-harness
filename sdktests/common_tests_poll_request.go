@@ -24,16 +24,21 @@ func (c CommonPollingTests) RequestMethodAndHeaders(t *ldtest.T, credential stri
 	t.Run("method and headers", func(t *ldtest.T) {
 		for _, method := range c.availableFlagRequestMethods() {
 			t.Run(string(method), func(t *ldtest.T) {
-				dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
-				_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
-					c.withFlagRequestMethod(method),
-					dataSource)...)
+				for _, transport := range c.availableTransports(t) {
+					t.Run(transport.name, func(t *ldtest.T) {
+						dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
+						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
+							c.withFlagRequestMethod(method),
+							dataSource,
+							transport.configurer)...)
 
-				request := dataSource.Endpoint().RequireConnection(t, time.Second)
-				m.In(t).For("request method").Assert(request.Method, m.Equal(string(method)))
-				m.In(t).For("request headers").Assert(request.Headers, c.authorizationHeaderMatcher(credential))
-				if t.Capabilities().Has(servicedef.CapabilityPollingGzip) {
-					m.In(t).For("request headers").Assert(request.Headers, Header("Accept-Encoding").Should(m.StringContains("gzip")))
+						request := dataSource.Endpoint().RequireConnection(t, time.Second)
+						m.In(t).For("request method").Assert(request.Method, m.Equal(string(method)))
+						m.In(t).For("request headers").Assert(request.Headers, c.authorizationHeaderMatcher(credential))
+						if t.Capabilities().Has(servicedef.CapabilityPollingGzip) {
+							m.In(t).For("request headers").Assert(request.Headers, Header("Accept-Encoding").Should(m.StringContains("gzip")))
+						}
+					})
 				}
 			})
 		}

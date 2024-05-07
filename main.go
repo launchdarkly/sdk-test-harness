@@ -64,7 +64,6 @@ func run(params commandParams) (*ldtest.Results, error) {
 		params.serviceURL,
 		params.host,
 		params.port,
-		true,
 		time.Duration(params.queryTimeoutSeconds)*time.Second,
 		mainDebugLogger,
 		os.Stdout,

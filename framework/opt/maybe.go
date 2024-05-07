@@ -42,6 +42,14 @@ func (m Maybe[V]) AsPtr() *V {
 	return nil
 }
 
+// Map transforms the value using the given function if it exists, or returns None if it doesn't.
+func (m Maybe[V]) Map(f func(V) V) Maybe[V] {
+	if m.defined {
+		return Some(f(m.value))
+	}
+	return None[V]()
+}
+
 // OrElse returns the value of the Maybe if any, or the valueIfUndefined otherwise.
 func (m Maybe[V]) OrElse(valueIfUndefined V) V {
 	if m.defined {

@@ -2,6 +2,7 @@ package sdktests
 
 import (
 	"fmt"
+	"strings"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
@@ -90,7 +91,6 @@ func newCommonTestsBase(t *ldtest.T, testName string, baseSDKConfigurers ...SDKC
 	}
 	return c
 }
-
 func (c commonTestsBase) baseSDKConfigurationPlus(configurers ...SDKConfigurer) []SDKConfigurer {
 	return append(c.sdkConfigurers, configurers...)
 }
@@ -107,6 +107,43 @@ func (c commonTestsBase) availableFlagRequestMethods() []flagRequestMethod {
 		return []flagRequestMethod{flagRequestGET, flagRequestREPORT}
 	}
 	return []flagRequestMethod{flagRequestGET}
+}
+
+type transportProtocol struct {
+	name       string
+	configurer SDKConfigurer
+}
+
+func https(endpoint string) string {
+	return strings.Replace(endpoint, "http", "https", 1)
+}
+
+func (c commonTestsBase) availableTransports(t *ldtest.T) []transportProtocol {
+	configurers := []transportProtocol{
+		{"http", NoopConfigurer{}},
+	}
+	if t.Capabilities().Has(servicedef.CapabilityTLS) {
+		configurer := helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+			configOut.TLS = o.Some(servicedef.SDKConfigTLSParams{
+				VerifyPeer: false,
+			})
+			configOut.Streaming = configOut.Streaming.Map(func(p servicedef.SDKConfigStreamingParams) servicedef.SDKConfigStreamingParams {
+				p.BaseURI = https(p.BaseURI)
+				return p
+			})
+			configOut.Polling = configOut.Polling.Map(func(p servicedef.SDKConfigPollingParams) servicedef.SDKConfigPollingParams {
+				p.BaseURI = https(p.BaseURI)
+				return p
+			})
+			configOut.Events = configOut.Events.Map(func(p servicedef.SDKConfigEventParams) servicedef.SDKConfigEventParams {
+				p.BaseURI = https(p.BaseURI)
+				return p
+			})
+			return nil
+		})
+		configurers = append(configurers, transportProtocol{"https", configurer})
+	}
+	return configurers
 }
 
 // Returns a set of environment filters for testing, along with a filter representing

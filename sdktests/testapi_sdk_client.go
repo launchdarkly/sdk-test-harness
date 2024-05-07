@@ -3,7 +3,6 @@ package sdktests
 import (
 	"encoding/json"
 	"errors"
-	"strings"
 	"sync/atomic"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
@@ -24,6 +23,11 @@ var arbitraryInitialContexts = data.NewContextFactory("arbitrary-initial-context
 // SDKConfigurer is an interface for objects that can modify the configuration for StartSDKClient.
 // It is implemented by types such as SDKDataSource.
 type SDKConfigurer helpers.ConfigOption[servicedef.SDKConfigParams]
+
+// A NoopConfigurer is an SDKConfigurer that doesn't do anything.
+type NoopConfigurer struct{}
+
+func (NoopConfigurer) Configure(*servicedef.SDKConfigParams) error { return nil }
 
 // WithConfig is used with StartSDKClient to specify a non-default SDK configuration. Use this
 // before any other SDKConfigurers or it will overwrite their effects.
@@ -160,16 +164,7 @@ func TryNewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) (*SDKClient, err
 			config.ClientSide = o.Some(cs)
 		}
 	}
-	if t.Capabilities().Has(servicedef.CapabilityTLS) {
-		config.TLS = o.Some(servicedef.SDKConfigTLSParams{
-			VerifyPeer: false,
-		})
-		config.ServiceEndpoints = o.Some(servicedef.SDKConfigServiceEndpointsParams{
-			Streaming: "https" + strings.TrimPrefix(config.ServiceEndpoints.Value().Streaming, "http"),
-			Polling:   "https" + strings.TrimPrefix(config.ServiceEndpoints.Value().Polling, "http"),
-			Events:    "https" + strings.TrimPrefix(config.ServiceEndpoints.Value().Events, "http"),
-		})
-	}
+
 	if err := validateSDKConfig(config); err != nil {
 		return nil, err
 	}
