@@ -148,6 +148,24 @@ A test hook must:
       * `stage` (string, optional): If executing a stage, for example `beforeEvaluation`, this should be the stage.
   - Return data from the stages as specified via the `data` configuration. For instance the return value from the `beforeEvaluation` hook should be `data['beforeEvaluation']` merged with the input data for the stage.
 
+
+#### Capability `"tls:verify-peer"`
+
+This means the SDK is capable of verifying its TLS peer, which is generally a standard capability of all SDKs that talk
+to production LaunchDarkly. If specified, the test harness will run additional tests that check to see if the SDK will
+reject a connection with an invalid certificate.
+
+The tests may appear to hang momentarily and the suite may run slower.
+
+#### Capability `"tls:skip-verify-peer"`
+
+This means the SDK is capable of configuring its TLS stack to skip peer verification. This may be useful to customers
+that are using the SDK internally, talking to a proxy, etc. 
+
+If specified, the SDK will send a `tls` object containing a `skipVerifyPeer` property. The property will be set to
+true to indicate that verification should be skipped. This should allow the SDK to connect to the test harness 
+over HTTPS even though the test harness's certificate is self-signed. 
+
 ### Stop test service: `DELETE /`
 
 The test harness sends this request at the end of a test run if you have specified `--stop-service-at-end` on the [command line](./running.md). The test service should simply quit. This is a convenience so CI scripts can simply start the test service in the background and assume it will be stopped for them.
@@ -199,10 +217,8 @@ A `POST` request indicates that the test harness wants to start an instance of t
        The error message itself is not tested by the framework at this time, as it is not a specified behavior.
         * `beforeEvaluation` (string, optional): The error/exception message that should be generated in the `beforeEvaluation` stage of the test hook. 
         * `afterEvaluation` (string, optional): The error/exception message that should be generated in the `afterEvaluation` stage of the test hook. 
-  * `tls` (object, optional): Enable TLS tests, which will cause the SDK to connect to the test harness using the 
-    HTTPS protocol for a subset of tests.
-    * `verifyPeer` (bool, optional): If true, the SDK's TLS configuration should be set to verify the peer (i.e. the test harness)'s certificate. Otherwise,
-  it should not verify the peer.
+  * `tls` (object, optional): If specified, contains configuration for establishing TLS connections.
+    * `skipVerifyPeer` (bool, optional): If true, the SDK's TLS configuration should be set skip verification of the peer. If false or omitted, the SDK should perform peer verification.
   
 The response to a valid request is any HTTP `2xx` status, with a `Location` header whose value is the URL of the test service resource representing this SDK client instance (that is, the one that would be used for "Close client" or "Send command" as described below).
 

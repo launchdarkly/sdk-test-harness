@@ -46,19 +46,16 @@ func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string
 		// logic that applies to sending events.
 		dataSource := NewSDKDataSource(t, nil)
 
-		for _, transport := range c.httpsTransport(t) {
-			transport.Run(t, func(t *ldtest.T) {
-				events := NewSDKEventSink(t)
-				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events,
-					c.withVerifyPeer(true))...)
+		c.httpsTransport(t).Run(t, func(t *ldtest.T) {
+			events := NewSDKEventSink(t)
+			client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 
-				c.sendArbitraryEvent(t, client)
-				client.FlushEvents(t)
+			c.sendArbitraryEvent(t, client)
+			client.FlushEvents(t)
 
-				_, err := events.Endpoint().AwaitConnection(time.Second)
-				assert.Errorf(t, err, "expected connection error")
-			})
-		}
+			_, err := events.Endpoint().AwaitConnection(time.Second)
+			assert.Errorf(t, err, "expected connection error")
+		})
 	})
 }
 

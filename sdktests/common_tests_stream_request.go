@@ -41,19 +41,14 @@ func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, credential st
 		}
 	})
 	t.Run("invalid tls certificate", func(t *ldtest.T) {
-		for _, transport := range c.httpsTransport(t) {
-			transport.Run(t, func(t *ldtest.T) {
-				dataSource, configurers := c.setupDataSources(t, nil)
+		c.httpsTransport(t).Run(t, func(t *ldtest.T) {
+			dataSource, configurers := c.setupDataSources(t, nil)
 
-				_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
-					append(configurers,
-						c.withVerifyPeer(true),
-					)...)...)
+			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 
-				_, err := dataSource.Endpoint().AwaitConnection(time.Second)
-				assert.Errorf(t, err, "expected connection error")
-			})
-		}
+			_, err := dataSource.Endpoint().AwaitConnection(time.Second)
+			assert.Errorf(t, err, "expected connection error")
+		})
 	})
 }
 

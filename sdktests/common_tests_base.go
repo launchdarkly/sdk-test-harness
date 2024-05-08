@@ -133,28 +133,28 @@ func (t transportProtocol) Run(tester *ldtest.T, action func(*ldtest.T)) {
 	})
 }
 
-// Returns an https transport configuration. Use the Run method to run a test, and pass the configurer to the
-// SDK client to set up its TLS configuration.
-func (c commonTestsBase) httpsTransport(t *ldtest.T) []transportProtocol {
-	var transports []transportProtocol
-	if !t.Capabilities().Has(servicedef.CapabilityTLS) {
-		return transports
-	}
+// Returns a transportProtocol that runs test under HTTPS.
+func (c commonTestsBase) httpsTransport(t *ldtest.T) transportProtocol {
+	t.RequireCapability(servicedef.CapabilityTLSVerifyPeer)
+	// SDKs must verify peers by default, there's nothing to configure.
+	return transportProtocol{"https", NoopConfigurer{}}
+}
+
+// Returns a transportProtocol that runs the test under HTTPS with peer verification disabled.
+func (c commonTestsBase) httpsTransportSkipVerifyPeer(t *ldtest.T) transportProtocol {
+	t.RequireCapability(servicedef.CapabilityTLSSkipVerifyPeer)
 	configurer := helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
 		configOut.TLS = o.Some(servicedef.SDKConfigTLSParams{
-			// VerifyPeer must be false because the certificate is self-signed and there is no way to configure
-			// the SDK with a root of trust. This may be added in the future.
 			VerifyPeer: false,
 		})
 		return nil
 	})
-	transports = append(transports, transportProtocol{"https", configurer})
-	return transports
+	return transportProtocol{"https", configurer}
 }
 
 // Returns the transports available for testing. For each transportProtocol returned, use the Run method
 // to run a test. Within the test, mock endpoints will be configured as http or https automatically.
-// Additionally, pass the transportProtocol's configurer into the SDK client config to properly setup its
+// Additionally, pass the transportProtocol's configurer into the SDK client config to properly set up its
 // TLS options.
 func (c commonTestsBase) availableTransports(t *ldtest.T) []transportProtocol {
 	// By default, tests are set up with http. Therefore, there's no need to specifically reconfigure the SDK.
@@ -162,17 +162,10 @@ func (c commonTestsBase) availableTransports(t *ldtest.T) []transportProtocol {
 	configurers := []transportProtocol{
 		{"http", NoopConfigurer{}},
 	}
-	configurers = append(configurers, c.httpsTransport(t)...)
+	if t.Capabilities().Has(servicedef.CapabilityTLSSkipVerifyPeer) {
+		configurers = append(configurers, c.httpsTransportSkipVerifyPeer(t))
+	}
 	return configurers
-}
-
-func (c commonTestsBase) withVerifyPeer(verifyPeer bool) SDKConfigurer {
-	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
-		configOut.TLS = o.Some(servicedef.SDKConfigTLSParams{
-			VerifyPeer: verifyPeer,
-		})
-		return nil
-	})
 }
 
 // Returns a set of environment filters for testing, along with a filter representing

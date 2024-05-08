@@ -35,7 +35,17 @@ const (
 	CapabilityAnonymousRedaction = "anonymous-redaction"
 	CapabilityPollingGzip        = "polling-gzip"
 	CapabilityEvaluationHooks    = "evaluation-hooks"
-	CapabilityTLS                = "tls"
+
+	// CapabilityTLSVerifyPeer means the SDK is capable of establishing a TLS session and verifying
+	// its peer. This is generally a standard capability of all SDKs.
+	// However, the additional tests this enables may cause the suite to run slower than normal and may cause
+	// unexpected behavior. Therefore, it should be manually tested first.
+	CapabilityTLSVerifyPeer = "tls:verify-peer"
+
+	// CapabilityTLSSkipVerifyPeer means the SDK is capable of establishing a TLS session but can be configured to
+	// skip the peer verification step. This allows the SDK to establish a connection with the test harness using
+	// a self-signed certificate without a CA. Not all SDKs have this capability.
+	CapabilityTLSSkipVerifyPeer = "tls:skip-verify-peer"
 )
 
 type StatusRep struct {

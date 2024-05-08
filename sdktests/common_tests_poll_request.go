@@ -47,17 +47,14 @@ func (c CommonPollingTests) RequestMethodAndHeaders(t *ldtest.T, credential stri
 		}
 	})
 	t.Run("invalid tls certificate", func(t *ldtest.T) {
-		for _, transport := range c.httpsTransport(t) {
-			transport.Run(t, func(t *ldtest.T) {
-				dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
+		c.httpsTransport(t).Run(t, func(t *ldtest.T) {
+			dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
 
-				_ = NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource,
-					c.withVerifyPeer(true))...)
+			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource)...)
 
-				_, err := dataSource.Endpoint().AwaitConnection(time.Second)
-				assert.Errorf(t, err, "expected connection error")
-			})
-		}
+			_, err := dataSource.Endpoint().AwaitConnection(time.Second)
+			assert.Errorf(t, err, "expected connection error")
+		})
 	})
 }
 
