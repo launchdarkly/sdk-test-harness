@@ -43,11 +43,6 @@ type TestConfiguration struct {
 	Capabilities []string
 }
 
-func (t TestConfiguration) WithContext(context interface{}) TestConfiguration {
-	t.Context = context
-	return t
-}
-
 // Run starts a top-level test scope.
 func Run(
 	config TestConfiguration,

@@ -230,7 +230,7 @@ func (m *mockEndpointsManager) serveHTTP(w http.ResponseWriter, r *http.Request)
 	e.lock.Unlock()
 }
 
-// BaseURL returns the base path of the mock endpoint using http transport and port.
+// BaseURL returns the base path of the mock endpoint.
 func (e *MockEndpoint) BaseURL() string {
 	return e.owner.externalBaseURL + e.basePath
 }

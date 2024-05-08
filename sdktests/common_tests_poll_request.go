@@ -38,7 +38,8 @@ func (c CommonPollingTests) RequestMethodAndHeaders(t *ldtest.T, credential stri
 						m.In(t).For("request method").Assert(request.Method, m.Equal(string(method)))
 						m.In(t).For("request headers").Assert(request.Headers, c.authorizationHeaderMatcher(credential))
 						if t.Capabilities().Has(servicedef.CapabilityPollingGzip) {
-							m.In(t).For("request headers").Assert(request.Headers, Header("Accept-Encoding").Should(m.StringContains("gzip")))
+							m.In(t).For("request headers").Assert(request.Headers,
+								Header("Accept-Encoding").Should(m.StringContains("gzip")))
 						}
 					})
 				}

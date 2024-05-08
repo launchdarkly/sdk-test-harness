@@ -32,6 +32,7 @@ type TestHarness struct {
 	https bool
 }
 
+// SetHTTPS tells the test harness to generate HTTPS endpoints when NewMockEndpoint is called.
 func (h *TestHarness) SetHTTPS(https bool) {
 	h.https = https
 }

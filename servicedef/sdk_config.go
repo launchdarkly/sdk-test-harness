@@ -28,8 +28,7 @@ type SDKConfigParams struct {
 }
 
 type SDKConfigTLSParams struct {
-	VerifyPeer               bool   `json:"verifyPeer,omitempty"`
-	CertificateAuthorityPath string `json:"certificateAuthorityPath,omitempty"`
+	VerifyPeer bool `json:"verifyPeer,omitempty"`
 }
 type SDKConfigServiceEndpointsParams struct {
 	Streaming string `json:"streaming,omitempty"`
