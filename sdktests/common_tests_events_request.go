@@ -4,6 +4,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
@@ -18,11 +20,11 @@ const phpLegacyEventSchema = "2"
 func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string, headersMatcher m.Matcher) {
 	t.Run("method and headers", func(t *ldtest.T) {
 		for _, transport := range c.availableTransports(t) {
-			t.Run(transport.protocol, func(t *ldtest.T) {
+			transport.Run(t, func(t *ldtest.T) {
 				dataSource := NewSDKDataSource(t, nil)
 				events := NewSDKEventSink(t)
 				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events,
-					transport.ConfigureDataSourceAndEventURIs(dataSource.Endpoint(), events.Endpoint()))...)
+					transport.configurer)...)
 
 				c.sendArbitraryEvent(t, client)
 				client.FlushEvents(t)
@@ -35,6 +37,26 @@ func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string
 					headersMatcher,
 					c.authorizationHeaderMatcher(credential),
 				))
+			})
+		}
+	})
+	t.Run("invalid tls certificate", func(t *ldtest.T) {
+		// Setting up the data source *outside* the transport.Run so that it uses normal https transport and the
+		// data source connection can succeed. This is because we're trying to only test the TLS certificate verification
+		// logic that applies to sending events.
+		dataSource := NewSDKDataSource(t, nil)
+
+		for _, transport := range c.httpsTransport(t) {
+			transport.Run(t, func(t *ldtest.T) {
+				events := NewSDKEventSink(t)
+				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events,
+					c.withVerifyPeer(true))...)
+
+				c.sendArbitraryEvent(t, client)
+				client.FlushEvents(t)
+
+				_, err := events.Endpoint().AwaitConnection(time.Second)
+				assert.Errorf(t, err, "expected connection error")
 			})
 		}
 	})

@@ -27,12 +27,11 @@ const endpointPathPrefix = "/endpoints/"
 const incomingConnectionChannelBufferSize = 10
 
 type mockEndpointsManager struct {
-	endpoints            map[string]*MockEndpoint
-	lastEndpointID       int
-	externalBaseURL      string
-	externalBaseHttpsURL string
-	logger               framework.Logger
-	lock                 sync.Mutex
+	endpoints       map[string]*MockEndpoint
+	lastEndpointID  int
+	externalBaseURL string
+	logger          framework.Logger
+	lock            sync.Mutex
 }
 
 // MockEndpoint represents an endpoint that can receive requests.
@@ -96,12 +95,11 @@ type IncomingRequestInfo struct {
 	Cancel  context.CancelFunc
 }
 
-func newMockEndpointsManager(externalBaseURL string, externalBaseHttpsURL string, logger framework.Logger) *mockEndpointsManager {
+func newMockEndpointsManager(externalBaseURL string, logger framework.Logger) *mockEndpointsManager {
 	return &mockEndpointsManager{
-		endpoints:            make(map[string]*MockEndpoint),
-		externalBaseURL:      externalBaseURL,
-		externalBaseHttpsURL: externalBaseHttpsURL,
-		logger:               logger,
+		endpoints:       make(map[string]*MockEndpoint),
+		externalBaseURL: externalBaseURL,
+		logger:          logger,
 	}
 }
 
@@ -235,11 +233,6 @@ func (m *mockEndpointsManager) serveHTTP(w http.ResponseWriter, r *http.Request)
 // BaseURL returns the base path of the mock endpoint using http transport and port.
 func (e *MockEndpoint) BaseURL() string {
 	return e.owner.externalBaseURL + e.basePath
-}
-
-// BaseHttpsURL returns the base path of the mock endpoint using https transport and port.
-func (e *MockEndpoint) BaseHttpsURL() string {
-	return e.owner.externalBaseHttpsURL + e.basePath
 }
 
 // AwaitConnection waits for an incoming request to the endpoint.

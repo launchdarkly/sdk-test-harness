@@ -2,11 +2,12 @@ package harness
 
 import (
 	"fmt"
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
-	"github.com/launchdarkly/sdk-test-harness/v2/serviceinfo"
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/serviceinfo"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 )
@@ -25,7 +26,14 @@ type TestHarness struct {
 	testServiceBaseURL string
 	testServiceInfo    serviceinfo.TestServiceInfo
 	mockEndpoints      *mockEndpointsManager
+	mockHttpsEndpoints *mockEndpointsManager
 	logger             framework.Logger
+	// Whether to use the mockEndpoints or mockHttpsEndpoints when NewMockEndpoint is called.
+	https bool
+}
+
+func (h *TestHarness) SetHttps(https bool) {
+	h.https = https
 }
 
 // NewTestHarness creates a TestHarness instance, and verifies that the test service
@@ -48,7 +56,8 @@ func NewTestHarness(
 
 	h := &TestHarness{
 		testServiceBaseURL: testServiceBaseURL,
-		mockEndpoints:      newMockEndpointsManager(externalBaseURL, externalBaseHttpsURL, debugLogger),
+		mockEndpoints:      newMockEndpointsManager(externalBaseURL, debugLogger),
+		mockHttpsEndpoints: newMockEndpointsManager(externalBaseHttpsURL, debugLogger),
 		logger:             debugLogger,
 	}
 
@@ -63,7 +72,7 @@ func NewTestHarness(
 	}
 
 	if testServiceInfo.Capabilities.Has(servicedef.CapabilityTLS) {
-		startHTTPSServer(testHarnessPort+1, http.HandlerFunc(h.serveHTTP))
+		startHTTPSServer(testHarnessPort+1, http.HandlerFunc(h.serveHTTPS))
 	}
 
 	return h, nil
@@ -92,7 +101,10 @@ func (h *TestHarness) NewMockEndpoint(
 	if logger == nil {
 		logger = h.logger
 	}
-	return h.mockEndpoints.newMockEndpoint(handler, logger, options...)
+	if !h.https {
+		return h.mockEndpoints.newMockEndpoint(handler, logger, options...)
+	}
+	return h.mockHttpsEndpoints.newMockEndpoint(handler, logger, options...)
 }
 
 func (h *TestHarness) serveHTTP(w http.ResponseWriter, r *http.Request) {
@@ -101,6 +113,14 @@ func (h *TestHarness) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.mockEndpoints.serveHTTP(w, r)
+}
+
+func (h *TestHarness) serveHTTPS(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "HEAD" {
+		w.WriteHeader(200) // we use this to test whether our own listener is active yet
+		return
+	}
+	h.mockHttpsEndpoints.serveHTTP(w, r)
 }
 
 func startServer(port int, handler http.Handler) error {

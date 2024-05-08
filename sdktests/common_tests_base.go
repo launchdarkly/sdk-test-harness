@@ -2,16 +2,15 @@ package sdktests
 
 import (
 	"fmt"
+
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
-
-	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 )
 
 // commonTestsBase provides shared behavior for server-side and client-side SDK tests, if their
@@ -113,72 +112,67 @@ func (c commonTestsBase) availableFlagRequestMethods() []flagRequestMethod {
 type transportProtocol struct {
 	// Either http or https.
 	protocol string
-	// A function that configures the SDK to use the specified transport, by modifying the base polling/streaming/events
-	// URIs to use the selected protocol. It takes a MockEndpoint as a roundabout way of discovering the base URI - this
-	// is passed in during the test setup.
-	configurer func(dataSource *harness.MockEndpoint, events *harness.MockEndpoint) SDKConfigurer
+	// A function that configures the SDK's TLS options.
+	configurer SDKConfigurer
 }
 
-// ConfigureDataSourceURIs returns an SDKConfigurer function that configures the SDK to use the specified transport
-// for polling/streaming. This must be configured after any previous configuration that sets up the polling/streaming
-// URIs.
-func (t transportProtocol) ConfigureDataSourceURIs(dataSource *harness.MockEndpoint) SDKConfigurer {
-	return t.ConfigureDataSourceAndEventURIs(dataSource, nil)
+// Run invokes T.Run() with the protocol's name, passing in a modified T that is suitable for the test.
+func (t transportProtocol) Run(tester *ldtest.T, action func(*ldtest.T)) {
+	// This is a pretty nasty hack. We're modifying the TestHarness that is stashed away in T, in order
+	// to tell it to use HTTPS when creating mock endpoints. This is necessary because higher level
+	// test components - like the mock data sources or event sink - use those methods in their own setup.
+	// So, if this is a test that should use HTTPS, tweak the global TestHarness and enable it - then undo
+	// it after the test runs. WARNING: this won't work with tests that run in parallel.
+
+	// Ensure that if some test fails/panics, we disable HTTPS for the next one.
+	defer requireContext(tester).harness.SetHttps(false)
+
+	tester.Run(t.protocol, func(tester *ldtest.T) {
+		requireContext(tester).harness.SetHttps(t.protocol == "https")
+		action(tester)
+	})
 }
 
-// ConfigureDataSourceAndEventURIs returns an SDKConfigurer function that configures the SDK to use the specified
-// transport for polling/streaming, as well as events. This must be configured after any previous configuration that
-// sets up the polling/streaming URIs.
-func (t transportProtocol) ConfigureDataSourceAndEventURIs(dataSource *harness.MockEndpoint, events *harness.MockEndpoint) SDKConfigurer {
-	return t.configurer(dataSource, events)
+// Returns an https transport configuration. Use the Run method to run a test, and pass the configurer to the
+// SDK client to set up its TLS configuration.
+func (c commonTestsBase) httpsTransport(t *ldtest.T) []transportProtocol {
+	var transports []transportProtocol
+	if !t.Capabilities().Has(servicedef.CapabilityTLS) {
+		return transports
+	}
+	configurer := helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		configOut.TLS = o.Some(servicedef.SDKConfigTLSParams{
+			// VerifyPeer must be false because the certificate is self-signed and there is no way to configure
+			// the SDK with a root of trust. This may be added in the future.
+			VerifyPeer: false,
+		})
+		return nil
+	})
+	transports = append(transports, transportProtocol{"https", configurer})
+	return transports
 }
 
-// Returns the transports available for testing. The resulting list of transports can then be called to create
-// SDKConfigurers which should be passed into the test's SDKClient.
+// Returns the transports available for testing. For each transportProtocol returned, use the Run method
+// to run a test. Within the test, mock endpoints will be configured as http or https automatically.
+// Additionally, pass the transportProtocol's configurer into the SDK client config to properly setup its
+// TLS options.
 func (c commonTestsBase) availableTransports(t *ldtest.T) []transportProtocol {
 	// By default, tests are set up with http. Therefore, there's no need to specifically reconfigure the SDK.
 	// If that changes in the future, this would need to be modified.
 	configurers := []transportProtocol{
-		{"http", func(ep *harness.MockEndpoint, ep2 *harness.MockEndpoint) SDKConfigurer {
-			// NoopConfigurer doesn't do anything.
-			return NoopConfigurer{}
-		}},
+		{"http", NoopConfigurer{}},
 	}
-	// Only SDKs that are capable of configuring TLS should be tested with https.
-	if t.Capabilities().Has(servicedef.CapabilityTLS) {
-		outer := func(ds *harness.MockEndpoint, events *harness.MockEndpoint) SDKConfigurer {
-			configurer := helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
-				configOut.TLS = o.Some(servicedef.SDKConfigTLSParams{
-					// VerifyPeer must be false because the certificate is self-signed and there is no way to configure
-					// the SDK with a root of trust. This may be added in the future.
-					VerifyPeer: false,
-				})
-				// It's valid to pass in BaseHttpsURL() because at startup, the harness checks the TLS capability and if
-				// present, also starts an https server with the same handlers as the default http server.
-				// The purpose of changing all three using the .Map function is so that this works for
-				// polling/streaming/event tests out of the box, but doesn't set the polling/streaming/event configs if
-				// they aren't already present.
-				configOut.Streaming = configOut.Streaming.Map(func(p servicedef.SDKConfigStreamingParams) servicedef.SDKConfigStreamingParams {
-					p.BaseURI = ds.BaseHttpsURL()
-					return p
-				})
-				configOut.Polling = configOut.Polling.Map(func(p servicedef.SDKConfigPollingParams) servicedef.SDKConfigPollingParams {
-					p.BaseURI = ds.BaseHttpsURL()
-					return p
-				})
-				if events != nil {
-					configOut.Events = configOut.Events.Map(func(p servicedef.SDKConfigEventParams) servicedef.SDKConfigEventParams {
-						p.BaseURI = events.BaseHttpsURL()
-						return p
-					})
-				}
-				return nil
-			})
-			return configurer
-		}
-		configurers = append(configurers, transportProtocol{"https", outer})
-	}
+	configurers = append(configurers, c.httpsTransport(t)...)
 	return configurers
+}
+
+func (c commonTestsBase) withVerifyPeer(verifyPeer bool) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		configOut.TLS = o.Some(servicedef.SDKConfigTLSParams{
+			VerifyPeer: verifyPeer,
+		})
+		return nil
+	})
 }
 
 // Returns a set of environment filters for testing, along with a filter representing

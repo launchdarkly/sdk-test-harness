@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/launchdarkly/sdk-test-harness/v2/serviceinfo"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/launchdarkly/sdk-test-harness/v2/serviceinfo"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 )

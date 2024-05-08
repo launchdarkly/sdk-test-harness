@@ -15,39 +15,29 @@ import (
 )
 
 func TestMockEndpointServesRequest(t *testing.T) {
-	m := newMockEndpointsManager("http://testharness:9999", "https://testharness:9998", framework.NullLogger())
+	m := newMockEndpointsManager("http://testharness:9999", framework.NullLogger())
 
 	handler1 := httphelpers.HandlerWithStatus(200)
 	e1 := m.newMockEndpoint(handler1, framework.NullLogger())
 	assert.Equal(t, "http://testharness:9999/endpoints/1", e1.BaseURL())
-	assert.Equal(t, "https://testharness:9998/endpoints/1", e1.BaseHttpsURL())
 
 	handler2 := httphelpers.HandlerWithStatus(204)
 	e2 := m.newMockEndpoint(handler2, framework.NullLogger())
 	assert.Equal(t, "http://testharness:9999/endpoints/2", e2.BaseURL())
-	assert.Equal(t, "https://testharness:9998/endpoints/2", e2.BaseHttpsURL())
 
 	rr1 := httptest.NewRecorder()
 	r1, _ := http.NewRequest("GET", e1.BaseURL(), nil)
 	m.serveHTTP(rr1, r1)
 	assert.Equal(t, 200, rr1.Code)
 
-	r1https, _ := http.NewRequest("GET", e1.BaseHttpsURL(), nil)
-	m.serveHTTP(rr1, r1https)
-	assert.Equal(t, 200, rr1.Code)
-
 	rr2 := httptest.NewRecorder()
 	r2, _ := http.NewRequest("GET", e2.BaseURL(), nil)
 	m.serveHTTP(rr2, r2)
 	assert.Equal(t, 204, rr2.Code)
-
-	r2https, _ := http.NewRequest("GET", e2.BaseHttpsURL(), nil)
-	m.serveHTTP(rr2, r2https)
-	assert.Equal(t, 204, rr2.Code)
 }
 
 func TestMockEndpointReceivesSubpath(t *testing.T) {
-	m := newMockEndpointsManager("http://testharness:9999", "", framework.NullLogger())
+	m := newMockEndpointsManager("http://testharness:9999", framework.NullLogger())
 
 	handler, requests := httphelpers.RecordingHandler(httphelpers.HandlerWithStatus(200))
 	e := m.newMockEndpoint(handler, framework.NullLogger())
@@ -67,7 +57,7 @@ func TestMockEndpointReceivesSubpath(t *testing.T) {
 }
 
 func TestMockEndpointConnectionInfo(t *testing.T) {
-	m := newMockEndpointsManager("http://testharness:9999", "", framework.NullLogger())
+	m := newMockEndpointsManager("http://testharness:9999", framework.NullLogger())
 	handler := httphelpers.HandlerWithStatus(200)
 	e := m.newMockEndpoint(handler, framework.NullLogger())
 

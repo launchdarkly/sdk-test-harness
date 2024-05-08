@@ -3,11 +3,12 @@ package ldtest
 import (
 	"encoding/xml"
 	"fmt"
-	"github.com/launchdarkly/sdk-test-harness/v2/serviceinfo"
 	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/launchdarkly/sdk-test-harness/v2/serviceinfo"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"

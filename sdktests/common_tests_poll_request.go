@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldmodel"
@@ -25,12 +27,12 @@ func (c CommonPollingTests) RequestMethodAndHeaders(t *ldtest.T, credential stri
 		for _, method := range c.availableFlagRequestMethods() {
 			t.Run(string(method), func(t *ldtest.T) {
 				for _, transport := range c.availableTransports(t) {
-					t.Run(transport.protocol, func(t *ldtest.T) {
+					transport.Run(t, func(t *ldtest.T) {
 						dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
 						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 							c.withFlagRequestMethod(method),
 							dataSource,
-							transport.ConfigureDataSourceURIs(dataSource.Endpoint()))...)
+							transport.configurer)...)
 
 						request := dataSource.Endpoint().RequireConnection(t, time.Second)
 						m.In(t).For("request method").Assert(request.Method, m.Equal(string(method)))
@@ -40,6 +42,19 @@ func (c CommonPollingTests) RequestMethodAndHeaders(t *ldtest.T, credential stri
 						}
 					})
 				}
+			})
+		}
+	})
+	t.Run("invalid tls certificate", func(t *ldtest.T) {
+		for _, transport := range c.httpsTransport(t) {
+			transport.Run(t, func(t *ldtest.T) {
+				dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
+
+				_ = NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource,
+					c.withVerifyPeer(true))...)
+
+				_, err := dataSource.Endpoint().AwaitConnection(time.Second)
+				assert.Errorf(t, err, "expected connection error")
 			})
 		}
 	})

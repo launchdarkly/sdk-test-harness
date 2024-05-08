@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
@@ -21,13 +23,13 @@ func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, credential st
 		for _, method := range c.availableFlagRequestMethods() {
 			t.Run(string(method), func(t *ldtest.T) {
 				for _, transport := range c.availableTransports(t) {
-					t.Run(transport.protocol, func(t *ldtest.T) {
+					transport.Run(t, func(t *ldtest.T) {
 						dataSource, configurers := c.setupDataSources(t, nil)
 
 						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 							append(configurers,
 								c.withFlagRequestMethod(method),
-								transport.ConfigureDataSourceURIs(dataSource.Endpoint()),
+								transport.configurer,
 							)...)...)
 
 						request := dataSource.Endpoint().RequireConnection(t, time.Second)
@@ -35,6 +37,21 @@ func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, credential st
 						m.In(t).For("request headers").Assert(request.Headers, c.authorizationHeaderMatcher(credential))
 					})
 				}
+			})
+		}
+	})
+	t.Run("invalid tls certificate", func(t *ldtest.T) {
+		for _, transport := range c.httpsTransport(t) {
+			transport.Run(t, func(t *ldtest.T) {
+				dataSource, configurers := c.setupDataSources(t, nil)
+
+				_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
+					append(configurers,
+						c.withVerifyPeer(true),
+					)...)...)
+
+				_, err := dataSource.Endpoint().AwaitConnection(time.Second)
+				assert.Errorf(t, err, "expected connection error")
 			})
 		}
 	})

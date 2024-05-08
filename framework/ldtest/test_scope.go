@@ -43,6 +43,11 @@ type TestConfiguration struct {
 	Capabilities []string
 }
 
+func (t TestConfiguration) WithContext(context interface{}) TestConfiguration {
+	t.Context = context
+	return t
+}
+
 // Run starts a top-level test scope.
 func Run(
 	config TestConfiguration,
@@ -204,6 +209,14 @@ func (t *T) Defer(cleanupFn func()) {
 // TestConfiguration.
 func (t *T) Context() interface{} {
 	return t.env.config.Context
+}
+
+func (t *T) WithContext(context interface{}) *T {
+	copied := *t
+	copiedEnv := *t.env
+	copiedEnv.config = copiedEnv.config.WithContext(context)
+	copied.env = &copiedEnv
+	return &copied
 }
 
 // Capabilities returns the capabilities reported by the test service.
