@@ -3,19 +3,19 @@ package ldtest
 import (
 	"encoding/xml"
 	"fmt"
+	"github.com/launchdarkly/sdk-test-harness/v2/serviceinfo"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 )
 
 type JUnitTestLogger struct {
 	filePath    string
-	serviceInfo harness.TestServiceInfo
+	serviceInfo serviceinfo.TestServiceInfo
 	filters     RegexFilters
 	testIDs     []TestID // this slice preserves the order that the tests were run in
 	tests       map[string]jUnitTestStatus
@@ -74,7 +74,7 @@ type jUnitXMLFailure struct {
 
 func NewJUnitTestLogger(
 	filePath string,
-	serviceInfo harness.TestServiceInfo,
+	serviceInfo serviceinfo.TestServiceInfo,
 	filters RegexFilters,
 ) *JUnitTestLogger {
 	return &JUnitTestLogger{

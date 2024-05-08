@@ -20,16 +20,21 @@ func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, credential st
 	t.Run("method and headers", func(t *ldtest.T) {
 		for _, method := range c.availableFlagRequestMethods() {
 			t.Run(string(method), func(t *ldtest.T) {
-				dataSource, configurers := c.setupDataSources(t, nil)
+				for _, transport := range c.availableTransports(t) {
+					t.Run(transport.protocol, func(t *ldtest.T) {
+						dataSource, configurers := c.setupDataSources(t, nil)
 
-				_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
-					append(configurers,
-						c.withFlagRequestMethod(method),
-					)...)...)
+						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
+							append(configurers,
+								c.withFlagRequestMethod(method),
+								transport.ConfigurerDataSource(dataSource.Endpoint()),
+							)...)...)
 
-				request := dataSource.Endpoint().RequireConnection(t, time.Second)
-				m.In(t).For("request method").Assert(request.Method, m.Equal(string(method)))
-				m.In(t).For("request headers").Assert(request.Headers, c.authorizationHeaderMatcher(credential))
+						request := dataSource.Endpoint().RequireConnection(t, time.Second)
+						m.In(t).For("request method").Assert(request.Method, m.Equal(string(method)))
+						m.In(t).For("request headers").Assert(request.Headers, c.authorizationHeaderMatcher(credential))
+					})
+				}
 			})
 		}
 	})

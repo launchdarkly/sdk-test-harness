@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/launchdarkly/sdk-test-harness/v2/serviceinfo"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -15,24 +16,6 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 )
 
-// TestServiceInfo is status information returned by the test service from the initial status query.
-type TestServiceInfo struct {
-	TestServiceInfoBase
-
-	// FullData is the entire response received from the test service, which might contain additional
-	// properties beyond TestServiceInfoBase.
-	FullData []byte
-}
-
-// TestServiceInfoBase is the basic set of properties that all test services must provide.
-type TestServiceInfoBase struct {
-	// Name is the name of the project that the test service is testing, such as "go-server-sdk".
-	Name string `json:"name"`
-
-	// Capabilities is a list of strings representing optional features of the test service.
-	Capabilities framework.Capabilities `json:"capabilities"`
-}
-
 // TestServiceEntity represents some kind of entity that we have asked the test service to create,
 // which the test harness will interact with.
 type TestServiceEntity struct {
@@ -41,7 +24,7 @@ type TestServiceEntity struct {
 	closeOnce   sync.Once
 }
 
-func queryTestServiceInfo(url string, timeout time.Duration, output io.Writer) (TestServiceInfo, error) {
+func queryTestServiceInfo(url string, timeout time.Duration, output io.Writer) (serviceinfo.TestServiceInfo, error) {
 	fmt.Fprintf(output, "Connecting to test service at %s", url)
 
 	deadline := time.Now().Add(timeout)
@@ -52,17 +35,17 @@ func queryTestServiceInfo(url string, timeout time.Duration, output io.Writer) (
 			fmt.Fprintln(output)
 			if respData == nil {
 				fmt.Fprintf(output, "Status query successful, but service provided no metadata\n")
-				return TestServiceInfo{}, nil
+				return serviceinfo.Empty(), nil
 			}
 			fmt.Fprintf(output, "Status query returned metadata: %s\n", string(respData))
-			var base TestServiceInfoBase
+			var base serviceinfo.TestServiceInfoBase
 			if err := json.Unmarshal(respData, &base); err != nil {
-				return TestServiceInfo{}, fmt.Errorf("malformed status response from test service: %s", string(respData))
+				return serviceinfo.Empty(), fmt.Errorf("malformed status response from test service: %s", string(respData))
 			}
-			return TestServiceInfo{TestServiceInfoBase: base, FullData: respData}, nil
+			return serviceinfo.TestServiceInfo{TestServiceInfoBase: base, FullData: respData}, nil
 		}
 		if !time.Now().Before(deadline) {
-			return TestServiceInfo{}, fmt.Errorf("timed out, result of last query was: %w", err)
+			return serviceinfo.Empty(), fmt.Errorf("timed out, result of last query was: %w", err)
 		}
 		time.Sleep(time.Millisecond * 100)
 	}

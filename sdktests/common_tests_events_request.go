@@ -17,21 +17,26 @@ const phpLegacyEventSchema = "2"
 
 func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string, headersMatcher m.Matcher) {
 	t.Run("method and headers", func(t *ldtest.T) {
-		dataSource := NewSDKDataSource(t, nil)
-		events := NewSDKEventSink(t)
-		client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
+		for _, transport := range c.availableTransports(t) {
+			t.Run(transport.protocol, func(t *ldtest.T) {
+				dataSource := NewSDKDataSource(t, nil)
+				events := NewSDKEventSink(t)
+				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events,
+					transport.ConfigureDataSourceAndEvents(dataSource.Endpoint(), events.Endpoint()))...)
 
-		c.sendArbitraryEvent(t, client)
-		client.FlushEvents(t)
+				c.sendArbitraryEvent(t, client)
+				client.FlushEvents(t)
 
-		request := events.Endpoint().RequireConnection(t, time.Second)
+				request := events.Endpoint().RequireConnection(t, time.Second)
 
-		m.In(t).For("request method").Assert(request.Method, m.Equal("POST"))
+				m.In(t).For("request method").Assert(request.Method, m.Equal("POST"))
 
-		m.In(t).For("request headers").Assert(request.Headers, m.AllOf(
-			headersMatcher,
-			c.authorizationHeaderMatcher(credential),
-		))
+				m.In(t).For("request headers").Assert(request.Headers, m.AllOf(
+					headersMatcher,
+					c.authorizationHeaderMatcher(credential),
+				))
+			})
+		}
 	})
 }
 

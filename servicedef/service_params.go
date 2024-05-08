@@ -1,6 +1,8 @@
 package servicedef
 
-import "github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
+import (
+	"github.com/launchdarkly/sdk-test-harness/v2/serviceinfo"
+)
 
 const (
 	CapabilityClientSide         = "client-side"
@@ -37,7 +39,7 @@ const (
 )
 
 type StatusRep struct {
-	harness.TestServiceInfo
+	serviceinfo.TestServiceInfo
 	ClientVersion string `json:"clientVersion"`
 }
 

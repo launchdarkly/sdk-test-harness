@@ -25,12 +25,12 @@ func (c CommonPollingTests) RequestMethodAndHeaders(t *ldtest.T, credential stri
 		for _, method := range c.availableFlagRequestMethods() {
 			t.Run(string(method), func(t *ldtest.T) {
 				for _, transport := range c.availableTransports(t) {
-					t.Run(transport.name, func(t *ldtest.T) {
+					t.Run(transport.protocol, func(t *ldtest.T) {
 						dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
 						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 							c.withFlagRequestMethod(method),
 							dataSource,
-							transport.configurer)...)
+							transport.ConfigurerDataSource(dataSource.Endpoint()))...)
 
 						request := dataSource.Endpoint().RequireConnection(t, time.Second)
 						m.In(t).For("request method").Assert(request.Method, m.Equal(string(method)))

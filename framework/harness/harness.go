@@ -2,6 +2,8 @@ package harness
 
 import (
 	"fmt"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/serviceinfo"
 	"io"
 	"net/http"
 	"time"
@@ -20,11 +22,10 @@ const httpListenerTimeout = time.Second * 10
 // It contains no domain-specific test logic, but only provides a general mechanism for test suites
 // to build on.
 type TestHarness struct {
-	testServiceBaseURL         string
-	testHarnessExternalBaseURL string
-	testServiceInfo            TestServiceInfo
-	mockEndpoints              *mockEndpointsManager
-	logger                     framework.Logger
+	testServiceBaseURL string
+	testServiceInfo    serviceinfo.TestServiceInfo
+	mockEndpoints      *mockEndpointsManager
+	logger             framework.Logger
 }
 
 // NewTestHarness creates a TestHarness instance, and verifies that the test service
@@ -43,12 +44,12 @@ func NewTestHarness(
 	}
 
 	externalBaseURL := fmt.Sprintf("http://%s:%d", testHarnessExternalHostname, testHarnessPort)
+	externalBaseHttpsURL := fmt.Sprintf("https://%s:%d", testHarnessExternalHostname, testHarnessPort+1)
 
 	h := &TestHarness{
-		testServiceBaseURL:         testServiceBaseURL,
-		testHarnessExternalBaseURL: externalBaseURL,
-		mockEndpoints:              newMockEndpointsManager(externalBaseURL, debugLogger),
-		logger:                     debugLogger,
+		testServiceBaseURL: testServiceBaseURL,
+		mockEndpoints:      newMockEndpointsManager(externalBaseURL, externalBaseHttpsURL, debugLogger),
+		logger:             debugLogger,
 	}
 
 	testServiceInfo, err := queryTestServiceInfo(testServiceBaseURL, statusQueryTimeout, startupOutput)
@@ -61,11 +62,15 @@ func NewTestHarness(
 		return nil, err
 	}
 
+	if testServiceInfo.Capabilities.Has(servicedef.CapabilityTLS) {
+		startHTTPSServer(testHarnessPort+1, http.HandlerFunc(h.serveHTTP))
+	}
+
 	return h, nil
 }
 
 // TestServiceInfo returns the initial status information received from the test service.
-func (h *TestHarness) TestServiceInfo() TestServiceInfo {
+func (h *TestHarness) TestServiceInfo() serviceinfo.TestServiceInfo {
 	return h.testServiceInfo
 }
 
