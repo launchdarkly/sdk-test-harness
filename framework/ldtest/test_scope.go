@@ -211,14 +211,6 @@ func (t *T) Context() interface{} {
 	return t.env.config.Context
 }
 
-func (t *T) WithContext(context interface{}) *T {
-	copied := *t
-	copiedEnv := *t.env
-	copiedEnv.config = copiedEnv.config.WithContext(context)
-	copied.env = &copiedEnv
-	return &copied
-}
-
 // Capabilities returns the capabilities reported by the test service.
 func (t *T) Capabilities() framework.Capabilities {
 	return append(framework.Capabilities(nil), t.env.config.Capabilities...)

@@ -1,3 +1,4 @@
+// Package serviceinfo provides a data model for information provided by a service under test.
 package serviceinfo
 
 import "github.com/launchdarkly/sdk-test-harness/v2/framework"

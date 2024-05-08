@@ -125,10 +125,10 @@ func (t transportProtocol) Run(tester *ldtest.T, action func(*ldtest.T)) {
 	// it after the test runs. WARNING: this won't work with tests that run in parallel.
 
 	// Ensure that if some test fails/panics, we disable HTTPS for the next one.
-	defer requireContext(tester).harness.SetHttps(false)
+	defer requireContext(tester).harness.SetHTTPS(false)
 
 	tester.Run(t.protocol, func(tester *ldtest.T) {
-		requireContext(tester).harness.SetHttps(t.protocol == "https")
+		requireContext(tester).harness.SetHTTPS(t.protocol == "https")
 		action(tester)
 	})
 }

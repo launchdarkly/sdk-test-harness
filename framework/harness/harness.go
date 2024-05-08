@@ -26,13 +26,13 @@ type TestHarness struct {
 	testServiceBaseURL string
 	testServiceInfo    serviceinfo.TestServiceInfo
 	mockEndpoints      *mockEndpointsManager
-	mockHttpsEndpoints *mockEndpointsManager
+	mockHTTPSEndpoints *mockEndpointsManager
 	logger             framework.Logger
-	// Whether to use the mockEndpoints or mockHttpsEndpoints when NewMockEndpoint is called.
+	// Whether to use the mockEndpoints or mockHTTPSEndpoints when NewMockEndpoint is called.
 	https bool
 }
 
-func (h *TestHarness) SetHttps(https bool) {
+func (h *TestHarness) SetHTTPS(https bool) {
 	h.https = https
 }
 
@@ -52,12 +52,12 @@ func NewTestHarness(
 	}
 
 	externalBaseURL := fmt.Sprintf("http://%s:%d", testHarnessExternalHostname, testHarnessPort)
-	externalBaseHttpsURL := fmt.Sprintf("https://%s:%d", testHarnessExternalHostname, testHarnessPort+1)
+	externalBaseHTTPSURL := fmt.Sprintf("https://%s:%d", testHarnessExternalHostname, testHarnessPort+1)
 
 	h := &TestHarness{
 		testServiceBaseURL: testServiceBaseURL,
 		mockEndpoints:      newMockEndpointsManager(externalBaseURL, debugLogger),
-		mockHttpsEndpoints: newMockEndpointsManager(externalBaseHttpsURL, debugLogger),
+		mockHTTPSEndpoints: newMockEndpointsManager(externalBaseHTTPSURL, debugLogger),
 		logger:             debugLogger,
 	}
 
@@ -104,7 +104,7 @@ func (h *TestHarness) NewMockEndpoint(
 	if !h.https {
 		return h.mockEndpoints.newMockEndpoint(handler, logger, options...)
 	}
-	return h.mockHttpsEndpoints.newMockEndpoint(handler, logger, options...)
+	return h.mockHTTPSEndpoints.newMockEndpoint(handler, logger, options...)
 }
 
 func (h *TestHarness) serveHTTP(w http.ResponseWriter, r *http.Request) {
@@ -120,7 +120,7 @@ func (h *TestHarness) serveHTTPS(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200) // we use this to test whether our own listener is active yet
 		return
 	}
-	h.mockHttpsEndpoints.serveHTTP(w, r)
+	h.mockHTTPSEndpoints.serveHTTP(w, r)
 }
 
 func startServer(port int, handler http.Handler) error {
