@@ -27,7 +27,7 @@ func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, credential st
 						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 							append(configurers,
 								c.withFlagRequestMethod(method),
-								transport.ConfigurerDataSource(dataSource.Endpoint()),
+								transport.ConfigureDataSourceURIs(dataSource.Endpoint()),
 							)...)...)
 
 						request := dataSource.Endpoint().RequireConnection(t, time.Second)

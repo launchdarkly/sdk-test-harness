@@ -30,7 +30,7 @@ func (c CommonPollingTests) RequestMethodAndHeaders(t *ldtest.T, credential stri
 						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 							c.withFlagRequestMethod(method),
 							dataSource,
-							transport.ConfigurerDataSource(dataSource.Endpoint()))...)
+							transport.ConfigureDataSourceURIs(dataSource.Endpoint()))...)
 
 						request := dataSource.Endpoint().RequireConnection(t, time.Second)
 						m.In(t).For("request method").Assert(request.Method, m.Equal(string(method)))

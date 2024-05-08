@@ -119,13 +119,17 @@ type transportProtocol struct {
 	configurer func(dataSource *harness.MockEndpoint, events *harness.MockEndpoint) SDKConfigurer
 }
 
-// Configurer returns an SDKConfigurer function that configures the SDK to use the specified transport. The SDK's base
-// polling/streaming/event URIs will be determined by inspecting the provided MockEndpoint.
-func (t transportProtocol) ConfigurerDataSource(dataSource *harness.MockEndpoint) SDKConfigurer {
-	return t.ConfigureDataSourceAndEvents(dataSource, nil)
+// ConfigureDataSourceURIs returns an SDKConfigurer function that configures the SDK to use the specified transport
+// for polling/streaming. This must be configured after any previous configuration that sets up the polling/streaming
+// URIs.
+func (t transportProtocol) ConfigureDataSourceURIs(dataSource *harness.MockEndpoint) SDKConfigurer {
+	return t.ConfigureDataSourceAndEventURIs(dataSource, nil)
 }
 
-func (t transportProtocol) ConfigureDataSourceAndEvents(dataSource *harness.MockEndpoint, events *harness.MockEndpoint) SDKConfigurer {
+// ConfigureDataSourceAndEventURIs returns an SDKConfigurer function that configures the SDK to use the specified
+// transport for polling/streaming, as well as events. This must be configured after any previous configuration that
+// sets up the polling/streaming URIs.
+func (t transportProtocol) ConfigureDataSourceAndEventURIs(dataSource *harness.MockEndpoint, events *harness.MockEndpoint) SDKConfigurer {
 	return t.configurer(dataSource, events)
 }
 

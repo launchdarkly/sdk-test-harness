@@ -22,7 +22,7 @@ func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string
 				dataSource := NewSDKDataSource(t, nil)
 				events := NewSDKEventSink(t)
 				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events,
-					transport.ConfigureDataSourceAndEvents(dataSource.Endpoint(), events.Endpoint()))...)
+					transport.ConfigureDataSourceAndEventURIs(dataSource.Endpoint(), events.Endpoint()))...)
 
 				c.sendArbitraryEvent(t, client)
 				client.FlushEvents(t)
