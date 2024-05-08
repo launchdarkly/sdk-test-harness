@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.12.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.11.0...v2.12.0) (2024-04-29)
+
+
+### Features
+
+* Expand hook tests to include client side SDKs ([#205](https://github.com/launchdarkly/sdk-test-harness/issues/205)) ([00412a0](https://github.com/launchdarkly/sdk-test-harness/commit/00412a0e60cf7b56e106e1f0074ebd54ad57569e))
+
 ## [2.11.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.10.0...v2.11.0) (2024-04-24)
 
 

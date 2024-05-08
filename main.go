@@ -17,10 +17,11 @@ import (
 )
 
 const defaultPort = 8111
-
-const versionString string = "2.11.0" // {{ x-release-please-version }}
+const versionString string = "2.12.0" // {{ x-release-please-version }}
 
 func main() {
+	fmt.Printf("sdk-test-harness v%s\n", strings.TrimSpace(versionString))
+
 	var params commandParams
 	if !params.Read(os.Args) {
 		os.Exit(1)
@@ -37,18 +38,7 @@ func main() {
 	}
 }
 
-/*
-*
-
-1. test harness queries the thing for capabilities
-2. If it has 'tls' AND the -tls flag is set, then it will send a new config item:
-3. "tls" : { "certificatePath" : "/path/to/cert.crt" , skipVerify: false }
-4. It will modify the base url to https://localhost:tls-port
-*/
 func run(params commandParams) (*ldtest.Results, error) {
-
-	fmt.Printf("sdk-test-harness v%s\n", strings.TrimSpace(versionString))
-
 	if params.skipFile != "" {
 		if err := loadSuppressions(&params); err != nil {
 			return nil, err
