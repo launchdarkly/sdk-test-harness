@@ -72,7 +72,7 @@ func NewTestHarness(
 		return nil, err
 	}
 
-	if testServiceInfo.Capabilities.Has(servicedef.CapabilityTLSSkipVerifyPeer) {
+	if testServiceInfo.Capabilities.HasAny(servicedef.CapabilityTLSSkipVerifyPeer, servicedef.CapabilityTLSVerifyPeer) {
 		startHTTPSServer(testHarnessPort+1, http.HandlerFunc(h.serveHTTPS))
 	}
 
