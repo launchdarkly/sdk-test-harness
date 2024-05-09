@@ -19,7 +19,7 @@ const phpLegacyEventSchema = "2"
 
 func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string, headersMatcher m.Matcher) {
 	t.Run("method and headers", func(t *ldtest.T) {
-		for _, transport := range c.availableTransports(t) {
+		for _, transport := range c.withAvailableTransports(t) {
 			transport.Run(t, func(t *ldtest.T) {
 				dataSource := NewSDKDataSource(t, nil)
 				events := NewSDKEventSink(t)
@@ -46,7 +46,7 @@ func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string
 		// logic that applies to sending events.
 		dataSource := NewSDKDataSource(t, nil)
 
-		c.httpsTransport(t).Run(t, func(t *ldtest.T) {
+		c.withHTTPSTransport(t).Run(t, func(t *ldtest.T) {
 			events := NewSDKEventSink(t)
 			client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 

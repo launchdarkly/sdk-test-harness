@@ -134,14 +134,14 @@ func (t transportProtocol) Run(tester *ldtest.T, action func(*ldtest.T)) {
 }
 
 // Returns a transportProtocol that runs test under HTTPS.
-func (c commonTestsBase) httpsTransport(t *ldtest.T) transportProtocol {
+func (c commonTestsBase) withHTTPSTransport(t *ldtest.T) transportProtocol {
 	t.RequireCapability(servicedef.CapabilityTLSVerifyPeer)
 	// SDKs must verify peers by default, there's nothing to configure.
 	return transportProtocol{"https", NoopConfigurer{}}
 }
 
 // Returns a transportProtocol that runs the test under HTTPS with peer verification disabled.
-func (c commonTestsBase) httpsTransportSkipVerifyPeer(t *ldtest.T) transportProtocol {
+func (c commonTestsBase) withHTTPSTransportSkipVerifyPeer(t *ldtest.T) transportProtocol {
 	t.RequireCapability(servicedef.CapabilityTLSSkipVerifyPeer)
 	configurer := helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
 		configOut.TLS = o.Some(servicedef.SDKConfigTLSParams{
@@ -156,14 +156,14 @@ func (c commonTestsBase) httpsTransportSkipVerifyPeer(t *ldtest.T) transportProt
 // to run a test. Within the test, mock endpoints will be configured as http or https automatically.
 // Additionally, pass the transportProtocol's configurer into the SDK client config to properly set up its
 // TLS options.
-func (c commonTestsBase) availableTransports(t *ldtest.T) []transportProtocol {
+func (c commonTestsBase) withAvailableTransports(t *ldtest.T) []transportProtocol {
 	// By default, tests are set up with http. Therefore, there's no need to specifically reconfigure the SDK.
 	// If that changes in the future, this would need to be modified.
 	configurers := []transportProtocol{
 		{"http", NoopConfigurer{}},
 	}
 	if t.Capabilities().Has(servicedef.CapabilityTLSSkipVerifyPeer) {
-		configurers = append(configurers, c.httpsTransportSkipVerifyPeer(t))
+		configurers = append(configurers, c.withHTTPSTransportSkipVerifyPeer(t))
 	}
 	return configurers
 }

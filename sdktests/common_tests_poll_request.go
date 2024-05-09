@@ -26,7 +26,7 @@ func (c CommonPollingTests) RequestMethodAndHeaders(t *ldtest.T, credential stri
 	t.Run("method and headers", func(t *ldtest.T) {
 		for _, method := range c.availableFlagRequestMethods() {
 			t.Run(string(method), func(t *ldtest.T) {
-				for _, transport := range c.availableTransports(t) {
+				for _, transport := range c.withAvailableTransports(t) {
 					transport.Run(t, func(t *ldtest.T) {
 						dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
 						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
@@ -47,7 +47,7 @@ func (c CommonPollingTests) RequestMethodAndHeaders(t *ldtest.T, credential stri
 		}
 	})
 	t.Run("invalid tls certificate", func(t *ldtest.T) {
-		c.httpsTransport(t).Run(t, func(t *ldtest.T) {
+		c.withHTTPSTransport(t).Run(t, func(t *ldtest.T) {
 			dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
 
 			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource)...)

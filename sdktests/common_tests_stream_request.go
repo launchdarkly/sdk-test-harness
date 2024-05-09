@@ -22,7 +22,7 @@ func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, credential st
 	t.Run("method and headers", func(t *ldtest.T) {
 		for _, method := range c.availableFlagRequestMethods() {
 			t.Run(string(method), func(t *ldtest.T) {
-				for _, transport := range c.availableTransports(t) {
+				for _, transport := range c.withAvailableTransports(t) {
 					transport.Run(t, func(t *ldtest.T) {
 						dataSource, configurers := c.setupDataSources(t, nil)
 
@@ -41,7 +41,7 @@ func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, credential st
 		}
 	})
 	t.Run("invalid tls certificate", func(t *ldtest.T) {
-		c.httpsTransport(t).Run(t, func(t *ldtest.T) {
+		c.withHTTPSTransport(t).Run(t, func(t *ldtest.T) {
 			dataSource, configurers := c.setupDataSources(t, nil)
 
 			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
