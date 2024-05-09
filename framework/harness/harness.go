@@ -1,9 +1,11 @@
 package harness
 
 import (
+	_ "embed"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
@@ -11,6 +13,43 @@ import (
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 )
+
+//go:embed certificate/cert.crt
+var certificate []byte
+
+//go:embed certificate/cert.key
+var privateKey []byte
+
+type certPaths struct {
+	cert string
+	key  string
+}
+
+func (c *certPaths) cleanup() {
+	_ = os.Remove(c.cert)
+	_ = os.Remove(c.key)
+}
+
+func exportCertificate() (*certPaths, error) {
+	cert, err := os.CreateTemp("", "sdk-test-harness-cert*")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp certificate file: %w", err)
+	}
+	if _, err := cert.Write(certificate); err != nil {
+		return nil, fmt.Errorf("failed to write certificate to temp file: %w", err)
+	}
+	_ = cert.Close()
+
+	key, err := os.CreateTemp("", "sdk-test-harness-cert-private-key*")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp private key file: %w", err)
+	}
+	if _, err := key.Write(privateKey); err != nil {
+		return nil, fmt.Errorf("failed to write private key to temp file: %w", err)
+	}
+	_ = key.Close()
+	return &certPaths{cert: cert.Name(), key: key.Name()}, nil
+}
 
 const httpListenerTimeout = time.Second * 10
 
@@ -73,7 +112,11 @@ func NewTestHarness(
 	}
 
 	if testServiceInfo.Capabilities.HasAny(servicedef.CapabilityTLSSkipVerifyPeer, servicedef.CapabilityTLSVerifyPeer) {
-		startHTTPSServer(testHarnessPort+1, http.HandlerFunc(h.serveHTTPS))
+		certInfo, err := exportCertificate()
+		if err != nil {
+			return nil, err
+		}
+		startHTTPSServer(testHarnessPort+1, certInfo, http.HandlerFunc(h.serveHTTPS))
 	}
 
 	return h, nil
@@ -160,7 +203,7 @@ func startServer(port int, handler http.Handler) error {
 	}
 }
 
-func startHTTPSServer(port int, handler http.Handler) {
+func startHTTPSServer(port int, cert *certPaths, handler http.Handler) {
 	server := &http.Server{
 		Addr: fmt.Sprintf(":%d", port),
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -173,7 +216,8 @@ func startHTTPSServer(port int, handler http.Handler) {
 		ReadHeaderTimeout: 10 * time.Second, // arbitrary but non-infinite timeout to avoid Slowloris Attack,
 	}
 	go func() {
-		if err := server.ListenAndServeTLS("certificate/cert.crt", "certificate/cert.key"); err != nil {
+		defer cert.cleanup()
+		if err := server.ListenAndServeTLS(cert.cert, cert.key); err != nil {
 			panic(err)
 		}
 	}()

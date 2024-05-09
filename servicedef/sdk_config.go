@@ -28,7 +28,7 @@ type SDKConfigParams struct {
 }
 
 type SDKConfigTLSParams struct {
-	VerifyPeer bool `json:"verifyPeer,omitempty"`
+	SkipVerifyPeer bool `json:"skipVerifyPeer,omitempty"`
 }
 type SDKConfigServiceEndpointsParams struct {
 	Streaming string `json:"streaming,omitempty"`

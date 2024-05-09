@@ -145,7 +145,7 @@ func (c commonTestsBase) httpsTransportSkipVerifyPeer(t *ldtest.T) transportProt
 	t.RequireCapability(servicedef.CapabilityTLSSkipVerifyPeer)
 	configurer := helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
 		configOut.TLS = o.Some(servicedef.SDKConfigTLSParams{
-			VerifyPeer: false,
+			SkipVerifyPeer: true,
 		})
 		return nil
 	})
