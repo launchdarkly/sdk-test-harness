@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.13.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.12.0...v2.13.0) (2024-05-10)
+
+
+### Features
+
+* support testing TLS options with two new capabilities ([#208](https://github.com/launchdarkly/sdk-test-harness/issues/208)) ([6a90eb0](https://github.com/launchdarkly/sdk-test-harness/commit/6a90eb0a95f066fcf5d450ad11a45b325e5e306d))
+
 ## [2.12.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.11.0...v2.12.0) (2024-04-29)
 
 
