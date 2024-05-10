@@ -3,6 +3,7 @@ package sdktests
 import (
 	"fmt"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
@@ -10,8 +11,6 @@ import (
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
-
-	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 )
 
 // commonTestsBase provides shared behavior for server-side and client-side SDK tests, if their
@@ -90,7 +89,6 @@ func newCommonTestsBase(t *ldtest.T, testName string, baseSDKConfigurers ...SDKC
 	}
 	return c
 }
-
 func (c commonTestsBase) baseSDKConfigurationPlus(configurers ...SDKConfigurer) []SDKConfigurer {
 	return append(c.sdkConfigurers, configurers...)
 }
@@ -107,6 +105,67 @@ func (c commonTestsBase) availableFlagRequestMethods() []flagRequestMethod {
 		return []flagRequestMethod{flagRequestGET, flagRequestREPORT}
 	}
 	return []flagRequestMethod{flagRequestGET}
+}
+
+// transportProtocol represents the protocol used to communicate between the test harness and service under test:
+// either http or https. This allows SDKs to exercise their TLS stacks, which is required for production usage.
+type transportProtocol struct {
+	// Either http or https.
+	protocol string
+	// A function that configures the SDK's TLS options.
+	configurer SDKConfigurer
+}
+
+// Run invokes T.Run() with the protocol's name, passing in a modified T that is suitable for the test.
+func (t transportProtocol) Run(tester *ldtest.T, action func(*ldtest.T)) {
+	// This is a pretty nasty hack. We're modifying the TestHarness that is stashed away in T, in order
+	// to tell it to use HTTPS when creating mock endpoints. This is necessary because higher level
+	// test components - like the mock data sources or event sink - use those methods in their own setup.
+	// So, if this is a test that should use HTTPS, tweak the global TestHarness and enable it - then undo
+	// it after the test runs. WARNING: this won't work with tests that run in parallel.
+
+	// Ensure that if some test fails/panics, we are back to using HTTP by default for the next one.
+	defer requireContext(tester).harness.SetService("http")
+
+	tester.Run(t.protocol, func(tester *ldtest.T) {
+		requireContext(tester).harness.SetService(t.protocol)
+		action(tester)
+	})
+}
+
+// Returns a transportProtocol that runs test under HTTPS.
+func (c commonTestsBase) withHTTPSTransport(t *ldtest.T) transportProtocol {
+	t.RequireCapability(servicedef.CapabilityTLSVerifyPeer)
+	// SDKs must verify peers by default, there's nothing to configure.
+	return transportProtocol{"https", NoopConfigurer{}}
+}
+
+// Returns a transportProtocol that runs the test under HTTPS with peer verification disabled.
+func (c commonTestsBase) withHTTPSTransportSkipVerifyPeer(t *ldtest.T) transportProtocol {
+	t.RequireCapability(servicedef.CapabilityTLSSkipVerifyPeer)
+	configurer := helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		configOut.TLS = o.Some(servicedef.SDKConfigTLSParams{
+			SkipVerifyPeer: true,
+		})
+		return nil
+	})
+	return transportProtocol{"https", configurer}
+}
+
+// Returns the transports available for testing. For each transportProtocol returned, use the Run method
+// to run a test. Within the test, mock endpoints will be configured as http or https automatically.
+// Additionally, pass the transportProtocol's configurer into the SDK client config to properly set up its
+// TLS options.
+func (c commonTestsBase) withAvailableTransports(t *ldtest.T) []transportProtocol {
+	// By default, tests are set up with http. Therefore, there's no need to specifically reconfigure the SDK.
+	// If that changes in the future, this would need to be modified.
+	configurers := []transportProtocol{
+		{"http", NoopConfigurer{}},
+	}
+	if t.Capabilities().Has(servicedef.CapabilityTLSSkipVerifyPeer) {
+		configurers = append(configurers, c.withHTTPSTransportSkipVerifyPeer(t))
+	}
+	return configurers
 }
 
 // Returns a set of environment filters for testing, along with a filter representing

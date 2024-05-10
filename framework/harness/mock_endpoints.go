@@ -27,11 +27,15 @@ const endpointPathPrefix = "/endpoints/"
 const incomingConnectionChannelBufferSize = 10
 
 type mockEndpointsManager struct {
-	endpoints       map[string]*MockEndpoint
-	lastEndpointID  int
-	externalBaseURL string
-	logger          framework.Logger
-	lock            sync.Mutex
+	endpoints      map[string]*MockEndpoint
+	lastEndpointID int
+	host           string
+	// Maps a service to its port, e.g. http -> 9998, https -> 9999
+	services map[string]int
+	// Used to select the correct port when BaseURL() is called by test components.
+	service string
+	logger  framework.Logger
+	lock    sync.Mutex
 }
 
 // MockEndpoint represents an endpoint that can receive requests.
@@ -95,12 +99,29 @@ type IncomingRequestInfo struct {
 	Cancel  context.CancelFunc
 }
 
-func newMockEndpointsManager(externalBaseURL string, logger framework.Logger) *mockEndpointsManager {
+func newMockEndpointsManager(host string, services map[string]int, logger framework.Logger) *mockEndpointsManager {
 	return &mockEndpointsManager{
-		endpoints:       make(map[string]*MockEndpoint),
-		externalBaseURL: externalBaseURL,
-		logger:          logger,
+		endpoints: make(map[string]*MockEndpoint),
+		host:      host,
+		services:  services,
+		service:   "http",
+		logger:    logger,
 	}
+}
+
+func (m *mockEndpointsManager) SetService(service string) {
+	_, ok := m.services[service]
+	if !ok {
+		panic("programmer error: cannot set service to " + service + ", it has no port mapping")
+	}
+	m.service = service
+}
+func (m *mockEndpointsManager) BaseURL() string {
+	port, ok := m.services[m.service]
+	if !ok {
+		panic("programmer error: service " + m.service + " has no port mapping")
+	}
+	return m.service + "://" + m.host + ":" + fmt.Sprintf("%d", port)
 }
 
 func (m *mockEndpointsManager) newMockEndpoint(
@@ -232,7 +253,11 @@ func (m *mockEndpointsManager) serveHTTP(w http.ResponseWriter, r *http.Request)
 
 // BaseURL returns the base path of the mock endpoint.
 func (e *MockEndpoint) BaseURL() string {
-	return e.owner.externalBaseURL + e.basePath
+	joined, err := url.JoinPath(e.owner.BaseURL(), e.basePath)
+	if err != nil {
+		panic("invalid sdk-test-harness base URL: " + err.Error())
+	}
+	return joined
 }
 
 // AwaitConnection waits for an incoming request to the endpoint.

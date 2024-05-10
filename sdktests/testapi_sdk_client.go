@@ -24,6 +24,11 @@ var arbitraryInitialContexts = data.NewContextFactory("arbitrary-initial-context
 // It is implemented by types such as SDKDataSource.
 type SDKConfigurer helpers.ConfigOption[servicedef.SDKConfigParams]
 
+// A NoopConfigurer is an SDKConfigurer that doesn't do anything.
+type NoopConfigurer struct{}
+
+func (NoopConfigurer) Configure(*servicedef.SDKConfigParams) error { return nil }
+
 // WithConfig is used with StartSDKClient to specify a non-default SDK configuration. Use this
 // before any other SDKConfigurers or it will overwrite their effects.
 func WithConfig(config servicedef.SDKConfigParams) SDKConfigurer {
@@ -159,6 +164,7 @@ func TryNewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) (*SDKClient, err
 			config.ClientSide = o.Some(cs)
 		}
 	}
+
 	if err := validateSDKConfig(config); err != nil {
 		return nil, err
 	}

@@ -4,6 +4,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
@@ -17,21 +19,43 @@ const phpLegacyEventSchema = "2"
 
 func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string, headersMatcher m.Matcher) {
 	t.Run("method and headers", func(t *ldtest.T) {
+		for _, transport := range c.withAvailableTransports(t) {
+			transport.Run(t, func(t *ldtest.T) {
+				dataSource := NewSDKDataSource(t, nil)
+				events := NewSDKEventSink(t)
+				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events,
+					transport.configurer)...)
+
+				c.sendArbitraryEvent(t, client)
+				client.FlushEvents(t)
+
+				request := events.Endpoint().RequireConnection(t, time.Second)
+
+				m.In(t).For("request method").Assert(request.Method, m.Equal("POST"))
+
+				m.In(t).For("request headers").Assert(request.Headers, m.AllOf(
+					headersMatcher,
+					c.authorizationHeaderMatcher(credential),
+				))
+			})
+		}
+	})
+	t.Run("invalid tls certificate", func(t *ldtest.T) {
+		// Setting up the data source *outside* the transport.Run so that it uses normal https transport and the
+		// data source connection can succeed. This is because we're trying to only test the TLS certificate verification
+		// logic that applies to sending events.
 		dataSource := NewSDKDataSource(t, nil)
-		events := NewSDKEventSink(t)
-		client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 
-		c.sendArbitraryEvent(t, client)
-		client.FlushEvents(t)
+		c.withHTTPSTransport(t).Run(t, func(t *ldtest.T) {
+			events := NewSDKEventSink(t)
+			client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 
-		request := events.Endpoint().RequireConnection(t, time.Second)
+			c.sendArbitraryEvent(t, client)
+			client.FlushEvents(t)
 
-		m.In(t).For("request method").Assert(request.Method, m.Equal("POST"))
-
-		m.In(t).For("request headers").Assert(request.Headers, m.AllOf(
-			headersMatcher,
-			c.authorizationHeaderMatcher(credential),
-		))
+			_, err := events.Endpoint().AwaitConnection(time.Second)
+			assert.Errorf(t, err, "expected connection error")
+		})
 	})
 }
 

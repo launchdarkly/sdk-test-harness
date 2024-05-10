@@ -1,13 +1,55 @@
 package harness
 
 import (
+	_ "embed"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
+
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v2/serviceinfo"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 )
+
+//go:embed certificate/cert.crt
+var certificate []byte
+
+//go:embed certificate/cert.key
+var privateKey []byte
+
+type certPaths struct {
+	cert string
+	key  string
+}
+
+func (c *certPaths) cleanup() {
+	_ = os.Remove(c.cert)
+	_ = os.Remove(c.key)
+}
+
+func exportCertificate() (*certPaths, error) {
+	cert, err := os.CreateTemp("", "sdk-test-harness-cert*")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp certificate file: %w", err)
+	}
+	if _, err := cert.Write(certificate); err != nil {
+		return nil, fmt.Errorf("failed to write certificate to temp file: %w", err)
+	}
+	_ = cert.Close()
+
+	key, err := os.CreateTemp("", "sdk-test-harness-cert-private-key*")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp private key file: %w", err)
+	}
+	if _, err := key.Write(privateKey); err != nil {
+		return nil, fmt.Errorf("failed to write private key to temp file: %w", err)
+	}
+	_ = key.Close()
+	return &certPaths{cert: cert.Name(), key: key.Name()}, nil
+}
 
 const httpListenerTimeout = time.Second * 10
 
@@ -20,11 +62,18 @@ const httpListenerTimeout = time.Second * 10
 // It contains no domain-specific test logic, but only provides a general mechanism for test suites
 // to build on.
 type TestHarness struct {
-	testServiceBaseURL         string
-	testHarnessExternalBaseURL string
-	testServiceInfo            TestServiceInfo
-	mockEndpoints              *mockEndpointsManager
-	logger                     framework.Logger
+	testServiceBaseURL string
+	testServiceInfo    serviceinfo.TestServiceInfo
+	mockEndpoints      *mockEndpointsManager
+	logger             framework.Logger
+}
+
+// SetService tells the endpoint manager which protocol should be used when BaseURL() is called on a MockEndpoint.
+// Reaching into this  object is unfortunate, but since this is essentially a global variable from each
+// tests' perspective, this is the only way to modify it.
+// The service string should be one of 'http' or 'https'.
+func (h *TestHarness) SetService(service string) {
+	h.mockEndpoints.SetService(service)
 }
 
 // NewTestHarness creates a TestHarness instance, and verifies that the test service
@@ -42,13 +91,13 @@ func NewTestHarness(
 		debugLogger = framework.NullLogger()
 	}
 
-	externalBaseURL := fmt.Sprintf("http://%s:%d", testHarnessExternalHostname, testHarnessPort)
-
 	h := &TestHarness{
-		testServiceBaseURL:         testServiceBaseURL,
-		testHarnessExternalBaseURL: externalBaseURL,
-		mockEndpoints:              newMockEndpointsManager(externalBaseURL, debugLogger),
-		logger:                     debugLogger,
+		testServiceBaseURL: testServiceBaseURL,
+		mockEndpoints: newMockEndpointsManager(
+			testHarnessExternalHostname,
+			map[string]int{"http": testHarnessPort, "https": testHarnessPort + 1},
+			debugLogger),
+		logger: debugLogger,
 	}
 
 	testServiceInfo, err := queryTestServiceInfo(testServiceBaseURL, statusQueryTimeout, startupOutput)
@@ -57,15 +106,23 @@ func NewTestHarness(
 	}
 	h.testServiceInfo = testServiceInfo
 
-	if err = startServer(testHarnessPort, http.HandlerFunc(h.serveHTTP)); err != nil {
+	if err := startServer(testHarnessPort, http.HandlerFunc(h.serveHTTP)); err != nil {
 		return nil, err
+	}
+
+	if testServiceInfo.Capabilities.HasAny(servicedef.CapabilityTLSSkipVerifyPeer, servicedef.CapabilityTLSVerifyPeer) {
+		certInfo, err := exportCertificate()
+		if err != nil {
+			return nil, err
+		}
+		startHTTPSServer(testHarnessPort+1, certInfo, http.HandlerFunc(h.serveHTTP))
 	}
 
 	return h, nil
 }
 
 // TestServiceInfo returns the initial status information received from the test service.
-func (h *TestHarness) TestServiceInfo() TestServiceInfo {
+func (h *TestHarness) TestServiceInfo() serviceinfo.TestServiceInfo {
 	return h.testServiceInfo
 }
 
@@ -132,4 +189,24 @@ func startServer(port int, handler http.Handler) error {
 			}
 		}
 	}
+}
+
+func startHTTPSServer(port int, cert *certPaths, handler http.Handler) {
+	server := &http.Server{
+		Addr: fmt.Sprintf(":%d", port),
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == "HEAD" {
+				w.WriteHeader(200)
+				return
+			}
+			handler.ServeHTTP(w, r)
+		}),
+		ReadHeaderTimeout: 10 * time.Second, // arbitrary but non-infinite timeout to avoid Slowloris Attack,
+	}
+	go func() {
+		defer cert.cleanup()
+		if err := server.ListenAndServeTLS(cert.cert, cert.key); err != nil {
+			panic(err)
+		}
+	}()
 }
