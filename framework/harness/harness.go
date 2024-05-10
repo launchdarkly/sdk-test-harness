@@ -68,7 +68,9 @@ type TestHarness struct {
 	logger             framework.Logger
 }
 
-// SetHTTPS tells the test harness to generate HTTPS endpoints when NewMockEndpoint is called.
+// SetHTTPS tells the endpoint manager to generate HTTPS urls when NewMockEndpoint is called. Reaching into this
+// object is unfortunate, but since this is essentially a global variable from each tests' perspective, this is
+// the only way to modify it.
 func (h *TestHarness) SetHTTPS(https bool) {
 	h.mockEndpoints.https = https
 }
