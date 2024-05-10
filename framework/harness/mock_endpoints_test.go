@@ -24,7 +24,7 @@ func TestMockEndpointServesRequest(t *testing.T) {
 	e2 := m.newMockEndpoint(handler2, framework.NullLogger())
 
 	t.Run("http", func(t *testing.T) {
-		m.https = false
+		m.returnHTTPSEndpoints = false
 
 		assert.Equal(t, "http://testharness:9998/endpoints/1", e1.BaseURL())
 		assert.Equal(t, "http://testharness:9998/endpoints/2", e2.BaseURL())
@@ -40,8 +40,8 @@ func TestMockEndpointServesRequest(t *testing.T) {
 		assert.Equal(t, 204, rr2.Code)
 	})
 
-	t.Run("https", func(t *testing.T) {
-		m.https = true
+	t.Run("returnHTTPSEndpoints", func(t *testing.T) {
+		m.returnHTTPSEndpoints = true
 
 		assert.Equal(t, "https://testharness:9999/endpoints/1", e1.BaseURL())
 		assert.Equal(t, "https://testharness:9999/endpoints/2", e2.BaseURL())

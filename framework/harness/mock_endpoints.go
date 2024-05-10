@@ -29,14 +29,13 @@ const incomingConnectionChannelBufferSize = 10
 type mockEndpointsManager struct {
 	endpoints      map[string]*MockEndpoint
 	lastEndpointID int
-
-	port      int
-	httpsPort int
-	host      string
-	https     bool
-
-	logger framework.Logger
-	lock   sync.Mutex
+	host           string
+	// Maps a service to its port, e.g. http -> 9998, https -> 9999
+	services map[string]int
+	// Used to select the correct port when BaseURL() is called by test components.
+	service string
+	logger  framework.Logger
+	lock    sync.Mutex
 }
 
 // MockEndpoint represents an endpoint that can receive requests.
@@ -100,25 +99,29 @@ type IncomingRequestInfo struct {
 	Cancel  context.CancelFunc
 }
 
-func newMockEndpointsManager(host string, port int, httpsPort int, logger framework.Logger) *mockEndpointsManager {
+func newMockEndpointsManager(host string, services map[string]int, logger framework.Logger) *mockEndpointsManager {
 	return &mockEndpointsManager{
 		endpoints: make(map[string]*MockEndpoint),
 		host:      host,
-		port:      port,
-		httpsPort: httpsPort,
-		https:     false,
+		services:  services,
+		service:   "http",
 		logger:    logger,
 	}
 }
 
-func (m *mockEndpointsManager) BaseURL() string {
-	proto := "https"
-	port := m.httpsPort
-	if !m.https {
-		proto = "http"
-		port = m.port
+func (m *mockEndpointsManager) SetService(service string) {
+	_, ok := m.services[service]
+	if !ok {
+		panic("programmer error: cannot set service to " + service + ", it has no port mapping")
 	}
-	return proto + "://" + m.host + ":" + fmt.Sprintf("%d", port)
+	m.service = service
+}
+func (m *mockEndpointsManager) BaseURL() string {
+	port, ok := m.services[m.service]
+	if !ok {
+		panic("programmer error: service " + m.service + " has no port mapping")
+	}
+	return m.service + "://" + m.host + ":" + fmt.Sprintf("%d", port)
 }
 
 func (m *mockEndpointsManager) newMockEndpoint(

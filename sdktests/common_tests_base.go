@@ -124,11 +124,11 @@ func (t transportProtocol) Run(tester *ldtest.T, action func(*ldtest.T)) {
 	// So, if this is a test that should use HTTPS, tweak the global TestHarness and enable it - then undo
 	// it after the test runs. WARNING: this won't work with tests that run in parallel.
 
-	// Ensure that if some test fails/panics, we disable HTTPS for the next one.
-	defer requireContext(tester).harness.SetHTTPS(false)
+	// Ensure that if some test fails/panics, we are back to using HTTP by default for the next one.
+	defer requireContext(tester).harness.SetService("http")
 
 	tester.Run(t.protocol, func(tester *ldtest.T) {
-		requireContext(tester).harness.SetHTTPS(t.protocol == "https")
+		requireContext(tester).harness.SetService(t.protocol)
 		action(tester)
 	})
 }

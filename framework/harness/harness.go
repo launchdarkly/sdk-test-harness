@@ -68,11 +68,12 @@ type TestHarness struct {
 	logger             framework.Logger
 }
 
-// SetHTTPS tells the endpoint manager to generate HTTPS urls when NewMockEndpoint is called. Reaching into this
-// object is unfortunate, but since this is essentially a global variable from each tests' perspective, this is
-// the only way to modify it.
-func (h *TestHarness) SetHTTPS(https bool) {
-	h.mockEndpoints.https = https
+// SetService tells the endpoint manager which protocol should be used when BaseURL() is called on a MockEndpoint.
+// Reaching into this  object is unfortunate, but since this is essentially a global variable from each
+// tests' perspective, this is the only way to modify it.
+// The service string should be one of 'http' or 'https'.
+func (h *TestHarness) SetService(service string) {
+	h.mockEndpoints.SetService(service)
 }
 
 // NewTestHarness creates a TestHarness instance, and verifies that the test service
@@ -92,8 +93,11 @@ func NewTestHarness(
 
 	h := &TestHarness{
 		testServiceBaseURL: testServiceBaseURL,
-		mockEndpoints:      newMockEndpointsManager(testHarnessExternalHostname, testHarnessPort, testHarnessPort+1, debugLogger),
-		logger:             debugLogger,
+		mockEndpoints: newMockEndpointsManager(
+			testHarnessExternalHostname,
+			map[string]int{"http": testHarnessPort, "https": testHarnessPort + 1},
+			debugLogger),
+		logger: debugLogger,
 	}
 
 	testServiceInfo, err := queryTestServiceInfo(testServiceBaseURL, statusQueryTimeout, startupOutput)
