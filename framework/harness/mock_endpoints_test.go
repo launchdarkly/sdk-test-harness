@@ -2,6 +2,7 @@ package harness
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,8 +16,9 @@ import (
 )
 
 func TestMockEndpointServesRequest(t *testing.T) {
-	m := newMockEndpointsManager("testharness",
-		map[string]int{"http": 9998, "https": 9999}, framework.NullLogger())
+	services := map[string]int{"http": 9998, "https": 9999}
+
+	m := newMockEndpointsManager("testharness", services, framework.NullLogger())
 
 	handler1 := httphelpers.HandlerWithStatus(200)
 	e1 := m.newMockEndpoint(handler1, framework.NullLogger())
@@ -24,12 +26,12 @@ func TestMockEndpointServesRequest(t *testing.T) {
 	handler2 := httphelpers.HandlerWithStatus(204)
 	e2 := m.newMockEndpoint(handler2, framework.NullLogger())
 
-	for _, service := range []string{"http", "https"} {
+	for service, port := range services {
 		t.Run(service, func(t *testing.T) {
 			m.SetService(service)
 
-			assert.Equal(t, service+"://testharness:9998/endpoints/1", e1.BaseURL())
-			assert.Equal(t, service+"://testharness:9998/endpoints/2", e2.BaseURL())
+			assert.Equal(t, fmt.Sprintf("%s://testharness:%d/endpoints/1", service, port), e1.BaseURL())
+			assert.Equal(t, fmt.Sprintf("%s://testharness:%d/endpoints/2", service, port), e2.BaseURL())
 
 			rr1 := httptest.NewRecorder()
 			r1, _ := http.NewRequest("GET", e1.BaseURL(), nil)
