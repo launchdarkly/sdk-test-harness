@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.14.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.13.0...v2.14.0) (2024-05-15)
+
+
+### Features
+
+* Add support for gzipped event payloads ([#213](https://github.com/launchdarkly/sdk-test-harness/issues/213)) ([91de9cb](https://github.com/launchdarkly/sdk-test-harness/commit/91de9cb4410790b6444aaa4e5b3ddce1f3e94da7))
+
 ## [2.13.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.12.0...v2.13.0) (2024-05-10)
 
 
