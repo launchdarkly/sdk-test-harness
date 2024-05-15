@@ -30,6 +30,7 @@ const (
 	CapabilityAutoEnvAttributes  = "auto-env-attributes"
 	CapabilityMigrations         = "migrations"
 	CapabilityEventSampling      = "event-sampling"
+	CapabilityEventGzip          = "event-gzip"
 	CapabilityETagCaching        = "etag-caching"
 	CapabilityInlineContext      = "inline-context"
 	CapabilityAnonymousRedaction = "anonymous-redaction"

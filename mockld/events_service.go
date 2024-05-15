@@ -1,9 +1,11 @@
 package mockld
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,7 +34,7 @@ type EventsService struct {
 	lock                   sync.Mutex
 }
 
-func NewEventsService(sdkKind SDKKind, logger framework.Logger) *EventsService {
+func NewEventsService(sdkKind SDKKind, logger framework.Logger, requireGzip bool) *EventsService {
 	s := &EventsService{
 		AnalyticsEventPayloads: make(chan Events, eventsChannelBufferSize),
 		sdkKind:                sdkKind,
@@ -42,6 +44,10 @@ func NewEventsService(sdkKind SDKKind, logger framework.Logger) *EventsService {
 	}
 
 	router := mux.NewRouter()
+	if requireGzip {
+		router.Use(gzipMiddleware)
+	}
+
 	switch sdkKind {
 	case ServerSideSDK, PHPSDK:
 		router.HandleFunc("/bulk", s.postEvents).Methods("POST")
@@ -60,6 +66,22 @@ func NewEventsService(sdkKind SDKKind, logger framework.Logger) *EventsService {
 	s.handler = router
 
 	return s
+}
+
+func gzipMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
+			gr, err := gzip.NewReader(r.Body)
+			if err != nil {
+				http.Error(w, "Failed to read gzipped request body", http.StatusBadRequest)
+				return
+			}
+			r.Body = gr
+			next.ServeHTTP(w, r)
+		} else {
+			http.Error(w, "Failed to provide a gzipped payload", http.StatusBadRequest)
+		}
+	})
 }
 
 func (s *EventsService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
