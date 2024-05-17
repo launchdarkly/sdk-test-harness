@@ -66,6 +66,7 @@ type TestHarness struct {
 	testServiceInfo    serviceinfo.TestServiceInfo
 	mockEndpoints      *mockEndpointsManager
 	logger             framework.Logger
+	certPath           string
 }
 
 // SetService tells the endpoint manager which protocol should be used when BaseURL() is called on a MockEndpoint.
@@ -74,6 +75,12 @@ type TestHarness struct {
 // The service string should be one of 'http' or 'https'.
 func (h *TestHarness) SetService(service string) {
 	h.mockEndpoints.SetService(service)
+}
+
+// CertificateAuthorityPath returns the path to CA cert used by the test harness when establishing a TLS
+// connection with the SDK under test.
+func (h *TestHarness) CertificateAuthorityPath() string {
+	return h.certPath
 }
 
 // NewTestHarness creates a TestHarness instance, and verifies that the test service
@@ -115,6 +122,7 @@ func NewTestHarness(
 		if err != nil {
 			return nil, err
 		}
+		h.certPath = certInfo.cert
 		startHTTPSServer(testHarnessPort+1, certInfo, http.HandlerFunc(h.serveHTTP))
 	}
 

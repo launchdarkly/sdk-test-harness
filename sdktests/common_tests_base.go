@@ -152,6 +152,18 @@ func (c commonTestsBase) withHTTPSTransportSkipVerifyPeer(t *ldtest.T) transport
 	return transportProtocol{"https", configurer}
 }
 
+func (c commonTestsBase) withHTTPSTransportVerifyPeerCustomCA(t *ldtest.T, customCAPath string) transportProtocol {
+	t.RequireCapability(servicedef.CapabilityTLSCustomCA)
+	configurer := helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		configOut.TLS = o.Some(servicedef.SDKConfigTLSParams{
+			SkipVerifyPeer: false,
+			CustomCAPath:   customCAPath,
+		})
+		return nil
+	})
+	return transportProtocol{"https", configurer}
+}
+
 // Returns the transports available for testing. For each transportProtocol returned, use the Run method
 // to run a test. Within the test, mock endpoints will be configured as http or https automatically.
 // Additionally, pass the transportProtocol's configurer into the SDK client config to properly set up its
@@ -164,6 +176,10 @@ func (c commonTestsBase) withAvailableTransports(t *ldtest.T) []transportProtoco
 	}
 	if t.Capabilities().Has(servicedef.CapabilityTLSSkipVerifyPeer) {
 		configurers = append(configurers, c.withHTTPSTransportSkipVerifyPeer(t))
+	}
+	if t.Capabilities().Has(servicedef.CapabilityTLSCustomCA) {
+		configurers = append(configurers, c.withHTTPSTransportVerifyPeerCustomCA(t,
+			requireContext(t).harness.CertificateAuthorityPath()))
 	}
 	return configurers
 }
