@@ -170,6 +170,16 @@ If specified, the SDK will send a `tls` object containing a `skipVerifyPeer` pro
 true to indicate that verification should be skipped. This should allow the SDK to connect to the test harness 
 over HTTPS even though the test harness's certificate is self-signed. 
 
+#### Capability `"tls:custom-ca"`
+
+This means the SDK is capable of configuring its trust store to use a specific CA file. This can be useful for
+customers who have their own, internal certificate authority, and want to establish authenticity of their servers when
+using the SDK.
+
+If specified, the SDK will send a `tls` object containing a `customCAFile` property. The property will be set to a
+a file path containing one or more PEM-encoded x509 certificates. The SDK should configure its TLS stack to use
+this file when verifying the peer's certificate chain. 
+
 ### Stop test service: `DELETE /`
 
 The test harness sends this request at the end of a test run if you have specified `--stop-service-at-end` on the [command line](./running.md). The test service should simply quit. This is a convenience so CI scripts can simply start the test service in the background and assume it will be stopped for them.
@@ -223,6 +233,10 @@ A `POST` request indicates that the test harness wants to start an instance of t
         * `afterEvaluation` (string, optional): The error/exception message that should be generated in the `afterEvaluation` stage of the test hook. 
   * `tls` (object, optional): If specified, contains configuration for establishing TLS connections.
     * `skipVerifyPeer` (bool, optional): If true, the SDK's TLS configuration should be set skip verification of the peer. If false or omitted, the SDK should perform peer verification.
+    * `customCAFile` (string, optional): If set, contains a file path pointing to a custom CA file that should be 
+      used by the SDK to verify the peer's certificate chain. The file will contain one or more PEM-encoded x509 
+      certificates. The root of the certificate chain presented to the SDK during the TLS handshake must be signed by 
+      one of these CA certificates.
   
 The response to a valid request is any HTTP `2xx` status, with a `Location` header whose value is the URL of the test service resource representing this SDK client instance (that is, the one that would be used for "Close client" or "Send command" as described below).
 

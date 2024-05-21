@@ -159,7 +159,7 @@ func (c commonTestsBase) withHTTPSTransportVerifyPeerCustomCA(t *ldtest.T, custo
 	configurer := helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
 		configOut.TLS = o.Some(servicedef.SDKConfigTLSParams{
 			SkipVerifyPeer: false,
-			CustomCAPath:   customCAPath,
+			CustomCAFile:   customCAPath,
 		})
 		return nil
 	})

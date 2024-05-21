@@ -48,8 +48,8 @@ const (
 	// a self-signed certificate without a CA. Not all SDKs have this capability.
 	CapabilityTLSSkipVerifyPeer = "tls:skip-verify-peer"
 
-	// CapabilityTLSCustomCA means the SDK is capable of establishing a TLS session and verifying its peer using a
-	// custom CA certificate. The path to this CA cert is provided to the SDK. The SDK should then configure this
+	// CapabilityTLSCustomCA means the SDK is capable of establishing a TLS session and configuring peer verification
+	// to use a custom CA certificate. The path to this CA cert is provided to the SDK. The SDK should then configure this
 	// path as the only CA cert in its trust store (rather than adding it to an existing trust store.)
 	CapabilityTLSCustomCA = "tls:custom-ca"
 )
