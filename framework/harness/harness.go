@@ -1,6 +1,7 @@
 package harness
 
 import (
+	"bytes"
 	_ "embed"
 	"fmt"
 	"io"
@@ -14,41 +15,59 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 )
 
-//go:embed certificate/cert.crt
+//go:embed certificate/leaf_public.pem
 var certificate []byte
 
-//go:embed certificate/cert.key
+//go:embed certificate/leaf_private.pem
 var privateKey []byte
+
+//go:embed certificate/ca_public.pem
+var caCertificate []byte
 
 type certPaths struct {
 	cert string
 	key  string
+	ca   string
 }
 
 func (c *certPaths) cleanup() {
 	_ = os.Remove(c.cert)
 	_ = os.Remove(c.key)
+	_ = os.Remove(c.ca)
 }
 
-func exportCertificate() (*certPaths, error) {
-	cert, err := os.CreateTemp("", "sdk-test-harness-cert*")
+func makeTempFile(pattern string, data []byte) (string, error) {
+	f, err := os.CreateTemp("", pattern)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	if _, err := f.Write(data); err != nil {
+		return "", err
+	}
+	return f.Name(), nil
+}
+
+func exportCertChain() (*certPaths, error) {
+
+	chain := bytes.NewBuffer(certificate)
+	chain.Write(caCertificate)
+
+	cert, err := makeTempFile("sdk-test-harness-cert*", chain.Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp certificate file: %w", err)
 	}
-	if _, err := cert.Write(certificate); err != nil {
-		return nil, fmt.Errorf("failed to write certificate to temp file: %w", err)
-	}
-	_ = cert.Close()
 
-	key, err := os.CreateTemp("", "sdk-test-harness-cert-private-key*")
+	key, err := makeTempFile("sdk-test-harness-cert-private-key*", privateKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp private key file: %w", err)
 	}
-	if _, err := key.Write(privateKey); err != nil {
-		return nil, fmt.Errorf("failed to write private key to temp file: %w", err)
+
+	ca, err := makeTempFile("sdk-test-harness-ca-cert*", caCertificate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp ca certificate file: %w", err)
 	}
-	_ = key.Close()
-	return &certPaths{cert: cert.Name(), key: key.Name()}, nil
+	return &certPaths{cert: cert, key: key, ca: ca}, nil
 }
 
 const httpListenerTimeout = time.Second * 10
@@ -66,7 +85,7 @@ type TestHarness struct {
 	testServiceInfo    serviceinfo.TestServiceInfo
 	mockEndpoints      *mockEndpointsManager
 	logger             framework.Logger
-	certPath           string
+	caCertPath         string
 }
 
 // SetService tells the endpoint manager which protocol should be used when BaseURL() is called on a MockEndpoint.
@@ -80,7 +99,7 @@ func (h *TestHarness) SetService(service string) {
 // CertificateAuthorityPath returns the path to CA cert used by the test harness when establishing a TLS
 // connection with the SDK under test.
 func (h *TestHarness) CertificateAuthorityPath() string {
-	return h.certPath
+	return h.caCertPath
 }
 
 // NewTestHarness creates a TestHarness instance, and verifies that the test service
@@ -118,11 +137,11 @@ func NewTestHarness(
 	}
 
 	if testServiceInfo.Capabilities.HasAny(servicedef.CapabilityTLSSkipVerifyPeer, servicedef.CapabilityTLSVerifyPeer) {
-		certInfo, err := exportCertificate()
+		certInfo, err := exportCertChain()
 		if err != nil {
 			return nil, err
 		}
-		h.certPath = certInfo.cert
+		h.caCertPath = certInfo.ca
 		startHTTPSServer(testHarnessPort+1, certInfo, http.HandlerFunc(h.serveHTTP))
 	}
 
