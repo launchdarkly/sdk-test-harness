@@ -50,7 +50,7 @@ const (
 
 	// CapabilityTLSCustomCA means the SDK is capable of establishing a TLS session and configuring peer verification
 	// to use a custom CA certificate. The path to this CA cert is provided to the SDK. The SDK should then configure this
-	// path as the only CA cert in its trust store (rather than adding it to an existing trust store.)-
+	// path as the only CA cert in its trust store (rather than adding it to an existing trust store.)
 	CapabilityTLSCustomCA = "tls:custom-ca"
 )
 
