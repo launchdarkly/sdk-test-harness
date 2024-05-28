@@ -41,7 +41,7 @@ func makeTempFile(pattern string, data []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer f.Close() // nolint: errcheck
 	if _, err := f.Write(data); err != nil {
 		return "", err
 	}
@@ -49,7 +49,6 @@ func makeTempFile(pattern string, data []byte) (string, error) {
 }
 
 func exportCertChain() (*certPaths, error) {
-
 	chain := bytes.NewBuffer(certificate)
 	chain.Write(caCertificate)
 
