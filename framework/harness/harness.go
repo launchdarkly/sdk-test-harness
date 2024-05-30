@@ -25,15 +25,15 @@ var privateKey []byte
 var caCertificate []byte
 
 type certPaths struct {
-	cert string
-	key  string
-	ca   string
+	cert   string
+	key    string
+	caFile string
 }
 
 func (c *certPaths) cleanup() {
 	_ = os.Remove(c.cert)
 	_ = os.Remove(c.key)
-	_ = os.Remove(c.ca)
+	_ = os.Remove(c.caFile)
 }
 
 func makeTempFile(pattern string, data []byte) (string, error) {
@@ -62,11 +62,11 @@ func exportCertChain() (*certPaths, error) {
 		return nil, fmt.Errorf("failed to create temp private key file: %w", err)
 	}
 
-	ca, err := makeTempFile("sdk-test-harness-ca-cert*", caCertificate)
+	ca, err := makeTempFile("sdk-test-harness-caFile-cert*", caCertificate)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create temp ca certificate file: %w", err)
+		return nil, fmt.Errorf("failed to create temp caFile certificate file: %w", err)
 	}
-	return &certPaths{cert: cert, key: key, ca: ca}, nil
+	return &certPaths{cert: cert, key: key, caFile: ca}, nil
 }
 
 const httpListenerTimeout = time.Second * 10
@@ -84,7 +84,7 @@ type TestHarness struct {
 	testServiceInfo    serviceinfo.TestServiceInfo
 	mockEndpoints      *mockEndpointsManager
 	logger             framework.Logger
-	caCertPath         string
+	caFile             string
 }
 
 // SetService tells the endpoint manager which protocol should be used when BaseURL() is called on a MockEndpoint.
@@ -95,10 +95,10 @@ func (h *TestHarness) SetService(service string) {
 	h.mockEndpoints.SetService(service)
 }
 
-// CertificateAuthorityPath returns the path to CA cert used by the test harness when establishing a TLS
+// CertificateAuthorityFile returns the file path of a CA cert used by the test harness when establishing a TLS
 // connection with the SDK under test.
-func (h *TestHarness) CertificateAuthorityPath() string {
-	return h.caCertPath
+func (h *TestHarness) CertificateAuthorityFile() string {
+	return h.caFile
 }
 
 // NewTestHarness creates a TestHarness instance, and verifies that the test service
@@ -140,7 +140,7 @@ func NewTestHarness(
 		if err != nil {
 			return nil, err
 		}
-		h.caCertPath = certInfo.ca
+		h.caFile = certInfo.caFile
 		startHTTPSServer(testHarnessPort+1, certInfo, http.HandlerFunc(h.serveHTTP))
 	}
 
