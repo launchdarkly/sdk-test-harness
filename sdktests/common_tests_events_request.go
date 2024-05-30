@@ -45,12 +45,11 @@ func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string
 		}
 	})
 	t.Run("invalid tls certificate", func(t *ldtest.T) {
-		// Setting up the data source *outside* the transport.Run so that it uses normal https transport and the
-		// data source connection can succeed. This is because we're trying to only test the TLS certificate verification
-		// logic that applies to sending events.
-		dataSource := NewSDKDataSource(t, nil)
-
 		c.withHTTPSTransport(t).Run(t, func(t *ldtest.T) {
+			//// It's not expected that the data source connection will succeed (since it's an https url, and the SDK's
+			//// default trust store won't contain the self-signed cert.) This test is only concerned with events; the
+			//// data source is being configured because it is required by the harness.
+			dataSource := NewSDKDataSource(t, nil)
 			events := NewSDKEventSink(t)
 			client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 

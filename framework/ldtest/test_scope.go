@@ -39,7 +39,7 @@ type TestConfiguration struct {
 	// Context is an optional value of any type defined by the application which can be accessed from tests.
 	Context interface{}
 
-	// Capabilities is a list of strings which are used by T.HasCapability and T.RequireCapability.
+	// Capabilities is a list of strings which are used T.RequireCapability.
 	Capabilities []string
 }
 
@@ -211,10 +211,17 @@ func (t *T) Capabilities() framework.Capabilities {
 	return append(framework.Capabilities(nil), t.env.config.Capabilities...)
 }
 
-// RequireCapability causes the test to be skipped if HasCapability(name) returns false.
+// RequireCapability causes the test to be skipped if Capabilities().Has(name) returns false.
 func (t *T) RequireCapability(name string) {
 	if !t.Capabilities().Has(name) {
 		t.SkipWithReason(fmt.Sprintf("test service does not have capability %q", name))
+	}
+}
+
+// RequireCapabilities causes the test to be skipped if Capabilities().HasAll(names) returns false.
+func (t *T) RequireCapabilities(names ...string) {
+	if !t.Capabilities().HasAll(names...) {
+		t.SkipWithReason(fmt.Sprintf("test service does not have all of the required capabilities: %v", names))
 	}
 }
 

@@ -112,6 +112,8 @@ func (c commonTestsBase) availableFlagRequestMethods() []flagRequestMethod {
 type transportProtocol struct {
 	// Either http or https.
 	protocol string
+	// Tag appended to the test name
+	tag string
 	// A function that configures the SDK's TLS options.
 	configurer SDKConfigurer
 }
@@ -127,7 +129,7 @@ func (t transportProtocol) Run(tester *ldtest.T, action func(*ldtest.T)) {
 	// Ensure that if some test fails/panics, we are back to using HTTP by default for the next one.
 	defer requireContext(tester).harness.SetService("http")
 
-	tester.Run(t.protocol, func(tester *ldtest.T) {
+	tester.Run(t.tag, func(tester *ldtest.T) {
 		requireContext(tester).harness.SetService(t.protocol)
 		action(tester)
 	})
@@ -137,7 +139,7 @@ func (t transportProtocol) Run(tester *ldtest.T, action func(*ldtest.T)) {
 func (c commonTestsBase) withHTTPSTransport(t *ldtest.T) transportProtocol {
 	t.RequireCapability(servicedef.CapabilityTLSVerifyPeer)
 	// SDKs must verify peers by default, there's nothing to configure.
-	return transportProtocol{"https", NoopConfigurer{}}
+	return transportProtocol{"https", "https-verify-peer", NoopConfigurer{}}
 }
 
 // Returns a transportProtocol that runs the test under HTTPS with peer verification disabled.
@@ -149,7 +151,19 @@ func (c commonTestsBase) withHTTPSTransportSkipVerifyPeer(t *ldtest.T) transport
 		})
 		return nil
 	})
-	return transportProtocol{"https", configurer}
+	return transportProtocol{"https", "https-skip-verify-peer", configurer}
+}
+
+func (c commonTestsBase) withHTTPSTransportVerifyPeerCustomCA(t *ldtest.T, customCAFile string) transportProtocol {
+	t.RequireCapabilities(servicedef.CapabilityTLSCustomCA, servicedef.CapabilityTLSVerifyPeer)
+	configurer := helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		configOut.TLS = o.Some(servicedef.SDKConfigTLSParams{
+			SkipVerifyPeer: false,
+			CustomCAFile:   customCAFile,
+		})
+		return nil
+	})
+	return transportProtocol{"https", "https-verify-peer-custom-ca", configurer}
 }
 
 // Returns the transports available for testing. For each transportProtocol returned, use the Run method
@@ -160,10 +174,14 @@ func (c commonTestsBase) withAvailableTransports(t *ldtest.T) []transportProtoco
 	// By default, tests are set up with http. Therefore, there's no need to specifically reconfigure the SDK.
 	// If that changes in the future, this would need to be modified.
 	configurers := []transportProtocol{
-		{"http", NoopConfigurer{}},
+		{"http", "http", NoopConfigurer{}},
 	}
 	if t.Capabilities().Has(servicedef.CapabilityTLSSkipVerifyPeer) {
 		configurers = append(configurers, c.withHTTPSTransportSkipVerifyPeer(t))
+	}
+	if t.Capabilities().HasAll(servicedef.CapabilityTLSCustomCA, servicedef.CapabilityTLSVerifyPeer) {
+		configurers = append(configurers, c.withHTTPSTransportVerifyPeerCustomCA(t,
+			requireContext(t).harness.CertificateAuthorityFile()))
 	}
 	return configurers
 }

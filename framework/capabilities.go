@@ -11,6 +11,20 @@ func (cs Capabilities) Has(name string) bool {
 	return slices.Contains(cs, name)
 }
 
+// HasAll returns true if the specifies strings all appear in the list.
+func (cs Capabilities) HasAll(names ...string) bool {
+	caps := make(map[string]struct{})
+	for _, c := range cs {
+		caps[c] = struct{}{}
+	}
+	for _, name := range names {
+		if _, ok := caps[name]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
 // HasAny returns true if any of the specified strings appear in the list.
 func (cs Capabilities) HasAny(names ...string) bool {
 	caps := make(map[string]struct{})
