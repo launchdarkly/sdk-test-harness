@@ -231,6 +231,9 @@ func startHTTPSServer(port int, cert *certPaths, handler http.Handler) {
 	}
 	go func() {
 		defer cert.cleanup()
+		// If we use keep-alives, the server can try to reuse the connection which isn't
+		// desirable for testing purposes.
+		server.SetKeepAlivesEnabled(false)
 		if err := server.ListenAndServeTLS(cert.cert, cert.key); err != nil {
 			panic(err)
 		}
