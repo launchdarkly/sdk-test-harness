@@ -155,7 +155,7 @@ func (c commonTestsBase) withHTTPSTransportSkipVerifyPeer(t *ldtest.T) transport
 }
 
 func (c commonTestsBase) withHTTPSTransportVerifyPeerCustomCA(t *ldtest.T, customCAPath string) transportProtocol {
-	t.RequireCapability(servicedef.CapabilityTLSCustomCA)
+	t.RequireCapabilities(servicedef.CapabilityTLSCustomCA, servicedef.CapabilityTLSVerifyPeer)
 	configurer := helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
 		configOut.TLS = o.Some(servicedef.SDKConfigTLSParams{
 			SkipVerifyPeer: false,
@@ -179,7 +179,7 @@ func (c commonTestsBase) withAvailableTransports(t *ldtest.T) []transportProtoco
 	if t.Capabilities().Has(servicedef.CapabilityTLSSkipVerifyPeer) {
 		configurers = append(configurers, c.withHTTPSTransportSkipVerifyPeer(t))
 	}
-	if t.Capabilities().Has(servicedef.CapabilityTLSCustomCA) {
+	if t.Capabilities().HasAll(servicedef.CapabilityTLSCustomCA, servicedef.CapabilityTLSVerifyPeer) {
 		configurers = append(configurers, c.withHTTPSTransportVerifyPeerCustomCA(t,
 			requireContext(t).harness.CertificateAuthorityPath()))
 	}
