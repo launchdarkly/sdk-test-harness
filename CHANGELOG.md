@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.15.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.14.0...v2.15.0) (2024-05-30)
+
+
+### Features
+
+* add custom CA capability ([#215](https://github.com/launchdarkly/sdk-test-harness/issues/215)) ([7e25226](https://github.com/launchdarkly/sdk-test-harness/commit/7e2522657ea585a122e0a55aa7670582e4182655))
+
 ## [2.14.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.13.0...v2.14.0) (2024-05-15)
 
 
