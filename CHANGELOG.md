@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.16.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.15.0...v2.16.0) (2024-06-26)
+
+
+### Features
+
+* Add tests for omit anonymous contexts. ([#217](https://github.com/launchdarkly/sdk-test-harness/issues/217)) ([1b9c6f6](https://github.com/launchdarkly/sdk-test-harness/commit/1b9c6f626487552f373589e97510cd3e46e1de6c))
+
 ## [2.15.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.14.0...v2.15.0) (2024-05-30)
 
 
