@@ -3,7 +3,7 @@ package mockld
 import (
 	"encoding/base64"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -50,7 +50,7 @@ func (srv *RokuServer) ServeHandshake(baseWriter http.ResponseWriter, req *http.
 	// Save mobile key for use when client connects to stream
 	srv.mobileKey = &authorization
 
-	body, err := ioutil.ReadAll(req.Body)
+	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		baseWriter.WriteHeader(http.StatusBadRequest)
 		return

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"sync"
@@ -123,7 +122,7 @@ func doRequest(method, url string, body []byte) ([]byte, http.Header, error) {
 	}
 	var respBody []byte
 	if resp.Body != nil {
-		respBody, err = ioutil.ReadAll(resp.Body)
+		respBody, err = io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, nil, err
 		}

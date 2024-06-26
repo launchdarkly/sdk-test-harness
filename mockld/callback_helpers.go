@@ -3,7 +3,7 @@ package mockld
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
@@ -34,7 +34,7 @@ func (c *callbackService) addPath(path string, handler func(*json.Decoder) (inte
 		var requestDecoder *json.Decoder
 		var body []byte
 		if r.Body != nil {
-			body, _ = ioutil.ReadAll(r.Body)
+			body, _ = io.ReadAll(r.Body)
 			_ = r.Body.Close()
 			requestDecoder = json.NewDecoder(bytes.NewBuffer(body))
 		}

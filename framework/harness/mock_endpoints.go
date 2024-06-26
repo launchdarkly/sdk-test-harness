@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -177,7 +178,7 @@ func (m *mockEndpointsManager) serveHTTP(w http.ResponseWriter, r *http.Request)
 
 	var body []byte
 	if r.Body != nil {
-		data, err := ioutil.ReadAll(r.Body)
+		data, err := io.ReadAll(r.Body)
 		_ = r.Body.Close()
 		if err != nil {
 			m.logger.Printf("Unexpected error trying to read request body: %s", err)

@@ -3,7 +3,7 @@ package mockld
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -104,7 +104,7 @@ func doPollingServiceTests(
 
 		require.Equal(t, 200, resp.StatusCode, "got error status for %s %s", req.Method, req.URL)
 
-		data, err := ioutil.ReadAll(resp.Body)
+		data, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 		m.In(t).Assert(data, m.JSONStrEqual(string(initialData.Serialize())))
 	})
