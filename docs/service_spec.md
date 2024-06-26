@@ -180,6 +180,12 @@ If specified, the SDK will send a `tls` object containing a `customCAFile` prope
 a file path containing one or more PEM-encoded x509 certificates. The SDK should configure its TLS stack to use
 this file when verifying the peer's certificate chain. 
 
+### Capability `"omit-anonymous-contexts"`
+
+This means the SDK supports filtering anonymous contexts out of index and identify events.
+
+When this capability is set a subset of tests will set the "omitAnonymousContexts" of the events configuration to true.
+
 ### Stop test service: `DELETE /`
 
 The test harness sends this request at the end of a test run if you have specified `--stop-service-at-end` on the [command line](./running.md). The test service should simply quit. This is a convenience so CI scripts can simply start the test service in the background and assume it will be stopped for them.

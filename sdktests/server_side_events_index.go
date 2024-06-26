@@ -1,6 +1,8 @@
 package sdktests
 
 import (
+	"fmt"
+
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
@@ -125,5 +127,88 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 
 			m.In(t).Assert(payload, m.ItemsInAnyOrder(matchers...))
 		})
+	})
+
+	t.Run("can omit anonymous contexts from index events", func(t *ldtest.T) {
+		t.RequireCapability(servicedef.CapabilityOmitAnonymousContexts)
+
+		scenarios := []struct {
+			name    string
+			action  func(t *ldtest.T, client *SDKClient, ctx ldcontext.Context)
+			matcher m.Matcher
+		}{
+			{
+				name: "custom",
+				action: func(t *ldtest.T, client *SDKClient, ctx ldcontext.Context) {
+					client.SendCustomEvent(t, servicedef.CustomEventParams{EventKey: "event1", Context: o.Some(ctx)})
+				},
+				matcher: IsCustomEvent(),
+			},
+			{
+				name: "evaluation",
+				action: func(t *ldtest.T, client *SDKClient, ctx ldcontext.Context) {
+					client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+						FlagKey:      "does not matter",
+						Context:      o.Some(ctx),
+						DefaultValue: ldvalue.Bool(false),
+						Detail:       true,
+					})
+				},
+				matcher: IsSummaryEvent(),
+			},
+		}
+
+		for _, scenario := range scenarios {
+			setup := func() (*SDKClient, *SDKEventSink) {
+				dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+				eventsConfig := baseEventsConfig()
+				eventsConfig.OmitAnonymousContexts = true
+				events := NewSDKEventSink(t)
+				eventsConfig.BaseURI = events.eventsEndpoint.BaseURL()
+
+				return NewSDKClient(t, dataSource, WithEventsConfig(eventsConfig)), events
+			}
+
+			t.Run(fmt.Sprintf("does not emit any events for single context which is anonymous for %s event", scenario.name), func(t *ldtest.T) {
+				client, events := setup()
+				anonSingleContext := ldcontext.NewBuilder("anon-context1").Kind("user").Anonymous(true).Build()
+				scenario.action(t, client, anonSingleContext)
+				client.FlushEvents(t)
+				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+				// Only the custom event should be present.
+				m.In(t).Assert(payload, m.Items(scenario.matcher))
+			})
+
+			t.Run(fmt.Sprintf("does not emit any events for a multi-context where all contexts are anonymous for %s event", scenario.name), func(t *ldtest.T) {
+				client, events := setup()
+				anonSingleContextA := ldcontext.NewBuilder("anon-context1").Kind("user").Anonymous(true).Build()
+				anonSingleContextB := ldcontext.NewBuilder("other-context1").Kind("other").Anonymous(true).Build()
+				anonMultiContext := ldcontext.NewMulti(anonSingleContextA, anonSingleContextB)
+				scenario.action(t, client, anonMultiContext)
+				client.FlushEvents(t)
+				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+				// Only the custom event should be present.
+				m.In(t).Assert(payload, m.Items(scenario.matcher))
+			})
+
+			t.Run(fmt.Sprintf("omits the anonymous contexts from a multi-context for %s event", scenario.name), func(t *ldtest.T) {
+				client, events := setup()
+				anonSingleContext := ldcontext.NewBuilder("anon-context2").Kind("user").Anonymous(true).Build()
+				nonAnonSingleContext := ldcontext.NewBuilder("other-context2").Kind("other").Build()
+				multiContext := ldcontext.NewMulti(anonSingleContext, nonAnonSingleContext)
+				scenario.action(t, client, multiContext)
+				client.FlushEvents(t)
+				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+				indexEventMatcher := m.AllOf(
+					JSONPropertyKeysCanOnlyBe("kind", "creationDate", "context"),
+					IsIndexEvent(),
+					HasAnyCreationDate(),
+					HasContextObjectWithMatchingKeys(nonAnonSingleContext),
+				)
+
+				m.In(t).Assert(payload, m.ItemsInAnyOrder(scenario.matcher, indexEventMatcher))
+			})
+		}
 	})
 }

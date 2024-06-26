@@ -1,9 +1,13 @@
 package sdktests
 
 import (
+	"time"
+
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
@@ -37,6 +41,57 @@ func (c CommonEventTests) IdentifyEvents(t *ldtest.T) {
 				))
 			})
 		}
+	})
+
+	t.Run("can omit anonymous contexts from index events", func(t *ldtest.T) {
+		t.RequireCapability(servicedef.CapabilityOmitAnonymousContexts)
+
+		setup := func() (*SDKClient, *SDKEventSink) {
+			dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+			eventsConfig := baseEventsConfig()
+			eventsConfig.OmitAnonymousContexts = true
+			events := NewSDKEventSink(t)
+			eventsConfig.BaseURI = events.eventsEndpoint.BaseURL()
+
+			return NewSDKClient(t, dataSource, WithEventsConfig(eventsConfig)), events
+		}
+
+		t.Run("does not emit any events for single context which is anonymous", func(t *ldtest.T) {
+			client, events := setup()
+			anonSingleContext := ldcontext.NewBuilder("anon-context1").Kind("user").Anonymous(true).Build()
+			client.SendIdentifyEvent(t, anonSingleContext)
+			client.FlushEvents(t)
+			events.ExpectNoAnalyticsEvents(t, time.Millisecond*200)
+		})
+
+		t.Run("does not emit any events for a multi-context where all contexts are anonymous", func(t *ldtest.T) {
+			client, events := setup()
+			anonSingleContextA := ldcontext.NewBuilder("anon-context1").Kind("user").Anonymous(true).Build()
+			anonSingleContextB := ldcontext.NewBuilder("other-context1").Kind("other").Anonymous(true).Build()
+			anonMultiContext := ldcontext.NewMulti(anonSingleContextA, anonSingleContextB)
+			client.SendIdentifyEvent(t, anonMultiContext)
+			client.FlushEvents(t)
+			events.ExpectNoAnalyticsEvents(t, time.Millisecond*200)
+		})
+
+		t.Run("omits the anonymous contexts from a multi-context", func(t *ldtest.T) {
+			client, events := setup()
+			anonSingleContext := ldcontext.NewBuilder("anon-context2").Kind("user").Anonymous(true).Build()
+			nonAnonSingleContext := ldcontext.NewBuilder("other-context2").Kind("other").Build()
+			multiContext := ldcontext.NewMulti(anonSingleContext, nonAnonSingleContext)
+			client.SendIdentifyEvent(t, multiContext)
+			client.FlushEvents(t)
+			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+			identifyEventMatcher := m.AllOf(
+				JSONPropertyKeysCanOnlyBe("kind", "creationDate", "context"),
+				IsIdentifyEvent(),
+				HasAnyCreationDate(),
+				HasContextObjectWithMatchingKeys(nonAnonSingleContext),
+			)
+
+			m.In(t).Assert(payload, m.Items(identifyEventMatcher))
+		})
 	})
 
 	if !c.isClientSide && !c.isPHP {
