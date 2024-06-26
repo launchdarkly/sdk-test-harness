@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.16.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.16.0...v2.16.1) (2024-06-26)
+
+
+### Bug Fixes
+
+* Make identify tests more lenient. ([#219](https://github.com/launchdarkly/sdk-test-harness/issues/219)) ([f236016](https://github.com/launchdarkly/sdk-test-harness/commit/f23601636ad42f7788a2d01ac0210e7f88207e7a))
+
 ## [2.16.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.15.0...v2.16.0) (2024-06-26)
 
 
