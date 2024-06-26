@@ -169,9 +169,13 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 				return NewSDKClient(t, dataSource, WithEventsConfig(eventsConfig)), events
 			}
 
-			t.Run(fmt.Sprintf("does not emit any events for single context which is anonymous for %s event", scenario.name), func(t *ldtest.T) {
+			t.Run(fmt.Sprintf("does not emit any events for single context which is anonymous for %s event",
+				scenario.name), func(t *ldtest.T) {
 				client, events := setup()
-				anonSingleContext := ldcontext.NewBuilder("anon-context1").Kind("user").Anonymous(true).Build()
+				anonSingleContext := ldcontext.NewBuilder("anon-context1").
+					Kind("user").
+					Anonymous(true).
+					Build()
 				scenario.action(t, client, anonSingleContext)
 				client.FlushEvents(t)
 				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
@@ -179,10 +183,18 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 				m.In(t).Assert(payload, m.Items(scenario.matcher))
 			})
 
-			t.Run(fmt.Sprintf("does not emit any events for a multi-context where all contexts are anonymous for %s event", scenario.name), func(t *ldtest.T) {
+			t.Run(fmt.Sprintf(
+				"does not emit any events for a multi-context where all contexts are anonymous for %s event",
+				scenario.name), func(t *ldtest.T) {
 				client, events := setup()
-				anonSingleContextA := ldcontext.NewBuilder("anon-context1").Kind("user").Anonymous(true).Build()
-				anonSingleContextB := ldcontext.NewBuilder("other-context1").Kind("other").Anonymous(true).Build()
+				anonSingleContextA := ldcontext.NewBuilder("anon-context1").
+					Kind("user").
+					Anonymous(true).
+					Build()
+				anonSingleContextB := ldcontext.NewBuilder("other-context1").
+					Kind("other").
+					Anonymous(true).
+					Build()
 				anonMultiContext := ldcontext.NewMulti(anonSingleContextA, anonSingleContextB)
 				scenario.action(t, client, anonMultiContext)
 				client.FlushEvents(t)
@@ -191,9 +203,13 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 				m.In(t).Assert(payload, m.Items(scenario.matcher))
 			})
 
-			t.Run(fmt.Sprintf("omits the anonymous contexts from a multi-context for %s event", scenario.name), func(t *ldtest.T) {
+			t.Run(fmt.Sprintf("omits the anonymous contexts from a multi-context for %s event",
+				scenario.name), func(t *ldtest.T) {
 				client, events := setup()
-				anonSingleContext := ldcontext.NewBuilder("anon-context2").Kind("user").Anonymous(true).Build()
+				anonSingleContext := ldcontext.NewBuilder("anon-context2").
+					Kind("user").
+					Anonymous(true).
+					Build()
 				nonAnonSingleContext := ldcontext.NewBuilder("other-context2").Kind("other").Build()
 				multiContext := ldcontext.NewMulti(anonSingleContext, nonAnonSingleContext)
 				scenario.action(t, client, multiContext)

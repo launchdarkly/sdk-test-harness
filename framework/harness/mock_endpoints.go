@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -197,7 +196,7 @@ func (m *mockEndpointsManager) serveHTTP(w http.ResponseWriter, r *http.Request)
 	url.Path = path
 	transformedReq.URL = &url
 	if body != nil {
-		transformedReq.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+		transformedReq.Body = io.NopCloser(bytes.NewBuffer(body))
 	}
 
 	incoming := &IncomingRequestInfo{
