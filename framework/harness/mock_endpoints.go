@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -177,7 +177,7 @@ func (m *mockEndpointsManager) serveHTTP(w http.ResponseWriter, r *http.Request)
 
 	var body []byte
 	if r.Body != nil {
-		data, err := ioutil.ReadAll(r.Body)
+		data, err := io.ReadAll(r.Body)
 		_ = r.Body.Close()
 		if err != nil {
 			m.logger.Printf("Unexpected error trying to read request body: %s", err)
@@ -196,7 +196,7 @@ func (m *mockEndpointsManager) serveHTTP(w http.ResponseWriter, r *http.Request)
 	url.Path = path
 	transformedReq.URL = &url
 	if body != nil {
-		transformedReq.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+		transformedReq.Body = io.NopCloser(bytes.NewBuffer(body))
 	}
 
 	incoming := &IncomingRequestInfo{
