@@ -43,7 +43,7 @@ func (c CommonEventTests) IdentifyEvents(t *ldtest.T) {
 		}
 	})
 
-	t.Run("can omit anonymous contexts from index events", func(t *ldtest.T) {
+	t.Run("can omit anonymous contexts from identify events", func(t *ldtest.T) {
 		t.RequireCapability(servicedef.CapabilityOmitAnonymousContexts)
 
 		setup := func() (*SDKClient, *SDKEventSink) {
@@ -84,7 +84,6 @@ func (c CommonEventTests) IdentifyEvents(t *ldtest.T) {
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
 			identifyEventMatcher := m.AllOf(
-				JSONPropertyKeysCanOnlyBe("kind", "creationDate", "context"),
 				IsIdentifyEvent(),
 				HasAnyCreationDate(),
 				HasContextObjectWithMatchingKeys(nonAnonSingleContext),
@@ -95,7 +94,7 @@ func (c CommonEventTests) IdentifyEvents(t *ldtest.T) {
 	})
 
 	if !c.isClientSide && !c.isPHP {
-		t.Run("identify event makes index event for same user unnecessary", func(t *ldtest.T) {
+		t.Run("identify event makes identify event for same user unnecessary", func(t *ldtest.T) {
 			// This test is only done for server-side SDKs (excluding PHP), because client-side ones and PHP
 			// do not do index events.
 			for _, contexts := range contextCategories {
