@@ -31,6 +31,7 @@ const (
 	CapabilityMigrations         = "migrations"
 	CapabilityEventSampling      = "event-sampling"
 	CapabilityEventGzip          = "event-gzip"
+	CapabilityOptionalEventGzip  = "optional-event-gzip"
 	CapabilityETagCaching        = "etag-caching"
 	CapabilityInlineContext      = "inline-context"
 	CapabilityAnonymousRedaction = "anonymous-redaction"

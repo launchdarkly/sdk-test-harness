@@ -17,6 +17,7 @@ import (
 
 func doPHPEventTests(t *ldtest.T) {
 	t.Run("requests", doPHPEventRequestTests)
+	t.Run("gzip", doServerSideGzipEventRequestTests)
 	t.Run("feature events", doPHPFeatureEventTests)
 	t.Run("feature prerequisite events", doServerSideFeaturePrerequisiteEventTests)
 	t.Run("experimentation", doServerSideExperimentationEventTests)

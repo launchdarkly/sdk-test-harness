@@ -28,7 +28,12 @@ type SDKEventSink struct {
 	eventsEndpoint *harness.MockEndpoint
 }
 
-// NewSDKEventSink creates a new SDKEventSink.
+// NewSDKEventSink creates a new SDKEventSink with default behavior.
+func NewSDKEventSink(t *ldtest.T) *SDKEventSink {
+	return NewSDKEventSinkWithGzip(t, false)
+}
+
+// NewSDKEventSinkWithGzip creates a new SDKEventSink and optionally enables gzip compression.
 //
 // It automatically detects (from the ldtest.T properties) whether we are testing a server-side, mobile,
 // or JS-based client-side SDK, and configures the endpoint behavior as appropriate. The endpoints will
@@ -41,11 +46,11 @@ type SDKEventSink struct {
 // when this test scope exits. It can be reused by subtests until then. Debug output related to the event
 // sink will be attached to this test scope, and also to any of its subtests that are active when the
 // output is generated.
-func NewSDKEventSink(t *ldtest.T) *SDKEventSink {
+func NewSDKEventSinkWithGzip(t *ldtest.T, requireGzip bool) *SDKEventSink {
 	eventsService := mockld.NewEventsService(
 		requireContext(t).sdkKind,
 		t.DebugLogger(),
-		t.Capabilities().Has(servicedef.CapabilityEventGzip))
+		requireGzip)
 	eventsEndpoint := requireContext(t).harness.NewMockEndpoint(eventsService, t.DebugLogger(),
 		harness.MockEndpointDescription("events service"))
 

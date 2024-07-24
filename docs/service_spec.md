@@ -76,6 +76,12 @@ This means that the SDK supports caching of the e-tag header between client rest
 
 This means that the SDK supports gzip compression of event payloads.
 
+#### Capability `"optional-event-gzip"`
+
+This means that the SDK supports disabling gzip compression. This capability expects the SDK to also support `"event-gzip"`.
+
+When this capability is set a subset of tests will set the "enableGzip" of the events configuration to false.
+
 #### Capability `"event-sampling"`
 
 This means that the SDK supports event sampling; the SDK can limit the number of certain events based on payloads received from upstream services.

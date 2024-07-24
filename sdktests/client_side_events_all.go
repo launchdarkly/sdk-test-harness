@@ -1,15 +1,18 @@
 package sdktests
 
 import (
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
 
 func doClientSideEventTests(t *ldtest.T) {
 	t.Run("requests", doClientSideEventRequestTests)
+	t.Run("gzip", doClientSideGzipEventRequestTests)
 	t.Run("summary events", doClientSideSummaryEventTests)
 	t.Run("feature events", doClientSideFeatureEventTests)
 	t.Run("debug events", doClientSideDebugEventTests)
@@ -72,4 +75,40 @@ func doClientSideEventBufferTests(t *ldtest.T) {
 func doClientSideEventDisableTests(t *ldtest.T) {
 	NewCommonEventTests(t, "doClientSideEventDisableTests").
 		DisablingEvents(t)
+}
+
+func doClientSideGzipEventRequestTests(t *ldtest.T) {
+	if !t.Capabilities().Has(servicedef.CapabilityEventGzip) {
+		return
+	}
+
+	dataBuilder := mockld.NewClientSDKDataBuilder()
+	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	context := ldcontext.New("user")
+
+	for _, enableGzip := range []bool{true, false} {
+		if !enableGzip && !t.Capabilities().Has(servicedef.CapabilityOptionalEventGzip) {
+			continue
+		}
+
+		desc := "enabled"
+		if !enableGzip {
+			desc = "disabled"
+		}
+
+		t.Run(desc, func(t *ldtest.T) {
+			events := NewSDKEventSinkWithGzip(t, enableGzip)
+			client := NewSDKClient(t,
+				WithClientSideInitialContext(context),
+				dataSource, events)
+
+			client.SendIdentifyEvent(t, context)
+			client.FlushEvents(t)
+			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(
+				IsIdentifyEventForContext(context),
+			))
+		})
+	}
 }
