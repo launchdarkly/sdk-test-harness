@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.17.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.16.1...v2.17.0) (2024-07-24)
+
+
+### Features
+
+* Add `optional-event-gzip` capability ([#221](https://github.com/launchdarkly/sdk-test-harness/issues/221)) ([2a78109](https://github.com/launchdarkly/sdk-test-harness/commit/2a781096f2f95cc620f24f3a7528225802d9723f))
+
 ## [2.16.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.16.0...v2.16.1) (2024-06-26)
 
 
