@@ -9,6 +9,7 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
@@ -22,9 +23,11 @@ func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string
 		for _, transport := range c.withAvailableTransports(t) {
 			transport.Run(t, func(t *ldtest.T) {
 				dataSource := NewSDKDataSource(t, nil)
-				events := NewSDKEventSink(t)
-				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events,
-					transport.configurer)...)
+				events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
+				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, WithEventsConfig(servicedef.SDKConfigEventParams{
+					EnableGzip: o.Some(t.Capabilities().Has(servicedef.CapabilityEventGzip)),
+				}),
+					events, transport.configurer)...)
 
 				c.sendArbitraryEvent(t, client)
 				client.FlushEvents(t)

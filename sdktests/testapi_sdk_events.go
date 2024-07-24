@@ -30,7 +30,7 @@ type SDKEventSink struct {
 
 // NewSDKEventSink creates a new SDKEventSink with default behavior.
 func NewSDKEventSink(t *ldtest.T) *SDKEventSink {
-	return NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
+	return NewSDKEventSinkWithGzip(t, false)
 }
 
 // NewSDKEventSinkWithGzip creates a new SDKEventSink and optionally enables gzip compression.
