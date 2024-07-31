@@ -125,8 +125,6 @@ func (c CommonWrapperTests) Run(t *ldtest.T) {
 	})
 
 	t.Run("poll requests", func(t *ldtest.T) {
-		// Currently server-side SDK test services do not support polling
-		t.RequireCapability(servicedef.CapabilityClientSide)
 		config := servicedef.SDKConfigWrapper{WrapperName: "TestName", WrapperVersion: "1.0.0"}
 		t.Run("wrapper name and version", func(t *ldtest.T) {
 			dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
