@@ -91,6 +91,7 @@ func doAllServerSideTests(t *ldtest.T) {
 	t.Run("context type", doSDKContextTypeTests)
 	t.Run("migrations", doServerSideMigrationTests)
 	t.Run("hooks", doCommonHooksTests)
+	t.Run("wrapper", doServerSideWrapperTests)
 }
 
 func doAllClientSideTests(t *ldtest.T) {
@@ -103,6 +104,7 @@ func doAllClientSideTests(t *ldtest.T) {
 	t.Run("autoEnvAttributes", doClientSideAutoEnvAttributesTests)
 	t.Run("client independence", doClientSideClientIndependenceTests)
 	t.Run("hooks", doCommonHooksTests)
+	t.Run("wrapper", doClientSideWrapperTests)
 }
 
 func doAllPHPTests(t *ldtest.T) {

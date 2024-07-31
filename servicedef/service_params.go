@@ -55,6 +55,10 @@ const (
 	CapabilityTLSCustomCA = "tls:custom-ca"
 
 	CapabilityOmitAnonymousContexts = "omit-anonymous-contexts"
+
+	// CapabilityWrapper indicates that the SDK supports setting wrapper name and version and including them in request
+	// headers.
+	CapabilityWrapper = "wrapper"
 )
 
 type StatusRep struct {

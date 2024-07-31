@@ -25,12 +25,14 @@ type SDKConfigParams struct {
 	Tags                o.Maybe[SDKConfigTagsParams]                `json:"tags,omitempty"`
 	ClientSide          o.Maybe[SDKConfigClientSideParams]          `json:"clientSide,omitempty"`
 	Hooks               o.Maybe[SDKConfigHooksParams]               `json:"hooks,omitempty"`
+	Wrapper             o.Maybe[SDKConfigWrapper]                   `json:"wrapper,omitempty"`
 }
 
 type SDKConfigTLSParams struct {
 	SkipVerifyPeer bool   `json:"skipVerifyPeer,omitempty"`
 	CustomCAFile   string `json:"customCAFile,omitempty"`
 }
+
 type SDKConfigServiceEndpointsParams struct {
 	Streaming string `json:"streaming,omitempty"`
 	Polling   string `json:"polling,omitempty"`
@@ -96,4 +98,9 @@ type SDKConfigHookInstance struct {
 
 type SDKConfigHooksParams struct {
 	Hooks []SDKConfigHookInstance `json:"hooks"`
+}
+
+type SDKConfigWrapper struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
 }
