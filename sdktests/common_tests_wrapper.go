@@ -27,10 +27,10 @@ func (c CommonWrapperTests) Run(t *ldtest.T) {
 		request := endpoint.RequireConnection(t, time.Second)
 		expectedHeaderValue := ""
 
-		if p.WrapperName != "" {
-			expectedHeaderValue = p.WrapperName
-			if p.WrapperVersion != "" {
-				expectedHeaderValue += "/" + p.WrapperVersion
+		if p.Name != "" {
+			expectedHeaderValue = p.Name
+			if p.Version != "" {
+				expectedHeaderValue += "/" + p.Version
 			}
 		}
 
@@ -65,7 +65,7 @@ func (c CommonWrapperTests) Run(t *ldtest.T) {
 		})
 
 		t.Run("only wrapper name", func(t *ldtest.T) {
-			config := servicedef.SDKConfigWrapper{WrapperName: "TestName"}
+			config := servicedef.SDKConfigWrapper{Name: "TestName"}
 			events := NewSDKEventSink(t)
 			client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 				withWrapper(config),
@@ -79,7 +79,7 @@ func (c CommonWrapperTests) Run(t *ldtest.T) {
 		})
 
 		t.Run("wrapper name and version", func(t *ldtest.T) {
-			config := servicedef.SDKConfigWrapper{WrapperName: "TestName", WrapperVersion: "1.0.0"}
+			config := servicedef.SDKConfigWrapper{Name: "TestName", Version: "1.0.0"}
 			events := NewSDKEventSink(t)
 			client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 				withWrapper(config),
@@ -93,7 +93,7 @@ func (c CommonWrapperTests) Run(t *ldtest.T) {
 		})
 
 		t.Run("only wrapper version", func(t *ldtest.T) {
-			config := servicedef.SDKConfigWrapper{WrapperVersion: "1.0.0"}
+			config := servicedef.SDKConfigWrapper{Version: "1.0.0"}
 			events := NewSDKEventSink(t)
 			client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 				withWrapper(config),
@@ -109,7 +109,7 @@ func (c CommonWrapperTests) Run(t *ldtest.T) {
 
 	t.Run("stream requests", func(t *ldtest.T) {
 		t.Run("wrapper name and version", func(t *ldtest.T) {
-			config := servicedef.SDKConfigWrapper{WrapperName: "TestName", WrapperVersion: "1.0.0"}
+			config := servicedef.SDKConfigWrapper{Name: "TestName", Version: "1.0.0"}
 			dataSource := NewSDKDataSource(t, nil, DataSourceOptionStreaming())
 			configurers := c.baseSDKConfigurationPlus(
 				withWrapper(config),
@@ -125,7 +125,7 @@ func (c CommonWrapperTests) Run(t *ldtest.T) {
 	})
 
 	t.Run("poll requests", func(t *ldtest.T) {
-		config := servicedef.SDKConfigWrapper{WrapperName: "TestName", WrapperVersion: "1.0.0"}
+		config := servicedef.SDKConfigWrapper{Name: "TestName", Version: "1.0.0"}
 		t.Run("wrapper name and version", func(t *ldtest.T) {
 			dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
 			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(

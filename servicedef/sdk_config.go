@@ -101,6 +101,6 @@ type SDKConfigHooksParams struct {
 }
 
 type SDKConfigWrapper struct {
-	WrapperName    string `json:"wrapperName"`
-	WrapperVersion string `json:"wrapperVersion"`
+	Name    string `json:"name"`
+	Version string `json:"version"`
 }

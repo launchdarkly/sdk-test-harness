@@ -256,8 +256,8 @@ A `POST` request indicates that the test harness wants to start an instance of t
       certificates. The root of the certificate chain presented to the SDK during the TLS handshake must be signed by 
       one of these CA certificates.
   * `wrapper` (object, optional): If specified contains wrapper configuration.
-    * `wrapperName`: The name of the wrapper.
-    * `wrapperVersion`: The version of the wrapper.
+    * `name`: The name of the wrapper.
+    * `version`: The version of the wrapper.
   
 The response to a valid request is any HTTP `2xx` status, with a `Location` header whose value is the URL of the test service resource representing this SDK client instance (that is, the one that would be used for "Close client" or "Send command" as described below).
 
