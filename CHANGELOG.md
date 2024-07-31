@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.18.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.17.0...v2.18.0) (2024-07-31)
+
+
+### Features
+
+* Add support for wrapper name and version tests. ([#223](https://github.com/launchdarkly/sdk-test-harness/issues/223)) ([b6c3878](https://github.com/launchdarkly/sdk-test-harness/commit/b6c38787a2e5ff94a3297b41d9252576bb4688cc))
+
 ## [2.17.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.16.1...v2.17.0) (2024-07-24)
 
 
