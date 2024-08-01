@@ -26,6 +26,7 @@ func baseEventsConfig() servicedef.SDKConfigEventParams {
 type SDKEventSink struct {
 	eventsService  *mockld.EventsService
 	eventsEndpoint *harness.MockEndpoint
+	enableGzip     bool
 }
 
 // NewSDKEventSink creates a new SDKEventSink with default behavior.
@@ -59,6 +60,7 @@ func NewSDKEventSinkWithGzip(t *ldtest.T, requireGzip bool) *SDKEventSink {
 	return &SDKEventSink{
 		eventsService:  eventsService,
 		eventsEndpoint: eventsEndpoint,
+		enableGzip:     requireGzip,
 	}
 }
 
@@ -67,6 +69,7 @@ func NewSDKEventSinkWithGzip(t *ldtest.T, requireGzip bool) *SDKEventSink {
 func (e *SDKEventSink) Configure(config *servicedef.SDKConfigParams) error {
 	newState := config.Events.Value()
 	newState.BaseURI = e.eventsEndpoint.BaseURL()
+	newState.EnableGzip = o.Some(e.enableGzip)
 	config.Events = o.Some(newState)
 	return nil
 }

@@ -47,7 +47,7 @@ func doClientSideFeatureEventTests(t *ldtest.T) {
 	}
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
-	events := NewSDKEventSink(t)
+	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 
 	client := NewSDKClient(t,
 		WithClientSideInitialContext(context),
@@ -282,7 +282,7 @@ func doClientSideDebugEventTests(t *ldtest.T) {
 		}
 		dataSource := NewSDKDataSource(t, dataBuilder.Build())
 
-		events := NewSDKEventSink(t)
+		events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 		if !lastKnownTimeFromLD.IsZero() {
 			events.Service().SetHostTimeOverride(lastKnownTimeFromLD)
 		}

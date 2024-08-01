@@ -18,6 +18,7 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T) {
 	extraItemsOverCapacity := 3 // arbitrary non-zero value for how many events to try to add past the limit
 	eventsConfig := baseEventsConfig()
 	eventsConfig.Capacity = o.Some(capacity)
+	eventsConfig.EnableGzip = o.Some(t.Capabilities().Has(servicedef.CapabilityEventGzip))
 
 	context := c.contextFactory.NextUniqueContext()
 	keys := make([]string, 0)
@@ -42,7 +43,7 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T) {
 	dataSource := NewSDKDataSource(t, nil)
 
 	t.Run("capacity is enforced", func(t *ldtest.T) {
-		events := NewSDKEventSink(t)
+		events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 		client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 			WithClientSideInitialContext(context),
 			WithEventsConfig(eventsConfig),
@@ -62,7 +63,7 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T) {
 	})
 
 	t.Run("buffer is reset after flush", func(t *ldtest.T) {
-		events := NewSDKEventSink(t)
+		events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 		client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 			WithClientSideInitialContext(context),
 
@@ -94,7 +95,7 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T) {
 
 	t.Run("summary event is still included even if buffer was full", func(t *ldtest.T) {
 		// Don't need to create an actual flag, because a "flag not found" evaluation still causes a summary event
-		events := NewSDKEventSink(t)
+		events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 		client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 			WithEventsConfig(eventsConfig),
 			dataSource,

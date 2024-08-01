@@ -38,7 +38,7 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 				context := contexts.NextUniqueContext()
 
 				dataSource := NewSDKDataSource(t, nil)
-				events := NewSDKEventSink(t)
+				events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 
 				if c.isClientSide {
@@ -74,7 +74,7 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 
 func (c CommonEventTests) customEventsParameterizedTests(t *ldtest.T) {
 	dataSource := NewSDKDataSource(t, nil)
-	events := NewSDKEventSink(t)
+	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 	client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 
 	if c.isClientSide {

@@ -189,7 +189,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 		contexts := p.contextFactory("doServerSideEventContextTests")
 
 		t.Run(p.name, func(t *ldtest.T) {
-			events := NewSDKEventSink(t)
+			events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 
 			initialContext := contexts.NextUniqueContext()
 			client := NewSDKClient(t, c.baseSDKConfigurationPlus(
@@ -363,7 +363,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 			initialContext2 := contexts.NextUniqueContext()
 			if user := representContextAsOldUser(t, initialContext2); user != nil {
 				t.Run(p.name+" initial identify event with old user", func(t *ldtest.T) {
-					events := NewSDKEventSink(t)
+					events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 
 					client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 						WithClientSideConfig(servicedef.SDKConfigClientSideParams{InitialUser: user}),

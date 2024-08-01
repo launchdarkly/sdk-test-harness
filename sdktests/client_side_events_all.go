@@ -102,7 +102,6 @@ func doClientSideGzipEventRequestTests(t *ldtest.T) {
 				WithClientSideInitialContext(context),
 				dataSource, events)
 
-			client.SendIdentifyEvent(t, context)
 			client.FlushEvents(t)
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
