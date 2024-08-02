@@ -22,7 +22,7 @@ func (c CommonEventTests) DisablingEvents(t *ldtest.T) {
 	doTest := func(t *ldtest.T, name string, actionThatCausesEvent func(*ldtest.T, *SDKClient)) {
 		t.Run(name, func(t *ldtest.T) {
 			dataSource := NewSDKDataSource(t, nil)
-			events := NewSDKEventSink(t)
+			events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 			client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 				WithServiceEndpointsConfig(servicedef.SDKConfigServiceEndpointsParams{
 					Events: events.Endpoint().BaseURL(),

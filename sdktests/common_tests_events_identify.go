@@ -23,7 +23,7 @@ func (c CommonEventTests) IdentifyEvents(t *ldtest.T) {
 	t.Run("basic properties", func(t *ldtest.T) {
 		for _, contexts := range contextCategories {
 			t.Run(contexts.Description(), func(t *ldtest.T) {
-				events := NewSDKEventSink(t)
+				events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
 
 				context := contexts.NextUniqueContext()

@@ -51,7 +51,7 @@ func doClientSideSummaryEventBasicTest(t *ldtest.T) {
 	dataBuilder.Flag(flag1Key, flag1Result1).Flag(flag2Key, flag2Result)
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
-	events := NewSDKEventSink(t)
+	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 	client := NewSDKClient(t,
 		WithClientSideInitialContext(contextA),
 		dataSource, events)
@@ -123,7 +123,7 @@ func doClientSideSummaryEventContextKindsTest(t *ldtest.T) {
 	dataBuilder.Flag(flag1Key, flag1Result).Flag(flag2Key, flag2Result)
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
-	events := NewSDKEventSink(t)
+	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 	client := NewSDKClient(t,
 		WithClientSideInitialContext(initialContext),
 		dataSource, events)
@@ -175,7 +175,7 @@ func doClientSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 	dataBuilder := mockld.NewClientSDKDataBuilder()
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
-	events := NewSDKEventSink(t)
+	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 	client := NewSDKClient(t,
 		WithClientSideInitialContext(context),
 		dataSource, events)
@@ -222,7 +222,7 @@ func doClientSideSummaryEventResetTest(t *ldtest.T) {
 	dataBuilder.Flag(flagKey, flag1Result1)
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
-	events := NewSDKEventSink(t)
+	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 	client := NewSDKClient(t,
 		WithClientSideInitialContext(contextA),
 		dataSource, events)

@@ -228,6 +228,7 @@ A `POST` request indicates that the test harness wants to start an instance of t
     * `allAttributesPrivate` (boolean, optional): Corresponds to the SDK configuration property of the same name.
     * `globalPrivateAttributes` (array, optional): Corresponds to the `privateAttributes` property in the SDK configuration (rather than in an individual context).
     * `flushIntervalMs` (number, optional): The event flush interval in milliseconds. If omitted or zero, use the SDK's default value.
+    * `enableGzip` (bool, optional): If true, the SDK should enable gzip compression of event payloads. If false or omitted, the SDK should not enable gzip compression.
   * `bigSegments` (object, optional): Enables and configures Big Segments. Properties are:
     * `callbackUri` (string, required): The base URI for the big segments store callback fixture. See [Callback fixtures](#callback-fixtures).
     * `userCacheSize`, `userCacheTimeMs`, `statusPollIntervalMS`, `staleAfterMs`: These correspond to the standard optional configuration parameters for every SDK that supports Big Segments.

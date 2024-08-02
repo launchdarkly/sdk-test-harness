@@ -43,7 +43,7 @@ func doClientSideAutoEnvAttributesEventsNoCollisionsTests(t *ldtest.T) {
 	t.Run("opted in", func(t *ldtest.T) {
 		for _, contexts := range contextFactories {
 			t.Run(contexts.Description(), func(t *ldtest.T) {
-				events := NewSDKEventSink(t)
+				events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 				client := NewSDKClient(t, base.baseSDKConfigurationPlus(
 					WithClientSideConfig(servicedef.SDKConfigClientSideParams{IncludeEnvironmentAttributes: opt.Some(true)}),
 					dataSource,
@@ -77,7 +77,7 @@ func doClientSideAutoEnvAttributesEventsNoCollisionsTests(t *ldtest.T) {
 	t.Run("opted out", func(t *ldtest.T) {
 		for _, contexts := range contextFactories {
 			t.Run(contexts.Description(), func(t *ldtest.T) {
-				events := NewSDKEventSink(t)
+				events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 				client := NewSDKClient(t, base.baseSDKConfigurationPlus(
 					WithClientSideConfig(servicedef.SDKConfigClientSideParams{IncludeEnvironmentAttributes: opt.Some(false)}),
 					dataSource,
@@ -125,7 +125,7 @@ func doClientSideAutoEnvAttributesEventsCollisionsTests(t *ldtest.T) {
 				// First, have the SDK startup with an arbitrary context that isn't decorated with additional
 				// auto env contexts. For example, a basic 'user'.
 
-				events := NewSDKEventSink(t)
+				events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 				client := NewSDKClient(t, base.baseSDKConfigurationPlus(
 					WithClientSideConfig(servicedef.SDKConfigClientSideParams{IncludeEnvironmentAttributes: opt.Some(true)}),
 					WithClientSideInitialContext(contextNoAutoEnv),
