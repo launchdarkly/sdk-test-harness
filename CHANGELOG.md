@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.18.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.18.0...v2.18.1) (2024-08-02)
+
+
+### Bug Fixes
+
+* Fix gzip compression tests for mobile and client SDKs ([#225](https://github.com/launchdarkly/sdk-test-harness/issues/225)) ([fb6b73f](https://github.com/launchdarkly/sdk-test-harness/commit/fb6b73fc374c277a04eecd08aa619a1a5ea502a2))
+
 ## [2.18.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.17.0...v2.18.0) (2024-07-31)
 
 
