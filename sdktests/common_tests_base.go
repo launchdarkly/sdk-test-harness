@@ -2,6 +2,7 @@ package sdktests
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
@@ -49,6 +50,18 @@ type environmentFilter struct {
 	o.Maybe[string]
 }
 
+// IsValid returns true if the filter key is a valid environment key.
+//
+// In this context, valid means either is missing, or passes the required regex.
+func (p environmentFilter) IsValid() bool {
+	if !p.IsDefined() {
+		return true
+	}
+
+	regex := regexp.MustCompile(`^[a-zA-Z0-9][._\-a-zA-Z0-9]*$`)
+	return regex.MatchString(p.Value())
+}
+
 // String returns a human-readable representation of the filter key,
 // suitable for test output.
 func (p environmentFilter) String() string {
@@ -59,11 +72,14 @@ func (p environmentFilter) String() string {
 // named "filter" with its value.
 // If the filter is not present, it checks that the query parameter map *does not* contain
 // a parameter named "filter".
-func (p environmentFilter) Matcher() m.Matcher {
+func (p environmentFilter) Matcher(strict bool) m.Matcher {
 	hasFilter := m.MapIncluding(
 		m.KV("filter", m.Equal(p.Value())),
 	)
+
 	if !p.IsDefined() {
+		hasFilter = m.Not(hasFilter)
+	} else if strict && !p.IsValid() {
 		hasFilter = m.Not(hasFilter)
 	}
 	return UniqueQueryParameters().Should(hasFilter)

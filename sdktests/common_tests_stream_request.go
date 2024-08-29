@@ -87,7 +87,7 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 
 								request := dataSource.Endpoint().RequireConnection(t, time.Second)
 								m.In(t).For("request path").Assert(request.URL.Path, pathMatcher(method))
-								m.In(t).For("filter key").Assert(request.URL.RawQuery, filter.Matcher())
+								m.In(t).For("filter key").Assert(request.URL.RawQuery, filter.Matcher(t.Capabilities().Has(servicedef.CapabilityFilteringStrict)))
 							})
 						}
 					})
