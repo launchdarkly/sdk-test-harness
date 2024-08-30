@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.19.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.18.1...v2.19.0) (2024-08-30)
+
+
+### Features
+
+* Add filtering-strict capability ([#227](https://github.com/launchdarkly/sdk-test-harness/issues/227)) ([ef81430](https://github.com/launchdarkly/sdk-test-harness/commit/ef81430b9ab13dc084d4770d6b82f24b8d12f63c))
+
 ## [2.18.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.18.0...v2.18.1) (2024-08-02)
 
 
