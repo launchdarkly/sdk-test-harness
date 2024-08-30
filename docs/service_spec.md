@@ -134,6 +134,12 @@ and will send a `?filter=name` query parameter along with streaming/polling requ
 For tests that involve filtering, the test harness will set the `filter` property of the `streaming` or `polling` configuration
 object. The property will either be omitted if no filter is requested, or a non-empty string if requested.
 
+#### Capability `"filtering-strict"`
+
+When initially adding support for the `filtering` capability, the test harness assumed there were no character restrictions on the payload filter key. Later investigation has determined this is not the case.
+
+If this capability is set, the test harness will send a filter key that contains a character that is not allowed in a filter key. The test service should ignore the invalid key and connect as if no filter was specified.
+
 #### Capability `"evaluation-hooks"`
 
 This means that the SDK has support for hooks and has the ability to register evaluation hooks.
