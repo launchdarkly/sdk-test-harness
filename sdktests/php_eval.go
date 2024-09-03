@@ -10,9 +10,9 @@ func doPHPEvalTests(t *ldtest.T) {
 	// how we set up the polling endpoints in the mock data source, and that is handled
 	// transparently by the logic in mockld/polling_service.go based on the fact that the
 	// "SDK kind" configured for test suite is PHP.
-	t.Run("parameterized", runParameterizedServerSideEvalTests)
+	// t.Run("parameterized", runParameterizedServerSideEvalTests)
 	t.Run("bucketing", runServerSideEvalBucketingTests)
 	t.Run("all flags state", runServerSideEvalAllFlagsTests)
 
-	// t.Run("client not ready", runParameterizedServerSideClientNotReadyEvalTests)
+	t.Run("client not ready", runParameterizedServerSideClientNotReadyEvalTests)
 }

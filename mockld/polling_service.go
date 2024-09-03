@@ -152,29 +152,84 @@ func (p *PollingService) pollingHandler(getDataFn func(*PollingService, *http.Re
 
 func (p *PollingService) standardPollingHandler() http.Handler {
 	return p.pollingHandler(func(p *PollingService, r *http.Request) []byte {
-		return p.currentData.Serialize()
+		fdv2SdkData, ok := p.currentData.(FDv2SDKData)
+		if !ok {
+			p.debugLogger.Println("poller cannot handle non-fdv2 sdk data at this time")
+			return nil
+		}
+
+		// QUESTION: How dynamic do we need to make this?
+		serverIntent := framework.ServerIntent{
+			Payloads: []framework.Payload{
+				{
+					ID:     "payloadID",
+					Target: 1,
+					Code:   "xfer-full",
+					Reason: "payload-missing",
+				},
+			},
+		}
+
+		payloadTransferred := framework.PayloadTransferred{
+			State:   "state", // TODO: Need to replace this with a valid state value
+			Version: 1,
+		}
+
+		events := make([]framework.PayloadEvent, 0, len(fdv2SdkData)+2)
+		events = append(events, framework.PayloadEvent{
+			Name:      "server-intent",
+			EventData: serverIntent,
+		})
+		for _, obj := range fdv2SdkData {
+			events = append(events, framework.PayloadEvent{
+				Name:      "put-object",
+				EventData: obj,
+			})
+		}
+		events = append(events, framework.PayloadEvent{
+			Name:      "payload-transferred",
+			EventData: payloadTransferred,
+		})
+
+		payload := framework.PollingPayload{
+			Events: events,
+		}
+
+		data, err := json.Marshal(payload)
+		if err != nil {
+			p.debugLogger.Printf("failed to marshal polling data: %v", err)
+			return nil
+		}
+
+		return data
 	})
 }
 
 func (p *PollingService) phpFlagHandler() http.Handler {
 	return p.pollingHandler(func(p *PollingService, r *http.Request) []byte {
-		data, _ := p.currentData.(ServerSDKData)
-		return data["flags"][mux.Vars(r)["key"]]
+		// TODO: Update this logic
+		return []byte("UNSUPPORTED")
+		// data, _ := p.currentData.(ServerSDKData)
+		// return data["flags"][mux.Vars(r)["key"]]
 	})
 }
 
 func (p *PollingService) phpSegmentHandler() http.Handler {
 	return p.pollingHandler(func(p *PollingService, r *http.Request) []byte {
-		data, _ := p.currentData.(ServerSDKData)
-		return data["segments"][mux.Vars(r)["key"]]
+		// TODO: Update this logic
+		return []byte("UNSUPPORTED")
+		// data, _ := p.currentData.(ServerSDKData)
+		// return data["segments"][mux.Vars(r)["key"]]
 	})
 }
 
 func (p *PollingService) phpAllFlagsHandler() http.Handler {
 	return p.pollingHandler(func(p *PollingService, r *http.Request) []byte {
-		data, _ := p.currentData.(ServerSDKData)
-		flagsJSON, _ := json.Marshal(data["flags"])
-		return flagsJSON
+		// TODO: Update this logic
+		return []byte("UNSUPPORTED")
+		// data, _ := p.currentData.(ServerSDKData)
+		// flagsJSON, _ := json.Marshal(data["flags"])
+		// return flagsJSON
 	})
 }
 

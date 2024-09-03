@@ -1,6 +1,7 @@
 package sdktests
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -86,6 +87,10 @@ func NewSDKDataSourceWithoutEndpoint(t *ldtest.T, data mockld.SDKData, options .
 		data = mockld.EmptyData(sdkKind)
 	}
 
+	if d, ok := data.(mockld.ServerSDKData); ok {
+		data = d.AsFDv2SDKData(t)
+	}
+
 	defaultIsPolling := sdkKind == mockld.JSClientSDK || sdkKind == mockld.PHPSDK
 	d := &SDKDataSource{}
 	if config.polling.Value() || (!config.polling.IsDefined() && defaultIsPolling) {
@@ -95,7 +100,9 @@ func NewSDKDataSourceWithoutEndpoint(t *ldtest.T, data mockld.SDKData, options .
 		d.streamingService = mockld.NewStreamingService(data, sdkKind, t.DebugLogger())
 	}
 
-	t.Debug("setting SDK data to: %s", string(data.Serialize()))
+	jsonStr, _ := json.Marshal(data)
+
+	t.Debug("setting SDK data to: %s", string(jsonStr))
 
 	return d
 }

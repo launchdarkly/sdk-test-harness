@@ -8,7 +8,9 @@ import (
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 
 	"github.com/launchdarkly/go-jsonstream/v3/jreader"
@@ -41,6 +43,12 @@ type SDKData interface {
 	Serialize() []byte
 }
 
+type FDv2SDKData []framework.BaseObject
+
+func (f FDv2SDKData) Serialize() []byte {
+	return jsonhelpers.ToJSON(f)
+}
+
 type blockingUnavailableSDKData struct {
 	kind SDKKind
 }
@@ -62,6 +70,23 @@ func (b blockingUnavailableSDKData) Serialize() []byte { return nil }
 //
 // We use this for both regular server-side SDKs and the PHP SDK.
 type ServerSDKData map[DataItemKind]map[string]json.RawMessage
+
+func (s ServerSDKData) AsFDv2SDKData(t *ldtest.T) FDv2SDKData {
+	payloadObjects := make([]framework.BaseObject, 0)
+
+	for kind, items := range s {
+		for key, item := range items {
+			payloadObjects = append(payloadObjects, framework.BaseObject{
+				Kind:    string(kind),
+				Version: 1,
+				Key:     key,
+				Object:  item,
+			})
+		}
+	}
+
+	return payloadObjects
+}
 
 // ClientSDKData contains simulated LaunchDarkly environment data for a client-side SDK.
 //
@@ -86,11 +111,13 @@ type ClientSDKFlagWithKey struct {
 	Key string `json:"key"`
 }
 
-func EmptyServerSDKData() ServerSDKData {
-	return NewServerSDKDataBuilder().Build() // ensures that "flags" and "segments" properties are present, but empty
+func EmptyServerSDKData() SDKData {
+	var data FDv2SDKData
+	data = make([]framework.BaseObject, 0)
+	return data
 }
 
-func EmptyClientSDKData() ClientSDKData {
+func EmptyClientSDKData() SDKData {
 	return NewClientSDKDataBuilder().Build()
 }
 
@@ -133,7 +160,7 @@ func (d *ServerSDKData) UnmarshalJSON(data []byte) error {
 		}
 		builder.RawSegment(key, newData)
 	}
-	*d = builder.Build()
+	*d = builder.BuildServerSDKData()
 	return nil
 }
 
@@ -179,7 +206,7 @@ func NewServerSDKDataBuilder() *ServerSDKDataBuilder {
 	}
 }
 
-func (b *ServerSDKDataBuilder) Build() ServerSDKData {
+func (b *ServerSDKDataBuilder) BuildServerSDKData() ServerSDKData {
 	flags := maps.Clone(b.flags)
 	segments := maps.Clone(b.segments)
 
@@ -187,6 +214,32 @@ func (b *ServerSDKDataBuilder) Build() ServerSDKData {
 		"flags":    flags,
 		"segments": segments,
 	}
+}
+
+func (b *ServerSDKDataBuilder) Build() FDv2SDKData {
+	flags := maps.Clone(b.flags)
+	segments := maps.Clone(b.segments)
+
+	events := make([]framework.BaseObject, 0, len(flags)+len(segments))
+	for key, flag := range flags {
+		events = append(events, framework.BaseObject{
+			Version: 1, // TODO: We have to deal with this version at some point
+			Kind:    "flag",
+			Key:     key,
+			Object:  json.RawMessage(flag),
+		})
+	}
+
+	for key, segment := range segments {
+		events = append(events, framework.BaseObject{
+			Version: 1, // TODO: We have to deal with this version at some point
+			Kind:    "segment",
+			Key:     key,
+			Object:  json.RawMessage(segment),
+		})
+	}
+
+	return events
 }
 
 func (b *ServerSDKDataBuilder) RawFlag(key string, data json.RawMessage) *ServerSDKDataBuilder {

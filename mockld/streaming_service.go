@@ -113,38 +113,62 @@ func (s *StreamingService) SetInitialData(data SDKData) {
 }
 
 func (s *StreamingService) RefreshAll() {
-	event := s.makePutEvent()
-	if event != nil {
+	events := s.makeXferFull()
+	for _, event := range events {
 		s.logEvent(event)
 		s.streams.Publish([]string{allDataChannel}, event)
 	}
 }
 
-func (s *StreamingService) makePutEvent() eventsource.Event {
+func (s *StreamingService) makeXferFull() []eventsource.Event {
 	s.lock.RLock()
-	var data []byte
-	if s.initialData == nil {
-		data = []byte("{}")
-	} else {
-		data = s.initialData.Serialize()
-	}
-	s.lock.RUnlock()
 
-	if data == nil {
+	fdv2SdkData, ok := s.initialData.(FDv2SDKData)
+	if !ok {
+		s.debugLogger.Println("poller cannot handle non-fdv2 sdk data at this time")
 		return nil
 	}
-	var eventData interface{} = json.RawMessage(data)
-	if s.sdkKind.IsServerSide() {
-		// the schema of this message is slightly different for server-side vs. client-side
-		eventData = map[string]interface{}{
-			"data": eventData,
-		}
+
+	var events []eventsource.Event
+
+	// QUESTION: How dynamic do we need to bother making this?
+	serverIntent := framework.ServerIntent{
+		Payloads: []framework.Payload{
+			{
+				ID:     "payloadID",
+				Target: 1,
+				Code:   "xfer-full",
+				Reason: "payload-missing",
+			},
+		},
 	}
 
-	return eventImpl{
-		name: "put",
-		data: eventData,
+	// QUESTION: How dynamic do we need to bother making this?
+	payloadTransferred := framework.PayloadTransferred{
+		State:   "state", // TODO: Need to replace this with a valid state value
+		Version: 1,
 	}
+
+	events = append(events, eventImpl{
+		name: "server-intent",
+		data: serverIntent,
+	})
+
+	for _, obj := range fdv2SdkData {
+		events = append(events, eventImpl{
+			name: "put-object",
+			data: obj,
+		})
+	}
+
+	events = append(events, eventImpl{
+		name: "payload-transferred",
+		data: payloadTransferred,
+	})
+
+	s.lock.RUnlock()
+
+	return events
 }
 
 // PushEvent sends an SSE event to all clients that are currently connected to the stream-- or, if no client
@@ -174,43 +198,56 @@ func (s *StreamingService) PushEvent(eventName string, eventData interface{}) {
 	}
 }
 
-func (s *StreamingService) PushUpdate(namespace, key string, data json.RawMessage) {
+func (s *StreamingService) PushUpdate(namespace, key string, version int, data json.RawMessage) {
 	var eventData interface{}
 	if s.sdkKind.IsServerSide() {
-		eventData = map[string]interface{}{
-			"path": fmt.Sprintf("/%s/%s", namespace, key),
-			"data": data,
+		eventData = framework.BaseObject{
+			Version: version,
+			Kind:    namespace,
+			Key:     key,
+			Object:  data,
 		}
 	} else {
-		if namespace != "flags" {
+		if namespace != "flag" {
 			panic(errClientSideStreamCanOnlyUseFlags)
 		}
 		eventData = data
 	}
-	s.PushEvent("patch", eventData)
+	s.PushEvent("put-object", eventData)
+}
+
+func (s *StreamingService) PushPayloadTransferred(state string, version int) {
+	eventData := framework.PayloadTransferred{
+		State:   state,
+		Version: version,
+	}
+	s.PushEvent("payload-transferred", eventData)
 }
 
 func (s *StreamingService) PushDelete(namespace, key string, version int) {
 	var eventData interface{}
 	if s.sdkKind.IsServerSide() {
-		eventData = map[string]interface{}{
-			"path":    fmt.Sprintf("/%s/%s", namespace, key),
-			"version": version,
+		eventData = framework.BaseObject{
+			Version: version,
+			Kind:    namespace,
+			Key:     key,
 		}
 	} else {
-		if namespace != "flags" {
+		if namespace != "flag" {
 			panic(errClientSideStreamCanOnlyUseFlags)
 		}
+
+		// TODO: Update this to match whatever the client fdv2 format should look like
 		eventData = map[string]interface{}{
 			"key":     key,
 			"version": version,
 		}
 	}
-	s.PushEvent("delete", eventData)
+	s.PushEvent("delete-object", eventData)
 }
 
 func (s *StreamingService) Replay(channel, id string) chan eventsource.Event {
-	e := s.makePutEvent()
+	events := s.makeXferFull()
 
 	// The use of a channel here is just part of how the eventsource server API works-- the Replay
 	// method is expected to return a channel, which could be either pre-populated or pushed to
@@ -220,17 +257,18 @@ func (s *StreamingService) Replay(channel, id string) chan eventsource.Event {
 
 	s.lock.Lock()
 	queued := s.queuedEvents
-	eventsCh := make(chan eventsource.Event, len(queued)+1)
+	eventsCh := make(chan eventsource.Event, len(queued)+len(events))
 	if !s.started {
 		s.started = true
 		s.queuedEvents = nil
 	}
 	s.lock.Unlock()
 
-	if e != nil {
-		s.logEvent(e)
-		eventsCh <- e
+	for _, event := range events {
+		s.logEvent(event)
+		eventsCh <- event
 	}
+
 	for _, qe := range queued {
 		s.logEvent(qe)
 		eventsCh <- qe
