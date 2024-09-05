@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.20.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.19.0...v2.20.0) (2024-09-05)
+
+
+### Features
+
+* Add tests which evaluate complex JSON variations. ([#230](https://github.com/launchdarkly/sdk-test-harness/issues/230)) ([ec7e2b7](https://github.com/launchdarkly/sdk-test-harness/commit/ec7e2b7fdc5afc4074110b47b62846a9f9ef13b8))
+
 ## [2.19.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.18.1...v2.19.0) (2024-08-30)
 
 
