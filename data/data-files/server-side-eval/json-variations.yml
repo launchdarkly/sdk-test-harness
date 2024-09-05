@@ -1,0 +1,43 @@
+---
+name: JSON variations
+
+constants:
+  CONTEXT: { kind: "user", key: "x"}
+
+parameters:
+- TYPE_NAME: any
+  TYPE_VALUE_1: ["a", true, null, 3.14, {str: "str", double: 0.5, 'null': null}]
+  TYPE_VALUE_2: {str: "str", double: 0.5, 'null': null, arr: ["a", true, null, 3.14, {str: "str", double: 0.5, 'null': null}]}
+
+sdkData:
+  flags:
+    off-flag-<TYPE_NAME>:
+      on: false
+      offVariation: 1
+      fallthrough: { variation: 0 }
+      variations: [ <TYPE_VALUE_1>, <TYPE_VALUE_2> ]
+
+    on-flag-<TYPE_NAME>:
+      on: true
+      offVariation: 1
+      fallthrough: { variation: 0 }
+      variations: [ <TYPE_VALUE_1>, <TYPE_VALUE_2> ]
+
+evaluations:
+  - flagKey: off-flag-<TYPE_NAME>
+    context: <CONTEXT>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect:
+      value: <TYPE_VALUE_2>
+      variationIndex: 1
+      reason: { kind: "OFF" }
+
+  - flagKey: on-flag-<TYPE_NAME>
+    context: <CONTEXT>
+    valueType: <TYPE_NAME>
+    default: <TYPE_DEFAULT>
+    expect:
+      value: <TYPE_VALUE_1>
+      variationIndex: 0
+      reason: { kind: "FALLTHROUGH" }
