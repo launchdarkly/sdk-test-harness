@@ -185,10 +185,15 @@ func startServer(port int, handler http.Handler) error {
 	server := &http.Server{
 		Addr: fmt.Sprintf(":%d", port),
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == "HEAD" {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "*")
+
+			if r.Method == http.MethodOptions || r.Method == http.MethodHead {
 				w.WriteHeader(200)
 				return
 			}
+
 			handler.ServeHTTP(w, r)
 		}),
 		ReadHeaderTimeout: 10 * time.Second, // arbitrary but non-infinite timeout to avoid Slowloris Attack
