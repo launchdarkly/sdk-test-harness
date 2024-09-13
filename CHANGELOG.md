@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.21.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.20.0...v2.21.0) (2024-09-13)
+
+
+### Features
+
+* Add CORS support. ([#232](https://github.com/launchdarkly/sdk-test-harness/issues/232)) ([29364a8](https://github.com/launchdarkly/sdk-test-harness/commit/29364a828da9deb38b45874895338a6693ab3fe0))
+
 ## [2.20.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.19.0...v2.20.0) (2024-09-05)
 
 
