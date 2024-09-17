@@ -112,8 +112,7 @@ type ClientSDKFlagWithKey struct {
 }
 
 func EmptyServerSDKData() SDKData {
-	var data FDv2SDKData
-	data = make([]framework.BaseObject, 0)
+	var data FDv2SDKData = make([]framework.BaseObject, 0)
 	return data
 }
 
