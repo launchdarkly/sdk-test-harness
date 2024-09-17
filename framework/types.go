@@ -16,8 +16,8 @@ type PayloadEvent struct {
 }
 
 type ChangeSet struct {
-	intent *ServerIntent
-	events []eventsource.Event
+	intent *ServerIntent       //nolint:unused
+	events []eventsource.Event //nolint:unused
 }
 
 type ServerIntent struct {
