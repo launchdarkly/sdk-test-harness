@@ -36,7 +36,7 @@ type Payload struct {
 	Reason string `json:"reason"`
 }
 
-// This is the general shape of a put-object event. The delete-object is the same, with the object field being nil.
+// BaseObject is is the general shape of a put-object event. The delete-object is the same, with the object field being nil.
 type BaseObject struct {
 	Version int             `json:"version"`
 	Kind    string          `json:"kind"`
@@ -51,7 +51,6 @@ type PayloadTransferred struct {
 
 // TODO: Todd doesn't have this in his spec. What are we going to do here?
 
-//nolint:godox
 type ErrorEvent struct {
 	PayloadID string `json:"payloadId"`
 	Reason    string `json:"reason"`
