@@ -129,8 +129,6 @@ func (s *StreamingService) makeXferFull() []eventsource.Event {
 		return nil
 	}
 
-	var events []eventsource.Event
-
 	// QUESTION: How dynamic do we need to bother making this?
 	serverIntent := framework.ServerIntent{
 		Payloads: []framework.Payload{
@@ -149,6 +147,7 @@ func (s *StreamingService) makeXferFull() []eventsource.Event {
 		Version: 1,
 	}
 
+	events := make([]eventsource.Event, 0, len(fdv2SdkData)+2)
 	events = append(events, eventImpl{
 		name: "server-intent",
 		data: serverIntent,
