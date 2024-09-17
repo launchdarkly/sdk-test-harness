@@ -136,7 +136,6 @@ func makeEventContextTestParams() []eventContextTestParams {
 	}
 	return ret
 }
-
 func (c CommonEventTests) EventContexts(t *ldtest.T) {
 	// Flags to use for "feature" and "debug" event tests
 	// The flag variation/value is irrelevant.

@@ -25,7 +25,7 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 	// These tests verify that updates and deletes received from the stream are correctly applied
 	// by the SDK.
 	//
-	// Besides the procesing of the stream itself, these tests also verify that the SDK's default data
+	// Besides the processing of the stream itself, these tests also verify that the SDK's default data
 	// store works correctly in terms of versioning. Since data store operations are not surfaced
 	// separately in SDK APIs, it is not possible to test them in isolation.
 
@@ -47,6 +47,7 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 	}
 
 	isAppliedDesc := func(b bool) string { return h.IfElse(b, "is applied", "is not applied") }
+	stateVersion := 1
 
 	for _, isDelete := range []bool{false, true} {
 		operationDesc := h.IfElse(isDelete, "delete", "patch")
@@ -70,11 +71,14 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 				_, _ = stream.Endpoint().AwaitConnection(time.Second)
 
 				if isDelete {
-					stream.StreamingService().PushDelete("flags", flagKey, versionAfter)
+					stream.StreamingService().PushDelete("flag", flagKey, versionAfter)
 				} else {
 					updateData := c.makeFlagData(flagKey, versionAfter, valueAfter)
-					stream.StreamingService().PushUpdate("flags", flagKey, updateData)
+					stream.StreamingService().PushUpdate("flag", flagKey, versionAfter, updateData)
 				}
+
+				stateVersion++
+				stream.StreamingService().PushPayloadTransferred("state", stateVersion)
 
 				expectedValueIfUpdated := valueAfter
 				if isDelete {
@@ -127,10 +131,13 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 					m.In(t).Assert(actualValue1, m.JSONEqual(valueBefore))
 
 					if isDelete {
-						stream.StreamingService().PushDelete("segments", segmentKey, versionAfter)
+						stream.StreamingService().PushDelete("segment", segmentKey, versionAfter)
 					} else {
-						stream.StreamingService().PushUpdate("segments", segmentKey, jsonhelpers.ToJSON(segmentAfter))
+						stream.StreamingService().PushUpdate(
+							"segment", segmentKey, segmentAfter.Version, jsonhelpers.ToJSON(segmentAfter))
 					}
+					stateVersion++
+					stream.StreamingService().PushPayloadTransferred("state", stateVersion)
 
 					// If we successfully delete the segment, the effect is the same as if we had updated the
 					// segment to not include the context. SDKs should treat "segment not found" as equivalent to
@@ -169,11 +176,13 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 			_, _ = stream.Endpoint().AwaitConnection(time.Second)
 
 			if isDelete {
-				stream.StreamingService().PushDelete("flags", flagKey, version)
+				stream.StreamingService().PushDelete("flag", flagKey, version)
 
 				// A delete for an unknown flag should be persisted by the SDK so it knows this version was
 				// deleted. A subsequent update for the same flag with an equal or lower version should be ignored.
-				stream.StreamingService().PushUpdate("flags", flagKey, updateData)
+				stream.StreamingService().PushUpdate("flag", flagKey, version, updateData)
+				stateVersion++
+				stream.StreamingService().PushPayloadTransferred("state", stateVersion)
 				h.RequireNever(
 					t,
 					checkForUpdatedValue(t, client, flagKey, context, defaultValue, valueAfter, defaultValue),
@@ -182,7 +191,9 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 					"flag update after deletion should have been ignored due to version; deletion was not persisted",
 				)
 			} else {
-				stream.StreamingService().PushUpdate("flags", flagKey, updateData)
+				stream.StreamingService().PushUpdate("flag", flagKey, version, updateData)
+				stateVersion++
+				stream.StreamingService().PushPayloadTransferred("state", stateVersion)
 
 				pollUntilFlagValueUpdated(t, client, flagKey, context, defaultValue, valueAfter, defaultValue)
 			}
@@ -203,11 +214,13 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 				m.In(t).Assert(actualValue1, m.JSONEqual(valueBefore))
 
 				if isDelete {
-					stream.StreamingService().PushDelete("segments", segmentKey, version)
+					stream.StreamingService().PushDelete("segment", segmentKey, version)
 
 					// A delete for an unknown segment should be persisted by the SDK so it knows this version was
 					// deleted. A subsequent update for the same segment with an equal or lower version should be ignored.
-					stream.StreamingService().PushUpdate("segments", segmentKey, jsonhelpers.ToJSON(segment))
+					stream.StreamingService().PushUpdate("segment", segmentKey, segment.Version, jsonhelpers.ToJSON(segment))
+					stateVersion++
+					stream.StreamingService().PushPayloadTransferred("state", stateVersion)
 					require.Never(
 						t,
 						checkForUpdatedValue(t, client, flagKey, context, valueBefore, valueAfter, defaultValue),
@@ -216,7 +229,9 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 						"segment update after deletion should have been ignored due to version; deletion was not persisted",
 					)
 				} else {
-					stream.StreamingService().PushUpdate("segments", segmentKey, jsonhelpers.ToJSON(segment))
+					stream.StreamingService().PushUpdate("segment", segmentKey, segment.Version, jsonhelpers.ToJSON(segment))
+					stateVersion++
+					stream.StreamingService().PushPayloadTransferred("state", stateVersion)
 
 					// Now that the segment exists, the flag should return the "after" value
 					pollUntilFlagValueUpdated(t, client, flagKey, context, valueBefore, valueAfter, defaultValue)

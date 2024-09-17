@@ -14,5 +14,5 @@ func doPHPEvalTests(t *ldtest.T) {
 	t.Run("bucketing", runServerSideEvalBucketingTests)
 	t.Run("all flags state", runServerSideEvalAllFlagsTests)
 
-	// t.Run("client not ready", runParameterizedServerSideClientNotReadyEvalTests)
+	t.Run("client not ready", runParameterizedServerSideClientNotReadyEvalTests)
 }
