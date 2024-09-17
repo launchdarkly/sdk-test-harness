@@ -158,39 +158,34 @@ func (p *PollingService) standardPollingHandler() http.Handler {
 			return nil
 		}
 
-		// QUESTION: How dynamic do we need to make this?
-		serverIntent := framework.ServerIntent{
-			Payloads: []framework.Payload{
-				{
-					ID:     "payloadID",
-					Target: 1,
-					Code:   "xfer-full",
-					Reason: "payload-missing",
-				},
-			},
-		}
+		events := make([]framework.PayloadEvent, 0, len(fdv2SdkData.events)+2)
 
-		payloadTransferred := framework.PayloadTransferred{
-			//nolint:godox
-			// TODO: Need to replace this with a valid state value
-			State:   "state",
-			Version: 1,
-		}
-
-		events := make([]framework.PayloadEvent, 0, len(fdv2SdkData)+2)
 		events = append(events, framework.PayloadEvent{
-			Name:      "server-intent",
-			EventData: serverIntent,
-		})
-		for _, obj := range fdv2SdkData {
+			Name: "server-intent",
+			EventData: framework.ServerIntent{
+				Payloads: []framework.Payload{
+					{
+						ID:     "payloadID",
+						Target: 1,
+						Code:   fdv2SdkData.intentCode,
+						Reason: fdv2SdkData.intentReason,
+					},
+				},
+			}})
+
+		for _, obj := range fdv2SdkData.events {
 			events = append(events, framework.PayloadEvent{
 				Name:      "put-object",
 				EventData: obj,
 			})
 		}
+
 		events = append(events, framework.PayloadEvent{
-			Name:      "payload-transferred",
-			EventData: payloadTransferred,
+			Name: "payload-transferred",
+			EventData: framework.PayloadTransferred{
+				State:   fdv2SdkData.state,
+				Version: 1,
+			},
 		})
 
 		payload := framework.PollingPayload{

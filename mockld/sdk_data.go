@@ -43,7 +43,22 @@ type SDKData interface {
 	Serialize() []byte
 }
 
-type FDv2SDKData []framework.BaseObject
+type FDv2SDKData struct {
+	intentCode   string
+	intentReason string
+	state        string
+
+	events []framework.BaseObject
+}
+
+func NewFDv2SDKData(intentCode, intentReason, state string, events []framework.BaseObject) FDv2SDKData {
+	return FDv2SDKData{
+		intentCode:   intentCode,
+		intentReason: intentReason,
+		state:        state,
+		events:       events,
+	}
+}
 
 func (f FDv2SDKData) Serialize() []byte {
 	return jsonhelpers.ToJSON(f)
@@ -85,7 +100,12 @@ func (d ServerSDKData) ConvertToFDv2SDKData(t *ldtest.T) FDv2SDKData {
 		}
 	}
 
-	return payloadObjects
+	return FDv2SDKData{
+		intentCode:   "xfer-full",
+		intentReason: "initial",
+		state:        "initial",
+		events:       payloadObjects,
+	}
 }
 
 // ClientSDKData contains simulated LaunchDarkly environment data for a client-side SDK.
@@ -112,8 +132,7 @@ type ClientSDKFlagWithKey struct {
 }
 
 func EmptyServerSDKData() SDKData {
-	var data FDv2SDKData = make([]framework.BaseObject, 0)
-	return data
+	return NewFDv2SDKData("xfer-full", "payload-missing", "initial", make([]framework.BaseObject, 0))
 }
 
 func EmptyClientSDKData() SDKData {
@@ -194,14 +213,21 @@ func normalizeSegment(key string, data json.RawMessage) (json.RawMessage, error)
 }
 
 type ServerSDKDataBuilder struct {
-	flags    map[string]json.RawMessage
-	segments map[string]json.RawMessage
+	flags        map[string]json.RawMessage
+	segments     map[string]json.RawMessage
+	intentCode   string
+	intentReason string
+	state        string
 }
 
 func NewServerSDKDataBuilder() *ServerSDKDataBuilder {
 	return &ServerSDKDataBuilder{
 		flags:    make(map[string]json.RawMessage),
 		segments: make(map[string]json.RawMessage),
+
+		intentCode:   "xfer-full",
+		intentReason: "payload-missing",
+		state:        "initial",
 	}
 }
 
@@ -242,7 +268,27 @@ func (b *ServerSDKDataBuilder) Build() FDv2SDKData {
 		})
 	}
 
-	return events
+	return FDv2SDKData{
+		intentCode:   b.intentCode,
+		intentReason: b.intentReason,
+		state:        b.state,
+		events:       events,
+	}
+}
+
+func (b *ServerSDKDataBuilder) IntentCode(code string) *ServerSDKDataBuilder {
+	b.intentCode = code
+	return b
+}
+
+func (b *ServerSDKDataBuilder) IntentReason(reason string) *ServerSDKDataBuilder {
+	b.intentReason = reason
+	return b
+}
+
+func (b *ServerSDKDataBuilder) State(state string) *ServerSDKDataBuilder {
+	b.state = state
+	return b
 }
 
 func (b *ServerSDKDataBuilder) RawFlag(key string, data json.RawMessage) *ServerSDKDataBuilder {

@@ -13,6 +13,8 @@ func doServerSideStreamTests(t *ldtest.T) {
 	t.Run("updates", doServerSideStreamUpdateTests)
 	t.Run("retry behavior", doServerSideStreamRetryTests)
 	t.Run("validation", doServerSideStreamValidationTests)
+
+	t.Run("fdv2", doServerSideFDv2StreamTests)
 }
 
 func doServerSideStreamRequestTests(t *ldtest.T) {
@@ -32,4 +34,8 @@ func doServerSideStreamRequestTests(t *ldtest.T) {
 
 func doServerSideStreamUpdateTests(t *ldtest.T) {
 	NewCommonStreamingTests(t, "doServerSideStreamUpdateTests").Updates(t)
+}
+
+func doServerSideFDv2StreamTests(t *ldtest.T) {
+	NewCommonStreamingTests(t, "doServerSideFDv2StreamTests").FDv2(t)
 }
