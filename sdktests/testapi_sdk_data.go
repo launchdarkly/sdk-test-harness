@@ -11,6 +11,7 @@ import (
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	"github.com/stretchr/testify/require"
 )
 
 // SDKDataSource is a test fixture that provides a callback endpoint for SDK clients to connect to,
@@ -100,7 +101,8 @@ func NewSDKDataSourceWithoutEndpoint(t *ldtest.T, data mockld.SDKData, options .
 		d.streamingService = mockld.NewStreamingService(data, sdkKind, t.DebugLogger())
 	}
 
-	jsonStr, _ := json.Marshal(data)
+	jsonStr, err := json.Marshal(data)
+	require.NoError(t, err)
 
 	t.Debug("setting SDK data to: %s", string(jsonStr))
 
