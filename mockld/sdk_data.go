@@ -71,7 +71,7 @@ func (b blockingUnavailableSDKData) Serialize() []byte { return nil }
 // We use this for both regular server-side SDKs and the PHP SDK.
 type ServerSDKData map[DataItemKind]map[string]json.RawMessage
 
-func (s ServerSDKData) AsFDv2SDKData(t *ldtest.T) FDv2SDKData {
+func (s ServerSDKData) ConvertToFDv2SDKData(t *ldtest.T) FDv2SDKData {
 	payloadObjects := make([]framework.BaseObject, 0)
 
 	for kind, items := range s {

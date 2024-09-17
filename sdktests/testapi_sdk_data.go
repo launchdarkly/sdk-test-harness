@@ -89,7 +89,7 @@ func NewSDKDataSourceWithoutEndpoint(t *ldtest.T, data mockld.SDKData, options .
 	}
 
 	if d, ok := data.(mockld.ServerSDKData); ok {
-		data = d.AsFDv2SDKData(t)
+		data = d.ConvertToFDv2SDKData(t)
 	}
 
 	defaultIsPolling := sdkKind == mockld.JSClientSDK || sdkKind == mockld.PHPSDK
