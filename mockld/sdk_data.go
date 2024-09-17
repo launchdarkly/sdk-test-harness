@@ -225,7 +225,7 @@ func (b *ServerSDKDataBuilder) Build() FDv2SDKData {
 			Version: 1, // TODO: We have to deal with this version at some point
 			Kind:    "flag",
 			Key:     key,
-			Object:  json.RawMessage(flag),
+			Object:  flag,
 		})
 	}
 
@@ -234,7 +234,7 @@ func (b *ServerSDKDataBuilder) Build() FDv2SDKData {
 			Version: 1, // TODO: We have to deal with this version at some point
 			Kind:    "segment",
 			Key:     key,
-			Object:  json.RawMessage(segment),
+			Object:  segment,
 		})
 	}
 
