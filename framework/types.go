@@ -50,7 +50,7 @@ type PayloadTransferred struct {
 }
 
 // TODO: Todd doesn't have this in his spec. What are we going to do here?
-//
+
 //nolint:godox
 type ErrorEvent struct {
 	PayloadID string `json:"payloadId"`
