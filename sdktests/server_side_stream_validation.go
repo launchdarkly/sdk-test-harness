@@ -59,16 +59,23 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 			shouldDropAndReconnectAfterEvent(t, "server-intent", []byte(`{sorry`))
 		})
 
-		// TODO: Update these tests. We aren't decoding the JSON as early, so the behavior might not be right here, or it might not be right in the SDK. need to investigatright in the SDK. Need to investigate.
+		//nolint:godox
+		// TODO: Update these tests. We aren't decoding the JSON as early, so
+		// the behavior might not be right here, or it might not be right in
+		// the SDK. need to investigatright in the SDK. Need to investigate.
 		// t.Run("put-object event", func(t *ldtest.T) {
 		// 	shouldDropAndReconnectAfterEvent(t, "put-object", []byte(`{sorry`))
 		// })
 
-		// TODO: Update these tests. We aren't decoding the JSON as early, so the behavior might not be right here, or it might not be right in the SDK. need to investigatright in the SDK. Need to investigate.
+		//nolint:godox
+		// TODO: Update these tests. We aren't decoding the JSON as early, so
+		// the behavior might not be right here, or it might not be right in
+		// the SDK. need to investigatright in the SDK. Need to investigate.
 		// t.Run("delete event", func(t *ldtest.T) {
 		// 	shouldDropAndReconnectAfterEvent(t, "delete-object", []byte(`{sorry`))
 		// })
 
+		//nolint:godox
 		// TODO: Add more fdv2 event types
 	})
 
@@ -77,16 +84,23 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 			shouldDropAndReconnectAfterEvent(t, "server-intent", []byte(`{"data":{"flags": true, "segments":{}}}`))
 		})
 
-		// TODO: Update these tests. We aren't decoding the JSON as early, so the behavior might not be right here, or it might not be right in the SDK. need to investigatright in the SDK. Need to investigate.
+		//nolint:godox
+		// TODO: Update these tests. We aren't decoding the JSON as early, so
+		// the behavior might not be right here, or it might not be right in
+		// the SDK. need to investigatright in the SDK. Need to investigate.
 		// t.Run("put event", func(t *ldtest.T) {
 		// 	shouldDropAndReconnectAfterEvent(t, "put-object", []byte(`{"path":"/flags/x","data":true}`))
 		// })
 
-		// TODO: Update these tests. We aren't decoding the JSON as early, so the behavior might not be right here, or it might not be right in the SDK. need to investigatright in the SDK. Need to investigate.
+		//nolint:godox
+		// TODO: Update these tests. We aren't decoding the JSON as early, so
+		// the behavior might not be right here, or it might not be right in
+		// the SDK. need to investigatright in the SDK. Need to investigate.
 		// t.Run("delete event", func(t *ldtest.T) {
 		// 	shouldDropAndReconnectAfterEvent(t, "delete-object", []byte(`{"path":"/flags/x","version":"no"`))
 		// })
 
+		//nolint:godox
 		// TODO: Add more fdv2 event types
 	})
 
@@ -107,6 +121,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 
 		// Then, push a patch event, so we can detect if the SDK continued processing the stream as it should
 		dataSource.StreamingService().PushUpdate("flag", flagKey, flagV2.Version, jsonhelpers.ToJSON(flagV2))
+		//nolint:godox
 		// TODO: Need to determine which version this should be, and also what the state should be
 		dataSource.StreamingService().PushPayloadTransferred("state", 2)
 

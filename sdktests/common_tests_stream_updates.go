@@ -133,7 +133,8 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 					if isDelete {
 						stream.StreamingService().PushDelete("segment", segmentKey, versionAfter)
 					} else {
-						stream.StreamingService().PushUpdate("segment", segmentKey, segmentAfter.Version, jsonhelpers.ToJSON(segmentAfter))
+						stream.StreamingService().PushUpdate(
+							"segment", segmentKey, segmentAfter.Version, jsonhelpers.ToJSON(segmentAfter))
 					}
 					stateVersion++
 					stream.StreamingService().PushPayloadTransferred("state", stateVersion)

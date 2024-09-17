@@ -451,6 +451,7 @@ func doServerSideSummaryEventVersionTest(t *ldtest.T) {
 	m.In(t).Require(initialValue, m.JSONEqual(valueBefore))
 
 	dataSource.StreamingService().PushUpdate("flag", flagKey, flagAfter.Version, jsonhelpers.ToJSON(flagAfter))
+	//nolint:godox
 	// TODO: Need to determine which version this should be, and also what the state should be
 	dataSource.StreamingService().PushPayloadTransferred("state", 2)
 

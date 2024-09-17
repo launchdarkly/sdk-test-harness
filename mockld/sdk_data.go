@@ -71,10 +71,10 @@ func (b blockingUnavailableSDKData) Serialize() []byte { return nil }
 // We use this for both regular server-side SDKs and the PHP SDK.
 type ServerSDKData map[DataItemKind]map[string]json.RawMessage
 
-func (s ServerSDKData) ConvertToFDv2SDKData(t *ldtest.T) FDv2SDKData {
+func (d ServerSDKData) ConvertToFDv2SDKData(t *ldtest.T) FDv2SDKData {
 	payloadObjects := make([]framework.BaseObject, 0)
 
-	for kind, items := range s {
+	for kind, items := range d {
 		for key, item := range items {
 			payloadObjects = append(payloadObjects, framework.BaseObject{
 				Kind:    string(kind),
@@ -222,7 +222,9 @@ func (b *ServerSDKDataBuilder) Build() FDv2SDKData {
 	events := make([]framework.BaseObject, 0, len(flags)+len(segments))
 	for key, flag := range flags {
 		events = append(events, framework.BaseObject{
-			Version: 1, // TODO: We have to deal with this version at some point
+			//nolint:godox
+			// TODO: We have to deal with this version at some point
+			Version: 1,
 			Kind:    "flag",
 			Key:     key,
 			Object:  flag,
@@ -231,7 +233,9 @@ func (b *ServerSDKDataBuilder) Build() FDv2SDKData {
 
 	for key, segment := range segments {
 		events = append(events, framework.BaseObject{
-			Version: 1, // TODO: We have to deal with this version at some point
+			//nolint:godox
+			// TODO: We have to deal with this version at some point
+			Version: 1,
 			Kind:    "segment",
 			Key:     key,
 			Object:  segment,

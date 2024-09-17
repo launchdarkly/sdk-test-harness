@@ -143,7 +143,9 @@ func (s *StreamingService) makeXferFull() []eventsource.Event {
 
 	// QUESTION: How dynamic do we need to bother making this?
 	payloadTransferred := framework.PayloadTransferred{
-		State:   "state", // TODO: Need to replace this with a valid state value
+		//nolint:godox
+		// TODO: Need to replace this with a valid state value
+		State:   "state",
 		Version: 1,
 	}
 
@@ -236,6 +238,7 @@ func (s *StreamingService) PushDelete(namespace, key string, version int) {
 			panic(errClientSideStreamCanOnlyUseFlags)
 		}
 
+		//nolint:godox
 		// TODO: Update this to match whatever the client fdv2 format should look like
 		eventData = map[string]interface{}{
 			"key":     key,

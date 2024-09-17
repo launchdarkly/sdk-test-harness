@@ -171,7 +171,9 @@ func (p *PollingService) standardPollingHandler() http.Handler {
 		}
 
 		payloadTransferred := framework.PayloadTransferred{
-			State:   "state", // TODO: Need to replace this with a valid state value
+			//nolint:godox
+			// TODO: Need to replace this with a valid state value
+			State:   "state",
 			Version: 1,
 		}
 
@@ -207,6 +209,7 @@ func (p *PollingService) standardPollingHandler() http.Handler {
 
 func (p *PollingService) phpFlagHandler() http.Handler {
 	return p.pollingHandler(func(p *PollingService, r *http.Request) []byte {
+		//nolint:godox
 		// TODO: Update this logic
 		return []byte("UNSUPPORTED")
 		// data, _ := p.currentData.(ServerSDKData)
@@ -216,6 +219,7 @@ func (p *PollingService) phpFlagHandler() http.Handler {
 
 func (p *PollingService) phpSegmentHandler() http.Handler {
 	return p.pollingHandler(func(p *PollingService, r *http.Request) []byte {
+		//nolint:godox
 		// TODO: Update this logic
 		return []byte("UNSUPPORTED")
 		// data, _ := p.currentData.(ServerSDKData)
@@ -225,6 +229,7 @@ func (p *PollingService) phpSegmentHandler() http.Handler {
 
 func (p *PollingService) phpAllFlagsHandler() http.Handler {
 	return p.pollingHandler(func(p *PollingService, r *http.Request) []byte {
+		//nolint:godox
 		// TODO: Update this logic
 		return []byte("UNSUPPORTED")
 		// data, _ := p.currentData.(ServerSDKData)
