@@ -125,37 +125,26 @@ func (s *StreamingService) makeXferFull() []eventsource.Event {
 
 	fdv2SdkData, ok := s.initialData.(FDv2SDKData)
 	if !ok {
-		s.debugLogger.Println("poller cannot handle non-fdv2 sdk data at this time")
+		s.debugLogger.Println("streamer cannot handle non-fdv2 sdk data at this time")
 		return nil
 	}
 
-	// QUESTION: How dynamic do we need to bother making this?
-	serverIntent := framework.ServerIntent{
-		Payloads: []framework.Payload{
-			{
-				ID:     "payloadID",
-				Target: 1,
-				Code:   "xfer-full",
-				Reason: "payload-missing",
-			},
-		},
-	}
-
-	// QUESTION: How dynamic do we need to bother making this?
-	payloadTransferred := framework.PayloadTransferred{
-		//nolint:godox
-		// TODO: Need to replace this with a valid state value
-		State:   "state",
-		Version: 1,
-	}
-
-	events := make([]eventsource.Event, 0, len(fdv2SdkData)+2)
+	events := make([]eventsource.Event, 0, len(fdv2SdkData.events)+2)
 	events = append(events, eventImpl{
 		name: "server-intent",
-		data: serverIntent,
+		data: framework.ServerIntent{
+			Payloads: []framework.Payload{
+				{
+					ID:     "payloadID",
+					Target: 1,
+					Code:   fdv2SdkData.intentCode,
+					Reason: fdv2SdkData.intentReason,
+				},
+			},
+		},
 	})
 
-	for _, obj := range fdv2SdkData {
+	for _, obj := range fdv2SdkData.events {
 		events = append(events, eventImpl{
 			name: "put-object",
 			data: obj,
@@ -164,7 +153,10 @@ func (s *StreamingService) makeXferFull() []eventsource.Event {
 
 	events = append(events, eventImpl{
 		name: "payload-transferred",
-		data: payloadTransferred,
+		data: framework.PayloadTransferred{
+			State:   fdv2SdkData.state,
+			Version: 1,
+		},
 	})
 
 	s.lock.RUnlock()
