@@ -213,10 +213,18 @@ func (s *StreamingService) PushHeartbeat() {
 	s.PushEvent("heartbeat", framework.Heartbeat{})
 }
 
-func (s *StreamingService) PushError(payloadId, reason string) {
+func (s *StreamingService) PushError(payloadID, reason string) {
 	s.PushEvent("error", framework.ErrorEvent{
-		PayloadID: payloadId,
+		PayloadID: payloadID,
 		Reason:    reason,
+	})
+}
+
+func (s *StreamingService) PushGoodbye(reason string, silent, catastrophe bool) {
+	s.PushEvent("goodbye", framework.Goodbye{
+		Reason:      reason,
+		Silent:      silent,
+		Catastrophe: catastrophe,
 	})
 }
 
