@@ -30,6 +30,7 @@ func (c CommonStreamingTests) FDv2(t *ldtest.T) {
 	t.Run(
 		"updates are not complete until payload transferred is sent",
 		c.UpdatesAreNotCompleteUntilPayloadTransferredIsSent)
+	t.Run("ignores model version", c.IgnoresModelVersion)
 }
 
 func (c CommonStreamingTests) StateTransitions(t *ldtest.T) {
@@ -141,6 +142,31 @@ func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent
 
 	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, defaultValue, defaultValue)
 	pollUntilFlagValueUpdated(t, client, "new-flag-key", context, defaultValue, newInitialValue, defaultValue)
+}
+
+func (c CommonStreamingTests) IgnoresModelVersion(t *ldtest.T) {
+	data := c.makeSDKDataWithFlag("flag-key", 100, initialValue)
+	stream := NewSDKDataSourceWithoutEndpoint(t, data)
+	streamEndpoint := requireContext(t).harness.NewMockEndpoint(stream.Handler(), t.DebugLogger(),
+		harness.MockEndpointDescription("streaming service"))
+	t.Defer(streamEndpoint.Close)
+	client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
+
+	_, err := streamEndpoint.AwaitConnection(time.Second)
+	require.NoError(t, err)
+
+	context := ldcontext.New("context-key")
+	flagKeyValue := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
+	m.In(t).Assert(flagKeyValue, m.JSONEqual(initialValue))
+
+	// This flag's version is less than the version previously given to the
+	// SDK. However, the state we are sending suggests it is later. The SDK
+	// should ignore the individual model version and just trust the overall
+	// state version.
+	stream.streamingService.PushUpdate("flag", "flag-key", 1, c.makeFlagData("flag-key", 1, updatedValue))
+	stream.streamingService.PushPayloadTransferred("updated", 2)
+
+	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
 }
 
 func makeSequentialStreamHandler(t *ldtest.T, dataSources ...mockld.SDKData) *harness.MockEndpoint {
