@@ -104,8 +104,8 @@ func (c CommonStreamingTests) UpdatesPreviouslyKnownState(t *ldtest.T) {
 }
 
 func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent(t *ldtest.T) {
-	dataBefore := c.makeSDKDataWithFlag("flag-key", 1, initialValue)
-	stream := NewSDKDataSourceWithoutEndpoint(t, dataBefore)
+	data := c.makeSDKDataWithFlag("flag-key", 1, initialValue)
+	stream := NewSDKDataSourceWithoutEndpoint(t, data)
 	streamEndpoint := requireContext(t).harness.NewMockEndpoint(stream.Handler(), t.DebugLogger(),
 		harness.MockEndpointDescription("streaming service"))
 	t.Defer(streamEndpoint.Close)
@@ -118,12 +118,12 @@ func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent
 	flagKeyValue := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
 	m.In(t).Assert(flagKeyValue, m.JSONEqual(initialValue))
 
-	stream.streamingService.PushUpdate("flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
+	stream.streamingService.PushDelete("flag", "flag-key", 2)
 	stream.streamingService.PushUpdate("flag", "new-flag-key", 1, c.makeFlagData("new-flag-key", 1, newInitialValue))
 
 	require.Never(
 		t,
-		checkForUpdatedValue(t, client, "flag-key", context, initialValue, updatedValue, defaultValue),
+		checkForUpdatedValue(t, client, "flag-key", context, initialValue, defaultValue, defaultValue),
 		time.Millisecond*100,
 		time.Millisecond*20,
 		"flag value was updated, but it should not have been",
@@ -139,7 +139,7 @@ func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent
 
 	stream.streamingService.PushPayloadTransferred("updated", 2)
 
-	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
+	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, defaultValue, defaultValue)
 	pollUntilFlagValueUpdated(t, client, "new-flag-key", context, defaultValue, newInitialValue, defaultValue)
 }
 
