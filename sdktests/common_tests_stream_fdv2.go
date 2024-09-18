@@ -31,6 +31,7 @@ func (c CommonStreamingTests) FDv2(t *ldtest.T) {
 		"updates are not complete until payload transferred is sent",
 		c.UpdatesAreNotCompleteUntilPayloadTransferredIsSent)
 	t.Run("ignores model version", c.IgnoresModelVersion)
+	t.Run("ignores heart beat", c.IgnoresHeartBeat)
 }
 
 func (c CommonStreamingTests) StateTransitions(t *ldtest.T) {
@@ -164,6 +165,29 @@ func (c CommonStreamingTests) IgnoresModelVersion(t *ldtest.T) {
 	// should ignore the individual model version and just trust the overall
 	// state version.
 	stream.streamingService.PushUpdate("flag", "flag-key", 1, c.makeFlagData("flag-key", 1, updatedValue))
+	stream.streamingService.PushPayloadTransferred("updated", 2)
+
+	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
+}
+
+func (c CommonStreamingTests) IgnoresHeartBeat(t *ldtest.T) {
+	data := c.makeSDKDataWithFlag("flag-key", 1, initialValue)
+	stream := NewSDKDataSourceWithoutEndpoint(t, data)
+	streamEndpoint := requireContext(t).harness.NewMockEndpoint(stream.Handler(), t.DebugLogger(),
+		harness.MockEndpointDescription("streaming service"))
+	t.Defer(streamEndpoint.Close)
+	client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
+
+	_, err := streamEndpoint.AwaitConnection(time.Second)
+	require.NoError(t, err)
+
+	context := ldcontext.New("context-key")
+	flagKeyValue := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
+	m.In(t).Assert(flagKeyValue, m.JSONEqual(initialValue))
+
+	stream.streamingService.PushHeartbeat()
+	stream.streamingService.PushUpdate("flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
+	stream.streamingService.PushHeartbeat()
 	stream.streamingService.PushPayloadTransferred("updated", 2)
 
 	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)

@@ -58,7 +58,7 @@ type ErrorEvent struct {
 	Reason    string `json:"reason"`
 }
 
-// type heartBeat struct{}
+type Heartbeat struct{}
 
 type Goodbye struct {
 	Reason      string `json:"reason"`

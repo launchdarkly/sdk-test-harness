@@ -209,6 +209,10 @@ func (s *StreamingService) PushUpdate(namespace, key string, version int, data j
 	s.PushEvent("put-object", eventData)
 }
 
+func (s *StreamingService) PushHeartbeat() {
+	s.PushEvent("heartbeat", framework.Heartbeat{})
+}
+
 func (s *StreamingService) PushPayloadTransferred(state string, version int) {
 	eventData := framework.PayloadTransferred{
 		State:   state,
