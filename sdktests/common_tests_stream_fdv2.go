@@ -32,6 +32,7 @@ func (c CommonStreamingTests) FDv2(t *ldtest.T) {
 		c.UpdatesAreNotCompleteUntilPayloadTransferredIsSent)
 	t.Run("ignores model version", c.IgnoresModelVersion)
 	t.Run("ignores heart beat", c.IgnoresHeartBeat)
+	t.Run("discards events on errors", c.DiscardsEventsOnError)
 }
 
 func (c CommonStreamingTests) StateTransitions(t *ldtest.T) {
@@ -193,6 +194,38 @@ func (c CommonStreamingTests) IgnoresHeartBeat(t *ldtest.T) {
 	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
 }
 
+func (c CommonStreamingTests) DiscardsEventsOnError(t *ldtest.T) {
+	data := c.makeSDKDataWithFlag("flag-key", 1, initialValue)
+	stream := NewSDKDataSourceWithoutEndpoint(t, data)
+	streamEndpoint := requireContext(t).harness.NewMockEndpoint(stream.Handler(), t.DebugLogger(),
+		harness.MockEndpointDescription("streaming service"))
+	t.Defer(streamEndpoint.Close)
+	client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
+
+	_, err := streamEndpoint.AwaitConnection(time.Second)
+	require.NoError(t, err)
+
+	context := ldcontext.New("context-key")
+	flagKeyValue := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
+	m.In(t).Assert(flagKeyValue, m.JSONEqual(initialValue))
+
+	// The error should cause this update to be discard.
+	stream.streamingService.PushUpdate("flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
+	stream.streamingService.PushError("some-id", "some reason")
+	// But this change should be applied.
+	stream.streamingService.PushUpdate("flag", "new-flag-key", 2, c.makeFlagData("new-flag-key", 2, newInitialValue))
+	stream.streamingService.PushPayloadTransferred("updated", 2)
+
+	require.Never(
+		t,
+		checkForUpdatedValue(t, client, "flag-key", context, initialValue, updatedValue, defaultValue),
+		time.Millisecond*100,
+		time.Millisecond*20,
+		"flag value was updated, but it should not have been",
+	)
+
+	pollUntilFlagValueUpdated(t, client, "new-flag-key", context, defaultValue, newInitialValue, defaultValue)
+}
 func makeSequentialStreamHandler(t *ldtest.T, dataSources ...mockld.SDKData) *harness.MockEndpoint {
 	handlers := make([]http.Handler, len(dataSources))
 

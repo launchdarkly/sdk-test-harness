@@ -213,6 +213,13 @@ func (s *StreamingService) PushHeartbeat() {
 	s.PushEvent("heartbeat", framework.Heartbeat{})
 }
 
+func (s *StreamingService) PushError(payloadId, reason string) {
+	s.PushEvent("error", framework.ErrorEvent{
+		PayloadID: payloadId,
+		Reason:    reason,
+	})
+}
+
 func (s *StreamingService) PushPayloadTransferred(state string, version int) {
 	eventData := framework.PayloadTransferred{
 		State:   state,
