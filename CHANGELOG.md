@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.22.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.21.0...v2.22.0) (2024-09-23)
+
+
+### Features
+
+* Expose headers to allow access to 'date' header. ([#234](https://github.com/launchdarkly/sdk-test-harness/issues/234)) ([64c8b41](https://github.com/launchdarkly/sdk-test-harness/commit/64c8b41a44bca81fa9a668b2c1ae52d12c616940))
+
 ## [2.21.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.20.0...v2.21.0) (2024-09-13)
 
 

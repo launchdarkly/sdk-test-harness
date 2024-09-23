@@ -17,7 +17,7 @@ import (
 )
 
 const defaultPort = 8111
-const versionString string = "2.21.0" // {{ x-release-please-version }}
+const versionString string = "2.22.0" // {{ x-release-please-version }}
 
 func main() {
 	fmt.Printf("sdk-test-harness v%s\n", strings.TrimSpace(versionString))
