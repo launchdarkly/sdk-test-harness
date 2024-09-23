@@ -26,6 +26,7 @@ type SDKConfigParams struct {
 	ClientSide          o.Maybe[SDKConfigClientSideParams]          `json:"clientSide,omitempty"`
 	Hooks               o.Maybe[SDKConfigHooksParams]               `json:"hooks,omitempty"`
 	Wrapper             o.Maybe[SDKConfigWrapper]                   `json:"wrapper,omitempty"`
+	DataSystem          o.Maybe[SDKConfigDataSystem]                `json:"dataSystem,omitempty"`
 }
 
 type SDKConfigTLSParams struct {
@@ -103,4 +104,56 @@ type SDKConfigHooksParams struct {
 type SDKConfigWrapper struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
+}
+
+type SDKConfigDataSystem struct {
+	Synchronizers []SDKConfigDataSystemDataSource `json:"synchronizers,omitempty"`
+	Initializers  []SDKConfigDataSystemDataSource `json:"initializers,omitempty"`
+	Persistence   SDKConfigDataSystemPersistence  `json:"persistence,omitempty"`
+}
+
+type SDKConfigDataSystemDataSource struct {
+	Type string `json:"type"`
+	DataSystemDataSourceConfig
+}
+
+type DataSystemDataSourceConfig interface{}
+
+type DataSystemStreamingDataSourceConfig struct {
+	SDKConfigStreamingParams
+}
+
+type DataSystemPollingDataSourceConfig struct {
+	SDKConfigPollingParams
+}
+
+type SDKConfigDataSystemPersistence struct {
+	Store SDKConfigDataSystemPersistenceStore `json:"store"`
+	Cache SDKConfigDataSystemPersistenceCache `json:"cache"`
+}
+
+type SDKConfigDataSystemPersistenceType string
+
+const (
+	Redis    SDKConfigDataSystemPersistenceType = "redis"
+	DynamoDB SDKConfigDataSystemPersistenceType = "dynamodb"
+	Consul   SDKConfigDataSystemPersistenceType = "consul"
+)
+
+type SDKConfigDataSystemPersistenceStore struct {
+	Type SDKConfigDataSystemPersistenceType `json:"type"`
+	DSN  string                             `json:"dsn"`
+}
+
+type SDKConfigDataSystemPersistenceMode string
+
+const (
+	Off      SDKConfigDataSystemPersistenceMode = "off"
+	TTL      SDKConfigDataSystemPersistenceMode = "ttl"
+	Infinite SDKConfigDataSystemPersistenceMode = "infinite"
+)
+
+type SDKConfigDataSystemPersistenceCache struct {
+	Mode string `json:"mode"`
+	TTL  int    `json:"ttl"` // This value is only valid when the Mode is set to TTL. It must be a positive integer.
 }
