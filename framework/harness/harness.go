@@ -186,8 +186,9 @@ func startServer(port int, handler http.Handler) error {
 		Addr: fmt.Sprintf(":%d", port),
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, REPORT")
 			w.Header().Set("Access-Control-Allow-Headers", "*")
+			w.Header().Set("Access-Control-Expose-Headers", "*")
 
 			if r.Method == http.MethodOptions || r.Method == http.MethodHead {
 				w.WriteHeader(200)
