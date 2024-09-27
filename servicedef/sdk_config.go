@@ -113,18 +113,9 @@ type SDKConfigDataSystem struct {
 }
 
 type SDKConfigDataSystemDataSource struct {
-	Type string `json:"type"`
-	DataSystemDataSourceConfig
-}
-
-type DataSystemDataSourceConfig interface{}
-
-type DataSystemStreamingDataSourceConfig struct {
-	SDKConfigStreamingParams
-}
-
-type DataSystemPollingDataSourceConfig struct {
-	SDKConfigPollingParams
+	Type      string                            `json:"type"`
+	Streaming o.Maybe[SDKConfigStreamingParams] `json:"streaming,omitempty"`
+	Polling   o.Maybe[SDKConfigPollingParams]   `json:"polling,omitempty"`
 }
 
 type SDKConfigDataSystemPersistence struct {
@@ -135,9 +126,9 @@ type SDKConfigDataSystemPersistence struct {
 type SDKConfigDataSystemPersistenceType string
 
 const (
-	Redis    SDKConfigDataSystemPersistenceType = "redis"
-	DynamoDB SDKConfigDataSystemPersistenceType = "dynamodb"
-	Consul   SDKConfigDataSystemPersistenceType = "consul"
+	Redis    = SDKConfigDataSystemPersistenceType("redis")
+	DynamoDB = SDKConfigDataSystemPersistenceType("dynamodb")
+	Consul   = SDKConfigDataSystemPersistenceType("consul")
 )
 
 type SDKConfigDataSystemPersistenceStore struct {
@@ -155,5 +146,7 @@ const (
 
 type SDKConfigDataSystemPersistenceCache struct {
 	Mode string `json:"mode"`
-	TTL  int    `json:"ttl"` // This value is only valid when the Mode is set to TTL. It must be a positive integer.
+
+	// This value is only valid when the Mode is set to TTL. It must be a positive integer.
+	TTL o.Maybe[int] `json:"ttl,omitempty"`
 }
