@@ -190,12 +190,19 @@ func TryNewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) (*SDKClient, err
 }
 
 func validateSDKConfig(config servicedef.SDKConfigParams) error {
-	if !config.Streaming.IsDefined() && !config.Polling.IsDefined() && config.ServiceEndpoints.Value().Streaming == "" {
+	//nolint:godox
+	// TODO: I added this check about the datasystem here, but that isn't
+	// sufficient. We need better validation for the SDK config.
+	if !config.Streaming.IsDefined() && !config.Polling.IsDefined() &&
+		!config.DataSystem.IsDefined() && config.ServiceEndpoints.Value().Streaming == "" {
 		// Note that the default is streaming, so we don't necessarily need to set config.Streaming if there are
 		// no other customized options and if we used serviceEndpoints.streaming to set the stream URI
 		return errors.New(
 			"neither streaming nor polling was enabled-- did you forget to include the SDKDataSource as a parameter?")
 	}
+	//nolint:godox
+	// TODO: We are going to need something more like this for the datasystem
+	// and it's various synchronizers and initializers.
 	if config.Streaming.IsDefined() && config.Streaming.Value().BaseURI == "" &&
 		(!config.ServiceEndpoints.IsDefined() || config.ServiceEndpoints.Value().Streaming == "") {
 		return errors.New("streaming was enabled but base URI was not set")

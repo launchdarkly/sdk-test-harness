@@ -107,13 +107,12 @@ type SDKConfigWrapper struct {
 }
 
 type SDKConfigDataSystem struct {
-	Synchronizers []SDKConfigDataSystemDataSource `json:"synchronizers,omitempty"`
-	Initializers  []SDKConfigDataSystemDataSource `json:"initializers,omitempty"`
-	Persistence   SDKConfigDataSystemPersistence  `json:"persistence,omitempty"`
+	Synchronizers []SDKConfigDataSystemDataSource         `json:"synchronizers,omitempty"`
+	Initializers  []SDKConfigDataSystemDataSource         `json:"initializers,omitempty"`
+	Persistence   o.Maybe[SDKConfigDataSystemPersistence] `json:"persistence,omitempty"`
 }
 
 type SDKConfigDataSystemDataSource struct {
-	Type      string                            `json:"type"`
 	Streaming o.Maybe[SDKConfigStreamingParams] `json:"streaming,omitempty"`
 	Polling   o.Maybe[SDKConfigPollingParams]   `json:"polling,omitempty"`
 }
@@ -132,20 +131,21 @@ const (
 )
 
 type SDKConfigDataSystemPersistenceStore struct {
-	Type SDKConfigDataSystemPersistenceType `json:"type"`
-	DSN  string                             `json:"dsn"`
+	Type   SDKConfigDataSystemPersistenceType `json:"type"`
+	Prefix string                             `json:"prefix,omitempty"`
+	DSN    string                             `json:"dsn"`
 }
 
 type SDKConfigDataSystemPersistenceMode string
 
 const (
-	Off      SDKConfigDataSystemPersistenceMode = "off"
-	TTL      SDKConfigDataSystemPersistenceMode = "ttl"
-	Infinite SDKConfigDataSystemPersistenceMode = "infinite"
+	Off      = SDKConfigDataSystemPersistenceMode("off")
+	TTL      = SDKConfigDataSystemPersistenceMode("ttl")
+	Infinite = SDKConfigDataSystemPersistenceMode("infinite")
 )
 
 type SDKConfigDataSystemPersistenceCache struct {
-	Mode string `json:"mode"`
+	Mode SDKConfigDataSystemPersistenceMode `json:"mode"`
 
 	// This value is only valid when the Mode is set to TTL. It must be a positive integer.
 	TTL o.Maybe[int] `json:"ttl,omitempty"`
