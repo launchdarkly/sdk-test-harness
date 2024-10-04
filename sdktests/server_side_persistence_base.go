@@ -14,52 +14,62 @@ import (
 )
 
 func doServerSidePersistentTests(t *ldtest.T) {
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
+	if t.Capabilities().Has(servicedef.CapabilityPersistentDataStoreRedis) {
+		rdb := redis.NewClient(&redis.Options{
+			Addr:     "localhost:6379",
+			Password: "", // no password set
+			DB:       0,  // use default DB
+		})
 
-	newServerSidePersistentTests(t, &RedisPersistentStore{redis: rdb}).Run(t)
+		t.Run("redis", newServerSidePersistentTests(t, &RedisPersistentStore{redis: rdb}).Run)
+	}
 }
 
 type PersistentStore interface {
 	DSN() string
 
+	// TODO: Change these names to something less terrible, or make them even
+	// more generic.
+	ReadField(key string) (string, error)
+	ReadData(key string) (map[string]string, error)
 	WriteData(key string, data map[string]string) error
+
+	Type() servicedef.SDKConfigPersistentType
 
 	Reset() error
 }
 
 type ServerSidePersistentTests struct {
+	CommonStreamingTests
 	persistentStore PersistentStore
 	initialFlags    map[string]string
 }
 
 func newServerSidePersistentTests(t *ldtest.T, persistentStore PersistentStore) *ServerSidePersistentTests {
 	flagKeyBytes, err :=
-		ldbuilders.NewFlagBuilder("flag-key").Version(1).
-			On(true).Variations(ldvalue.String("off"), ldvalue.String("match"), ldvalue.String("fallthrough")).
-			OffVariation(0).
-			FallthroughVariation(2).
+		ldbuilders.NewFlagBuilder("flag-key").Version(100).
+			On(true).Variations(ldvalue.String("fallthrough"), ldvalue.String("other")).
+			OffVariation(1).
+			FallthroughVariation(0).
 			Build().MarshalJSON()
 	require.NoError(t, err)
 
 	initialFlags := map[string]string{"flag-key": string(flagKeyBytes)}
 
 	uncachedFlagKeyBytes, err :=
-		ldbuilders.NewFlagBuilder("uncached-flag-key").Version(1).
-			On(true).Variations(ldvalue.String("off"), ldvalue.String("match"), ldvalue.String("fallthrough")).
-			OffVariation(0).
-			FallthroughVariation(2).
+		ldbuilders.NewFlagBuilder("uncached-flag-key").Version(100).
+			On(true).Variations(ldvalue.String("fallthrough"), ldvalue.String("other")).
+			OffVariation(1).
+			FallthroughVariation(0).
 			Build().MarshalJSON()
 	require.NoError(t, err)
 
 	initialFlags["uncached-flag-key"] = string(uncachedFlagKeyBytes)
 
 	return &ServerSidePersistentTests{
-		persistentStore: persistentStore,
-		initialFlags:    initialFlags,
+		CommonStreamingTests: NewCommonStreamingTests(t, "serverSidePersistenceTests"),
+		persistentStore:      persistentStore,
+		initialFlags:         initialFlags,
 	}
 }
 
@@ -68,6 +78,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 	t.Run("uses custom prefix", s.usesCustomPrefix)
 
 	t.Run("daemon mode", s.doDaemonModeTests)
+	t.Run("read-write", s.doReadWriteTests)
 }
 
 func (s *ServerSidePersistentTests) usesDefaultPrefix(t *ldtest.T) {
