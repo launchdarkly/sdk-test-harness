@@ -26,20 +26,23 @@ func doClientSideSummaryEventTests(t *ldtest.T) {
 func doClientSideSummaryEventBasicTest(t *ldtest.T) {
 	flag1Key := "flag1"
 	flag1Result1 := mockld.ClientSDKFlag{
-		Value:     ldvalue.String("value1-a"),
-		Variation: o.Some(0),
-		Version:   1,
+		Value:       ldvalue.String("value1-a"),
+		Variation:   o.Some(0),
+		FlagVersion: o.Some(1),
+		Version:     11,
 	}
 	flag1Result2 := mockld.ClientSDKFlag{
-		Value:     ldvalue.String("value1-b"),
-		Variation: o.Some(2),
-		Version:   2,
+		Value:       ldvalue.String("value1-b"),
+		Variation:   o.Some(2),
+		FlagVersion: o.Some(2),
+		Version:     12,
 	}
 	flag2Key := "flag2"
 	flag2Result := mockld.ClientSDKFlag{
 		Value:     ldvalue.String("value-b"),
 		Variation: o.Some(2),
-		Version:   2,
+		// Omitting FlagVersion to check fallback logic.
+		Version: 13,
 	}
 
 	contextA := ldcontext.New("user-a")
@@ -80,14 +83,15 @@ func doClientSideSummaryEventBasicTest(t *ldtest.T) {
 			m.KV(flag1Key, m.MapOf(
 				m.KV("default", m.JSONEqual(default1)),
 				m.KV("counters", m.ItemsInAnyOrder(
-					flagCounter(flag1Result1.Value, flag1Result1.Variation.Value(), flag1Result1.Version, 2),
-					flagCounter(flag1Result2.Value, flag1Result2.Variation.Value(), flag1Result2.Version, 1),
+					flagCounter(flag1Result1.Value, flag1Result1.Variation.Value(), flag1Result1.FlagVersion.Value(), 2),
+					flagCounter(flag1Result2.Value, flag1Result2.Variation.Value(), flag1Result2.FlagVersion.Value(), 1),
 				)),
 				m.KV("contextKinds", anyContextKindsList()),
 			)),
 			m.KV(flag2Key, m.MapOf(
 				m.KV("default", m.JSONEqual(default2)),
 				m.KV("counters", m.ItemsInAnyOrder(
+					// Did not include a FlagVersion, so it should use version.
 					flagCounter(flag2Result.Value, flag2Result.Variation.Value(), flag2Result.Version, 1),
 				)),
 				m.KV("contextKinds", anyContextKindsList()),
