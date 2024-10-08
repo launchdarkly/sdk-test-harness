@@ -8,19 +8,19 @@ import (
 )
 
 type Persistence struct {
-	Store o.Maybe[servicedef.SDKConfigDataSystemPersistenceStore]
-	Cache o.Maybe[servicedef.SDKConfigDataSystemPersistenceCache]
+	Store o.Maybe[servicedef.SDKConfigPersistenceStore]
+	Cache o.Maybe[servicedef.SDKConfigPersistenceCache]
 }
 
 func NewPersistence() *Persistence {
 	return &Persistence{}
 }
 
-func (p *Persistence) SetStore(store servicedef.SDKConfigDataSystemPersistenceStore) {
+func (p *Persistence) SetStore(store servicedef.SDKConfigPersistenceStore) {
 	p.Store = o.Some(store)
 }
 
-func (p *Persistence) SetCache(cache servicedef.SDKConfigDataSystemPersistenceCache) {
+func (p *Persistence) SetCache(cache servicedef.SDKConfigPersistenceCache) {
 	p.Cache = o.Some(cache)
 }
 
@@ -29,7 +29,7 @@ func (p Persistence) Configure(target *servicedef.SDKConfigParams) error {
 		return errors.New("Persistence must have a store configuration")
 	}
 
-	target.Persistence = o.Some(servicedef.SDKConfigDataSystemPersistence{
+	target.Persistence = o.Some(servicedef.SDKConfigPersistence{
 		Store: p.Store.Value(),
 		Cache: p.Cache.Value(),
 	})

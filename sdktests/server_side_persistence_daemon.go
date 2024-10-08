@@ -24,11 +24,11 @@ func (s *ServerSidePersistenceTests) doDaemonModeTests(t *ldtest.T) {
 
 func (s *ServerSidePersistenceTests) ignoresInitialization(t *ldtest.T) {
 	persistence := NewPersistence()
-	persistence.SetStore(servicedef.SDKConfigDataSystemPersistenceStore{
+	persistence.SetStore(servicedef.SDKConfigPersistenceStore{
 		Type: servicedef.Redis,
 		DSN:  s.persistence.DSN(),
 	})
-	persistence.SetCache(servicedef.SDKConfigDataSystemPersistenceCache{
+	persistence.SetCache(servicedef.SDKConfigPersistenceCache{
 		Mode: servicedef.TTL,
 	})
 	context := ldcontext.New("user-key")
@@ -59,11 +59,11 @@ func (s *ServerSidePersistenceTests) canDisableCache(t *ldtest.T) {
 	require.NoError(t, s.persistence.WriteData("launchdarkly:features", s.initialFlags))
 
 	persistence := NewPersistence()
-	persistence.SetStore(servicedef.SDKConfigDataSystemPersistenceStore{
+	persistence.SetStore(servicedef.SDKConfigPersistenceStore{
 		Type: servicedef.Redis,
 		DSN:  s.persistence.DSN(),
 	})
-	persistence.SetCache(servicedef.SDKConfigDataSystemPersistenceCache{
+	persistence.SetCache(servicedef.SDKConfigPersistenceCache{
 		Mode: servicedef.Off,
 	})
 
@@ -84,11 +84,11 @@ func (s *ServerSidePersistenceTests) canDisableCache(t *ldtest.T) {
 
 func (s *ServerSidePersistenceTests) cachesFlagForDuration(t *ldtest.T) {
 	persistence := NewPersistence()
-	persistence.SetStore(servicedef.SDKConfigDataSystemPersistenceStore{
+	persistence.SetStore(servicedef.SDKConfigPersistenceStore{
 		Type: servicedef.Redis,
 		DSN:  s.persistence.DSN(),
 	})
-	persistence.SetCache(servicedef.SDKConfigDataSystemPersistenceCache{
+	persistence.SetCache(servicedef.SDKConfigPersistenceCache{
 		Mode: servicedef.TTL,
 		TTL:  o.Some(1),
 	})
@@ -148,11 +148,11 @@ func (s *ServerSidePersistenceTests) cachesFlagForDuration(t *ldtest.T) {
 
 func (s *ServerSidePersistenceTests) cachesFlagForever(t *ldtest.T) {
 	persistence := NewPersistence()
-	persistence.SetStore(servicedef.SDKConfigDataSystemPersistenceStore{
+	persistence.SetStore(servicedef.SDKConfigPersistenceStore{
 		Type: servicedef.Redis,
 		DSN:  s.persistence.DSN(),
 	})
-	persistence.SetCache(servicedef.SDKConfigDataSystemPersistenceCache{
+	persistence.SetCache(servicedef.SDKConfigPersistenceCache{
 		Mode: servicedef.Infinite,
 	})
 	context := ldcontext.New("user-key")

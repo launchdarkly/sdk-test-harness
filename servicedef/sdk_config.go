@@ -26,7 +26,7 @@ type SDKConfigParams struct {
 	ClientSide          o.Maybe[SDKConfigClientSideParams]          `json:"clientSide,omitempty"`
 	Hooks               o.Maybe[SDKConfigHooksParams]               `json:"hooks,omitempty"`
 	Wrapper             o.Maybe[SDKConfigWrapper]                   `json:"wrapper,omitempty"`
-	Persistence         o.Maybe[SDKConfigDataSystemPersistence]     `json:"persistence,omitempty"`
+	Persistence         o.Maybe[SDKConfigPersistence]               `json:"persistence,omitempty"`
 }
 
 type SDKConfigTLSParams struct {
@@ -106,35 +106,35 @@ type SDKConfigWrapper struct {
 	Version string `json:"version"`
 }
 
-type SDKConfigDataSystemPersistence struct {
-	Store SDKConfigDataSystemPersistenceStore `json:"store"`
-	Cache SDKConfigDataSystemPersistenceCache `json:"cache"`
+type SDKConfigPersistence struct {
+	Store SDKConfigPersistenceStore `json:"store"`
+	Cache SDKConfigPersistenceCache `json:"cache"`
 }
 
-type SDKConfigDataSystemPersistenceType string
+type SDKConfigPersistenceType string
 
 const (
-	Redis    = SDKConfigDataSystemPersistenceType("redis")
-	DynamoDB = SDKConfigDataSystemPersistenceType("dynamodb")
-	Consul   = SDKConfigDataSystemPersistenceType("consul")
+	Redis    = SDKConfigPersistenceType("redis")
+	DynamoDB = SDKConfigPersistenceType("dynamodb")
+	Consul   = SDKConfigPersistenceType("consul")
 )
 
-type SDKConfigDataSystemPersistenceStore struct {
-	Type   SDKConfigDataSystemPersistenceType `json:"type"`
-	Prefix string                             `json:"prefix,omitempty"`
-	DSN    string                             `json:"dsn"`
+type SDKConfigPersistenceStore struct {
+	Type   SDKConfigPersistenceType `json:"type"`
+	Prefix string                   `json:"prefix,omitempty"`
+	DSN    string                   `json:"dsn"`
 }
 
-type SDKConfigDataSystemPersistenceMode string
+type SDKConfigPersistenceMode string
 
 const (
-	Off      = SDKConfigDataSystemPersistenceMode("off")
-	TTL      = SDKConfigDataSystemPersistenceMode("ttl")
-	Infinite = SDKConfigDataSystemPersistenceMode("infinite")
+	Off      = SDKConfigPersistenceMode("off")
+	TTL      = SDKConfigPersistenceMode("ttl")
+	Infinite = SDKConfigPersistenceMode("infinite")
 )
 
-type SDKConfigDataSystemPersistenceCache struct {
-	Mode SDKConfigDataSystemPersistenceMode `json:"mode"`
+type SDKConfigPersistenceCache struct {
+	Mode SDKConfigPersistenceMode `json:"mode"`
 
 	// This value is only valid when the Mode is set to TTL. It must be a positive integer.
 	TTL o.Maybe[int] `json:"ttl,omitempty"`

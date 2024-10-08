@@ -67,11 +67,11 @@ func (s *ServerSidePersistenceTests) usesDefaultPrefix(t *ldtest.T) {
 	require.NoError(t, s.persistence.WriteData("launchdarkly:features", s.initialFlags))
 
 	persistence := NewPersistence()
-	persistence.SetStore(servicedef.SDKConfigDataSystemPersistenceStore{
+	persistence.SetStore(servicedef.SDKConfigPersistenceStore{
 		Type: servicedef.Redis,
 		DSN:  s.persistence.DSN(),
 	})
-	persistence.SetCache(servicedef.SDKConfigDataSystemPersistenceCache{
+	persistence.SetCache(servicedef.SDKConfigPersistenceCache{
 		Mode: servicedef.Off,
 	})
 
@@ -85,11 +85,11 @@ func (s *ServerSidePersistenceTests) usesCustomPrefix(t *ldtest.T) {
 	customPrefix := "custom-prefix"
 
 	persistence := NewPersistence()
-	persistence.SetStore(servicedef.SDKConfigDataSystemPersistenceStore{
+	persistence.SetStore(servicedef.SDKConfigPersistenceStore{
 		Type: servicedef.Redis,
 		DSN:  s.persistence.DSN(),
 	})
-	persistence.SetCache(servicedef.SDKConfigDataSystemPersistenceCache{
+	persistence.SetCache(servicedef.SDKConfigPersistenceCache{
 		Mode: servicedef.Off,
 	})
 
