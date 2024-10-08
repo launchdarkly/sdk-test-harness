@@ -20,7 +20,7 @@ func doServerSidePersistenceTests(t *ldtest.T) {
 		DB:       0,  // use default DB
 	})
 
-	newServerSidePersistenceTests(t, RedisPersistenceStore{redis: rdb}).Run(t)
+	newServerSidePersistenceTests(t, &RedisPersistenceStore{redis: rdb}).Run(t)
 }
 
 type ServerSidePersistenceTests struct {
