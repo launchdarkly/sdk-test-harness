@@ -86,8 +86,9 @@ func (s *ServerSidePersistenceTests) usesCustomPrefix(t *ldtest.T) {
 
 	persistence := NewPersistence()
 	persistence.SetStore(servicedef.SDKConfigPersistenceStore{
-		Type: servicedef.Redis,
-		DSN:  s.persistence.DSN(),
+		Type:   servicedef.Redis,
+		DSN:    s.persistence.DSN(),
+		Prefix: customPrefix,
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistenceCache{
 		Mode: servicedef.Off,

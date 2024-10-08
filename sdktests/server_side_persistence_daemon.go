@@ -29,7 +29,7 @@ func (s *ServerSidePersistenceTests) ignoresInitialization(t *ldtest.T) {
 		DSN:  s.persistence.DSN(),
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistenceCache{
-		Mode: servicedef.TTL,
+		Mode: servicedef.Off,
 	})
 	context := ldcontext.New("user-key")
 
