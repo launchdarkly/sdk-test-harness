@@ -38,7 +38,8 @@ func doClientSideExperimentationEventTests(t *ldtest.T) {
 			flagKey := "flag-key"
 			data := mockld.NewClientSDKDataBuilder().
 				Flag(flagKey, mockld.ClientSDKFlag{
-					Version:     flagVersion,
+					FlagVersion: o.Some(flagVersion),
+					Version:     flagVersion + 20,
 					Value:       expectedValue,
 					Variation:   o.Some(expectedVariation),
 					Reason:      o.Some(expectedReason),

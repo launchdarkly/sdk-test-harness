@@ -1,6 +1,7 @@
 package data
 
 import (
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
@@ -40,7 +41,8 @@ func NewMemoizingClientSideFlagFactory(
 	f := &MemoizingFactory[servicedef.ValueType, mockld.ClientSDKFlagWithKey]{
 		factoryFn: factoryFn,
 		transformVersionFn: func(f mockld.ClientSDKFlagWithKey, v int) mockld.ClientSDKFlagWithKey {
-			f.Version = v
+			f.Version = v + 10
+			f.FlagVersion = o.Some(v)
 			return f
 		},
 		nextVersion: startingVersion,

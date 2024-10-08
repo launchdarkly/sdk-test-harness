@@ -104,7 +104,7 @@ func doClientSideFeatureEventTests(t *ldtest.T) {
 				matchFeatureEvent := IsValidFeatureEventWithConditions(
 					t, false, context,
 					m.JSONProperty("key").Should(m.Equal(flag.Key)),
-					m.JSONProperty("version").Should(m.Equal(flag.Version)),
+					m.JSONProperty("version").Should(m.Equal(flag.FlagVersion.Value())),
 					m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),
 					m.JSONOptProperty("variation").Should(m.JSONEqual(expectedVariation)),
 					maybeReason(withReason, expectedReason),
@@ -326,7 +326,7 @@ func doClientSideDebugEventTests(t *ldtest.T) {
 								HasAnyCreationDate(),
 								m.JSONProperty("key").Should(m.Equal(flag.Key)),
 								HasContextObjectWithMatchingKeys(context),
-								m.JSONProperty("version").Should(m.Equal(flag.Version)),
+								m.JSONProperty("version").Should(m.Equal(flag.FlagVersion.Value())),
 								m.JSONProperty("value").Should(m.JSONEqual(result.Value)),
 								m.JSONProperty("variation").Should(m.JSONEqual(flag.Variation)),
 								maybeReason(withReasons, expectedReason),
