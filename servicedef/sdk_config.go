@@ -26,7 +26,7 @@ type SDKConfigParams struct {
 	ClientSide          o.Maybe[SDKConfigClientSideParams]          `json:"clientSide,omitempty"`
 	Hooks               o.Maybe[SDKConfigHooksParams]               `json:"hooks,omitempty"`
 	Wrapper             o.Maybe[SDKConfigWrapper]                   `json:"wrapper,omitempty"`
-	DataSystem          o.Maybe[SDKConfigDataSystem]                `json:"dataSystem,omitempty"`
+	Persistence         o.Maybe[SDKConfigDataSystemPersistence]     `json:"persistence,omitempty"`
 }
 
 type SDKConfigTLSParams struct {
@@ -104,17 +104,6 @@ type SDKConfigHooksParams struct {
 type SDKConfigWrapper struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
-}
-
-type SDKConfigDataSystem struct {
-	Synchronizers []SDKConfigDataSystemDataSource         `json:"synchronizers,omitempty"`
-	Initializers  []SDKConfigDataSystemDataSource         `json:"initializers,omitempty"`
-	Persistence   o.Maybe[SDKConfigDataSystemPersistence] `json:"persistence,omitempty"`
-}
-
-type SDKConfigDataSystemDataSource struct {
-	Streaming o.Maybe[SDKConfigStreamingParams] `json:"streaming,omitempty"`
-	Polling   o.Maybe[SDKConfigPollingParams]   `json:"polling,omitempty"`
 }
 
 type SDKConfigDataSystemPersistence struct {

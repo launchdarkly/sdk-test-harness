@@ -15,32 +15,26 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 )
 
-func (s *ServerSideDataSystemTests) doReadOnlyTests(t *ldtest.T) {
-	t.Run("daemon mode", s.daemonModeTests)
-}
-
-func (s *ServerSideDataSystemTests) daemonModeTests(t *ldtest.T) {
+func (s *ServerSidePersistenceTests) doDaemonModeTests(t *ldtest.T) {
 	t.Run("ignores database initialization flag", s.ignoresInitialization)
 	t.Run("can disable cache", s.canDisableCache)
 	t.Run("caches flag for duration", s.cachesFlagForDuration)
 	t.Run("caches flag forever", s.cachesFlagForever)
 }
 
-func (s *ServerSideDataSystemTests) ignoresInitialization(t *ldtest.T) {
-	dataSystem := NewDataSystem()
-	dataSystem.AddPersistence(servicedef.SDKConfigDataSystemPersistence{
-		Store: servicedef.SDKConfigDataSystemPersistenceStore{
-			Type: servicedef.Redis,
-			DSN:  s.persistence.DSN(),
-		},
-		Cache: servicedef.SDKConfigDataSystemPersistenceCache{
-			Mode: servicedef.Off,
-		},
+func (s *ServerSidePersistenceTests) ignoresInitialization(t *ldtest.T) {
+	persistence := NewPersistence()
+	persistence.SetStore(servicedef.SDKConfigDataSystemPersistenceStore{
+		Type: servicedef.Redis,
+		DSN:  s.persistence.DSN(),
+	})
+	persistence.SetCache(servicedef.SDKConfigDataSystemPersistenceCache{
+		Mode: servicedef.TTL,
 	})
 	context := ldcontext.New("user-key")
 
 	require.NoError(t, s.persistence.Reset())
-	client := NewSDKClient(t, dataSystem)
+	client := NewSDKClient(t, persistence)
 
 	h.RequireEventually(t, func() bool {
 		result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
@@ -60,23 +54,22 @@ func (s *ServerSideDataSystemTests) ignoresInitialization(t *ldtest.T) {
 		ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default"))
 }
 
-func (s *ServerSideDataSystemTests) canDisableCache(t *ldtest.T) {
+func (s *ServerSidePersistenceTests) canDisableCache(t *ldtest.T) {
 	require.NoError(t, s.persistence.Reset())
 	require.NoError(t, s.persistence.WriteData("launchdarkly:features", s.initialFlags))
 
-	dataSystem := NewDataSystem()
-	dataSystem.AddPersistence(servicedef.SDKConfigDataSystemPersistence{
-		Store: servicedef.SDKConfigDataSystemPersistenceStore{
-			Type: servicedef.Redis,
-			DSN:  s.persistence.DSN(),
-		},
-		Cache: servicedef.SDKConfigDataSystemPersistenceCache{
-			Mode: servicedef.Off,
-		},
+	persistence := NewPersistence()
+	persistence.SetStore(servicedef.SDKConfigDataSystemPersistenceStore{
+		Type: servicedef.Redis,
+		DSN:  s.persistence.DSN(),
 	})
+	persistence.SetCache(servicedef.SDKConfigDataSystemPersistenceCache{
+		Mode: servicedef.Off,
+	})
+
 	context := ldcontext.New("user-key")
 
-	client := NewSDKClient(t, dataSystem)
+	client := NewSDKClient(t, persistence)
 	pollUntilFlagValueUpdated(t, client, "flag-key", context,
 		ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default"))
 
@@ -89,23 +82,21 @@ func (s *ServerSideDataSystemTests) canDisableCache(t *ldtest.T) {
 		time.Second, time.Millisecond*20, "flag value was NOT updated after cache TTL")
 }
 
-func (s *ServerSideDataSystemTests) cachesFlagForDuration(t *ldtest.T) {
-	dataSystem := NewDataSystem()
-	dataSystem.AddPersistence(servicedef.SDKConfigDataSystemPersistence{
-		Store: servicedef.SDKConfigDataSystemPersistenceStore{
-			Type: servicedef.Redis,
-			DSN:  s.persistence.DSN(),
-		},
-		Cache: servicedef.SDKConfigDataSystemPersistenceCache{
-			Mode: servicedef.TTL,
-			TTL:  o.Some(1),
-		},
+func (s *ServerSidePersistenceTests) cachesFlagForDuration(t *ldtest.T) {
+	persistence := NewPersistence()
+	persistence.SetStore(servicedef.SDKConfigDataSystemPersistenceStore{
+		Type: servicedef.Redis,
+		DSN:  s.persistence.DSN(),
+	})
+	persistence.SetCache(servicedef.SDKConfigDataSystemPersistenceCache{
+		Mode: servicedef.TTL,
+		TTL:  o.Some(1),
 	})
 	context := ldcontext.New("user-key")
 
 	t.Run("will cache found flag for TTL", func(t *ldtest.T) {
 		require.NoError(t, s.persistence.Reset())
-		client := NewSDKClient(t, dataSystem)
+		client := NewSDKClient(t, persistence)
 
 		require.NoError(t, s.persistence.WriteData("launchdarkly:features", s.initialFlags))
 
@@ -128,7 +119,7 @@ func (s *ServerSideDataSystemTests) cachesFlagForDuration(t *ldtest.T) {
 
 	t.Run("will cache missing flag for TTL", func(t *ldtest.T) {
 		require.NoError(t, s.persistence.Reset())
-		client := NewSDKClient(t, dataSystem)
+		client := NewSDKClient(t, persistence)
 
 		result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 			FlagKey:      "flag-key",
@@ -155,23 +146,21 @@ func (s *ServerSideDataSystemTests) cachesFlagForDuration(t *ldtest.T) {
 	})
 }
 
-func (s *ServerSideDataSystemTests) cachesFlagForever(t *ldtest.T) {
-	dataSystem := NewDataSystem()
-	dataSystem.AddPersistence(servicedef.SDKConfigDataSystemPersistence{
-		Store: servicedef.SDKConfigDataSystemPersistenceStore{
-			Type: servicedef.Redis,
-			DSN:  s.persistence.DSN(),
-		},
-		Cache: servicedef.SDKConfigDataSystemPersistenceCache{
-			Mode: servicedef.Infinite,
-		},
+func (s *ServerSidePersistenceTests) cachesFlagForever(t *ldtest.T) {
+	persistence := NewPersistence()
+	persistence.SetStore(servicedef.SDKConfigDataSystemPersistenceStore{
+		Type: servicedef.Redis,
+		DSN:  s.persistence.DSN(),
+	})
+	persistence.SetCache(servicedef.SDKConfigDataSystemPersistenceCache{
+		Mode: servicedef.Infinite,
 	})
 	context := ldcontext.New("user-key")
 
 	require.NoError(t, s.persistence.Reset())
 	require.NoError(t, s.persistence.WriteData("launchdarkly:features", s.initialFlags))
 
-	client := NewSDKClient(t, dataSystem)
+	client := NewSDKClient(t, persistence)
 
 	h.RequireEventually(t,
 		checkForUpdatedValue(t, client, "flag-key", context,

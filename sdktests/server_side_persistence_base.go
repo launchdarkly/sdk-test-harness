@@ -13,22 +13,22 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 )
 
-func doServerSideDataSystemTests(t *ldtest.T) {
+func doServerSidePersistenceTests(t *ldtest.T) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
 
-	newServerSideDataSystemTests(t, RedisPersistenceStore{redis: rdb}).Run(t)
+	newServerSidePersistenceTests(t, RedisPersistenceStore{redis: rdb}).Run(t)
 }
 
-type ServerSideDataSystemTests struct {
+type ServerSidePersistenceTests struct {
 	persistence  PersistenceStore
 	initialFlags map[string]string
 }
 
-func newServerSideDataSystemTests(t *ldtest.T, persistence PersistenceStore) *ServerSideDataSystemTests {
+func newServerSidePersistenceTests(t *ldtest.T, persistence PersistenceStore) *ServerSidePersistenceTests {
 	flagKeyBytes, err :=
 		ldbuilders.NewFlagBuilder("flag-key").Version(1).
 			On(true).Variations(ldvalue.String("off"), ldvalue.String("match"), ldvalue.String("fallthrough")).
@@ -49,56 +49,51 @@ func newServerSideDataSystemTests(t *ldtest.T, persistence PersistenceStore) *Se
 
 	initialFlags["uncached-flag-key"] = string(uncachedFlagKeyBytes)
 
-	return &ServerSideDataSystemTests{
+	return &ServerSidePersistenceTests{
 		persistence:  persistence,
 		initialFlags: initialFlags,
 	}
 }
 
-func (s *ServerSideDataSystemTests) Run(t *ldtest.T) {
+func (s *ServerSidePersistenceTests) Run(t *ldtest.T) {
 	t.Run("uses default prefix", s.usesDefaultPrefix)
 	t.Run("uses custom prefix", s.usesCustomPrefix)
 
-	t.Run("read-only", s.doReadOnlyTests)
+	t.Run("daemon mode", s.doDaemonModeTests)
 }
 
-func (s *ServerSideDataSystemTests) usesDefaultPrefix(t *ldtest.T) {
+func (s *ServerSidePersistenceTests) usesDefaultPrefix(t *ldtest.T) {
 	require.NoError(t, s.persistence.Reset())
 	require.NoError(t, s.persistence.WriteData("launchdarkly:features", s.initialFlags))
 
-	dataSystem := NewDataSystem()
-	dataSystem.AddPersistence(servicedef.SDKConfigDataSystemPersistence{
-		Store: servicedef.SDKConfigDataSystemPersistenceStore{
-			Type: servicedef.Redis,
-			DSN:  s.persistence.DSN(),
-		},
-		Cache: servicedef.SDKConfigDataSystemPersistenceCache{
-			Mode: servicedef.Off,
-		},
+	persistence := NewPersistence()
+	persistence.SetStore(servicedef.SDKConfigDataSystemPersistenceStore{
+		Type: servicedef.Redis,
+		DSN:  s.persistence.DSN(),
+	})
+	persistence.SetCache(servicedef.SDKConfigDataSystemPersistenceCache{
+		Mode: servicedef.Off,
 	})
 
-	client := NewSDKClient(t, dataSystem)
+	client := NewSDKClient(t, persistence)
 	pollUntilFlagValueUpdated(t, client, "flag-key", ldcontext.New("user-key"),
 		ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default"))
 }
 
-func (s *ServerSideDataSystemTests) usesCustomPrefix(t *ldtest.T) {
+func (s *ServerSidePersistenceTests) usesCustomPrefix(t *ldtest.T) {
 	require.NoError(t, s.persistence.Reset())
 	customPrefix := "custom-prefix"
 
-	dataSystem := NewDataSystem()
-	dataSystem.AddPersistence(servicedef.SDKConfigDataSystemPersistence{
-		Store: servicedef.SDKConfigDataSystemPersistenceStore{
-			Type:   servicedef.Redis,
-			Prefix: customPrefix,
-			DSN:    s.persistence.DSN(),
-		},
-		Cache: servicedef.SDKConfigDataSystemPersistenceCache{
-			Mode: servicedef.Off,
-		},
+	persistence := NewPersistence()
+	persistence.SetStore(servicedef.SDKConfigDataSystemPersistenceStore{
+		Type: servicedef.Redis,
+		DSN:  s.persistence.DSN(),
+	})
+	persistence.SetCache(servicedef.SDKConfigDataSystemPersistenceCache{
+		Mode: servicedef.Off,
 	})
 
-	client := NewSDKClient(t, dataSystem)
+	client := NewSDKClient(t, persistence)
 
 	require.Never(
 		t,
