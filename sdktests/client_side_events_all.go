@@ -22,6 +22,9 @@ func doClientSideEventTests(t *ldtest.T) {
 	t.Run("context properties", doClientSideEventContextTests)
 	t.Run("event capacity", doClientSideEventBufferTests)
 	t.Run("disabling", doClientSideEventDisableTests)
+
+	t.RequireCapability(servicedef.CapabilityClientPrereqEvents)
+	t.Run("prerequisite events emit in order", doClientSideInOrderPrereqEventTests)
 }
 
 func doClientSideEventRequestTests(t *ldtest.T) {

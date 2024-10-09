@@ -31,6 +31,13 @@ func runServerSideEvalAllFlagsTests(t *ldtest.T) {
 	t.Run("details only for tracked flags", doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest)
 	t.Run("client not ready", doServerSideAllFlagsClientNotReadyTest)
 	t.Run("compact representations", doServerSideAllFlagsCompactRepresentationsTest)
+
+	t.Run("prerequisites", func(t *ldtest.T) {
+		t.RequireCapability(servicedef.CapabilityClientPrereqEvents)
+		t.Run("includes top level", doServerSideAllFlagsIncludesToplevelPreqrequisitesTest)
+		t.Run("ignores if not evaluated", doServerSideAllFlagsIgnoresPrereqsIfNotEvaluatedTest)
+		t.Run("ignores client-side only for prereq keys", doServerSideAllFlagsIgnoresClientSideOnlyForPrereqKeys)
+	})
 }
 
 func doServerSideAllFlagsBasicTest(t *ldtest.T) {
@@ -397,6 +404,174 @@ func doServerSideAllFlagsCompactRepresentationsTest(t *ldtest.T) {
 		}
 	}`
 	m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedMetadata))
+}
+
+func doServerSideAllFlagsIncludesToplevelPreqrequisitesTest(t *ldtest.T) {
+	topLevel := ldbuilders.NewFlagBuilder("topLevel").Version(100).
+		Variations(ldvalue.String("value1")).On(true).FallthroughVariation(0).
+		AddPrerequisite("directPrereq1", 0).
+		AddPrerequisite("directPrereq2", 0).
+		Build()
+
+	directPrereq1 := ldbuilders.NewFlagBuilder("directPrereq1").Version(200).
+		Variations(ldvalue.String("value2")).On(true).FallthroughVariation(0).
+		AddPrerequisite("indirectPrereqOf1", 0).
+		Build()
+	directPrereq2 := ldbuilders.NewFlagBuilder("directPrereq2").Version(200).
+		Variations(ldvalue.String("value3")).On(true).FallthroughVariation(0).
+		Build()
+	indirectPrereqOf2 := ldbuilders.NewFlagBuilder("indirectPrereqOf1").Version(300).
+		Variations(ldvalue.String("value4")).On(true).FallthroughVariation(0).
+		Build()
+
+	dataBuilder := mockld.NewServerSDKDataBuilder()
+	dataBuilder.Flag(topLevel, directPrereq1, directPrereq2, indirectPrereqOf2)
+
+	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	client := NewSDKClient(t, dataSource)
+	context := ldcontext.New("user-key")
+
+	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
+		Context: o.Some(context),
+	})
+	resultJSON, _ := json.Marshal(canonicalizeAllFlagsData(result.State))
+	expectedJSON := `{
+			"topLevel": "value1",
+			"directPrereq1": "value2",
+			"directPrereq2": "value3",
+			"indirectPrereqOf1": "value4",
+			"$flagsState": {
+				"topLevel": {
+					"variation": 0, "version": 100, "prerequisites": [ "directPrereq1", "directPrereq2" ]
+				},
+				"directPrereq1": {
+					"variation": 0, "version": 200, "prerequisites": [ "indirectPrereqOf1" ]
+				},
+				"directPrereq2": {
+					"variation": 0, "version": 200
+				},
+				"indirectPrereqOf1": {
+					"variation": 0, "version": 300
+				}
+			},
+			"$valid": true
+		}`
+	m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedJSON))
+}
+
+func doServerSideAllFlagsIgnoresPrereqsIfNotEvaluatedTest(t *ldtest.T) {
+	flagOn := ldbuilders.NewFlagBuilder("flagOn").Version(100).
+		Variations(ldvalue.String("value1")).On(true).FallthroughVariation(0).
+		AddPrerequisite("prereq1", 0).
+		Build()
+
+	// Since this flag is off, the prerequisites should not be evaluated, and
+	// thus will not be reflected in the resulting JSON.
+	flagOff := ldbuilders.NewFlagBuilder("flagOff").Version(100).
+		Variations(ldvalue.String("value1")).On(false).OffVariation(0).
+		AddPrerequisite("prereq1", 0).
+		Build()
+
+	// The first prerequisite fails because the variation index is incorrect.
+	// As a result, we should NOT see the prereq2 key listed in the result as
+	// it wasn't actually evaluated.
+	failedPrereq := ldbuilders.NewFlagBuilder("failedPrereq").Version(100).
+		Variations(ldvalue.String("value1")).On(true).FallthroughVariation(0).
+		AddPrerequisite("prereq1", 1).
+		AddPrerequisite("prereq2", 0).
+		Build()
+
+	prereq1 := ldbuilders.NewFlagBuilder("prereq1").Version(200).
+		Variations(ldvalue.String("value2")).On(true).FallthroughVariation(0).
+		Build()
+
+	prereq2 := ldbuilders.NewFlagBuilder("prereq2").Version(200).
+		Variations(ldvalue.String("value2")).On(true).FallthroughVariation(0).
+		Build()
+
+	dataBuilder := mockld.NewServerSDKDataBuilder()
+	dataBuilder.Flag(flagOn, flagOff, failedPrereq, prereq1, prereq2)
+
+	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	client := NewSDKClient(t, dataSource)
+	context := ldcontext.New("user-key")
+
+	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
+		Context: o.Some(context),
+	})
+	resultJSON, _ := json.Marshal(canonicalizeAllFlagsData(result.State))
+	expectedJSON := `{
+		"flagOn": "value1",
+		"flagOff": "value1",
+		"failedPrereq": null,
+		"prereq1": "value2",
+		"prereq2": "value2",
+		"$flagsState": {
+			"flagOn": {
+				"variation": 0, "version": 100, "prerequisites": [ "prereq1" ]
+			},
+			"flagOff": {
+				"variation": 0, "version": 100
+			},
+			"failedPrereq": {
+				"version": 100, "prerequisites": [ "prereq1" ]
+			},
+			"prereq1": {
+				"variation": 0, "version": 200
+			},
+			"prereq2": {
+				"variation": 0, "version": 200
+			}
+		},
+		"$valid": true
+	}`
+	m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedJSON))
+}
+
+func doServerSideAllFlagsIgnoresClientSideOnlyForPrereqKeys(t *ldtest.T) {
+	flag := ldbuilders.NewFlagBuilder("flag").Version(100).
+		ClientSideUsingEnvironmentID(true).
+		Variations(ldvalue.String("value1")).On(true).FallthroughVariation(0).
+		AddPrerequisite("prereq1", 0).
+		AddPrerequisite("prereq2", 0).
+		Build()
+
+	prereq1 := ldbuilders.NewFlagBuilder("prereq1").Version(200).
+		ClientSideUsingEnvironmentID(true).
+		Variations(ldvalue.String("value2")).On(true).FallthroughVariation(0).
+		Build()
+
+	prereq2 := ldbuilders.NewFlagBuilder("prereq2").Version(200).
+		ClientSideUsingEnvironmentID(false).
+		Variations(ldvalue.String("value2")).On(true).FallthroughVariation(0).
+		Build()
+
+	dataBuilder := mockld.NewServerSDKDataBuilder()
+	dataBuilder.Flag(flag, prereq1, prereq2)
+
+	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	client := NewSDKClient(t, dataSource)
+	context := ldcontext.New("user-key")
+
+	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
+		Context:        o.Some(context),
+		ClientSideOnly: true,
+	})
+	resultJSON, _ := json.Marshal(canonicalizeAllFlagsData(result.State))
+	expectedJSON := `{
+		"flag": "value1",
+		"prereq1": "value2",
+		"$flagsState": {
+			"flag": {
+				"variation": 0, "version": 100, "prerequisites": [ "prereq1", "prereq2" ]
+			},
+			"prereq1": {
+				"variation": 0, "version": 200
+			}
+		},
+		"$valid": true
+	}`
+	m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedJSON))
 }
 
 // canonicalizeAllFlagsData transforms the JSON flags data to adjust for variable SDK behavior that

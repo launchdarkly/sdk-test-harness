@@ -21,6 +21,12 @@ func doClientSideSummaryEventTests(t *ldtest.T) {
 	t.Run("context kinds", doClientSideSummaryEventContextKindsTest)
 	t.Run("unknown flag", doClientSideSummaryEventUnknownFlagTest)
 	t.Run("reset after each flush", doClientSideSummaryEventResetTest)
+
+	t.Run("prerequisites", func(t *ldtest.T) {
+		t.RequireCapability(servicedef.CapabilityClientPrereqEvents)
+		t.Run("basic behavior", doClientSideSummaryBasicPrereqTest)
+		t.Run("emits unknown event", doClientSideSummaryPrereqUnknownFlagTest)
+	})
 }
 
 func doClientSideSummaryEventBasicTest(t *ldtest.T) {
@@ -270,6 +276,150 @@ func doClientSideSummaryEventResetTest(t *ldtest.T) {
 				m.KV("default", m.JSONEqual(defaultValue)),
 				m.KV("counters", m.ItemsInAnyOrder(
 					flagCounter("value-b", flag1Result2.Variation.Value(), flag1Result2.Version, 3),
+				)),
+				m.KV("contextKinds", anyContextKindsList()),
+			)),
+		)),
+	)
+}
+
+func doClientSideSummaryBasicPrereqTest(t *ldtest.T) {
+	topLevelKey := "flag1"
+	topLevelResult := mockld.ClientSDKFlag{
+		Value:         ldvalue.String("value1-a"),
+		Variation:     o.Some(0),
+		FlagVersion:   o.Some(1),
+		Version:       11,
+		Prerequisites: []string{"prereq1", "prereq2"},
+	}
+
+	prereq1Key := "prereq1"
+	prereq1Result := mockld.ClientSDKFlag{
+		Value:         ldvalue.String("prereq1"),
+		Variation:     o.Some(0),
+		FlagVersion:   o.Some(1),
+		Version:       11,
+		Prerequisites: []string{"prereq3"},
+	}
+
+	prereq2Key := "prereq2"
+	prereq2Result := mockld.ClientSDKFlag{
+		Value:       ldvalue.String("prereq2"),
+		Variation:   o.Some(0),
+		FlagVersion: o.Some(1),
+		Version:     11,
+	}
+
+	prereq3Key := "prereq3"
+	prereq3Result := mockld.ClientSDKFlag{
+		Value:       ldvalue.String("prereq3"),
+		Variation:   o.Some(0),
+		FlagVersion: o.Some(1),
+		Version:     11,
+	}
+
+	contextA := ldcontext.New("user-a")
+	default1 := ldvalue.String("default1")
+	default2 := ldvalue.String("default2")
+	default3 := ldvalue.String("default3")
+
+	dataBuilder := mockld.NewClientSDKDataBuilder()
+	dataBuilder.Flag(topLevelKey, topLevelResult).
+		Flag(prereq1Key, prereq1Result).
+		Flag(prereq2Key, prereq2Result).
+		Flag(prereq3Key, prereq3Result)
+
+	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
+	client := NewSDKClient(t,
+		WithClientSideInitialContext(contextA),
+		dataSource, events)
+
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: prereq1Key, DefaultValue: default1})
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: topLevelKey, DefaultValue: default2})
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: prereq2Key, DefaultValue: default3})
+
+	client.FlushEvents(t)
+	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+	m.In(t).Assert(payload, m.ItemsInAnyOrder(
+		IsIdentifyEventForContext(contextA),
+		IsValidSummaryEventWithFlags(
+			m.KV(topLevelKey, m.MapOf(
+				// Was first evaluated through the EvaluateFlag call, so it has a default value.
+				m.KV("default", m.JSONEqual(default2)),
+				m.KV("counters", m.ItemsInAnyOrder(
+					flagCounter(topLevelResult.Value, topLevelResult.Variation.Value(), topLevelResult.FlagVersion.Value(), 1),
+				)),
+				m.KV("contextKinds", anyContextKindsList()),
+			)),
+			m.KV(prereq1Key, m.MapOf(
+				// Was first evaluated through the EvaluateFlag call, so it has a default value.
+				m.KV("default", m.JSONEqual(default1)),
+				m.KV("counters", m.ItemsInAnyOrder(
+					flagCounter(prereq1Result.Value, prereq1Result.Variation.Value(), prereq1Result.FlagVersion.Value(), 2),
+				)),
+				m.KV("contextKinds", anyContextKindsList()),
+			)),
+			m.KV(prereq2Key, m.MapOf(
+				m.KV("counters", m.ItemsInAnyOrder(
+					flagCounter(prereq2Result.Value, prereq2Result.Variation.Value(), prereq2Result.FlagVersion.Value(), 2),
+				)),
+				m.KV("contextKinds", anyContextKindsList()),
+			)),
+			m.KV(prereq3Key, m.MapOf(
+				m.KV("counters", m.ItemsInAnyOrder(
+					flagCounter(prereq3Result.Value, prereq3Result.Variation.Value(), prereq3Result.FlagVersion.Value(), 2),
+				)),
+				m.KV("contextKinds", anyContextKindsList()),
+			)),
+		)),
+	)
+}
+
+func doClientSideSummaryPrereqUnknownFlagTest(t *ldtest.T) {
+	topLevelKey := "flag1"
+	topLevelResult := mockld.ClientSDKFlag{
+		Value:         ldvalue.String("value1-a"),
+		Variation:     o.Some(0),
+		FlagVersion:   o.Some(1),
+		Version:       11,
+		Prerequisites: []string{"unknown"},
+	}
+
+	contextA := ldcontext.New("user-a")
+	default1 := ldvalue.String("default1")
+
+	dataBuilder := mockld.NewClientSDKDataBuilder()
+	dataBuilder.Flag(topLevelKey, topLevelResult)
+
+	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
+	client := NewSDKClient(t,
+		WithClientSideInitialContext(contextA),
+		dataSource, events)
+
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: topLevelKey, DefaultValue: default1})
+
+	client.FlushEvents(t)
+	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+	m.In(t).Assert(payload, m.ItemsInAnyOrder(
+		IsIdentifyEventForContext(contextA),
+		IsValidSummaryEventWithFlags(
+			m.KV(topLevelKey, m.MapOf(
+				// Was first evaluated through the EvaluateFlag call, so it has a default value.
+				m.KV("default", m.JSONEqual(default1)),
+				m.KV("counters", m.ItemsInAnyOrder(
+					flagCounter(topLevelResult.Value, topLevelResult.Variation.Value(), topLevelResult.FlagVersion.Value(), 1),
+				)),
+				m.KV("contextKinds", anyContextKindsList()),
+			)),
+			m.KV("unknown", m.MapOf(
+				// TODO: Why does this get a default but the test above doesn't?
+				m.KV("default", m.JSONEqual(ldvalue.Null())),
+				m.KV("counters", m.ItemsInAnyOrder(
+					unknownFlagCounter(ldvalue.Null(), 1),
 				)),
 				m.KV("contextKinds", anyContextKindsList()),
 			)),

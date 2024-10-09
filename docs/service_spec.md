@@ -60,6 +60,14 @@ This means that the SDK supports Big Segments and can be configured with a custo
 
 For tests that involve Big Segments, the test harness will provide parameters in the `bigSegments` property of the configuration object, including a `callbackUri` that points to one of the test harness's callback services (see [Callback endpoints](#callback-endpoints)). The test service should configure the SDK with its own implementation of a Big Segment store, where every method of the store delegates to a corresponding endpoint in the callback service.
 
+#### Capability `"client-prereq-events"`
+
+This means that the SDK supports client-side prerequisite events.
+
+In short, this means that a client SDK emits prerequisite evaluation events along side the main evaluation event. This requires an updated understanding of the flag evaluation model.
+
+For server side SDKs, this means `allFlagData` will reflect that updated flag evaluation model.
+
 #### Capability `"context-type"`
 
 This means that the SDK has its own type for evaluation contexts (as opposed to just representing them as a JSON-equivalent generic data structure) and convert that type to and from JSON.

@@ -6,6 +6,7 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
@@ -251,6 +252,80 @@ func doClientSideFeatureEventTests(t *ldtest.T) {
 		client.FlushEvents(t)
 		events.ExpectNoAnalyticsEvents(t, time.Millisecond*200)
 	})
+}
+
+func doClientSideInOrderPrereqEventTests(t *ldtest.T) {
+	dataBuilder := mockld.NewClientSDKDataBuilder()
+	dataBuilder.
+		Flag("topLevel", mockld.ClientSDKFlag{
+			Value:         ldvalue.String("value1"),
+			Variation:     o.Some(0),
+			TrackEvents:   true,
+			Prerequisites: []string{"prereq1", "preqreq2"},
+		}).
+		Flag("prereq1", mockld.ClientSDKFlag{
+			Value:         ldvalue.String("value2"),
+			TrackEvents:   true,
+			Variation:     o.Some(0),
+			Prerequisites: []string{"prereq2"},
+		}).
+		Flag("prereq2", mockld.ClientSDKFlag{
+			Value:       ldvalue.String("value3"),
+			TrackEvents: true,
+			Variation:   o.Some(0),
+		})
+	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	context := ldcontext.New("user")
+
+	events := NewSDKEventSink(t)
+	client := NewSDKClient(t,
+		WithClientSideInitialContext(context),
+		dataSource, events)
+
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+		FlagKey:      "topLevel",
+		DefaultValue: ldvalue.Null(),
+		ValueType:    servicedef.ValueTypeAny,
+	})
+
+	client.FlushEvents(t)
+	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+	prereq2FeatureEvent := IsValidFeatureEventWithConditions(
+		t, false, context,
+		m.JSONProperty("key").Should(m.Equal("prereq2")),
+		m.JSONProperty("version").Should(m.Equal(0)),
+		m.JSONProperty("value").Should(m.JSONEqual(ldvalue.String("value3"))),
+		m.JSONOptProperty("variation").Should(m.JSONEqual(0)),
+		JSONPropertyNullOrAbsent("prereqOf"),
+	)
+
+	prereq1FeatureEvent := IsValidFeatureEventWithConditions(
+		t, false, context,
+		m.JSONProperty("key").Should(m.Equal("prereq1")),
+		m.JSONProperty("version").Should(m.Equal(0)),
+		m.JSONProperty("value").Should(m.JSONEqual(ldvalue.String("value2"))),
+		m.JSONOptProperty("variation").Should(m.JSONEqual(0)),
+		JSONPropertyNullOrAbsent("prereqOf"),
+	)
+
+	topLevelFeatureEvent := IsValidFeatureEventWithConditions(
+		t, false, context,
+		m.JSONProperty("key").Should(m.Equal("topLevel")),
+		m.JSONProperty("version").Should(m.Equal(0)),
+		m.JSONProperty("value").Should(m.JSONEqual(ldvalue.String("value1"))),
+		m.JSONOptProperty("variation").Should(m.JSONEqual(0)),
+		JSONPropertyNullOrAbsent("prereqOf"),
+	)
+
+	m.In(t).Assert(payload, m.ItemsInAnyOrder(
+		IsIdentifyEventForContext(context),
+		prereq2FeatureEvent,
+		prereq1FeatureEvent,
+		topLevelFeatureEvent,
+		IsSummaryEvent(),
+	))
+
 }
 
 func doClientSideDebugEventTests(t *ldtest.T) {
