@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.23.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.22.0...v2.23.0) (2024-10-08)
+
+
+### Features
+
+* Test that client-side SDKs send correct version in events. ([#240](https://github.com/launchdarkly/sdk-test-harness/issues/240)) ([0b4df84](https://github.com/launchdarkly/sdk-test-harness/commit/0b4df847992c29a22d6c4bf9a3f3c41f4f2c5276))
+
 ## [2.22.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.21.0...v2.22.0) (2024-09-23)
 
 
