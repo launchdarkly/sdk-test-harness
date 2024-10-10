@@ -29,7 +29,7 @@ func (p Persistence) Configure(target *servicedef.SDKConfigParams) error {
 		return errors.New("Persistence must have a store configuration")
 	}
 
-	target.Persistence = o.Some(servicedef.SDKConfigPersistence{
+	target.PersistenceDataStore = o.Some(servicedef.SDKConfigPersistenceDataStoreParams{
 		Store: p.Store.Value(),
 		Cache: p.Cache.Value(),
 	})

@@ -12,21 +12,20 @@ import (
 )
 
 type SDKConfigParams struct {
-	Credential          string                                      `json:"credential"`
-	StartWaitTimeMS     o.Maybe[ldtime.UnixMillisecondTime]         `json:"startWaitTimeMs,omitempty"`
-	InitCanFail         bool                                        `json:"initCanFail,omitempty"`
-	ServiceEndpoints    o.Maybe[SDKConfigServiceEndpointsParams]    `json:"serviceEndpoints,omitempty"`
-	TLS                 o.Maybe[SDKConfigTLSParams]                 `json:"tls,omitempty"`
-	Streaming           o.Maybe[SDKConfigStreamingParams]           `json:"streaming,omitempty"`
-	Polling             o.Maybe[SDKConfigPollingParams]             `json:"polling,omitempty"`
-	Events              o.Maybe[SDKConfigEventParams]               `json:"events,omitempty"`
-	PersistentDataStore o.Maybe[SDKConfigPersistentDataStoreParams] `json:"persistentDataStore,omitempty"`
-	BigSegments         o.Maybe[SDKConfigBigSegmentsParams]         `json:"bigSegments,omitempty"`
-	Tags                o.Maybe[SDKConfigTagsParams]                `json:"tags,omitempty"`
-	ClientSide          o.Maybe[SDKConfigClientSideParams]          `json:"clientSide,omitempty"`
-	Hooks               o.Maybe[SDKConfigHooksParams]               `json:"hooks,omitempty"`
-	Wrapper             o.Maybe[SDKConfigWrapper]                   `json:"wrapper,omitempty"`
-	Persistence         o.Maybe[SDKConfigPersistence]               `json:"persistence,omitempty"`
+	Credential           string                                       `json:"credential"`
+	StartWaitTimeMS      o.Maybe[ldtime.UnixMillisecondTime]          `json:"startWaitTimeMs,omitempty"`
+	InitCanFail          bool                                         `json:"initCanFail,omitempty"`
+	ServiceEndpoints     o.Maybe[SDKConfigServiceEndpointsParams]     `json:"serviceEndpoints,omitempty"`
+	TLS                  o.Maybe[SDKConfigTLSParams]                  `json:"tls,omitempty"`
+	Streaming            o.Maybe[SDKConfigStreamingParams]            `json:"streaming,omitempty"`
+	Polling              o.Maybe[SDKConfigPollingParams]              `json:"polling,omitempty"`
+	Events               o.Maybe[SDKConfigEventParams]                `json:"events,omitempty"`
+	BigSegments          o.Maybe[SDKConfigBigSegmentsParams]          `json:"bigSegments,omitempty"`
+	Tags                 o.Maybe[SDKConfigTagsParams]                 `json:"tags,omitempty"`
+	ClientSide           o.Maybe[SDKConfigClientSideParams]           `json:"clientSide,omitempty"`
+	Hooks                o.Maybe[SDKConfigHooksParams]                `json:"hooks,omitempty"`
+	Wrapper              o.Maybe[SDKConfigWrapper]                    `json:"wrapper,omitempty"`
+	PersistenceDataStore o.Maybe[SDKConfigPersistenceDataStoreParams] `json:"persistenceDataStore,omitempty"`
 }
 
 type SDKConfigTLSParams struct {
@@ -61,10 +60,6 @@ type SDKConfigEventParams struct {
 	FlushIntervalMS         o.Maybe[ldtime.UnixMillisecondTime] `json:"flushIntervalMs,omitempty"`
 	OmitAnonymousContexts   bool                                `json:"omitAnonymousContexts,omitempty"`
 	EnableGzip              o.Maybe[bool]                       `json:"enableGzip,omitempty"`
-}
-
-type SDKConfigPersistentDataStoreParams struct {
-	CallbackURI string `json:"callbackURI"`
 }
 
 type SDKConfigBigSegmentsParams struct {
@@ -106,7 +101,7 @@ type SDKConfigWrapper struct {
 	Version string `json:"version"`
 }
 
-type SDKConfigPersistence struct {
+type SDKConfigPersistenceDataStoreParams struct {
 	Store SDKConfigPersistenceStore `json:"store"`
 	Cache SDKConfigPersistenceCache `json:"cache"`
 }
