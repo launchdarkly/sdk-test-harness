@@ -94,7 +94,7 @@ func (s *ServerSidePersistenceTests) cachesFlagForDuration(t *ldtest.T) {
 	})
 	context := ldcontext.New("user-key")
 
-	t.Run("will cache found flag for TTL", func(t *ldtest.T) {
+	t.Run("cache hit persists for TTL", func(t *ldtest.T) {
 		require.NoError(t, s.persistence.Reset())
 		client := NewSDKClient(t, persistence)
 
@@ -117,7 +117,7 @@ func (s *ServerSidePersistenceTests) cachesFlagForDuration(t *ldtest.T) {
 			time.Second, time.Millisecond*20, "flag value was NOT updated after cache TTL")
 	})
 
-	t.Run("will cache missing flag for TTL", func(t *ldtest.T) {
+	t.Run("cache miss persists for TTL", func(t *ldtest.T) {
 		require.NoError(t, s.persistence.Reset())
 		client := NewSDKClient(t, persistence)
 
