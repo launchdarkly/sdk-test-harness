@@ -23,6 +23,14 @@ func doServerSidePersistenceTests(t *ldtest.T) {
 	newServerSidePersistenceTests(t, &RedisPersistenceStore{redis: rdb}).Run(t)
 }
 
+type PersistenceStore interface {
+	DSN() string
+
+	WriteData(key string, data map[string]string) error
+
+	Reset() error
+}
+
 type ServerSidePersistenceTests struct {
 	persistence  PersistenceStore
 	initialFlags map[string]string
