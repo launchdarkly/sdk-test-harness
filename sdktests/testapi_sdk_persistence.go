@@ -26,7 +26,7 @@ func (p *Persistence) SetCache(cache servicedef.SDKConfigPersistenceCache) {
 
 func (p Persistence) Configure(target *servicedef.SDKConfigParams) error {
 	if !p.Store.IsDefined() || !p.Cache.IsDefined() {
-		return errors.New("Persistence must have a store configuration")
+		return errors.New("Persistence must have a store and cache configuration")
 	}
 
 	target.PersistenceDataStore = o.Some(servicedef.SDKConfigPersistenceDataStoreParams{
