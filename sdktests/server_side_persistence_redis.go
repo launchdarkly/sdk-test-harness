@@ -7,22 +7,22 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type RedisPersistenceStore struct {
+type RedisPersistentStore struct {
 	redis *redis.Client
 }
 
-// {{{ PersistenceStore implementation
+// {{{ PersistentStore implementation
 
-func (r RedisPersistenceStore) DSN() string {
+func (r RedisPersistentStore) DSN() string {
 	return fmt.Sprintf("redis://%s", r.redis.Options().Addr)
 }
 
-func (r *RedisPersistenceStore) Reset() error {
+func (r *RedisPersistentStore) Reset() error {
 	var ctx = context.Background()
 	return r.redis.FlushAll(ctx).Err()
 }
 
-func (r *RedisPersistenceStore) WriteData(key string, data map[string]string) error {
+func (r *RedisPersistentStore) WriteData(key string, data map[string]string) error {
 	var ctx = context.Background()
 	_, err := r.redis.HSet(ctx, key, data).Result()
 	return err

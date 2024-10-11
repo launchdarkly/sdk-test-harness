@@ -13,17 +13,17 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 )
 
-func doServerSidePersistenceTests(t *ldtest.T) {
+func doServerSidePersistentTests(t *ldtest.T) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
 
-	newServerSidePersistenceTests(t, &RedisPersistenceStore{redis: rdb}).Run(t)
+	newServerSidePersistentTests(t, &RedisPersistentStore{redis: rdb}).Run(t)
 }
 
-type PersistenceStore interface {
+type PersistentStore interface {
 	DSN() string
 
 	WriteData(key string, data map[string]string) error
@@ -31,12 +31,12 @@ type PersistenceStore interface {
 	Reset() error
 }
 
-type ServerSidePersistenceTests struct {
-	persistence  PersistenceStore
-	initialFlags map[string]string
+type ServerSidePersistentTests struct {
+	persistentStore PersistentStore
+	initialFlags    map[string]string
 }
 
-func newServerSidePersistenceTests(t *ldtest.T, persistence PersistenceStore) *ServerSidePersistenceTests {
+func newServerSidePersistentTests(t *ldtest.T, persistentStore PersistentStore) *ServerSidePersistentTests {
 	flagKeyBytes, err :=
 		ldbuilders.NewFlagBuilder("flag-key").Version(1).
 			On(true).Variations(ldvalue.String("off"), ldvalue.String("match"), ldvalue.String("fallthrough")).
@@ -57,29 +57,29 @@ func newServerSidePersistenceTests(t *ldtest.T, persistence PersistenceStore) *S
 
 	initialFlags["uncached-flag-key"] = string(uncachedFlagKeyBytes)
 
-	return &ServerSidePersistenceTests{
-		persistence:  persistence,
-		initialFlags: initialFlags,
+	return &ServerSidePersistentTests{
+		persistentStore: persistentStore,
+		initialFlags:    initialFlags,
 	}
 }
 
-func (s *ServerSidePersistenceTests) Run(t *ldtest.T) {
+func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 	t.Run("uses default prefix", s.usesDefaultPrefix)
 	t.Run("uses custom prefix", s.usesCustomPrefix)
 
 	t.Run("daemon mode", s.doDaemonModeTests)
 }
 
-func (s *ServerSidePersistenceTests) usesDefaultPrefix(t *ldtest.T) {
-	require.NoError(t, s.persistence.Reset())
-	require.NoError(t, s.persistence.WriteData("launchdarkly:features", s.initialFlags))
+func (s *ServerSidePersistentTests) usesDefaultPrefix(t *ldtest.T) {
+	require.NoError(t, s.persistentStore.Reset())
+	require.NoError(t, s.persistentStore.WriteData("launchdarkly:features", s.initialFlags))
 
 	persistence := NewPersistence()
-	persistence.SetStore(servicedef.SDKConfigPersistenceStore{
+	persistence.SetStore(servicedef.SDKConfigPersistentStore{
 		Type: servicedef.Redis,
-		DSN:  s.persistence.DSN(),
+		DSN:  s.persistentStore.DSN(),
 	})
-	persistence.SetCache(servicedef.SDKConfigPersistenceCache{
+	persistence.SetCache(servicedef.SDKConfigPersistentCache{
 		Mode: servicedef.Off,
 	})
 
@@ -88,17 +88,17 @@ func (s *ServerSidePersistenceTests) usesDefaultPrefix(t *ldtest.T) {
 		ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default"))
 }
 
-func (s *ServerSidePersistenceTests) usesCustomPrefix(t *ldtest.T) {
-	require.NoError(t, s.persistence.Reset())
+func (s *ServerSidePersistentTests) usesCustomPrefix(t *ldtest.T) {
+	require.NoError(t, s.persistentStore.Reset())
 	customPrefix := "custom-prefix"
 
 	persistence := NewPersistence()
-	persistence.SetStore(servicedef.SDKConfigPersistenceStore{
+	persistence.SetStore(servicedef.SDKConfigPersistentStore{
 		Type:   servicedef.Redis,
-		DSN:    s.persistence.DSN(),
+		DSN:    s.persistentStore.DSN(),
 		Prefix: customPrefix,
 	})
-	persistence.SetCache(servicedef.SDKConfigPersistenceCache{
+	persistence.SetCache(servicedef.SDKConfigPersistentCache{
 		Mode: servicedef.Off,
 	})
 
@@ -113,7 +113,7 @@ func (s *ServerSidePersistenceTests) usesCustomPrefix(t *ldtest.T) {
 		"flag value was updated, but it should not have been",
 	)
 
-	require.NoError(t, s.persistence.WriteData(customPrefix+":features", s.initialFlags))
+	require.NoError(t, s.persistentStore.WriteData(customPrefix+":features", s.initialFlags))
 
 	pollUntilFlagValueUpdated(t, client, "flag-key", ldcontext.New("user-key"),
 		ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default"))

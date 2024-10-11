@@ -12,20 +12,20 @@ import (
 )
 
 type SDKConfigParams struct {
-	Credential           string                                       `json:"credential"`
-	StartWaitTimeMS      o.Maybe[ldtime.UnixMillisecondTime]          `json:"startWaitTimeMs,omitempty"`
-	InitCanFail          bool                                         `json:"initCanFail,omitempty"`
-	ServiceEndpoints     o.Maybe[SDKConfigServiceEndpointsParams]     `json:"serviceEndpoints,omitempty"`
-	TLS                  o.Maybe[SDKConfigTLSParams]                  `json:"tls,omitempty"`
-	Streaming            o.Maybe[SDKConfigStreamingParams]            `json:"streaming,omitempty"`
-	Polling              o.Maybe[SDKConfigPollingParams]              `json:"polling,omitempty"`
-	Events               o.Maybe[SDKConfigEventParams]                `json:"events,omitempty"`
-	BigSegments          o.Maybe[SDKConfigBigSegmentsParams]          `json:"bigSegments,omitempty"`
-	Tags                 o.Maybe[SDKConfigTagsParams]                 `json:"tags,omitempty"`
-	ClientSide           o.Maybe[SDKConfigClientSideParams]           `json:"clientSide,omitempty"`
-	Hooks                o.Maybe[SDKConfigHooksParams]                `json:"hooks,omitempty"`
-	Wrapper              o.Maybe[SDKConfigWrapper]                    `json:"wrapper,omitempty"`
-	PersistenceDataStore o.Maybe[SDKConfigPersistenceDataStoreParams] `json:"persistenceDataStore,omitempty"`
+	Credential          string                                      `json:"credential"`
+	StartWaitTimeMS     o.Maybe[ldtime.UnixMillisecondTime]         `json:"startWaitTimeMs,omitempty"`
+	InitCanFail         bool                                        `json:"initCanFail,omitempty"`
+	ServiceEndpoints    o.Maybe[SDKConfigServiceEndpointsParams]    `json:"serviceEndpoints,omitempty"`
+	TLS                 o.Maybe[SDKConfigTLSParams]                 `json:"tls,omitempty"`
+	Streaming           o.Maybe[SDKConfigStreamingParams]           `json:"streaming,omitempty"`
+	Polling             o.Maybe[SDKConfigPollingParams]             `json:"polling,omitempty"`
+	Events              o.Maybe[SDKConfigEventParams]               `json:"events,omitempty"`
+	BigSegments         o.Maybe[SDKConfigBigSegmentsParams]         `json:"bigSegments,omitempty"`
+	Tags                o.Maybe[SDKConfigTagsParams]                `json:"tags,omitempty"`
+	ClientSide          o.Maybe[SDKConfigClientSideParams]          `json:"clientSide,omitempty"`
+	Hooks               o.Maybe[SDKConfigHooksParams]               `json:"hooks,omitempty"`
+	Wrapper             o.Maybe[SDKConfigWrapper]                   `json:"wrapper,omitempty"`
+	PersistentDataStore o.Maybe[SDKConfigPersistentDataStoreParams] `json:"persistentDataStore,omitempty"`
 }
 
 type SDKConfigTLSParams struct {
@@ -101,35 +101,35 @@ type SDKConfigWrapper struct {
 	Version string `json:"version"`
 }
 
-type SDKConfigPersistenceDataStoreParams struct {
-	Store SDKConfigPersistenceStore `json:"store"`
-	Cache SDKConfigPersistenceCache `json:"cache"`
+type SDKConfigPersistentDataStoreParams struct {
+	Store SDKConfigPersistentStore `json:"store"`
+	Cache SDKConfigPersistentCache `json:"cache"`
 }
 
-type SDKConfigPersistenceType string
+type SDKConfigPersistentType string
 
 const (
-	Redis    = SDKConfigPersistenceType("redis")
-	DynamoDB = SDKConfigPersistenceType("dynamodb")
-	Consul   = SDKConfigPersistenceType("consul")
+	Redis    = SDKConfigPersistentType("redis")
+	DynamoDB = SDKConfigPersistentType("dynamodb")
+	Consul   = SDKConfigPersistentType("consul")
 )
 
-type SDKConfigPersistenceStore struct {
-	Type   SDKConfigPersistenceType `json:"type"`
-	Prefix string                   `json:"prefix,omitempty"`
-	DSN    string                   `json:"dsn"`
+type SDKConfigPersistentStore struct {
+	Type   SDKConfigPersistentType `json:"type"`
+	Prefix string                  `json:"prefix,omitempty"`
+	DSN    string                  `json:"dsn"`
 }
 
-type SDKConfigPersistenceMode string
+type SDKConfigPersistentMode string
 
 const (
-	Off      = SDKConfigPersistenceMode("off")
-	TTL      = SDKConfigPersistenceMode("ttl")
-	Infinite = SDKConfigPersistenceMode("infinite")
+	Off      = SDKConfigPersistentMode("off")
+	TTL      = SDKConfigPersistentMode("ttl")
+	Infinite = SDKConfigPersistentMode("infinite")
 )
 
-type SDKConfigPersistenceCache struct {
-	Mode SDKConfigPersistenceMode `json:"mode"`
+type SDKConfigPersistentCache struct {
+	Mode SDKConfigPersistentMode `json:"mode"`
 
 	// This value is only valid when the Mode is set to TTL. It must be a positive integer.
 	TTL o.Maybe[int] `json:"ttl,omitempty"`
