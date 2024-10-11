@@ -415,13 +415,14 @@ func doClientSideSummaryPrereqUnknownFlagTest(t *ldtest.T) {
 				)),
 				m.KV("contextKinds", anyContextKindsList()),
 			)),
-			m.KV("unknown", m.MapOf(
-				// TODO: Why does this get a default but the test above doesn't?
-				m.KV("default", m.JSONEqual(ldvalue.Null())),
-				m.KV("counters", m.ItemsInAnyOrder(
-					unknownFlagCounter(ldvalue.Null(), 1),
-				)),
-				m.KV("contextKinds", anyContextKindsList()),
+			m.KV("unknown", m.AllOf(
+				m.JSONOptProperty("default").Should(m.BeNil()),
+				m.MapIncluding(
+					m.KV("counters", m.ItemsInAnyOrder(
+						unknownFlagCounter(ldvalue.Null(), 1),
+					)),
+					m.KV("contextKinds", anyContextKindsList()),
+				),
 			)),
 		)),
 	)

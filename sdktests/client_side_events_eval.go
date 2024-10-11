@@ -325,7 +325,6 @@ func doClientSideInOrderPrereqEventTests(t *ldtest.T) {
 		topLevelFeatureEvent,
 		IsSummaryEvent(),
 	))
-
 }
 
 func doClientSideDebugEventTests(t *ldtest.T) {
