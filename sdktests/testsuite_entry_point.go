@@ -90,6 +90,7 @@ func doAllServerSideTests(t *ldtest.T) {
 	t.Run("secure mode hash", doServerSideSecureModeHashTests)
 	t.Run("context type", doSDKContextTypeTests)
 	t.Run("migrations", doServerSideMigrationTests)
+	t.Run("persistent data store", doServerSidePersistentTests)
 	t.Run("hooks", doCommonHooksTests)
 	t.Run("wrapper", doServerSideWrapperTests)
 }
