@@ -190,7 +190,8 @@ func TryNewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) (*SDKClient, err
 }
 
 func validateSDKConfig(config servicedef.SDKConfigParams) error {
-	if !config.Streaming.IsDefined() && !config.Polling.IsDefined() && config.ServiceEndpoints.Value().Streaming == "" {
+	if !config.Streaming.IsDefined() && !config.Polling.IsDefined() &&
+		!config.PersistentDataStore.IsDefined() && config.ServiceEndpoints.Value().Streaming == "" {
 		// Note that the default is streaming, so we don't necessarily need to set config.Streaming if there are
 		// no other customized options and if we used serviceEndpoints.streaming to set the stream URI
 		return errors.New(
