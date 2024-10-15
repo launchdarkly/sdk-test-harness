@@ -419,7 +419,11 @@ func doClientSideSummaryPrereqUnknownFlagTest(t *ldtest.T) {
 				m.JSONOptProperty("default").Should(m.BeNil()),
 				m.MapIncluding(
 					m.KV("counters", m.ItemsInAnyOrder(
-						unknownFlagCounter(ldvalue.Null(), 1),
+						m.AllOf(
+							JSONPropertyNullOrAbsent("value"),
+							m.JSONProperty("unknown").Should(m.JSONEqual(true)),
+							m.JSONProperty("count").Should(m.JSONEqual(1)),
+						),
 					)),
 					m.KV("contextKinds", anyContextKindsList()),
 				),
