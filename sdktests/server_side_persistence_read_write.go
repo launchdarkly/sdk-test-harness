@@ -84,15 +84,19 @@ func (s *ServerSidePersistentTests) appliesUpdatesToStore(t *ldtest.T) {
 		DSN:  s.persistentStore.DSN(),
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
-		Mode: servicedef.Off,
+		Mode: servicedef.CacheModeOff,
 	})
 
 	sdkData := s.makeSDKDataWithFlag("flag-key", 1, ldvalue.String("value"))
 	stream, configurers := s.setupDataSources(t, sdkData)
 	configurers = append(configurers, persistence)
 
-	_, err := s.persistentStore.ReadField("launchdarkly:$inited")
-	require.Error(t, err) // should not exist
+	_, err := s.persistentStore.Get("launchdarkly:$inited")
+	if err != nil && err.Error() == string(redis.Nil) {
+		// as expected, inited key does not exist
+	} else {
+		require.Fail(t, "unexpected error failure", err)
+	}
 
 	_ = NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
 	s.eventuallyRequireDataStoreInit(t, "launchdarkly")
