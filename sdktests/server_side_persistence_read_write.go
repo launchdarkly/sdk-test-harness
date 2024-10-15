@@ -136,6 +136,14 @@ func (s *ServerSidePersistentTests) dataSourceUpdatesRespectVersioning(t *ldtest
 		"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "value"),
 	})
 
+	// Same versioned updates are ignored
+	updateData = s.makeFlagData("flag-key", 100, ldvalue.String("new-value"))
+	stream.StreamingService().PushUpdate("flags", "flag-key", updateData)
+	s.neverValidateFlagData(t, "launchdarkly", map[string]m.Matcher{
+		"flag-key":          basicFlagValidationMatcher("flag-key", 1, "new-value"),
+		"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "value"),
+	})
+
 	// Higher versioned updates are applied
 	updateData = s.makeFlagData("flag-key", 200, ldvalue.String("new-value"))
 	stream.StreamingService().PushUpdate("flags", "flag-key", updateData)
