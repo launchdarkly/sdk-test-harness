@@ -25,8 +25,8 @@ func (s *ServerSidePersistentTests) doReadWriteTests(t *ldtest.T) {
 	t.Run("data source deletions respect versioning", s.dataSourceDeletesRespectVersioning)
 
 	cacheConfigs := []servicedef.SDKConfigPersistentCache{
-		{Mode: servicedef.Infinite},
-		{Mode: servicedef.TTL, TTL: o.Some(1)},
+		{Mode: servicedef.CacheModeInfinite},
+		{Mode: servicedef.CacheModeTTL, TTL: o.Some(1)},
 	}
 
 	for _, cacheConfig := range cacheConfigs {
@@ -61,7 +61,7 @@ func (s *ServerSidePersistentTests) initializesStoreWhenDataReceived(t *ldtest.T
 		DSN:  s.persistentStore.DSN(),
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
-		Mode: servicedef.Off,
+		Mode: servicedef.CacheModeOff,
 	})
 
 	sdkData := s.makeSDKDataWithFlag("flag-key", 1, ldvalue.String("value"))
@@ -116,7 +116,7 @@ func (s *ServerSidePersistentTests) dataSourceUpdatesRespectVersioning(t *ldtest
 		DSN:  s.persistentStore.DSN(),
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
-		Mode: servicedef.Off,
+		Mode: servicedef.CacheModeOff,
 	})
 
 	sdkData := s.makeSDKDataWithFlag("flag-key", 1, ldvalue.String("value"))
@@ -154,7 +154,7 @@ func (s *ServerSidePersistentTests) dataSourceDeletesRespectVersioning(t *ldtest
 		DSN:  s.persistentStore.DSN(),
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
-		Mode: servicedef.Off,
+		Mode: servicedef.CacheModeOff,
 	})
 
 	sdkData := s.makeSDKDataWithFlag("flag-key", 100, ldvalue.String("value"))
@@ -210,14 +210,14 @@ func (s *ServerSidePersistentTests) ignoresDirectDatabaseModifications(t *ldtest
 			ldvalue.String("value"), ldvalue.String("new-value"), ldvalue.String("default")),
 		time.Millisecond*500, time.Millisecond*20, "flag-key was incorrectly updated")
 
-	if cacheConfig.Mode == servicedef.Infinite {
+	if cacheConfig.Mode == servicedef.CacheModeInfinite {
 		// But since we didn't evaluate this flag, this should actually be
 		// reflected by directly changing the database.
 		h.RequireEventually(t,
 			checkForUpdatedValue(t, client, "uncached-flag-key", context,
 				ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default")),
 			time.Millisecond*500, time.Millisecond*20, "uncached-flag-key was incorrectly cached")
-	} else if cacheConfig.Mode == servicedef.TTL {
+	} else if cacheConfig.Mode == servicedef.CacheModeTTL {
 		// But eventually, it will expire and then we will fetch it from the database.
 		h.RequireEventually(t,
 			checkForUpdatedValue(t, client, "flag-key", context,
@@ -235,7 +235,7 @@ func (s *ServerSidePersistentTests) ignoresFlagsBeingDiscardedFromStore(t *ldtes
 		DSN:  s.persistentStore.DSN(),
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
-		Mode: servicedef.Infinite,
+		Mode: servicedef.CacheModeInfinite,
 	})
 
 	sdkData := s.makeSDKDataWithFlag("flag-key", 1, ldvalue.String("value"))
@@ -257,7 +257,7 @@ func (s *ServerSidePersistentTests) ignoresFlagsBeingDiscardedFromStore(t *ldtes
 			ldvalue.String("value"), ldvalue.String("new-value"), ldvalue.String("default")),
 		time.Millisecond*500, time.Millisecond*20, "flag was never updated")
 
-	if cacheConfig.Mode == servicedef.TTL {
+	if cacheConfig.Mode == servicedef.CacheModeTTL {
 		// But eventually, it will expire and then we will fetch it from the database.
 		h.RequireEventually(t,
 			checkForUpdatedValue(t, client, "flag-key", context,
@@ -275,7 +275,7 @@ func (s *ServerSidePersistentTests) ignoresDroppedFlagsWithForeverCache(t *ldtes
 		DSN:  s.persistentStore.DSN(),
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
-		Mode: servicedef.Infinite,
+		Mode: servicedef.CacheModeInfinite,
 	})
 
 	sdkData := s.makeSDKDataWithFlag("flag-key", 1, ldvalue.String("value"))
@@ -374,7 +374,7 @@ func (s *ServerSidePersistentTests) ignoresDroppedFlagsWithTTLCache(t *ldtest.T)
 		DSN:  s.persistentStore.DSN(),
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
-		Mode: servicedef.TTL,
+		Mode: servicedef.CacheModeTTL,
 		TTL:  o.Some(1),
 	})
 

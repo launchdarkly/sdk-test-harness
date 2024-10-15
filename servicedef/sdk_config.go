@@ -123,9 +123,9 @@ type SDKConfigPersistentStore struct {
 type SDKConfigPersistentMode string
 
 const (
-	Off      = SDKConfigPersistentMode("off")
-	TTL      = SDKConfigPersistentMode("ttl")
-	Infinite = SDKConfigPersistentMode("infinite")
+	CacheModeOff      = SDKConfigPersistentMode("off")
+	CacheModeTTL      = SDKConfigPersistentMode("ttl")
+	CacheModeInfinite = SDKConfigPersistentMode("infinite")
 )
 
 type SDKConfigPersistentCache struct {

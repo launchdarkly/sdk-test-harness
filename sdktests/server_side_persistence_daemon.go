@@ -29,7 +29,7 @@ func (s *ServerSidePersistentTests) ignoresInitialization(t *ldtest.T) {
 		DSN:  s.persistentStore.DSN(),
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
-		Mode: servicedef.Off,
+		Mode: servicedef.CacheModeOff,
 	})
 	context := ldcontext.New("user-key")
 
@@ -64,7 +64,7 @@ func (s *ServerSidePersistentTests) canDisableCache(t *ldtest.T) {
 		DSN:  s.persistentStore.DSN(),
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
-		Mode: servicedef.Off,
+		Mode: servicedef.CacheModeOff,
 	})
 
 	context := ldcontext.New("user-key")
@@ -89,7 +89,7 @@ func (s *ServerSidePersistentTests) cachesFlagForDuration(t *ldtest.T) {
 		DSN:  s.persistentStore.DSN(),
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
-		Mode: servicedef.TTL,
+		Mode: servicedef.CacheModeTTL,
 		TTL:  o.Some(1),
 	})
 	context := ldcontext.New("user-key")
@@ -153,7 +153,7 @@ func (s *ServerSidePersistentTests) cachesFlagForever(t *ldtest.T) {
 		DSN:  s.persistentStore.DSN(),
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
-		Mode: servicedef.Infinite,
+		Mode: servicedef.CacheModeInfinite,
 	})
 	context := ldcontext.New("user-key")
 

@@ -91,7 +91,7 @@ func (s *ServerSidePersistentTests) usesDefaultPrefix(t *ldtest.T) {
 		DSN:  s.persistentStore.DSN(),
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
-		Mode: servicedef.Off,
+		Mode: servicedef.CacheModeOff,
 	})
 
 	client := NewSDKClient(t, persistence)
@@ -110,7 +110,7 @@ func (s *ServerSidePersistentTests) usesCustomPrefix(t *ldtest.T) {
 		Prefix: customPrefix,
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
-		Mode: servicedef.Off,
+		Mode: servicedef.CacheModeOff,
 	})
 
 	client := NewSDKClient(t, persistence)
