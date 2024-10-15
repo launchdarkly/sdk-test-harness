@@ -30,9 +30,9 @@ type PersistentStore interface {
 
 	// TODO: Change these names to something less terrible, or make them even
 	// more generic.
-	ReadField(key string) (string, error)
-	ReadData(key string) (map[string]string, error)
-	WriteData(key string, data map[string]string) error
+	Get(key string) (string, error)
+	GetMap(key string) (map[string]string, error)
+	WriteMap(key string, data map[string]string) error
 
 	Type() servicedef.SDKConfigPersistentType
 
@@ -83,7 +83,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 
 func (s *ServerSidePersistentTests) usesDefaultPrefix(t *ldtest.T) {
 	require.NoError(t, s.persistentStore.Reset())
-	require.NoError(t, s.persistentStore.WriteData("launchdarkly:features", s.initialFlags))
+	require.NoError(t, s.persistentStore.WriteMap("launchdarkly:features", s.initialFlags))
 
 	persistence := NewPersistence()
 	persistence.SetStore(servicedef.SDKConfigPersistentStore{
@@ -124,7 +124,7 @@ func (s *ServerSidePersistentTests) usesCustomPrefix(t *ldtest.T) {
 		"flag value was updated, but it should not have been",
 	)
 
-	require.NoError(t, s.persistentStore.WriteData(customPrefix+":features", s.initialFlags))
+	require.NoError(t, s.persistentStore.WriteMap(customPrefix+":features", s.initialFlags))
 
 	pollUntilFlagValueUpdated(t, client, "flag-key", ldcontext.New("user-key"),
 		ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default"))

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-redis/redis"
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
@@ -67,7 +68,7 @@ func (s *ServerSidePersistentTests) initializesStoreWhenDataReceived(t *ldtest.T
 	_, configurers := s.setupDataSources(t, sdkData)
 	configurers = append(configurers, persistence)
 
-	_, err := s.persistentStore.ReadField("launchdarkly:$inited")
+	_, err := s.persistentStore.Get("launchdarkly:$inited")
 	require.Error(t, err) // should not exist
 
 	_ = NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
@@ -125,7 +126,7 @@ func (s *ServerSidePersistentTests) dataSourceUpdatesRespectVersioning(t *ldtest
 	_ = NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
 	s.eventuallyRequireDataStoreInit(t, "launchdarkly")
 
-	require.NoError(t, s.persistentStore.WriteData("launchdarkly:features", s.initialFlags))
+	require.NoError(t, s.persistentStore.WriteMap("launchdarkly:features", s.initialFlags))
 
 	// Lower versioned updates are ignored
 	updateData := s.makeFlagData("flag-key", 1, ldvalue.String("new-value"))
@@ -163,7 +164,7 @@ func (s *ServerSidePersistentTests) dataSourceDeletesRespectVersioning(t *ldtest
 	_ = NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
 	s.eventuallyRequireDataStoreInit(t, "launchdarkly")
 
-	require.NoError(t, s.persistentStore.WriteData("launchdarkly:features", s.initialFlags))
+	require.NoError(t, s.persistentStore.WriteMap("launchdarkly:features", s.initialFlags))
 
 	// Lower versioned deletes are ignored
 	stream.StreamingService().PushDelete("flags", "flag-key", 1)
@@ -201,7 +202,7 @@ func (s *ServerSidePersistentTests) ignoresDirectDatabaseModifications(t *ldtest
 	pollUntilFlagValueUpdated(t, client, "flag-key", context,
 		ldvalue.String("default"), ldvalue.String("value"), ldvalue.String("default"))
 
-	require.NoError(t, s.persistentStore.WriteData("launchdarkly:features", s.initialFlags))
+	require.NoError(t, s.persistentStore.WriteMap("launchdarkly:features", s.initialFlags))
 
 	// This key was already cached, so it shouldn't see the change above.
 	h.RequireNever(t,
@@ -405,14 +406,14 @@ func (s *ServerSidePersistentTests) ignoresDroppedFlagsWithTTLCache(t *ldtest.T)
 
 func (s *ServerSidePersistentTests) eventuallyRequireDataStoreInit(t *ldtest.T, prefix string) {
 	h.RequireEventually(t, func() bool {
-		_, err := s.persistentStore.ReadField(prefix + ":$inited")
+		_, err := s.persistentStore.Get(prefix + ":$inited")
 		return err == nil
 	}, time.Second, time.Millisecond*20, prefix+":$inited key was not set")
 }
 
 func (s *ServerSidePersistentTests) eventuallyValidateFlagData(t *ldtest.T, prefix string, matchers map[string]m.Matcher) {
 	h.RequireEventually(t, func() bool {
-		data, err := s.persistentStore.ReadData(prefix + ":features")
+		data, err := s.persistentStore.GetMap(prefix + ":features")
 		if err != nil {
 			return false
 		}
@@ -423,7 +424,7 @@ func (s *ServerSidePersistentTests) eventuallyValidateFlagData(t *ldtest.T, pref
 
 func (s *ServerSidePersistentTests) neverValidateFlagData(t *ldtest.T, prefix string, matchers map[string]m.Matcher) {
 	h.RequireNever(t, func() bool {
-		data, err := s.persistentStore.ReadData(prefix + ":features")
+		data, err := s.persistentStore.GetMap(prefix + ":features")
 		if err != nil {
 			return false
 		}
