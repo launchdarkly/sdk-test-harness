@@ -1,8 +1,6 @@
 module github.com/launchdarkly/sdk-test-harness/v2
 
-go 1.22
-
-toolchain go1.23.1
+go 1.19
 
 require (
 	github.com/fatih/color v1.13.0

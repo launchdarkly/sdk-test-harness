@@ -37,6 +37,9 @@ func (s *ServerSidePersistentTests) doReadWriteTests(t *ldtest.T) {
 			t.Run("sdk reflects data source updates even with cache", func(t *ldtest.T) {
 				s.sdkReflectsDataSourceUpdatesEvenWithCache(t, cacheConfig)
 			})
+			t.Run("ignores direct database modifications", func(t *ldtest.T) {
+				s.ignoresDirectDatabaseModifications(t, cacheConfig)
+			})
 			t.Run("ignores dropped flags", func(t *ldtest.T) {
 				s.ignoresDroppedFlagsWithForeverCache(t)
 			})
@@ -216,13 +219,13 @@ func (s *ServerSidePersistentTests) ignoresDirectDatabaseModifications(t *ldtest
 
 	require.NoError(t, s.persistentStore.WriteMap("launchdarkly:features", s.initialFlags))
 
-	// This key was already cached, so it shouldn't see the change above.
-	h.RequireNever(t,
-		checkForUpdatedValue(t, client, "flag-key", context,
-			ldvalue.String("value"), ldvalue.String("new-value"), ldvalue.String("default")),
-		time.Millisecond*500, time.Millisecond*20, "flag-key was incorrectly updated")
-
 	if cacheConfig.Mode == servicedef.CacheModeInfinite {
+		// This key was already cached, so it shouldn't see the change above.
+		h.RequireNever(t,
+			checkForUpdatedValue(t, client, "flag-key", context,
+				ldvalue.String("value"), ldvalue.String("new-value"), ldvalue.String("default")),
+			time.Millisecond*500, time.Millisecond*20, "flag-key was incorrectly updated")
+
 		// But since we didn't evaluate this flag, this should actually be
 		// reflected by directly changing the database.
 		h.RequireEventually(t,
@@ -230,11 +233,17 @@ func (s *ServerSidePersistentTests) ignoresDirectDatabaseModifications(t *ldtest
 				ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default")),
 			time.Millisecond*500, time.Millisecond*20, "uncached-flag-key was incorrectly cached")
 	} else if cacheConfig.Mode == servicedef.CacheModeTTL {
+		// This key was already cached, so it shouldn't see the change above.
+		h.RequireNever(t,
+			checkForUpdatedValue(t, client, "flag-key", context,
+				ldvalue.String("value"), ldvalue.String("new-value"), ldvalue.String("default")),
+			time.Duration(int(time.Second)*cacheConfig.TTL.Value()/2), time.Millisecond*20, "flag-key was incorrectly updated")
+
 		// But eventually, it will expire and then we will fetch it from the database.
 		h.RequireEventually(t,
 			checkForUpdatedValue(t, client, "flag-key", context,
 				ldvalue.String("value"), ldvalue.String("fallthrough"), ldvalue.String("default")),
-			time.Second, time.Millisecond*20, "flag-key was incorrectly cached")
+			time.Duration(int(time.Second)*cacheConfig.TTL.Value()), time.Millisecond*20, "flag-key was incorrectly cached")
 	}
 }
 
