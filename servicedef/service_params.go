@@ -38,6 +38,7 @@ const (
 	CapabilityAnonymousRedaction = "anonymous-redaction"
 	CapabilityPollingGzip        = "polling-gzip"
 	CapabilityEvaluationHooks    = "evaluation-hooks"
+	CapabilityClientPrereqEvents = "client-prereq-events"
 
 	// CapabilityTLSVerifyPeer means the SDK is capable of establishing a TLS session and verifying
 	// its peer. This is generally a standard capability of all SDKs.
