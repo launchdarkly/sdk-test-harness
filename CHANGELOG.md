@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.24.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.23.0...v2.24.0) (2024-10-15)
+
+
+### Features
+
+* Add `client-prereq-events` capability ([#242](https://github.com/launchdarkly/sdk-test-harness/issues/242)) ([3172672](https://github.com/launchdarkly/sdk-test-harness/commit/317267255c61f4ebe5b5fc3e8bb02bdbc00e6cb6))
+
 ## [2.23.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.22.0...v2.23.0) (2024-10-08)
 
 
