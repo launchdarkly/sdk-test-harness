@@ -28,8 +28,6 @@ func doServerSidePersistentTests(t *ldtest.T) {
 type PersistentStore interface {
 	DSN() string
 
-	// TODO: Change these names to something less terrible, or make them even
-	// more generic.
 	Get(key string) (string, error)
 	GetMap(key string) (map[string]string, error)
 	WriteMap(key string, data map[string]string) error
