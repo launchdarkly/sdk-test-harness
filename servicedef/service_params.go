@@ -41,6 +41,7 @@ const (
 	CapabilityClientPrereqEvents       = "client-prereq-events"
 	CapabilityPersistentDataStore      = "persistent-data-store"
 	CapabilityPersistentDataStoreRedis = "persistent-data-store-redis"
+	CapabilityPersistentDataStoreConsul = "persistent-data-store-consul"
 
 	// CapabilityTLSVerifyPeer means the SDK is capable of establishing a TLS session and verifying
 	// its peer. This is generally a standard capability of all SDKs.

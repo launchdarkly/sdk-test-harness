@@ -28,19 +28,26 @@ func (r *RedisPersistentStore) Reset() error {
 	return r.redis.FlushAll(ctx).Err()
 }
 
-func (r *RedisPersistentStore) Get(key string) (string, error) {
+func (r *RedisPersistentStore) Get(prefix, key string) (string, bool, error) {
 	var ctx = context.Background()
-	return r.redis.Get(ctx, key).Result()
+	result, err := r.redis.Get(ctx, prefix+":"+key).Result()
+	if err == redis.Nil {
+		return result, false, err
+	} else if err != nil {
+		return "", false, err
+	}
+
+	return result, true, nil
 }
 
-func (r *RedisPersistentStore) GetMap(key string) (map[string]string, error) {
+func (r *RedisPersistentStore) GetMap(prefix, key string) (map[string]string, error) {
 	var ctx = context.Background()
-	return r.redis.HGetAll(ctx, key).Result()
+	return r.redis.HGetAll(ctx, prefix+":"+key).Result()
 }
 
-func (r *RedisPersistentStore) WriteMap(key string, data map[string]string) error {
+func (r *RedisPersistentStore) WriteMap(prefix, key string, data map[string]string) error {
 	var ctx = context.Background()
-	_, err := r.redis.HSet(ctx, key, data).Result()
+	_, err := r.redis.HSet(ctx, prefix+":"+key, data).Result()
 	return err
 }
 
