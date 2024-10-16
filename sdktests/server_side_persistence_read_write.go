@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-redis/redis"
 	"github.com/stretchr/testify/require"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
@@ -64,8 +63,8 @@ func (s *ServerSidePersistentTests) initializesStoreWhenDataReceived(t *ldtest.T
 	_, configurers := s.setupDataSources(t, sdkData)
 	configurers = append(configurers, persistence)
 
-	_, err := s.persistentStore.Get("launchdarkly:$inited")
-	require.Error(t, err) // should not exist
+	_, found, _ := s.persistentStore.Get("launchdarkly", "$inited")
+	require.False(t, found) // should not exist
 
 	_ = NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
 	s.eventuallyRequireDataStoreInit(t, "launchdarkly")
@@ -87,12 +86,8 @@ func (s *ServerSidePersistentTests) appliesUpdatesToStore(t *ldtest.T) {
 	stream, configurers := s.setupDataSources(t, sdkData)
 	configurers = append(configurers, persistence)
 
-	_, err := s.persistentStore.Get("launchdarkly:$inited")
-	if err != nil && err.Error() == string(redis.Nil) {
-		// as expected, inited key does not exist
-	} else {
-		require.Fail(t, "unexpected error failure", err)
-	}
+	_, found, _ := s.persistentStore.Get("launchdarkly", "$inited")
+	require.False(t, found)
 
 	_ = NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
 	s.eventuallyRequireDataStoreInit(t, "launchdarkly")
@@ -126,7 +121,7 @@ func (s *ServerSidePersistentTests) dataSourceUpdatesRespectVersioning(t *ldtest
 	_ = NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
 	s.eventuallyRequireDataStoreInit(t, "launchdarkly")
 
-	require.NoError(t, s.persistentStore.WriteMap("launchdarkly:features", s.initialFlags))
+	require.NoError(t, s.persistentStore.WriteMap("launchdarkly", "features", s.initialFlags))
 
 	// Lower versioned updates are ignored
 	updateData := s.makeFlagData("flag-key", 1, ldvalue.String("new-value"))
@@ -172,7 +167,7 @@ func (s *ServerSidePersistentTests) dataSourceDeletesRespectVersioning(t *ldtest
 	_ = NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
 	s.eventuallyRequireDataStoreInit(t, "launchdarkly")
 
-	require.NoError(t, s.persistentStore.WriteMap("launchdarkly:features", s.initialFlags))
+	require.NoError(t, s.persistentStore.WriteMap("launchdarkly", "features", s.initialFlags))
 
 	// Lower versioned deletes are ignored
 	stream.StreamingService().PushDelete("flags", "flag-key", 1)
@@ -211,7 +206,7 @@ func (s *ServerSidePersistentTests) ignoresDirectDatabaseModifications(
 	pollUntilFlagValueUpdated(t, client, "flag-key", context,
 		ldvalue.String("default"), ldvalue.String("value"), ldvalue.String("default"))
 
-	require.NoError(t, s.persistentStore.WriteMap("launchdarkly:features", s.initialFlags))
+	require.NoError(t, s.persistentStore.WriteMap("launchdarkly", "features", s.initialFlags))
 
 	if cacheConfig.Mode == servicedef.CacheModeInfinite {
 		// This key was already cached, so it shouldn't see the change above.
@@ -351,15 +346,15 @@ func (s *ServerSidePersistentTests) sdkReflectsDataSourceUpdatesEvenWithCache(
 //nolint:unparam
 func (s *ServerSidePersistentTests) eventuallyRequireDataStoreInit(t *ldtest.T, prefix string) {
 	h.RequireEventually(t, func() bool {
-		_, err := s.persistentStore.Get(prefix + ":$inited")
-		return err == nil
+		_, found, _ := s.persistentStore.Get(prefix, "$inited")
+		return found
 	}, time.Second, time.Millisecond*20, prefix+":$inited key was not set")
 }
 
 func (s *ServerSidePersistentTests) eventuallyValidateFlagData(
 	t *ldtest.T, prefix string, matchers map[string]m.Matcher) {
 	h.RequireEventually(t, func() bool {
-		data, err := s.persistentStore.GetMap(prefix + ":features")
+		data, err := s.persistentStore.GetMap(prefix, "features")
 		if err != nil {
 			return false
 		}
@@ -371,7 +366,7 @@ func (s *ServerSidePersistentTests) eventuallyValidateFlagData(
 //nolint:unparam
 func (s *ServerSidePersistentTests) neverValidateFlagData(t *ldtest.T, prefix string, matchers map[string]m.Matcher) {
 	h.RequireNever(t, func() bool {
-		data, err := s.persistentStore.GetMap(prefix + ":features")
+		data, err := s.persistentStore.GetMap(prefix, "features")
 		if err != nil {
 			return false
 		}

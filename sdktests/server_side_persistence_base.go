@@ -6,6 +6,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 
+	c "github.com/hashicorp/consul/api"
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldbuilders"
@@ -23,14 +24,24 @@ func doServerSidePersistentTests(t *ldtest.T) {
 
 		t.Run("redis", newServerSidePersistentTests(t, &RedisPersistentStore{redis: rdb}).Run)
 	}
+
+	if t.Capabilities().Has(servicedef.CapabilityPersistentDataStoreConsul) {
+		config := c.DefaultConfig()
+		config.Address = "localhost:8500"
+
+		consul, err := c.NewClient(config)
+		require.NoError(t, err)
+
+		t.Run("consul", newServerSidePersistentTests(t, &ConsulPersistentStore{consul: consul}).Run)
+	}
 }
 
 type PersistentStore interface {
 	DSN() string
 
-	Get(key string) (string, error)
-	GetMap(key string) (map[string]string, error)
-	WriteMap(key string, data map[string]string) error
+	Get(prefix, key string) (string, bool, error)
+	GetMap(prefix, key string) (map[string]string, error)
+	WriteMap(prefix, key string, data map[string]string) error
 
 	Type() servicedef.SDKConfigPersistentType
 
@@ -81,11 +92,11 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 
 func (s *ServerSidePersistentTests) usesDefaultPrefix(t *ldtest.T) {
 	require.NoError(t, s.persistentStore.Reset())
-	require.NoError(t, s.persistentStore.WriteMap("launchdarkly:features", s.initialFlags))
+	require.NoError(t, s.persistentStore.WriteMap("launchdarkly", "features", s.initialFlags))
 
 	persistence := NewPersistence()
 	persistence.SetStore(servicedef.SDKConfigPersistentStore{
-		Type: servicedef.Redis,
+		Type: s.persistentStore.Type(),
 		DSN:  s.persistentStore.DSN(),
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
@@ -103,7 +114,7 @@ func (s *ServerSidePersistentTests) usesCustomPrefix(t *ldtest.T) {
 
 	persistence := NewPersistence()
 	persistence.SetStore(servicedef.SDKConfigPersistentStore{
-		Type:   servicedef.Redis,
+		Type:   s.persistentStore.Type(),
 		DSN:    s.persistentStore.DSN(),
 		Prefix: customPrefix,
 	})
@@ -122,7 +133,7 @@ func (s *ServerSidePersistentTests) usesCustomPrefix(t *ldtest.T) {
 		"flag value was updated, but it should not have been",
 	)
 
-	require.NoError(t, s.persistentStore.WriteMap(customPrefix+":features", s.initialFlags))
+	require.NoError(t, s.persistentStore.WriteMap(customPrefix, "features", s.initialFlags))
 
 	pollUntilFlagValueUpdated(t, client, "flag-key", ldcontext.New("user-key"),
 		ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default"))
