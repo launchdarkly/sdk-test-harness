@@ -197,7 +197,8 @@ func (s *ServerSidePersistentTests) dataSourceDeletesRespectVersioning(t *ldtest
 	})
 }
 
-func (s *ServerSidePersistentTests) ignoresDirectDatabaseModifications(t *ldtest.T, cacheConfig servicedef.SDKConfigPersistentCache) {
+func (s *ServerSidePersistentTests) ignoresDirectDatabaseModifications(
+	t *ldtest.T, cacheConfig servicedef.SDKConfigPersistentCache) {
 	require.NoError(t, s.persistentStore.Reset())
 
 	persistence := NewPersistence()
@@ -248,7 +249,8 @@ func (s *ServerSidePersistentTests) ignoresDirectDatabaseModifications(t *ldtest
 	}
 }
 
-func (s *ServerSidePersistentTests) ignoresFlagsBeingDiscardedFromStore(t *ldtest.T, cacheConfig servicedef.SDKConfigPersistentCache) {
+func (s *ServerSidePersistentTests) ignoresFlagsBeingDiscardedFromStore(
+	t *ldtest.T, cacheConfig servicedef.SDKConfigPersistentCache) {
 	require.NoError(t, s.persistentStore.Reset())
 
 	persistence := NewPersistence()
@@ -355,7 +357,8 @@ func (s *ServerSidePersistentTests) doesNotCacheFlagMiss(t *ldtest.T, cacheConfi
 		time.Millisecond*500, time.Millisecond*20, "flag was never updated")
 }
 
-func (s *ServerSidePersistentTests) sdkReflectsDataSourceUpdatesEvenWithCache(t *ldtest.T, cacheConfig servicedef.SDKConfigPersistentCache) {
+func (s *ServerSidePersistentTests) sdkReflectsDataSourceUpdatesEvenWithCache(
+	t *ldtest.T, cacheConfig servicedef.SDKConfigPersistentCache) {
 	require.NoError(t, s.persistentStore.Reset())
 
 	persistence := NewPersistence()
@@ -434,7 +437,8 @@ func (s *ServerSidePersistentTests) eventuallyRequireDataStoreInit(t *ldtest.T, 
 	}, time.Second, time.Millisecond*20, prefix+":$inited key was not set")
 }
 
-func (s *ServerSidePersistentTests) eventuallyValidateFlagData(t *ldtest.T, prefix string, matchers map[string]m.Matcher) {
+func (s *ServerSidePersistentTests) eventuallyValidateFlagData(
+	t *ldtest.T, prefix string, matchers map[string]m.Matcher) {
 	h.RequireEventually(t, func() bool {
 		data, err := s.persistentStore.GetMap(prefix + ":features")
 		if err != nil {
