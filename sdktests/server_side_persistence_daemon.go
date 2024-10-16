@@ -29,7 +29,7 @@ func (s *ServerSidePersistentTests) ignoresInitialization(t *ldtest.T) {
 		DSN:  s.persistentStore.DSN(),
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
-		Mode: servicedef.Off,
+		Mode: servicedef.CacheModeOff,
 	})
 	context := ldcontext.New("user-key")
 
@@ -49,14 +49,14 @@ func (s *ServerSidePersistentTests) ignoresInitialization(t *ldtest.T) {
 			result.Reason.Value().GetErrorKind() == ldreason.EvalErrorFlagNotFound
 	}, time.Second, time.Millisecond*20, "flag was found before it should have been")
 
-	require.NoError(t, s.persistentStore.WriteData("launchdarkly:features", s.initialFlags))
+	require.NoError(t, s.persistentStore.WriteMap("launchdarkly:features", s.initialFlags))
 	pollUntilFlagValueUpdated(t, client, "flag-key", context,
 		ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default"))
 }
 
 func (s *ServerSidePersistentTests) canDisableCache(t *ldtest.T) {
 	require.NoError(t, s.persistentStore.Reset())
-	require.NoError(t, s.persistentStore.WriteData("launchdarkly:features", s.initialFlags))
+	require.NoError(t, s.persistentStore.WriteMap("launchdarkly:features", s.initialFlags))
 
 	persistence := NewPersistence()
 	persistence.SetStore(servicedef.SDKConfigPersistentStore{
@@ -64,7 +64,7 @@ func (s *ServerSidePersistentTests) canDisableCache(t *ldtest.T) {
 		DSN:  s.persistentStore.DSN(),
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
-		Mode: servicedef.Off,
+		Mode: servicedef.CacheModeOff,
 	})
 
 	context := ldcontext.New("user-key")
@@ -89,7 +89,7 @@ func (s *ServerSidePersistentTests) cachesFlagForDuration(t *ldtest.T) {
 		DSN:  s.persistentStore.DSN(),
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
-		Mode: servicedef.TTL,
+		Mode: servicedef.CacheModeTTL,
 		TTL:  o.Some(1),
 	})
 	context := ldcontext.New("user-key")
@@ -98,7 +98,7 @@ func (s *ServerSidePersistentTests) cachesFlagForDuration(t *ldtest.T) {
 		require.NoError(t, s.persistentStore.Reset())
 		client := NewSDKClient(t, persistence)
 
-		require.NoError(t, s.persistentStore.WriteData("launchdarkly:features", s.initialFlags))
+		require.NoError(t, s.persistentStore.WriteMap("launchdarkly:features", s.initialFlags))
 
 		pollUntilFlagValueUpdated(t, client, "flag-key", context,
 			ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default"))
@@ -132,7 +132,7 @@ func (s *ServerSidePersistentTests) cachesFlagForDuration(t *ldtest.T) {
 		m.In(t).Assert(result.Value, m.Equal(ldvalue.String("default")))
 		m.In(t).Assert(result.Reason.Value().GetErrorKind(), m.Equal(ldreason.EvalErrorFlagNotFound))
 
-		require.NoError(t, s.persistentStore.WriteData("launchdarkly:features", s.initialFlags))
+		require.NoError(t, s.persistentStore.WriteMap("launchdarkly:features", s.initialFlags))
 
 		h.RequireNever(t,
 			checkForUpdatedValue(t, client, "flag-key", context,
@@ -153,12 +153,12 @@ func (s *ServerSidePersistentTests) cachesFlagForever(t *ldtest.T) {
 		DSN:  s.persistentStore.DSN(),
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
-		Mode: servicedef.Infinite,
+		Mode: servicedef.CacheModeInfinite,
 	})
 	context := ldcontext.New("user-key")
 
 	require.NoError(t, s.persistentStore.Reset())
-	require.NoError(t, s.persistentStore.WriteData("launchdarkly:features", s.initialFlags))
+	require.NoError(t, s.persistentStore.WriteMap("launchdarkly:features", s.initialFlags))
 
 	client := NewSDKClient(t, persistence)
 
