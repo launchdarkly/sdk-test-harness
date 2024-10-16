@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 )
 
 type RedisPersistentStore struct {

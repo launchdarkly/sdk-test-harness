@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/go-redis/redis"
+	"github.com/stretchr/testify/require"
+
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
@@ -13,7 +15,6 @@ import (
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
-	"github.com/stretchr/testify/require"
 )
 
 func (s *ServerSidePersistentTests) doReadWriteTests(t *ldtest.T) {
