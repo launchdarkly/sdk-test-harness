@@ -420,12 +420,12 @@ func doServerSideAllFlagsIncludesToplevelPreqrequisitesTest(t *ldtest.T) {
 	directPrereq2 := ldbuilders.NewFlagBuilder("directPrereq2").Version(200).
 		Variations(ldvalue.String("value3")).On(true).FallthroughVariation(0).
 		Build()
-	indirectPrereqOf2 := ldbuilders.NewFlagBuilder("indirectPrereqOf1").Version(300).
+	indirectPrereqOf1 := ldbuilders.NewFlagBuilder("indirectPrereqOf1").Version(300).
 		Variations(ldvalue.String("value4")).On(true).FallthroughVariation(0).
 		Build()
 
 	dataBuilder := mockld.NewServerSDKDataBuilder()
-	dataBuilder.Flag(topLevel, directPrereq1, directPrereq2, indirectPrereqOf2)
+	dataBuilder.Flag(topLevel, directPrereq1, directPrereq2, indirectPrereqOf1)
 
 	dataSource := NewSDKDataSource(t, dataBuilder.Build())
 	client := NewSDKClient(t, dataSource)
