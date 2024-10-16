@@ -425,6 +425,7 @@ func (s *ServerSidePersistentTests) ignoresDroppedFlagsWithTTLCache(t *ldtest.T)
 		time.Second, time.Millisecond*20, "flag-key was incorrectly cached")
 }
 
+//nolint:unparam
 func (s *ServerSidePersistentTests) eventuallyRequireDataStoreInit(t *ldtest.T, prefix string) {
 	h.RequireEventually(t, func() bool {
 		_, err := s.persistentStore.Get(prefix + ":$inited")
@@ -443,6 +444,7 @@ func (s *ServerSidePersistentTests) eventuallyValidateFlagData(t *ldtest.T, pref
 	}, time.Second, time.Millisecond*20, "flag data did not match")
 }
 
+//nolint:unparam
 func (s *ServerSidePersistentTests) neverValidateFlagData(t *ldtest.T, prefix string, matchers map[string]m.Matcher) {
 	h.RequireNever(t, func() bool {
 		data, err := s.persistentStore.GetMap(prefix + ":features")
