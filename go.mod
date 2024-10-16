@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/fatih/color v1.13.0
+	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/gorilla/mux v1.8.0
 	github.com/launchdarkly/eventsource v1.6.2
 	github.com/launchdarkly/go-jsonstream/v3 v3.0.0
@@ -13,7 +14,7 @@ require (
 	github.com/redis/go-redis/v9 v9.6.1
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/exp v0.0.0-20220823124025-807a23277127
-	gopkg.in/yaml.v3 v3.0.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -25,7 +26,9 @@ require (
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/mattn/go-colorable v0.1.9 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/onsi/ginkgo v1.16.5 // indirect
+	github.com/onsi/gomega v1.34.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
-	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
+	golang.org/x/sys v0.24.0 // indirect
 )

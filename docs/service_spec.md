@@ -102,6 +102,12 @@ v4 of the event schema originally required a `contextKeys` property on all featu
 
 This means that the SDK supports technology migrations, a feature which allows customers to migrate between data sources using well-defined migration stages.
 
+#### Capability `"persistent-data-store"`
+
+This means the SDK is capable of interacting with external persistent data stores. The test harness must further identify which store types are supported through additional capabilities listed below.
+
+- `persistent-data-store-redis`: This means the SDK is capable of interacting with a Redis data store.
+
 #### Capability `"polling-gzip"`
 
 This means the SDK is requesting gzip compression support on polling payloads. The SDK is expected to set the `Accept-Encoding` header to `gzip` in addition to enabling this capability.

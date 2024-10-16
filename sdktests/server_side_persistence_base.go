@@ -14,52 +14,60 @@ import (
 )
 
 func doServerSidePersistentTests(t *ldtest.T) {
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
+	if t.Capabilities().Has(servicedef.CapabilityPersistentDataStoreRedis) {
+		rdb := redis.NewClient(&redis.Options{
+			Addr:     "localhost:6379",
+			Password: "", // no password set
+			DB:       0,  // use default DB
+		})
 
-	newServerSidePersistentTests(t, &RedisPersistentStore{redis: rdb}).Run(t)
+		t.Run("redis", newServerSidePersistentTests(t, &RedisPersistentStore{redis: rdb}).Run)
+	}
 }
 
 type PersistentStore interface {
 	DSN() string
 
-	WriteData(key string, data map[string]string) error
+	Get(key string) (string, error)
+	GetMap(key string) (map[string]string, error)
+	WriteMap(key string, data map[string]string) error
+
+	Type() servicedef.SDKConfigPersistentType
 
 	Reset() error
 }
 
 type ServerSidePersistentTests struct {
+	CommonStreamingTests
 	persistentStore PersistentStore
 	initialFlags    map[string]string
 }
 
 func newServerSidePersistentTests(t *ldtest.T, persistentStore PersistentStore) *ServerSidePersistentTests {
 	flagKeyBytes, err :=
-		ldbuilders.NewFlagBuilder("flag-key").Version(1).
-			On(true).Variations(ldvalue.String("off"), ldvalue.String("match"), ldvalue.String("fallthrough")).
-			OffVariation(0).
-			FallthroughVariation(2).
+		ldbuilders.NewFlagBuilder("flag-key").Version(100).
+			On(true).Variations(ldvalue.String("fallthrough"), ldvalue.String("other")).
+			OffVariation(1).
+			FallthroughVariation(0).
 			Build().MarshalJSON()
 	require.NoError(t, err)
 
 	initialFlags := map[string]string{"flag-key": string(flagKeyBytes)}
 
 	uncachedFlagKeyBytes, err :=
-		ldbuilders.NewFlagBuilder("uncached-flag-key").Version(1).
-			On(true).Variations(ldvalue.String("off"), ldvalue.String("match"), ldvalue.String("fallthrough")).
-			OffVariation(0).
-			FallthroughVariation(2).
+		ldbuilders.NewFlagBuilder("uncached-flag-key").Version(100).
+			On(true).Variations(ldvalue.String("fallthrough"), ldvalue.String("other")).
+			OffVariation(1).
+			FallthroughVariation(0).
 			Build().MarshalJSON()
 	require.NoError(t, err)
 
 	initialFlags["uncached-flag-key"] = string(uncachedFlagKeyBytes)
 
 	return &ServerSidePersistentTests{
-		persistentStore: persistentStore,
-		initialFlags:    initialFlags,
+		CommonStreamingTests: NewCommonStreamingTests(t, "serverSidePersistenceTests"),
+		persistentStore:      persistentStore,
+		initialFlags:         initialFlags,
 	}
 }
 
@@ -68,11 +76,12 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 	t.Run("uses custom prefix", s.usesCustomPrefix)
 
 	t.Run("daemon mode", s.doDaemonModeTests)
+	t.Run("read-write", s.doReadWriteTests)
 }
 
 func (s *ServerSidePersistentTests) usesDefaultPrefix(t *ldtest.T) {
 	require.NoError(t, s.persistentStore.Reset())
-	require.NoError(t, s.persistentStore.WriteData("launchdarkly:features", s.initialFlags))
+	require.NoError(t, s.persistentStore.WriteMap("launchdarkly:features", s.initialFlags))
 
 	persistence := NewPersistence()
 	persistence.SetStore(servicedef.SDKConfigPersistentStore{
@@ -80,7 +89,7 @@ func (s *ServerSidePersistentTests) usesDefaultPrefix(t *ldtest.T) {
 		DSN:  s.persistentStore.DSN(),
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
-		Mode: servicedef.Off,
+		Mode: servicedef.CacheModeOff,
 	})
 
 	client := NewSDKClient(t, persistence)
@@ -99,7 +108,7 @@ func (s *ServerSidePersistentTests) usesCustomPrefix(t *ldtest.T) {
 		Prefix: customPrefix,
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
-		Mode: servicedef.Off,
+		Mode: servicedef.CacheModeOff,
 	})
 
 	client := NewSDKClient(t, persistence)
@@ -113,7 +122,7 @@ func (s *ServerSidePersistentTests) usesCustomPrefix(t *ldtest.T) {
 		"flag value was updated, but it should not have been",
 	)
 
-	require.NoError(t, s.persistentStore.WriteData(customPrefix+":features", s.initialFlags))
+	require.NoError(t, s.persistentStore.WriteMap(customPrefix+":features", s.initialFlags))
 
 	pollUntilFlagValueUpdated(t, client, "flag-key", ldcontext.New("user-key"),
 		ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default"))
