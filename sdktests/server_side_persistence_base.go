@@ -6,7 +6,13 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
 	c "github.com/hashicorp/consul/api"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldbuilders"
@@ -22,7 +28,7 @@ func doServerSidePersistentTests(t *ldtest.T) {
 			DB:       0,  // use default DB
 		})
 
-		t.Run("redis", newServerSidePersistentTests(t, &RedisPersistentStore{redis: rdb}).Run)
+		t.Run("redis", newServerSidePersistentTests(t, &RedisPersistentStore{redis: rdb}, "launchdarkly").Run)
 	}
 
 	if t.Capabilities().Has(servicedef.CapabilityPersistentDataStoreConsul) {
@@ -32,7 +38,30 @@ func doServerSidePersistentTests(t *ldtest.T) {
 		consul, err := c.NewClient(config)
 		require.NoError(t, err)
 
-		t.Run("consul", newServerSidePersistentTests(t, &ConsulPersistentStore{consul: consul}).Run)
+		t.Run("consul", newServerSidePersistentTests(t, &ConsulPersistentStore{consul: consul}, "launchdarkly").Run)
+	}
+
+	if t.Capabilities().Has(servicedef.CapabilityPersistentDataStoreDynamoDB) {
+		mySession := session.Must(session.NewSession(
+			aws.NewConfig().
+				WithRegion("us-east-1").
+				WithEndpoint("http://localhost:8000").
+				WithCredentials(
+					credentials.NewStaticCredentials(
+						"dummy",
+						"dummy",
+						"dummy",
+					),
+				),
+		))
+
+		// Create a DynamoDB client from just a session.
+		svc := dynamodb.New(mySession)
+
+		store := DynamoDBPersistentStore{dynamodb: svc}
+		store.Reset()
+
+		t.Run("dynamodb", newServerSidePersistentTests(t, &store, "").Run)
 	}
 }
 
@@ -50,11 +79,12 @@ type PersistentStore interface {
 
 type ServerSidePersistentTests struct {
 	CommonStreamingTests
+	defaultPrefix   string
 	persistentStore PersistentStore
 	initialFlags    map[string]string
 }
 
-func newServerSidePersistentTests(t *ldtest.T, persistentStore PersistentStore) *ServerSidePersistentTests {
+func newServerSidePersistentTests(t *ldtest.T, persistentStore PersistentStore, defaultPrefix string) *ServerSidePersistentTests {
 	flagKeyBytes, err :=
 		ldbuilders.NewFlagBuilder("flag-key").Version(100).
 			On(true).Variations(ldvalue.String("fallthrough"), ldvalue.String("other")).
@@ -77,6 +107,7 @@ func newServerSidePersistentTests(t *ldtest.T, persistentStore PersistentStore) 
 
 	return &ServerSidePersistentTests{
 		CommonStreamingTests: NewCommonStreamingTests(t, "serverSidePersistenceTests"),
+		defaultPrefix:        defaultPrefix,
 		persistentStore:      persistentStore,
 		initialFlags:         initialFlags,
 	}
@@ -92,7 +123,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 
 func (s *ServerSidePersistentTests) usesDefaultPrefix(t *ldtest.T) {
 	require.NoError(t, s.persistentStore.Reset())
-	require.NoError(t, s.persistentStore.WriteMap("launchdarkly", "features", s.initialFlags))
+	require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
 
 	persistence := NewPersistence()
 	persistence.SetStore(servicedef.SDKConfigPersistentStore{
@@ -116,7 +147,7 @@ func (s *ServerSidePersistentTests) usesCustomPrefix(t *ldtest.T) {
 	persistence.SetStore(servicedef.SDKConfigPersistentStore{
 		Type:   s.persistentStore.Type(),
 		DSN:    s.persistentStore.DSN(),
-		Prefix: customPrefix,
+		Prefix: o.Some(customPrefix),
 	})
 	persistence.SetCache(servicedef.SDKConfigPersistentCache{
 		Mode: servicedef.CacheModeOff,

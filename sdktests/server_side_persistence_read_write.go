@@ -63,11 +63,11 @@ func (s *ServerSidePersistentTests) initializesStoreWhenDataReceived(t *ldtest.T
 	_, configurers := s.setupDataSources(t, sdkData)
 	configurers = append(configurers, persistence)
 
-	_, found, _ := s.persistentStore.Get("launchdarkly", "$inited")
+	_, found, _ := s.persistentStore.Get(s.defaultPrefix, "$inited")
 	require.False(t, found) // should not exist
 
 	_ = NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
-	s.eventuallyRequireDataStoreInit(t, "launchdarkly")
+	s.eventuallyRequireDataStoreInit(t, s.defaultPrefix)
 }
 
 func (s *ServerSidePersistentTests) appliesUpdatesToStore(t *ldtest.T) {
@@ -86,18 +86,18 @@ func (s *ServerSidePersistentTests) appliesUpdatesToStore(t *ldtest.T) {
 	stream, configurers := s.setupDataSources(t, sdkData)
 	configurers = append(configurers, persistence)
 
-	_, found, _ := s.persistentStore.Get("launchdarkly", "$inited")
+	_, found, _ := s.persistentStore.Get(s.defaultPrefix, "$inited")
 	require.False(t, found)
 
 	_ = NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
-	s.eventuallyRequireDataStoreInit(t, "launchdarkly")
-	s.eventuallyValidateFlagData(t, "launchdarkly", map[string]m.Matcher{
+	s.eventuallyRequireDataStoreInit(t, s.defaultPrefix)
+	s.eventuallyValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 		"flag-key": basicFlagValidationMatcher("flag-key", 1, "value"),
 	})
 
 	updateData := s.makeFlagData("flag-key", 2, ldvalue.String("new-value"))
 	stream.StreamingService().PushUpdate("flags", "flag-key", updateData)
-	s.eventuallyValidateFlagData(t, "launchdarkly", map[string]m.Matcher{
+	s.eventuallyValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 		"flag-key": basicFlagValidationMatcher("flag-key", 2, "new-value"),
 	})
 }
@@ -119,14 +119,14 @@ func (s *ServerSidePersistentTests) dataSourceUpdatesRespectVersioning(t *ldtest
 	configurers = append(configurers, persistence)
 
 	_ = NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
-	s.eventuallyRequireDataStoreInit(t, "launchdarkly")
+	s.eventuallyRequireDataStoreInit(t, s.defaultPrefix)
 
-	require.NoError(t, s.persistentStore.WriteMap("launchdarkly", "features", s.initialFlags))
+	require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
 
 	// Lower versioned updates are ignored
 	updateData := s.makeFlagData("flag-key", 1, ldvalue.String("new-value"))
 	stream.StreamingService().PushUpdate("flags", "flag-key", updateData)
-	s.neverValidateFlagData(t, "launchdarkly", map[string]m.Matcher{
+	s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 		"flag-key":          basicFlagValidationMatcher("flag-key", 1, "new-value"),
 		"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "value"),
 	})
@@ -134,7 +134,7 @@ func (s *ServerSidePersistentTests) dataSourceUpdatesRespectVersioning(t *ldtest
 	// Same versioned updates are ignored
 	updateData = s.makeFlagData("flag-key", 100, ldvalue.String("new-value"))
 	stream.StreamingService().PushUpdate("flags", "flag-key", updateData)
-	s.neverValidateFlagData(t, "launchdarkly", map[string]m.Matcher{
+	s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 		"flag-key":          basicFlagValidationMatcher("flag-key", 1, "new-value"),
 		"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "value"),
 	})
@@ -142,7 +142,7 @@ func (s *ServerSidePersistentTests) dataSourceUpdatesRespectVersioning(t *ldtest
 	// Higher versioned updates are applied
 	updateData = s.makeFlagData("flag-key", 200, ldvalue.String("new-value"))
 	stream.StreamingService().PushUpdate("flags", "flag-key", updateData)
-	s.neverValidateFlagData(t, "launchdarkly", map[string]m.Matcher{
+	s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 		"flag-key":          basicFlagValidationMatcher("flag-key", 200, "new-value"),
 		"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "value"),
 	})
@@ -165,20 +165,20 @@ func (s *ServerSidePersistentTests) dataSourceDeletesRespectVersioning(t *ldtest
 	configurers = append(configurers, persistence)
 
 	_ = NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
-	s.eventuallyRequireDataStoreInit(t, "launchdarkly")
+	s.eventuallyRequireDataStoreInit(t, s.defaultPrefix)
 
-	require.NoError(t, s.persistentStore.WriteMap("launchdarkly", "features", s.initialFlags))
+	require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
 
 	// Lower versioned deletes are ignored
 	stream.StreamingService().PushDelete("flags", "flag-key", 1)
-	s.neverValidateFlagData(t, "launchdarkly", map[string]m.Matcher{
+	s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 		"flag-key":          basicDeletedFlagValidationMatcher(1),
 		"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "fallthrough"),
 	})
 
 	// Higher versioned deletes are applied
 	stream.StreamingService().PushDelete("flags", "flag-key", 200)
-	s.eventuallyValidateFlagData(t, "launchdarkly", map[string]m.Matcher{
+	s.eventuallyValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 		"flag-key":          basicDeletedFlagValidationMatcher(200),
 		"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "fallthrough"),
 	})
@@ -201,12 +201,12 @@ func (s *ServerSidePersistentTests) ignoresDirectDatabaseModifications(
 
 	client := NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
 	context := ldcontext.New("user-key")
-	s.eventuallyRequireDataStoreInit(t, "launchdarkly")
+	s.eventuallyRequireDataStoreInit(t, s.defaultPrefix)
 
 	pollUntilFlagValueUpdated(t, client, "flag-key", context,
 		ldvalue.String("default"), ldvalue.String("value"), ldvalue.String("default"))
 
-	require.NoError(t, s.persistentStore.WriteMap("launchdarkly", "features", s.initialFlags))
+	require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
 
 	if cacheConfig.Mode == servicedef.CacheModeInfinite {
 		// This key was already cached, so it shouldn't see the change above.
@@ -253,7 +253,7 @@ func (s *ServerSidePersistentTests) ignoresFlagsBeingDiscardedFromStore(
 
 	client := NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
 	context := ldcontext.New("user-key")
-	s.eventuallyRequireDataStoreInit(t, "launchdarkly")
+	s.eventuallyRequireDataStoreInit(t, s.defaultPrefix)
 
 	pollUntilFlagValueUpdated(t, client, "flag-key", context,
 		ldvalue.String("default"), ldvalue.String("value"), ldvalue.String("default"))
@@ -290,7 +290,7 @@ func (s *ServerSidePersistentTests) doesNotCacheFlagMiss(t *ldtest.T, cacheConfi
 
 	client := NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
 	context := ldcontext.New("user-key")
-	s.eventuallyRequireDataStoreInit(t, "launchdarkly")
+	s.eventuallyRequireDataStoreInit(t, s.defaultPrefix)
 
 	response := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 		FlagKey:      "flag-key",
@@ -327,7 +327,7 @@ func (s *ServerSidePersistentTests) sdkReflectsDataSourceUpdatesEvenWithCache(
 
 	client := NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
 	context := ldcontext.New("user-key")
-	s.eventuallyRequireDataStoreInit(t, "launchdarkly")
+	s.eventuallyRequireDataStoreInit(t, s.defaultPrefix)
 
 	pollUntilFlagValueUpdated(t, client, "flag-key", context,
 		ldvalue.String("default"), ldvalue.String("value"), ldvalue.String("default"))
@@ -348,7 +348,7 @@ func (s *ServerSidePersistentTests) eventuallyRequireDataStoreInit(t *ldtest.T, 
 	h.RequireEventually(t, func() bool {
 		_, found, _ := s.persistentStore.Get(prefix, "$inited")
 		return found
-	}, time.Second, time.Millisecond*20, prefix+":$inited key was not set")
+	}, time.Second, time.Millisecond*20, "$inited key was not set")
 }
 
 func (s *ServerSidePersistentTests) eventuallyValidateFlagData(

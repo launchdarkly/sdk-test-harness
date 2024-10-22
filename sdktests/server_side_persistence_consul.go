@@ -92,7 +92,6 @@ func (c *ConsulPersistentStore) WriteMap(prefix, key string, data map[string]str
 }
 
 func batchOperations(kv *consul.KV, ops []*consul.KVTxnOp) error {
-	fmt.Printf("batchOperations: %+v\n", ops)
 	for i := 0; i < len(ops); {
 		j := i + 64
 		if j > len(ops) {
