@@ -55,10 +55,7 @@ func doServerSidePersistentTests(t *ldtest.T) {
 				),
 		))
 
-		// Create a DynamoDB client from just a session.
-		svc := dynamodb.New(mySession)
-
-		store := DynamoDBPersistentStore{dynamodb: svc}
+		store := DynamoDBPersistentStore{dynamodb: dynamodb.New(mySession)}
 		store.Reset()
 
 		t.Run("dynamodb", newServerSidePersistentTests(t, &store, "").Run)
