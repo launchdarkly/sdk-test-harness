@@ -65,7 +65,7 @@ func doServerSidePersistentTests(t *ldtest.T) {
 type PersistentStore interface {
 	DSN() string
 
-	Get(prefix, key string) (string, bool, error)
+	Get(prefix, key string) (o.Maybe[string], error)
 	GetMap(prefix, key string) (map[string]string, error)
 	WriteMap(prefix, key string, data map[string]string) error
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 )
 
@@ -75,7 +76,7 @@ func (d *DynamoDBPersistentStore) Reset() error {
 	return nil
 }
 
-func (d *DynamoDBPersistentStore) Get(prefix, key string) (string, bool, error) {
+func (d *DynamoDBPersistentStore) Get(prefix, key string) (o.Maybe[string], error) {
 	result, err := d.dynamodb.GetItem(
 		&dynamodb.GetItemInput{
 			TableName: aws.String(tableName),
@@ -86,18 +87,18 @@ func (d *DynamoDBPersistentStore) Get(prefix, key string) (string, bool, error) 
 		})
 
 	if err != nil || result == nil {
-		return "", false, err
+		return o.None[string](), err
 	} else if result.Item == nil {
-		return "", false, nil
+		return o.None[string](), nil
 	} else if key == initedKey {
-		return "", true, nil
+		return o.Some(""), nil
 	}
 
 	if len(result.Item) != 1 {
-		return "", false, nil
+		return o.None[string](), nil
 	}
 
-	return *result.Item[itemJSONAttribute].S, true, nil
+	return o.Some(*result.Item[itemJSONAttribute].S), nil
 }
 
 func (d *DynamoDBPersistentStore) GetMap(prefix, key string) (map[string]string, error) {

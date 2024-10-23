@@ -6,6 +6,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 )
 
@@ -28,16 +29,14 @@ func (r *RedisPersistentStore) Reset() error {
 	return r.redis.FlushAll(ctx).Err()
 }
 
-func (r *RedisPersistentStore) Get(prefix, key string) (string, bool, error) {
+func (r *RedisPersistentStore) Get(prefix, key string) (o.Maybe[string], error) {
 	var ctx = context.Background()
 	result, err := r.redis.Get(ctx, prefix+":"+key).Result()
-	if err == redis.Nil {
-		return result, false, err
-	} else if err != nil {
-		return "", false, err
+	if err == redis.Nil || err != nil {
+		return o.None[string](), err
 	}
 
-	return result, true, nil
+	return o.Some(result), nil
 }
 
 func (r *RedisPersistentStore) GetMap(prefix, key string) (map[string]string, error) {

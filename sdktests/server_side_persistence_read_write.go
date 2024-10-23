@@ -63,8 +63,8 @@ func (s *ServerSidePersistentTests) initializesStoreWhenDataReceived(t *ldtest.T
 	_, configurers := s.setupDataSources(t, sdkData)
 	configurers = append(configurers, persistence)
 
-	_, found, _ := s.persistentStore.Get(s.defaultPrefix, "$inited")
-	require.False(t, found) // should not exist
+	value, _ := s.persistentStore.Get(s.defaultPrefix, "$inited")
+	require.False(t, value.IsDefined()) // should not exist
 
 	_ = NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
 	s.eventuallyRequireDataStoreInit(t, s.defaultPrefix)
@@ -86,8 +86,8 @@ func (s *ServerSidePersistentTests) appliesUpdatesToStore(t *ldtest.T) {
 	stream, configurers := s.setupDataSources(t, sdkData)
 	configurers = append(configurers, persistence)
 
-	_, found, _ := s.persistentStore.Get(s.defaultPrefix, "$inited")
-	require.False(t, found)
+	value, _ := s.persistentStore.Get(s.defaultPrefix, "$inited")
+	require.False(t, value.IsDefined()) // should not exist
 
 	_ = NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
 	s.eventuallyRequireDataStoreInit(t, s.defaultPrefix)
@@ -346,8 +346,8 @@ func (s *ServerSidePersistentTests) sdkReflectsDataSourceUpdatesEvenWithCache(
 //nolint:unparam
 func (s *ServerSidePersistentTests) eventuallyRequireDataStoreInit(t *ldtest.T, prefix string) {
 	h.RequireEventually(t, func() bool {
-		_, found, _ := s.persistentStore.Get(prefix, "$inited")
-		return found
+		value, _ := s.persistentStore.Get(prefix, "$inited")
+		return value.IsDefined()
 	}, time.Second, time.Millisecond*20, "$inited key was not set")
 }
 

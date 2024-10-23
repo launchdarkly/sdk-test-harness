@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	consul "github.com/hashicorp/consul/api"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 )
 
@@ -28,15 +29,15 @@ func (c *ConsulPersistentStore) Reset() error {
 	return err
 }
 
-func (c *ConsulPersistentStore) Get(prefix, key string) (string, bool, error) {
+func (c *ConsulPersistentStore) Get(prefix, key string) (o.Maybe[string], error) {
 	kv := c.consul.KV()
 
 	pair, _, err := kv.Get(prefix+"/"+key, nil)
 	if err != nil || pair == nil {
-		return "", false, err
+		return o.None[string](), err
 	}
 
-	return string(pair.Value), true, nil
+	return o.Some(string(pair.Value)), nil
 }
 
 func (c *ConsulPersistentStore) GetMap(prefix, key string) (map[string]string, error) {
