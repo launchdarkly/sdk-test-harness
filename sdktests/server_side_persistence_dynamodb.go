@@ -1,7 +1,6 @@
 package sdktests
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -197,7 +196,7 @@ func (d *DynamoDBPersistentStore) WriteMap(prefix, key string, data map[string]s
 		}},
 	})
 
-	if err := batchWriteRequests(context.Background(), d.dynamodb, dynamoDbTableName, requests); err != nil {
+	if err := batchWriteRequests(d.dynamodb, dynamoDbTableName, requests); err != nil {
 		// COVERAGE: can't cause an error here in unit tests because we only get this far if the
 		// DynamoDB client is successful on the initial query
 		return fmt.Errorf("failed to write %d items(s) in batches: %s", len(requests), err)
@@ -209,7 +208,6 @@ func (d *DynamoDBPersistentStore) WriteMap(prefix, key string, data map[string]s
 // batchWriteRequests executes a list of write requests (PutItem or DeleteItem)
 // in batches of 25, which is the maximum BatchWriteItem can handle.
 func batchWriteRequests(
-	context context.Context,
 	client *dynamodb.DynamoDB,
 	table string,
 	requests []*dynamodb.WriteRequest,
@@ -223,9 +221,6 @@ func batchWriteRequests(
 			RequestItems: map[string][]*dynamodb.WriteRequest{table: batch},
 		})
 		if err != nil {
-			// COVERAGE: can't simulate this condition in unit tests because we will only get this
-			// far if the initial query in Init() already succeeded, and we don't have the ability
-			// to make DynamoDB fail *selectively* within a single test
 			return err
 		}
 	}
