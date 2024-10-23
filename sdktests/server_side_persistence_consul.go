@@ -13,7 +13,7 @@ type ConsulPersistentStore struct {
 	consul *consul.Client
 }
 
-func (c ConsulPersistentStore) DSN() string {
+func (c *ConsulPersistentStore) DSN() string {
 	// TODO: Fix this address lookup
 	return fmt.Sprintf("%s", consul.DefaultConfig().Address)
 }

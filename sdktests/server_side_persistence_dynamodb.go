@@ -33,7 +33,7 @@ type DynamoDBPersistentStore struct {
 	dynamodb *dynamodb.DynamoDB
 }
 
-func (d DynamoDBPersistentStore) DSN() string {
+func (d *DynamoDBPersistentStore) DSN() string {
 	return ""
 }
 

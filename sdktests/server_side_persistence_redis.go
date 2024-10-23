@@ -14,7 +14,7 @@ type RedisPersistentStore struct {
 	redis *redis.Client
 }
 
-func (r RedisPersistentStore) DSN() string {
+func (r *RedisPersistentStore) DSN() string {
 	return fmt.Sprintf("redis://%s", r.redis.Options().Addr)
 }
 
