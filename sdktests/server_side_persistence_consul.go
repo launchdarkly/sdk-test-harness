@@ -57,7 +57,8 @@ func (c *ConsulPersistentStore) GetMap(prefix, key string) (map[string]string, e
 func (c *ConsulPersistentStore) WriteMap(prefix, key string, data map[string]string) error {
 	kv := c.consul.KV()
 
-	// Start by reading the existing keys; we will later delete any of these that weren't in allData.
+	// Start by reading the existing keys; we will later delete any of these
+	// that weren't in data.
 	pairs, _, err := kv.List(prefix, nil)
 	if err != nil {
 		return fmt.Errorf("failed to get existing items prior to Init: %s", err)
