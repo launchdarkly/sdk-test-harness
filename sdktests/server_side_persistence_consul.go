@@ -13,8 +13,6 @@ type ConsulPersistentStore struct {
 	consul *consul.Client
 }
 
-// {{{ PersistentStore implementation
-
 func (c ConsulPersistentStore) DSN() string {
 	// TODO: Fix this address lookup
 	return fmt.Sprintf("%s", consul.DefaultConfig().Address)
@@ -117,5 +115,3 @@ func batchOperations(kv *consul.KV, ops []*consul.KVTxnOp) error {
 	}
 	return nil
 }
-
-// }}}

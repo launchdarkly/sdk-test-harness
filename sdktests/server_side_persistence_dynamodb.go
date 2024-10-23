@@ -33,8 +33,6 @@ type DynamoDBPersistentStore struct {
 	dynamodb *dynamodb.DynamoDB
 }
 
-// {{{ PersistentStore implementation
-
 func (d DynamoDBPersistentStore) DSN() string {
 	return ""
 }
@@ -243,5 +241,3 @@ func addPrefix(prefix, value string) string {
 
 	return prefix + ":" + value
 }
-
-// }}}

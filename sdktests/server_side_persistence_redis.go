@@ -14,8 +14,6 @@ type RedisPersistentStore struct {
 	redis *redis.Client
 }
 
-// {{{ PersistentStore implementation
-
 func (r RedisPersistentStore) DSN() string {
 	return fmt.Sprintf("redis://%s", r.redis.Options().Addr)
 }
@@ -49,5 +47,3 @@ func (r *RedisPersistentStore) WriteMap(prefix, key string, data map[string]stri
 	_, err := r.redis.HSet(ctx, prefix+":"+key, data).Result()
 	return err
 }
-
-// }}}
