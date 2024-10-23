@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	c "github.com/hashicorp/consul/api"
+	consul "github.com/hashicorp/consul/api"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
@@ -32,10 +32,10 @@ func doServerSidePersistentTests(t *ldtest.T) {
 	}
 
 	if t.Capabilities().Has(servicedef.CapabilityPersistentDataStoreConsul) {
-		config := c.DefaultConfig()
+		config := consul.DefaultConfig()
 		config.Address = "localhost:8500"
 
-		consul, err := c.NewClient(config)
+		consul, err := consul.NewClient(config)
 		require.NoError(t, err)
 
 		t.Run("consul", newServerSidePersistentTests(t, &ConsulPersistentStore{consul: consul}, "launchdarkly").Run)
