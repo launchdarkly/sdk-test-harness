@@ -128,7 +128,7 @@ func (d *DynamoDBPersistentStore) GetMap(prefix, key string) (map[string]string,
 }
 
 func (d *DynamoDBPersistentStore) WriteMap(prefix, key string, data map[string]string) error {
-	unusedKeys := make(map[string]bool)
+	unusedKeys := make(map[string]struct{})
 
 	condition := dynamodb.Condition{
 		ComparisonOperator: aws.String("EQ"),
@@ -153,7 +153,7 @@ func (d *DynamoDBPersistentStore) WriteMap(prefix, key string, data map[string]s
 
 	for _, item := range response.Items {
 		itemKey := item[tableSortKey].String()
-		unusedKeys[itemKey] = true
+		unusedKeys[itemKey] = struct{}{}
 	}
 
 	requests := make([]*dynamodb.WriteRequest, 0)

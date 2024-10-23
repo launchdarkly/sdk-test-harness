@@ -63,9 +63,9 @@ func (c *ConsulPersistentStore) WriteMap(prefix, key string, data map[string]str
 	if err != nil {
 		return fmt.Errorf("failed to get existing items prior to Init: %s", err)
 	}
-	oldKeys := make(map[string]bool)
+	oldKeys := make(map[string]struct{})
 	for _, p := range pairs {
-		oldKeys[p.Key] = true
+		oldKeys[p.Key] = struct{}{}
 	}
 
 	ops := make([]*consul.KVTxnOp, 0)
@@ -74,14 +74,12 @@ func (c *ConsulPersistentStore) WriteMap(prefix, key string, data map[string]str
 		op := &consul.KVTxnOp{Verb: consul.KVSet, Key: prefix + "/" + key + "/" + k, Value: []byte(flag)}
 		ops = append(ops, op)
 
-		oldKeys[prefix+"/"+key+"/"+k] = false
+		delete(oldKeys, prefix+"/"+key+"/"+k)
 	}
 
-	for k, v := range oldKeys {
-		if v {
-			op := &consul.KVTxnOp{Verb: consul.KVDelete, Key: prefix + "/" + key + "/" + k}
-			ops = append(ops, op)
-		}
+	for k := range oldKeys {
+		op := &consul.KVTxnOp{Verb: consul.KVDelete, Key: prefix + "/" + key + "/" + k}
+		ops = append(ops, op)
 	}
 
 	// Submit all the queued operations, using as many transactions as needed. (We're not really using
