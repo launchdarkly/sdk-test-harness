@@ -15,13 +15,11 @@ import (
 
 const (
 	// Schema of the DynamoDB table
-	tablePartitionKey = "namespace"
-	tableName         = "sdk-contract-tests"
-	tableSortKey      = "key"
-	versionAttribute  = "version"
-	itemJSONAttribute = "item"
-
-	initedKey = "$inited"
+	dynamoDbTablePartitionKey = "namespace"
+	dynamoDbTableName         = "sdk-contract-tests"
+	dynamoDbTableSortKey      = "key"
+	dynamoDbVersionAttribute  = "version"
+	dynamoDbItemJSONAttribute = "item"
 
 	// We won't try to store items whose total size exceeds this. The DynamoDB documentation says
 	// only "400KB", which probably means 400*1024, but to avoid any chance of trying to store a
@@ -42,25 +40,25 @@ func (d *DynamoDBPersistentStore) Type() servicedef.SDKConfigPersistentType {
 }
 
 func (d *DynamoDBPersistentStore) Reset() error {
-	d.dynamodb.DeleteTable(&dynamodb.DeleteTableInput{TableName: aws.String(tableName)})
+	d.dynamodb.DeleteTable(&dynamodb.DeleteTableInput{TableName: aws.String(dynamoDbTableName)})
 	d.dynamodb.CreateTable(&dynamodb.CreateTableInput{
 		AttributeDefinitions: []*dynamodb.AttributeDefinition{
 			{
-				AttributeName: aws.String(tablePartitionKey),
+				AttributeName: aws.String(dynamoDbTablePartitionKey),
 				AttributeType: aws.String("S"),
 			},
 			{
-				AttributeName: aws.String(tableSortKey),
+				AttributeName: aws.String(dynamoDbTableSortKey),
 				AttributeType: aws.String("S"),
 			},
 		},
 		KeySchema: []*dynamodb.KeySchemaElement{
 			{
-				AttributeName: aws.String(tablePartitionKey),
+				AttributeName: aws.String(dynamoDbTablePartitionKey),
 				KeyType:       aws.String("HASH"),
 			},
 			{
-				AttributeName: aws.String(tableSortKey),
+				AttributeName: aws.String(dynamoDbTableSortKey),
 				KeyType:       aws.String("RANGE"),
 			},
 		},
@@ -68,7 +66,7 @@ func (d *DynamoDBPersistentStore) Reset() error {
 			ReadCapacityUnits:  aws.Int64(1),
 			WriteCapacityUnits: aws.Int64(1),
 		},
-		TableName: aws.String(tableName),
+		TableName: aws.String(dynamoDbTableName),
 	})
 
 	return nil
@@ -77,10 +75,10 @@ func (d *DynamoDBPersistentStore) Reset() error {
 func (d *DynamoDBPersistentStore) Get(prefix, key string) (o.Maybe[string], error) {
 	result, err := d.dynamodb.GetItem(
 		&dynamodb.GetItemInput{
-			TableName: aws.String(tableName),
+			TableName: aws.String(dynamoDbTableName),
 			Key: map[string]*dynamodb.AttributeValue{
-				tablePartitionKey: {S: aws.String(addPrefix(prefix, key))},
-				tableSortKey:      {S: aws.String(addPrefix(prefix, key))},
+				dynamoDbTablePartitionKey: {S: aws.String(addPrefix(prefix, key))},
+				dynamoDbTableSortKey:      {S: aws.String(addPrefix(prefix, key))},
 			},
 		})
 
@@ -88,7 +86,7 @@ func (d *DynamoDBPersistentStore) Get(prefix, key string) (o.Maybe[string], erro
 		return o.None[string](), err
 	} else if result.Item == nil {
 		return o.None[string](), nil
-	} else if key == initedKey {
+	} else if key == PersistenceInitedKey {
 		return o.Some(""), nil
 	}
 
@@ -96,15 +94,15 @@ func (d *DynamoDBPersistentStore) Get(prefix, key string) (o.Maybe[string], erro
 		return o.None[string](), nil
 	}
 
-	return o.Some(*result.Item[itemJSONAttribute].S), nil
+	return o.Some(*result.Item[dynamoDbItemJSONAttribute].S), nil
 }
 
 func (d *DynamoDBPersistentStore) GetMap(prefix, key string) (map[string]string, error) {
 	query := &dynamodb.QueryInput{
-		TableName:      aws.String(tableName),
+		TableName:      aws.String(dynamoDbTableName),
 		ConsistentRead: aws.Bool(true),
 		KeyConditions: map[string]*dynamodb.Condition{
-			tablePartitionKey: {
+			dynamoDbTablePartitionKey: {
 				ComparisonOperator: aws.String(dynamodb.ComparisonOperatorEq),
 				AttributeValueList: []*dynamodb.AttributeValue{
 					{S: aws.String(addPrefix(prefix, key))},
@@ -120,8 +118,8 @@ func (d *DynamoDBPersistentStore) GetMap(prefix, key string) (map[string]string,
 	}
 
 	for _, item := range response.Items {
-		itemKey := *item[tableSortKey].S
-		results[itemKey] = *item[itemJSONAttribute].S
+		itemKey := *item[dynamoDbTableSortKey].S
+		results[itemKey] = *item[dynamoDbItemJSONAttribute].S
 	}
 
 	return results, nil
@@ -139,10 +137,10 @@ func (d *DynamoDBPersistentStore) WriteMap(prefix, key string, data map[string]s
 
 	// Read in all the old keys first
 	query := &dynamodb.QueryInput{
-		TableName:      aws.String(tableName),
+		TableName:      aws.String(dynamoDbTableName),
 		ConsistentRead: aws.Bool(true),
 		KeyConditions: map[string]*dynamodb.Condition{
-			tablePartitionKey: &condition,
+			dynamoDbTablePartitionKey: &condition,
 		},
 	}
 
@@ -152,7 +150,7 @@ func (d *DynamoDBPersistentStore) WriteMap(prefix, key string, data map[string]s
 	}
 
 	for _, item := range response.Items {
-		itemKey := item[tableSortKey].String()
+		itemKey := item[dynamoDbTableSortKey].String()
 		unusedKeys[itemKey] = struct{}{}
 	}
 
@@ -168,10 +166,10 @@ func (d *DynamoDBPersistentStore) WriteMap(prefix, key string, data map[string]s
 		requests = append(requests, &dynamodb.WriteRequest{
 			PutRequest: &dynamodb.PutRequest{
 				Item: map[string]*dynamodb.AttributeValue{
-					tablePartitionKey: {S: aws.String(addPrefix(prefix, key))},
-					tableSortKey:      {S: aws.String(k)},
-					itemJSONAttribute: {S: aws.String(v)},
-					versionAttribute:  {N: aws.String(strconv.Itoa(versioned.Version))},
+					dynamoDbTablePartitionKey: {S: aws.String(addPrefix(prefix, key))},
+					dynamoDbTableSortKey:      {S: aws.String(k)},
+					dynamoDbItemJSONAttribute: {S: aws.String(v)},
+					dynamoDbVersionAttribute:  {N: aws.String(strconv.Itoa(versioned.Version))},
 				},
 			},
 		})
@@ -179,12 +177,12 @@ func (d *DynamoDBPersistentStore) WriteMap(prefix, key string, data map[string]s
 	}
 
 	for k := range unusedKeys {
-		if k == initedKey {
+		if k == PersistenceInitedKey {
 			continue
 		}
 		delKey := map[string]*dynamodb.AttributeValue{
-			tablePartitionKey: {S: aws.String(addPrefix(prefix, key))},
-			tableSortKey:      {S: aws.String(k)},
+			dynamoDbTablePartitionKey: {S: aws.String(addPrefix(prefix, key))},
+			dynamoDbTableSortKey:      {S: aws.String(k)},
 		}
 		requests = append(requests, &dynamodb.WriteRequest{
 			DeleteRequest: &dynamodb.DeleteRequest{Key: delKey},
@@ -194,12 +192,12 @@ func (d *DynamoDBPersistentStore) WriteMap(prefix, key string, data map[string]s
 	// Now set the special key that we check in InitializedInternal()
 	requests = append(requests, &dynamodb.WriteRequest{
 		PutRequest: &dynamodb.PutRequest{Item: map[string]*dynamodb.AttributeValue{
-			tablePartitionKey: {S: aws.String(addPrefix(prefix, initedKey))},
-			tableSortKey:      {S: aws.String(initedKey)},
+			dynamoDbTablePartitionKey: {S: aws.String(addPrefix(prefix, PersistenceInitedKey))},
+			dynamoDbTableSortKey:      {S: aws.String(PersistenceInitedKey)},
 		}},
 	})
 
-	if err := batchWriteRequests(context.Background(), d.dynamodb, tableName, requests); err != nil {
+	if err := batchWriteRequests(context.Background(), d.dynamodb, dynamoDbTableName, requests); err != nil {
 		// COVERAGE: can't cause an error here in unit tests because we only get this far if the
 		// DynamoDB client is successful on the initial query
 		return fmt.Errorf("failed to write %d items(s) in batches: %s", len(requests), err)

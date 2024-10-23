@@ -20,6 +20,10 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 )
 
+const (
+	PersistenceInitedKey = "$inited"
+)
+
 func doServerSidePersistentTests(t *ldtest.T) {
 	if t.Capabilities().Has(servicedef.CapabilityPersistentDataStoreRedis) {
 		rdb := redis.NewClient(&redis.Options{
