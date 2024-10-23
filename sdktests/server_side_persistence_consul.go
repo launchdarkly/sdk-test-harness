@@ -87,8 +87,7 @@ func (c *ConsulPersistentStore) WriteMap(prefix, key string, data map[string]str
 	// Submit all the queued operations, using as many transactions as needed. (We're not really using
 	// transactions for atomicity, since we're not atomic anyway if there's more than one transaction,
 	// but batching them reduces the number of calls to the server.)
-	err = batchOperations(kv, ops)
-	return err
+	return batchOperations(kv, ops)
 }
 
 func batchOperations(kv *consul.KV, ops []*consul.KVTxnOp) error {
