@@ -88,6 +88,10 @@ func (c *ConsulPersistentStore) WriteMap(prefix, key string, data map[string]str
 	return batchOperations(kv, ops)
 }
 
+// batchOperations handles applying a series of operations to Consult in batches of up to 64 operations.
+//
+// consul is limited to 64 operations per transaction, so any more than that must be split into multiple
+// transactions.
 func batchOperations(kv *consul.KV, ops []*consul.KVTxnOp) error {
 	for i := 0; i < len(ops); {
 		j := i + 64
