@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	PersistenceInitedKey = "$inited"
+	persistenceInitedKey = "$inited"
 )
 
 func doServerSidePersistentTests(t *ldtest.T) {

@@ -85,7 +85,7 @@ func (d *DynamoDBPersistentStore) Get(prefix, key string) (o.Maybe[string], erro
 		return o.None[string](), err
 	} else if result.Item == nil {
 		return o.None[string](), nil
-	} else if key == PersistenceInitedKey {
+	} else if key == persistenceInitedKey {
 		return o.Some(""), nil
 	}
 
@@ -176,7 +176,7 @@ func (d *DynamoDBPersistentStore) WriteMap(prefix, key string, data map[string]s
 	}
 
 	for k := range unusedKeys {
-		if k == PersistenceInitedKey {
+		if k == persistenceInitedKey {
 			continue
 		}
 		delKey := map[string]*dynamodb.AttributeValue{
@@ -191,8 +191,8 @@ func (d *DynamoDBPersistentStore) WriteMap(prefix, key string, data map[string]s
 	// Now set the special key that we check in InitializedInternal()
 	requests = append(requests, &dynamodb.WriteRequest{
 		PutRequest: &dynamodb.PutRequest{Item: map[string]*dynamodb.AttributeValue{
-			dynamoDbTablePartitionKey: {S: aws.String(addPrefix(prefix, PersistenceInitedKey))},
-			dynamoDbTableSortKey:      {S: aws.String(PersistenceInitedKey)},
+			dynamoDbTablePartitionKey: {S: aws.String(addPrefix(prefix, persistenceInitedKey))},
+			dynamoDbTableSortKey:      {S: aws.String(persistenceInitedKey)},
 		}},
 	})
 
