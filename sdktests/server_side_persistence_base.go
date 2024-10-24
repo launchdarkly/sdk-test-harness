@@ -119,15 +119,21 @@ func newServerSidePersistentTests(
 }
 
 func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
-	t.Run("uses default prefix", s.usesDefaultPrefix)
-	t.Run("uses custom prefix", s.usesCustomPrefix)
+	s.runWithEmptyStore(t, "uses default prefix", s.usesDefaultPrefix)
+	s.runWithEmptyStore(t, "uses custom prefix", s.usesCustomPrefix)
 
 	t.Run("daemon mode", s.doDaemonModeTests)
 	t.Run("read-write", s.doReadWriteTests)
 }
 
+func (s *ServerSidePersistentTests) runWithEmptyStore(t *ldtest.T, testName string, action func(*ldtest.T)) {
+	t.Run(testName, func(t *ldtest.T) {
+		s.persistentStore.Reset()
+		action(t)
+	})
+}
+
 func (s *ServerSidePersistentTests) usesDefaultPrefix(t *ldtest.T) {
-	require.NoError(t, s.persistentStore.Reset())
 	require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
 
 	persistence := NewPersistence()
@@ -145,7 +151,6 @@ func (s *ServerSidePersistentTests) usesDefaultPrefix(t *ldtest.T) {
 }
 
 func (s *ServerSidePersistentTests) usesCustomPrefix(t *ldtest.T) {
-	require.NoError(t, s.persistentStore.Reset())
 	customPrefix := "custom-prefix"
 
 	persistence := NewPersistence()

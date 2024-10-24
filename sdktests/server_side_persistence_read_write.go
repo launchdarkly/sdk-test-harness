@@ -18,11 +18,11 @@ import (
 
 func (s *ServerSidePersistentTests) doReadWriteTests(t *ldtest.T) {
 	// No cache is enabled
-	t.Run("initializes store when data received", s.initializesStoreWhenDataReceived)
-	t.Run("applies updates to store", s.appliesUpdatesToStore)
+	s.runWithEmptyStore(t, "initializes store when data received", s.initializesStoreWhenDataReceived)
+	s.runWithEmptyStore(t, "applies updates to store", s.appliesUpdatesToStore)
 
-	t.Run("data source updates respect versioning", s.dataSourceUpdatesRespectVersioning)
-	t.Run("data source deletions respect versioning", s.dataSourceDeletesRespectVersioning)
+	s.runWithEmptyStore(t, "data source updates respect versioning", s.dataSourceUpdatesRespectVersioning)
+	s.runWithEmptyStore(t, "data source deletions respect versioning", s.dataSourceDeletesRespectVersioning)
 
 	cacheConfigs := []servicedef.SDKConfigPersistentCache{
 		{Mode: servicedef.CacheModeInfinite},
@@ -31,16 +31,16 @@ func (s *ServerSidePersistentTests) doReadWriteTests(t *ldtest.T) {
 
 	for _, cacheConfig := range cacheConfigs {
 		t.Run(fmt.Sprintf("cache mode %s", cacheConfig.Mode), func(t *ldtest.T) {
-			t.Run("does not cache flag miss", func(t *ldtest.T) {
+			s.runWithEmptyStore(t, "does not cache flag miss", func(t *ldtest.T) {
 				s.doesNotCacheFlagMiss(t, cacheConfig)
 			})
-			t.Run("sdk reflects data source updates even with cache", func(t *ldtest.T) {
+			s.runWithEmptyStore(t, "sdk reflects data source updates even with cache", func(t *ldtest.T) {
 				s.sdkReflectsDataSourceUpdatesEvenWithCache(t, cacheConfig)
 			})
-			t.Run("ignores direct database modifications", func(t *ldtest.T) {
+			s.runWithEmptyStore(t, "ignores direct database modifications", func(t *ldtest.T) {
 				s.ignoresDirectDatabaseModifications(t, cacheConfig)
 			})
-			t.Run("ignores dropped flags", func(t *ldtest.T) {
+			s.runWithEmptyStore(t, "ignores dropped flags", func(t *ldtest.T) {
 				s.ignoresFlagsBeingDiscardedFromStore(t, cacheConfig)
 			})
 		})
@@ -48,8 +48,6 @@ func (s *ServerSidePersistentTests) doReadWriteTests(t *ldtest.T) {
 }
 
 func (s *ServerSidePersistentTests) initializesStoreWhenDataReceived(t *ldtest.T) {
-	require.NoError(t, s.persistentStore.Reset())
-
 	persistence := NewPersistence()
 	persistence.SetStore(servicedef.SDKConfigPersistentStore{
 		Type: s.persistentStore.Type(),
@@ -71,8 +69,6 @@ func (s *ServerSidePersistentTests) initializesStoreWhenDataReceived(t *ldtest.T
 }
 
 func (s *ServerSidePersistentTests) appliesUpdatesToStore(t *ldtest.T) {
-	require.NoError(t, s.persistentStore.Reset())
-
 	persistence := NewPersistence()
 	persistence.SetStore(servicedef.SDKConfigPersistentStore{
 		Type: s.persistentStore.Type(),
@@ -103,8 +99,6 @@ func (s *ServerSidePersistentTests) appliesUpdatesToStore(t *ldtest.T) {
 }
 
 func (s *ServerSidePersistentTests) dataSourceUpdatesRespectVersioning(t *ldtest.T) {
-	require.NoError(t, s.persistentStore.Reset())
-
 	persistence := NewPersistence()
 	persistence.SetStore(servicedef.SDKConfigPersistentStore{
 		Type: s.persistentStore.Type(),
@@ -149,8 +143,6 @@ func (s *ServerSidePersistentTests) dataSourceUpdatesRespectVersioning(t *ldtest
 }
 
 func (s *ServerSidePersistentTests) dataSourceDeletesRespectVersioning(t *ldtest.T) {
-	require.NoError(t, s.persistentStore.Reset())
-
 	persistence := NewPersistence()
 	persistence.SetStore(servicedef.SDKConfigPersistentStore{
 		Type: s.persistentStore.Type(),
@@ -186,8 +178,6 @@ func (s *ServerSidePersistentTests) dataSourceDeletesRespectVersioning(t *ldtest
 
 func (s *ServerSidePersistentTests) ignoresDirectDatabaseModifications(
 	t *ldtest.T, cacheConfig servicedef.SDKConfigPersistentCache) {
-	require.NoError(t, s.persistentStore.Reset())
-
 	persistence := NewPersistence()
 	persistence.SetStore(servicedef.SDKConfigPersistentStore{
 		Type: s.persistentStore.Type(),
@@ -238,8 +228,6 @@ func (s *ServerSidePersistentTests) ignoresDirectDatabaseModifications(
 
 func (s *ServerSidePersistentTests) ignoresFlagsBeingDiscardedFromStore(
 	t *ldtest.T, cacheConfig servicedef.SDKConfigPersistentCache) {
-	require.NoError(t, s.persistentStore.Reset())
-
 	persistence := NewPersistence()
 	persistence.SetStore(servicedef.SDKConfigPersistentStore{
 		Type: s.persistentStore.Type(),
@@ -276,8 +264,6 @@ func (s *ServerSidePersistentTests) ignoresFlagsBeingDiscardedFromStore(
 }
 
 func (s *ServerSidePersistentTests) doesNotCacheFlagMiss(t *ldtest.T, cacheConfig servicedef.SDKConfigPersistentCache) {
-	require.NoError(t, s.persistentStore.Reset())
-
 	persistence := NewPersistence()
 	persistence.SetStore(servicedef.SDKConfigPersistentStore{
 		Type: s.persistentStore.Type(),
@@ -312,8 +298,6 @@ func (s *ServerSidePersistentTests) doesNotCacheFlagMiss(t *ldtest.T, cacheConfi
 
 func (s *ServerSidePersistentTests) sdkReflectsDataSourceUpdatesEvenWithCache(
 	t *ldtest.T, cacheConfig servicedef.SDKConfigPersistentCache) {
-	require.NoError(t, s.persistentStore.Reset())
-
 	persistence := NewPersistence()
 	persistence.SetStore(servicedef.SDKConfigPersistentStore{
 		Type: s.persistentStore.Type(),

@@ -16,10 +16,10 @@ import (
 )
 
 func (s *ServerSidePersistentTests) doDaemonModeTests(t *ldtest.T) {
-	t.Run("ignores database initialization flag", s.ignoresInitialization)
-	t.Run("can disable cache", s.canDisableCache)
+	s.runWithEmptyStore(t, "ignores database initialization flag", s.ignoresInitialization)
+	s.runWithEmptyStore(t, "can disable cache", s.canDisableCache)
 	t.Run("caches flag for duration", s.cachesFlagForDuration)
-	t.Run("caches flag forever", s.cachesFlagForever)
+	s.runWithEmptyStore(t, "caches flag forever", s.cachesFlagForever)
 }
 
 func (s *ServerSidePersistentTests) ignoresInitialization(t *ldtest.T) {
@@ -55,7 +55,6 @@ func (s *ServerSidePersistentTests) ignoresInitialization(t *ldtest.T) {
 }
 
 func (s *ServerSidePersistentTests) canDisableCache(t *ldtest.T) {
-	require.NoError(t, s.persistentStore.Reset())
 	require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
 
 	persistence := NewPersistence()
@@ -94,8 +93,7 @@ func (s *ServerSidePersistentTests) cachesFlagForDuration(t *ldtest.T) {
 	})
 	context := ldcontext.New("user-key")
 
-	t.Run("cache hit persists for TTL", func(t *ldtest.T) {
-		require.NoError(t, s.persistentStore.Reset())
+	s.runWithEmptyStore(t, "cache hit persists for TTL", func(t *ldtest.T) {
 		client := NewSDKClient(t, persistence)
 
 		require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
@@ -117,8 +115,7 @@ func (s *ServerSidePersistentTests) cachesFlagForDuration(t *ldtest.T) {
 			time.Second, time.Millisecond*20, "flag value was NOT updated after cache TTL")
 	})
 
-	t.Run("cache miss persists for TTL", func(t *ldtest.T) {
-		require.NoError(t, s.persistentStore.Reset())
+	s.runWithEmptyStore(t, "cache miss persists for TTL", func(t *ldtest.T) {
 		client := NewSDKClient(t, persistence)
 
 		result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
@@ -157,7 +154,6 @@ func (s *ServerSidePersistentTests) cachesFlagForever(t *ldtest.T) {
 	})
 	context := ldcontext.New("user-key")
 
-	require.NoError(t, s.persistentStore.Reset())
 	require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
 
 	client := NewSDKClient(t, persistence)

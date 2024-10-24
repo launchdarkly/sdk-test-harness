@@ -76,8 +76,6 @@ func (d *DynamoDBPersistentStore) Reset() error {
 		TableName: aws.String(dynamoDBTableName),
 	})
 	return err
-
-	return nil
 }
 
 func (d *DynamoDBPersistentStore) Get(prefix, key string) (o.Maybe[string], error) {
