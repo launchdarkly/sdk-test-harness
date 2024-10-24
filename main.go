@@ -12,7 +12,6 @@ import (
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/sdktests"
 )
@@ -30,7 +29,7 @@ func main() {
 
 	results, err := run(params)
 	if err != nil {
-		helpers.MustFprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -86,7 +85,7 @@ func run(params commandParams) (*ldtest.Results, error) {
 	if params.stopServiceAtEnd {
 		fmt.Println("Stopping test service")
 		if err := harness.StopService(); err != nil {
-			helpers.MustFprintf(os.Stderr, "Failed to stop test service: %s\n", err)
+			fmt.Fprintf(os.Stderr, "Failed to stop test service: %s\n", err)
 		}
 	}
 
@@ -100,7 +99,7 @@ func run(params commandParams) (*ldtest.Results, error) {
 			return nil, fmt.Errorf("cannot create suppression file: %v", err)
 		}
 		for _, test := range results.Failures {
-			helpers.MustFprintln(f, test.TestID)
+			fmt.Fprintln(f, test.TestID)
 		}
 		_ = f.Close()
 	}

@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/serviceinfo"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
@@ -26,19 +25,19 @@ type TestServiceEntity struct {
 }
 
 func queryTestServiceInfo(url string, timeout time.Duration, output io.Writer) (serviceinfo.TestServiceInfo, error) {
-	helpers.MustFprintf(output, "Connecting to test service at %s", url)
+	fmt.Fprintf(output, "Connecting to test service at %s", url)
 
 	deadline := time.Now().Add(timeout)
 	for {
-		helpers.MustFprintf(output, ".")
+		fmt.Fprintf(output, ".")
 		respData, _, err := doRequest("GET", url, nil)
 		if err == nil {
-			helpers.MustFprintln(output)
+			fmt.Fprintln(output)
 			if respData == nil {
-				helpers.MustFprintf(output, "Status query successful, but service provided no metadata\n")
+				fmt.Fprintf(output, "Status query successful, but service provided no metadata\n")
 				return serviceinfo.Empty(), nil
 			}
-			helpers.MustFprintf(output, "Status query returned metadata: %s\n", string(respData))
+			fmt.Fprintf(output, "Status query returned metadata: %s\n", string(respData))
 			var base serviceinfo.TestServiceInfoBase
 			if err := json.Unmarshal(respData, &base); err != nil {
 				return serviceinfo.Empty(), fmt.Errorf("malformed status response from test service: %s", string(respData))

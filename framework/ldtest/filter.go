@@ -5,8 +5,6 @@ import (
 	"io"
 	"regexp"
 	"strings"
-
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 )
 
 // Filter is an object that can determine whether to run a specific test or not.
@@ -108,14 +106,14 @@ func (l TestIDPatternList) AnyMatch(id TestID, includeParents bool) bool {
 
 func (r RegexFilters) Describe(out io.Writer, supportedCapabilities, allCapabilities []string) {
 	if r.MustMatch.IsDefined() || r.MustNotMatch.IsDefined() {
-		helpers.MustFprintln(out, "Some tests will be skipped based on the filter criteria for this test run:")
+		fmt.Fprintln(out, "Some tests will be skipped based on the filter criteria for this test run:")
 		if r.MustMatch.IsDefined() {
-			helpers.MustFprintf(out, "  skip any not matching %s\n", r.MustMatch)
+			fmt.Fprintf(out, "  skip any not matching %s\n", r.MustMatch)
 		}
 		if r.MustNotMatch.IsDefined() {
-			helpers.MustFprintf(out, "  skip any matching %s\n", r.MustNotMatch)
+			fmt.Fprintf(out, "  skip any matching %s\n", r.MustNotMatch)
 		}
-		helpers.MustFprintln(out)
+		fmt.Fprintln(out)
 	}
 
 	if len(supportedCapabilities) != 0 {
@@ -130,12 +128,9 @@ func (r RegexFilters) Describe(out io.Writer, supportedCapabilities, allCapabili
 			}
 		}
 		if len(missingCapabilities) > 0 {
-			helpers.MustFprintln(
-				out,
-				"Some tests may be skipped because the test service does not support the following capabilities:",
-			)
-			helpers.MustFprintf(out, "  %s\n", strings.Join(missingCapabilities, ", "))
-			helpers.MustFprintln(out)
+			fmt.Fprintln(out, "Some tests may be skipped because the test service does not support the following capabilities:")
+			fmt.Fprintf(out, "  %s\n", strings.Join(missingCapabilities, ", "))
+			fmt.Fprintln(out)
 		}
 	}
 }

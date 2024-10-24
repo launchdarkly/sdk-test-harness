@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 
 	"github.com/fatih/color"
 )
@@ -97,7 +96,7 @@ func (c ConsoleTestLogger) EndLog(results Results) error {
 	}
 
 	if len(results.NonCriticalFailures) != 0 {
-		helpers.MustFprintln(os.Stderr)
+		fmt.Fprintln(os.Stderr)
 		_, _ = consoleTestFailedNonCriticalColor.Fprintf(os.Stderr,
 			"NON-CRITICAL FAILURES (%d):\n", len(results.NonCriticalFailures))
 		for _, f := range results.NonCriticalFailures {
@@ -107,7 +106,7 @@ func (c ConsoleTestLogger) EndLog(results Results) error {
 	}
 
 	if !results.OK() {
-		helpers.MustFprintln(os.Stderr)
+		fmt.Fprintln(os.Stderr)
 		_, _ = consoleTestFailedColor.Fprintf(os.Stderr, "FAILED TESTS (%d):\n", len(results.Failures))
 		for _, f := range results.Failures {
 			_, _ = consoleTestFailedColor.Fprintf(os.Stderr, "  * %s\n", f.TestID)
