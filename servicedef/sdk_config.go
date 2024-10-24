@@ -116,7 +116,7 @@ const (
 
 type SDKConfigPersistentStore struct {
 	Type   SDKConfigPersistentType `json:"type"`
-	Prefix string                  `json:"prefix,omitempty"`
+	Prefix o.Maybe[string]         `json:"prefix,omitempty"`
 	DSN    string                  `json:"dsn"`
 }
 

@@ -2,9 +2,9 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 )
 
@@ -42,12 +42,12 @@ func (c *commandParams) Read(args []string) bool {
 		"the test service before failing")
 
 	if err := fs.Parse(args[1:]); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		helpers.MustFprintln(os.Stderr, err)
 		fs.Usage()
 		return false
 	}
 	if c.serviceURL == "" {
-		fmt.Fprintln(os.Stderr, "-url is required")
+		helpers.MustFprintln(os.Stderr, "-url is required")
 		fs.Usage()
 		return false
 	}

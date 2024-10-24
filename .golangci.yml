@@ -19,7 +19,6 @@ linters:
     - govet
     - ineffassign
     - lll
-    - megacheck
     - misspell
     - nakedret
     - nolintlint
