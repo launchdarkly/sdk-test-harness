@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	consul "github.com/hashicorp/consul/api"
+
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
@@ -60,7 +61,8 @@ func doServerSidePersistentTests(t *ldtest.T) {
 		))
 
 		store := DynamoDBPersistentStore{dynamodb: dynamodb.New(mySession)}
-		store.Reset()
+		err := store.Reset()
+		require.NoError(t, err)
 
 		t.Run("dynamodb", newServerSidePersistentTests(t, &store, "").Run)
 	}
@@ -85,7 +87,9 @@ type ServerSidePersistentTests struct {
 	initialFlags    map[string]string
 }
 
-func newServerSidePersistentTests(t *ldtest.T, persistentStore PersistentStore, defaultPrefix string) *ServerSidePersistentTests {
+func newServerSidePersistentTests(
+	t *ldtest.T, persistentStore PersistentStore, defaultPrefix string,
+) *ServerSidePersistentTests {
 	flagKeyBytes, err :=
 		ldbuilders.NewFlagBuilder("flag-key").Version(100).
 			On(true).Variations(ldvalue.String("fallthrough"), ldvalue.String("other")).

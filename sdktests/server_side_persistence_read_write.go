@@ -343,7 +343,6 @@ func (s *ServerSidePersistentTests) sdkReflectsDataSourceUpdatesEvenWithCache(
 		time.Millisecond*500, time.Millisecond*20, "flag was updated")
 }
 
-//nolint:unparam
 func (s *ServerSidePersistentTests) eventuallyRequireDataStoreInit(t *ldtest.T, prefix string) {
 	h.RequireEventually(t, func() bool {
 		value, _ := s.persistentStore.Get(prefix, persistenceInitedKey)
@@ -363,7 +362,6 @@ func (s *ServerSidePersistentTests) eventuallyValidateFlagData(
 	}, time.Second, time.Millisecond*20, "flag data did not match")
 }
 
-//nolint:unparam
 func (s *ServerSidePersistentTests) neverValidateFlagData(t *ldtest.T, prefix string, matchers map[string]m.Matcher) {
 	h.RequireNever(t, func() bool {
 		data, err := s.persistentStore.GetMap(prefix, "features")

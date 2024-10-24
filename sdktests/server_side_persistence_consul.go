@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	consul "github.com/hashicorp/consul/api"
+
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 )
@@ -14,8 +15,9 @@ type ConsulPersistentStore struct {
 }
 
 func (c *ConsulPersistentStore) DSN() string {
+	//nolint:godox  // I'm working on it
 	// TODO: Fix this address lookup
-	return fmt.Sprintf("%s", consul.DefaultConfig().Address)
+	return consul.DefaultConfig().Address
 }
 
 func (c *ConsulPersistentStore) Type() servicedef.SDKConfigPersistentType {
