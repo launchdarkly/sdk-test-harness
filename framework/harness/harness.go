@@ -108,6 +108,7 @@ func NewTestHarness(
 	testServiceBaseURL string,
 	testHarnessExternalHostname string,
 	testHarnessPort int,
+	testHarnessEnablePersistenceTests bool,
 	statusQueryTimeout time.Duration,
 	debugLogger framework.Logger,
 	startupOutput io.Writer,
@@ -128,6 +129,21 @@ func NewTestHarness(
 	testServiceInfo, err := queryTestServiceInfo(testServiceBaseURL, statusQueryTimeout, startupOutput)
 	if err != nil {
 		return nil, err
+	}
+
+	// If we aren't running persistence tests, remove the capabilities that would enable it.
+	if !testHarnessEnablePersistenceTests {
+		filteredCapabilities := make([]string, 0, len(testServiceInfo.Capabilities))
+		for _, c := range testServiceInfo.Capabilities {
+			if c == servicedef.CapabilityPersistentDataStoreRedis ||
+				c == servicedef.CapabilityPersistentDataStoreDynamoDB ||
+				c == servicedef.CapabilityPersistentDataStoreConsul {
+				debugLogger.Printf("Disabling capability %q because persistence tests are disabled", c)
+				continue
+			}
+			filteredCapabilities = append(filteredCapabilities, c)
+		}
+		testServiceInfo.Capabilities = filteredCapabilities
 	}
 	h.testServiceInfo = testServiceInfo
 

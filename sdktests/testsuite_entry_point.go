@@ -92,12 +92,7 @@ func doAllServerSideTests(t *ldtest.T) {
 	t.Run("migrations", doServerSideMigrationTests)
 	t.Run("hooks", doCommonHooksTests)
 	t.Run("wrapper", doServerSideWrapperTests)
-
-	if t.Capabilities().Has(servicedef.CapabilityPersistentDataStoreRedis) ||
-		t.Capabilities().Has(servicedef.CapabilityPersistentDataStoreConsul) ||
-		t.Capabilities().Has(servicedef.CapabilityPersistentDataStoreDynamoDB) {
-		t.Run("persistent data store", doServerSidePersistentTests)
-	}
+	t.Run("persistent data store", doServerSidePersistentTests)
 }
 
 func doAllClientSideTests(t *ldtest.T) {

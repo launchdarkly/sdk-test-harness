@@ -110,6 +110,16 @@ This means the SDK is capable of interacting with external persistent data store
 - `dynamodb`
 - `redis`
 
+The persistence store tests are unique in that they rely on external services to be available prior to running the test harness. Because of this, the test harness will not run these tests by default, even if the capabilities exist, without also provided the `-enable-persistence-tests` flag.
+
+These services can be easily provided through the use of docker. Example commands are shown below for your convenience.
+
+```shell
+docker run --network=host amazon/dynamodb-local
+docker run --network=host hashicorp/consul
+docker run --network host redis
+```
+
 #### Capability `"polling-gzip"`
 
 This means the SDK is requesting gzip compression support on polling payloads. The SDK is expected to set the `Accept-Encoding` header to `gzip` in addition to enabling this capability.
