@@ -41,7 +41,10 @@ const (
 )
 
 func doServerSidePersistentTests(t *ldtest.T) {
+	ranAtLeastOnce := false
+
 	if t.Capabilities().Has(servicedef.CapabilityPersistentDataStoreRedis) {
+		ranAtLeastOnce = true
 		rdb := redis.NewClient(&redis.Options{
 			Addr:     "localhost:6379",
 			Password: "", // no password set
@@ -52,6 +55,7 @@ func doServerSidePersistentTests(t *ldtest.T) {
 	}
 
 	if t.Capabilities().Has(servicedef.CapabilityPersistentDataStoreConsul) {
+		ranAtLeastOnce = true
 		config := consul.DefaultConfig()
 		config.Address = "localhost:8500"
 
@@ -62,6 +66,7 @@ func doServerSidePersistentTests(t *ldtest.T) {
 	}
 
 	if t.Capabilities().Has(servicedef.CapabilityPersistentDataStoreDynamoDB) {
+		ranAtLeastOnce = true
 		mySession := session.Must(session.NewSession(
 			aws.NewConfig().
 				WithRegion("us-east-1").
@@ -80,6 +85,10 @@ func doServerSidePersistentTests(t *ldtest.T) {
 		require.NoError(t, err)
 
 		t.Run("dynamodb", newServerSidePersistentTests(t, &store, "").Run)
+	}
+
+	if !ranAtLeastOnce {
+		t.Skip()
 	}
 }
 

@@ -16,6 +16,7 @@ Options besides `-url`:
 * `-junit <FILEPATH>` - writes test results in JUnit XML format to the specified file
 * `-debug` - enables verbose logging of test actions for failed tests
 * `-debug-all` - enables verbose logging of test actions for all tests
+* `-enable-persistence-tests` - enables tests that require external persistence (e.g. a database like redis)
 * `-record-failures` - record failed test IDs to the given file. Recorded tests can be skipped by the next run of 
 the harness via `-skip-from`.
 * `-skip-from` - skips any test IDs recorded in the specified file. May be used in conjunction with `-record-failures`

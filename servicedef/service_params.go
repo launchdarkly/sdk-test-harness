@@ -39,7 +39,6 @@ const (
 	CapabilityPollingGzip                 = "polling-gzip"
 	CapabilityEvaluationHooks             = "evaluation-hooks"
 	CapabilityClientPrereqEvents          = "client-prereq-events"
-	CapabilityPersistentDataStore         = "persistent-data-store"
 	CapabilityPersistentDataStoreRedis    = "persistent-data-store-redis"
 	CapabilityPersistentDataStoreConsul   = "persistent-data-store-consul"
 	CapabilityPersistentDataStoreDynamoDB = "persistent-data-store-dynamodb"
