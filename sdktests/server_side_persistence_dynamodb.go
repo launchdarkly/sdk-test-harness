@@ -2,6 +2,7 @@ package sdktests
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -37,44 +38,44 @@ func (d *DynamoDBPersistentStore) Type() servicedef.SDKConfigPersistentType {
 
 func (d *DynamoDBPersistentStore) Reset() error {
 	_, err := d.dynamodb.DeleteTable(&dynamodb.DeleteTableInput{TableName: aws.String(dynamoDBTableName)})
-
-	if aerr, ok := err.(awserr.Error); ok {
+	var aerr awserr.Error
+	if errors.As(err, &aerr) {
 		switch aerr.Code() {
 		case dynamodb.ErrCodeResourceNotFoundException:
-			_, err := d.dynamodb.CreateTable(&dynamodb.CreateTableInput{
-				AttributeDefinitions: []*dynamodb.AttributeDefinition{
-					{
-						AttributeName: aws.String(dynamoDBTablePartitionKey),
-						AttributeType: aws.String("S"),
-					},
-					{
-						AttributeName: aws.String(dynamoDBTableSortKey),
-						AttributeType: aws.String("S"),
-					},
-				},
-				KeySchema: []*dynamodb.KeySchemaElement{
-					{
-						AttributeName: aws.String(dynamoDBTablePartitionKey),
-						KeyType:       aws.String("HASH"),
-					},
-					{
-						AttributeName: aws.String(dynamoDBTableSortKey),
-						KeyType:       aws.String("RANGE"),
-					},
-				},
-				ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
-					ReadCapacityUnits:  aws.Int64(1),
-					WriteCapacityUnits: aws.Int64(1),
-				},
-				TableName: aws.String(dynamoDBTableName),
-			})
-			return err
+			// pass
 		default:
 			return err
 		}
 	}
 
-	return nil
+	_, err = d.dynamodb.CreateTable(&dynamodb.CreateTableInput{
+		AttributeDefinitions: []*dynamodb.AttributeDefinition{
+			{
+				AttributeName: aws.String(dynamoDBTablePartitionKey),
+				AttributeType: aws.String("S"),
+			},
+			{
+				AttributeName: aws.String(dynamoDBTableSortKey),
+				AttributeType: aws.String("S"),
+			},
+		},
+		KeySchema: []*dynamodb.KeySchemaElement{
+			{
+				AttributeName: aws.String(dynamoDBTablePartitionKey),
+				KeyType:       aws.String("HASH"),
+			},
+			{
+				AttributeName: aws.String(dynamoDBTableSortKey),
+				KeyType:       aws.String("RANGE"),
+			},
+		},
+		ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
+			ReadCapacityUnits:  aws.Int64(1),
+			WriteCapacityUnits: aws.Int64(1),
+		},
+		TableName: aws.String(dynamoDBTableName),
+	})
+	return err
 }
 
 func (d *DynamoDBPersistentStore) Get(prefix, key string) (o.Maybe[string], error) {
