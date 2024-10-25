@@ -226,7 +226,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			h.RequireEventually(t,
 				checkForUpdatedValue(t, client, "flag-key", context,
 					ldvalue.String("fallthrough"), ldvalue.String("default"), ldvalue.String("default")),
-				time.Second, time.Millisecond*20, "flag value was NOT updated after cache TTL")
+				time.Second, time.Millisecond*20, "failed to serve defaults after flag deletion")
 		})
 
 		t.Run("caches flag for duration", func(t *ldtest.T) {
