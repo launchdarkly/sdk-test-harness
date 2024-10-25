@@ -34,7 +34,8 @@ func (c *commandParams) Read(args []string) bool {
 	fs.BoolVar(&c.stopServiceAtEnd, "stop-service-at-end", false, "tell test service to exit after the test run")
 	fs.BoolVar(&c.debug, "debug", false, "enable debug logging for failed tests")
 	fs.BoolVar(&c.debugAll, "debug-all", false, "enable debug logging for all tests")
-	fs.BoolVar(&c.enablePersistenceTests, "enable-persistence-tests", false, "enable tests that require external persistence support")
+	fs.BoolVar(&c.enablePersistenceTests, "enable-persistence-tests", false,
+		"enable tests that require external persistence support")
 	fs.StringVar(&c.jUnitFile, "junit", "", "write JUnit XML output to the specified path")
 	fs.StringVar(&c.recordFailures, "record-failures", "", "record failed test IDs to the given file.\n"+
 		"recorded tests can be skipped by the next run of the harness via -skip-from")
