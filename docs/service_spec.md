@@ -115,9 +115,9 @@ The persistence store tests are unique in that they rely on external services to
 These services can be easily provided through the use of docker. Example commands are shown below for your convenience.
 
 ```shell
-docker run --network=host amazon/dynamodb-local
-docker run --network=host hashicorp/consul
-docker run --network host redis
+docker run -p 8000:8000 amazon/dynamodb-local
+docker run -p 8500:8500 hashicorp/consul
+docker run -p 6379:6379 redis
 ```
 
 #### Capability `"polling-gzip"`
