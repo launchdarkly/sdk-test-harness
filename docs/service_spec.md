@@ -102,11 +102,13 @@ v4 of the event schema originally required a `contextKeys` property on all featu
 
 This means that the SDK supports technology migrations, a feature which allows customers to migrate between data sources using well-defined migration stages.
 
-#### Capability `"persistent-data-store"`
+#### Capability `"persistent-data-store-{integration}"`
 
-This means the SDK is capable of interacting with external persistent data stores. The test harness must further identify which store types are supported through additional capabilities listed below.
+This means the SDK is capable of interacting with external persistent data stores. Each capability defines the specific persistence technology the SDK is capable of supporting. The full list of supported integrations is as follows:
 
-- `persistent-data-store-redis`: This means the SDK is capable of interacting with a Redis data store.
+- `consul`
+- `dynamodb`
+- `redis`
 
 #### Capability `"polling-gzip"`
 
