@@ -78,7 +78,7 @@ type ClientSDKFlag struct {
 	TrackEvents          bool                                `json:"trackEvents"`
 	TrackReason          bool                                `json:"trackReason"`
 	DebugEventsUntilDate o.Maybe[ldtime.UnixMillisecondTime] `json:"debugEventsUntilDate"`
-	Prerequisites        []string                            `json:"prerequisites"`
+	Prerequisites        []string                            `json:"prerequisites,omitempty"`
 }
 
 // ClientSDKFlagWithKey is used only in stream updates, where the key is within the same object.
