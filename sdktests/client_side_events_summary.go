@@ -362,14 +362,14 @@ func doClientSideSummaryBasicPrereqTest(t *ldtest.T) {
 				m.KV("contextKinds", anyContextKindsList()),
 			)),
 			m.KV(prereq2Key, m.AllOf(
-				m.JSONOptProperty("default").Should(m.BeNil()),
+				JSONPropertyNullOrAbsent("default"),
 				m.JSONProperty("counters").Should(m.ItemsInAnyOrder(
 					flagCounter(prereq2Result.Value, prereq2Result.Variation.Value(), prereq2Result.FlagVersion.Value(), 2),
 				)),
 				m.JSONProperty("contextKinds").Should(anyContextKindsList()),
 			)),
 			m.KV(prereq3Key, m.AllOf(
-				m.JSONOptProperty("default").Should(m.BeNil()),
+				JSONPropertyNullOrAbsent("default"),
 				m.JSONProperty("counters").Should(m.ItemsInAnyOrder(
 					flagCounter(prereq3Result.Value, prereq3Result.Variation.Value(), prereq3Result.FlagVersion.Value(), 2),
 				)),
