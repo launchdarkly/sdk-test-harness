@@ -2,6 +2,14 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.24.2](https://github.com/launchdarkly/sdk-test-harness/compare/v2.24.1...v2.24.2) (2024-10-29)
+
+
+### Bug Fixes
+
+* don't send 'null' when no prereqs present ([#251](https://github.com/launchdarkly/sdk-test-harness/issues/251)) ([6480865](https://github.com/launchdarkly/sdk-test-harness/commit/6480865eb7f7c51d3e57c243e10dc4392036ca3c))
+* summary events should allow null default value in counter ([#253](https://github.com/launchdarkly/sdk-test-harness/issues/253)) ([9b4d98f](https://github.com/launchdarkly/sdk-test-harness/commit/9b4d98ffd06aece34a8def9ddb2ba574946e053a))
+
 ## [2.24.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.24.0...v2.24.1) (2024-10-15)
 
 
