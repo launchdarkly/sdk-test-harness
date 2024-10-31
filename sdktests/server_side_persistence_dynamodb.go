@@ -29,7 +29,7 @@ type DynamoDBPersistentStore struct {
 }
 
 func (d *DynamoDBPersistentStore) DSN() string {
-	return ""
+	return *d.dynamodb.Config.Endpoint
 }
 
 func (d *DynamoDBPersistentStore) Type() servicedef.SDKConfigPersistentType {
