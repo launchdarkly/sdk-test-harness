@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.25.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.24.2...v2.25.0) (2024-10-31)
+
+
+### Features
+
+* Introduce persistent store testing  support ([#254](https://github.com/launchdarkly/sdk-test-harness/issues/254)) ([cd03f57](https://github.com/launchdarkly/sdk-test-harness/commit/cd03f57382f6e1a16d1aa289aeaf5e614557d63d))
+
 ## [2.24.2](https://github.com/launchdarkly/sdk-test-harness/compare/v2.24.1...v2.24.2) (2024-10-29)
 
 
