@@ -102,6 +102,24 @@ v4 of the event schema originally required a `contextKeys` property on all featu
 
 This means that the SDK supports technology migrations, a feature which allows customers to migrate between data sources using well-defined migration stages.
 
+#### Capability `"persistent-data-store-{integration}"`
+
+This means the SDK is capable of interacting with external persistent data stores. Each capability defines the specific persistence technology the SDK is capable of supporting. The full list of supported integrations is as follows:
+
+- `consul`
+- `dynamodb`
+- `redis`
+
+The persistence store tests are unique in that they rely on external services to be available prior to running the test harness. Because of this, the test harness will not run these tests by default, even if the capabilities exist, without also provided the `-enable-persistence-tests` flag.
+
+These services can be easily provided through the use of docker. Example commands are shown below for your convenience.
+
+```shell
+docker run -p 8000:8000 amazon/dynamodb-local
+docker run -p 8500:8500 hashicorp/consul
+docker run -p 6379:6379 redis
+```
+
 #### Capability `"polling-gzip"`
 
 This means the SDK is requesting gzip compression support on polling payloads. The SDK is expected to set the `Accept-Encoding` header to `gzip` in addition to enabling this capability.

@@ -3,12 +3,12 @@ package servicedef
 import (
 	"encoding/json"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
-	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 )
 
 type SDKConfigParams struct {
@@ -20,12 +20,12 @@ type SDKConfigParams struct {
 	Streaming           o.Maybe[SDKConfigStreamingParams]           `json:"streaming,omitempty"`
 	Polling             o.Maybe[SDKConfigPollingParams]             `json:"polling,omitempty"`
 	Events              o.Maybe[SDKConfigEventParams]               `json:"events,omitempty"`
-	PersistentDataStore o.Maybe[SDKConfigPersistentDataStoreParams] `json:"persistentDataStore,omitempty"`
 	BigSegments         o.Maybe[SDKConfigBigSegmentsParams]         `json:"bigSegments,omitempty"`
 	Tags                o.Maybe[SDKConfigTagsParams]                `json:"tags,omitempty"`
 	ClientSide          o.Maybe[SDKConfigClientSideParams]          `json:"clientSide,omitempty"`
 	Hooks               o.Maybe[SDKConfigHooksParams]               `json:"hooks,omitempty"`
 	Wrapper             o.Maybe[SDKConfigWrapper]                   `json:"wrapper,omitempty"`
+	PersistentDataStore o.Maybe[SDKConfigPersistentDataStoreParams] `json:"persistentDataStore,omitempty"`
 }
 
 type SDKConfigTLSParams struct {
@@ -60,10 +60,6 @@ type SDKConfigEventParams struct {
 	FlushIntervalMS         o.Maybe[ldtime.UnixMillisecondTime] `json:"flushIntervalMs,omitempty"`
 	OmitAnonymousContexts   bool                                `json:"omitAnonymousContexts,omitempty"`
 	EnableGzip              o.Maybe[bool]                       `json:"enableGzip,omitempty"`
-}
-
-type SDKConfigPersistentDataStoreParams struct {
-	CallbackURI string `json:"callbackURI"`
 }
 
 type SDKConfigBigSegmentsParams struct {
@@ -103,4 +99,38 @@ type SDKConfigHooksParams struct {
 type SDKConfigWrapper struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
+}
+
+type SDKConfigPersistentDataStoreParams struct {
+	Store SDKConfigPersistentStore `json:"store"`
+	Cache SDKConfigPersistentCache `json:"cache"`
+}
+
+type SDKConfigPersistentType string
+
+const (
+	Redis    = SDKConfigPersistentType("redis")
+	DynamoDB = SDKConfigPersistentType("dynamodb")
+	Consul   = SDKConfigPersistentType("consul")
+)
+
+type SDKConfigPersistentStore struct {
+	Type   SDKConfigPersistentType `json:"type"`
+	Prefix o.Maybe[string]         `json:"prefix,omitempty"`
+	DSN    string                  `json:"dsn"`
+}
+
+type SDKConfigPersistentMode string
+
+const (
+	CacheModeOff      = SDKConfigPersistentMode("off")
+	CacheModeTTL      = SDKConfigPersistentMode("ttl")
+	CacheModeInfinite = SDKConfigPersistentMode("infinite")
+)
+
+type SDKConfigPersistentCache struct {
+	Mode SDKConfigPersistentMode `json:"mode"`
+
+	// This value is only valid when the Mode is set to TTL. It must be a positive integer.
+	TTL o.Maybe[int] `json:"ttl,omitempty"`
 }

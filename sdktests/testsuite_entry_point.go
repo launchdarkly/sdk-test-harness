@@ -92,6 +92,7 @@ func doAllServerSideTests(t *ldtest.T) {
 	t.Run("migrations", doServerSideMigrationTests)
 	t.Run("hooks", doCommonHooksTests)
 	t.Run("wrapper", doServerSideWrapperTests)
+	t.Run("persistent data store", doServerSidePersistentTests)
 }
 
 func doAllClientSideTests(t *ldtest.T) {
