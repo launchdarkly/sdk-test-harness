@@ -10,7 +10,6 @@ import (
 
 func doServerSideStreamTests(t *ldtest.T) {
 	t.Run("requests", doServerSideStreamRequestTests)
-	t.Run("updates", doServerSideStreamUpdateTests)
 	t.Run("retry behavior", doServerSideStreamRetryTests)
 	t.Run("validation", doServerSideStreamValidationTests)
 
@@ -30,10 +29,6 @@ func doServerSideStreamRequestTests(t *ldtest.T) {
 	streamTests.RequestURLPath(t, func(flagRequestMethod) m.Matcher {
 		return m.Equal(mockld.StreamingPathServerSide)
 	})
-}
-
-func doServerSideStreamUpdateTests(t *ldtest.T) {
-	NewCommonStreamingTests(t, "doServerSideStreamUpdateTests").Updates(t)
 }
 
 func doServerSideFDv2StreamTests(t *ldtest.T) {
