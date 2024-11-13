@@ -230,6 +230,14 @@ This means the SDK supports setting the wrapper name and version and includes th
 
 When this capability is set a `wrapper` configuration will be included with a subset of tests.
 
+
+### Capability `"http-proxy"`
+
+This indicates the SDK is capable of configuring an HTTP proxy for its network requests. 
+
+All requests should be sent to the proxy. This is generally implemented in an SDK via standard networking
+library capabilities, such as setting an environment variable (like `http_proxy`) or a configuration option.
+
 ### Stop test service: `DELETE /`
 
 The test harness sends this request at the end of a test run if you have specified `--stop-service-at-end` on the [command line](./running.md). The test service should simply quit. This is a convenience so CI scripts can simply start the test service in the background and assume it will be stopped for them.
@@ -291,6 +299,8 @@ A `POST` request indicates that the test harness wants to start an instance of t
   * `wrapper` (object, optional): If specified contains wrapper configuration.
     * `name`: The name of the wrapper.
     * `version`: The version of the wrapper.
+  * `proxy` (object, optional): If specified contains proxy configuration.
+    * `httpProxy` (string, optional): An HTTP proxy, of the form `http://host:port`.
   
 The response to a valid request is any HTTP `2xx` status, with a `Location` header whose value is the URL of the test service resource representing this SDK client instance (that is, the one that would be used for "Close client" or "Send command" as described below).
 
