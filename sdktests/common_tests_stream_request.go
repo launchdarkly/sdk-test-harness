@@ -185,7 +185,7 @@ func (c CommonStreamingTests) RequestContextProperties(t *ldtest.T, getPath stri
 }
 
 func (c CommonStreamingTests) RequestViaHTTPProxy(t *ldtest.T) {
-	t.RequireCapability(servicedef.CapabilityHttpProxy)
+	t.RequireCapability(servicedef.CapabilityHTTPProxy)
 	t.Run("http proxy", func(t *ldtest.T) {
 		dataSource, configurers := c.setupDataSources(t, nil)
 
