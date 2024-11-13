@@ -17,8 +17,6 @@ type SDKConfigParams struct {
 	InitCanFail         bool                                        `json:"initCanFail,omitempty"`
 	ServiceEndpoints    o.Maybe[SDKConfigServiceEndpointsParams]    `json:"serviceEndpoints,omitempty"`
 	TLS                 o.Maybe[SDKConfigTLSParams]                 `json:"tls,omitempty"`
-	Streaming           o.Maybe[SDKConfigStreamingParams]           `json:"streaming,omitempty"`
-	Polling             o.Maybe[SDKConfigPollingParams]             `json:"polling,omitempty"`
 	Events              o.Maybe[SDKConfigEventParams]               `json:"events,omitempty"`
 	BigSegments         o.Maybe[SDKConfigBigSegmentsParams]         `json:"bigSegments,omitempty"`
 	Tags                o.Maybe[SDKConfigTagsParams]                `json:"tags,omitempty"`
