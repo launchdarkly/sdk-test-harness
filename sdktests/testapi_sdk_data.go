@@ -148,15 +148,36 @@ func (d *SDKDataSource) Configure(config *servicedef.SDKConfigParams) error {
 	if d.streamingService == nil && d.pollingService == nil {
 		return errors.New("tried to use an SDKDataSource that has neither streaming nor polling configured")
 	}
+
 	if d.streamingService != nil {
-		newState := config.Streaming.Value()
-		newState.BaseURI = d.endpoint.BaseURL()
-		config.Streaming = o.Some(newState)
+		dataSystem := config.DataSystem.OrElse(servicedef.DataSystem{})
+		synchronizers := dataSystem.Synchronizers.OrElse(servicedef.Synchronizers{})
+		primary := synchronizers.Primary.Streaming.Value()
+		primary.BaseURI = d.endpoint.BaseURL()
+		synchronizers.Primary.Streaming = o.Some(primary)
+
+		config.DataSystem = o.Some(servicedef.DataSystem{
+			Store:         dataSystem.Store,
+			StoreMode:     dataSystem.StoreMode,
+			Initializers:  dataSystem.Initializers,
+			Synchronizers: o.Some(synchronizers),
+		})
 	}
+
 	if d.pollingService != nil {
-		newState := config.Polling.Value()
-		newState.BaseURI = d.endpoint.BaseURL()
-		config.Polling = o.Some(newState)
+		dataSystem := config.DataSystem.OrElse(servicedef.DataSystem{})
+		synchronizers := dataSystem.Synchronizers.OrElse(servicedef.Synchronizers{})
+		primary := synchronizers.Primary.Polling.Value()
+		primary.BaseURI = d.endpoint.BaseURL()
+		synchronizers.Primary.Polling = o.Some(primary)
+
+		config.DataSystem = o.Some(servicedef.DataSystem{
+			Store:         dataSystem.Store,
+			StoreMode:     dataSystem.StoreMode,
+			Initializers:  dataSystem.Initializers,
+			Synchronizers: o.Some(synchronizers),
+		})
 	}
+
 	return nil
 }
