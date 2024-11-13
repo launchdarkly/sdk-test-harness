@@ -15,7 +15,6 @@ type SDKConfigParams struct {
 	Credential          string                                      `json:"credential"`
 	StartWaitTimeMS     o.Maybe[ldtime.UnixMillisecondTime]         `json:"startWaitTimeMs,omitempty"`
 	InitCanFail         bool                                        `json:"initCanFail,omitempty"`
-	ServiceEndpoints    o.Maybe[SDKConfigServiceEndpointsParams]    `json:"serviceEndpoints,omitempty"`
 	TLS                 o.Maybe[SDKConfigTLSParams]                 `json:"tls,omitempty"`
 	Events              o.Maybe[SDKConfigEventParams]               `json:"events,omitempty"`
 	BigSegments         o.Maybe[SDKConfigBigSegmentsParams]         `json:"bigSegments,omitempty"`

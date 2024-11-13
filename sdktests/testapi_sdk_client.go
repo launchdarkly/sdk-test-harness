@@ -89,15 +89,6 @@ func WithPollingConfig(pollingConfig servicedef.SDKConfigPollingParams) SDKConfi
 	})
 }
 
-// WithServiceEndpointsConfig is used with StartSDKClient to specify non-default service endpoints.
-// This will only work if the test service has the "service-endpoints" capability.
-func WithServiceEndpointsConfig(endpointsConfig servicedef.SDKConfigServiceEndpointsParams) SDKConfigurer {
-	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
-		configOut.ServiceEndpoints = o.Some(endpointsConfig)
-		return nil
-	})
-}
-
 // WithStreamingConfig is used with StartSDKClient to specify a non-default streaming configuration.
 func WithStreamingConfig(streamingConfig servicedef.SDKConfigStreamingParams) SDKConfigurer {
 	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
@@ -204,14 +195,13 @@ func TryNewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) (*SDKClient, err
 }
 
 func validateSDKConfig(config servicedef.SDKConfigParams) error {
-	if !config.DataSystem.IsDefined() && !config.PersistentDataStore.IsDefined() && config.ServiceEndpoints.Value().Streaming == "" {
+	if !config.DataSystem.IsDefined() && !config.PersistentDataStore.IsDefined() {
 		// Note that the default is streaming, so we don't necessarily need to set config.Streaming if there are
 		// no other customized options and if we used serviceEndpoints.streaming to set the stream URI
 		return errors.New(
 			"neither streaming nor polling was enabled-- did you forget to include the SDKDataSource as a parameter?")
 	}
-	if config.Events.IsDefined() && config.Events.Value().BaseURI == "" &&
-		(!config.ServiceEndpoints.IsDefined() || config.ServiceEndpoints.Value().Events == "") {
+	if config.Events.IsDefined() && config.Events.Value().BaseURI == "" {
 		return errors.New("events were enabled but base URI was not set--" +
 			" did you forget to include the SDKEventSink as a parameter?")
 	}
