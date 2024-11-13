@@ -143,7 +143,7 @@ func newServerSidePersistentTests(
 }
 
 func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
-	t.Run("uses default prefix", func(t *ldtest.T) {
+	s.runWithEmptyStore(t, "uses default prefix", func(t *ldtest.T) {
 		require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
 
 		persistence := NewPersistence()
@@ -160,7 +160,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default"))
 	})
 
-	t.Run("uses custom prefix", func(t *ldtest.T) {
+	s.runWithEmptyStore(t, "uses custom prefix", func(t *ldtest.T) {
 		customPrefix := "custom-prefix"
 
 		persistence := NewPersistence()
@@ -456,14 +456,14 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			// Lower versioned deletes are ignored
 			stream.StreamingService().PushDelete("flags", "flag-key", 1)
 			s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
-				"flag-key":          basicDeletedFlagValidationMatcher(1),
+				"flag-key":          basicDeletedFlagValidationMatcher("flag-key", 1),
 				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "fallthrough"),
 			})
 
 			// Higher versioned deletes are applied
 			stream.StreamingService().PushDelete("flags", "flag-key", 200)
 			s.eventuallyValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
-				"flag-key":          basicDeletedFlagValidationMatcher(200),
+				"flag-key":          basicDeletedFlagValidationMatcher("flag-key", 200),
 				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "fallthrough"),
 			})
 		})
@@ -673,9 +673,12 @@ func basicFlagValidationMatcher(key string, version int, value string) m.Matcher
 	)
 }
 
-func basicDeletedFlagValidationMatcher(version int) m.Matcher {
+func basicDeletedFlagValidationMatcher(key string, version int) m.Matcher {
 	return m.AllOf(
-		m.JSONProperty("key").Should(m.Equal("$deleted")),
+		m.AnyOf(
+			m.JSONProperty("key").Should(m.Equal(key)),
+			m.JSONProperty("key").Should(m.Equal("$deleted")),
+		),
 		m.JSONProperty("version").Should(m.Equal(version)),
 		m.JSONProperty("deleted").Should(m.Equal(true)),
 	)

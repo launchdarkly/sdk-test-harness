@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.25.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.25.0...v2.25.1) (2024-11-06)
+
+
+### Bug Fixes
+
+* Allow for more flexible flag key in tombstone ([#256](https://github.com/launchdarkly/sdk-test-harness/issues/256)) ([2a0e8e7](https://github.com/launchdarkly/sdk-test-harness/commit/2a0e8e7293696b0c5934209cc8072897b6a8156e))
+
 ## [2.25.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.24.2...v2.25.0) (2024-10-31)
 
 
