@@ -64,6 +64,11 @@ const (
 	// CapabilityWrapper indicates that the SDK supports setting wrapper name and version and including them in request
 	// headers.
 	CapabilityWrapper = "wrapper"
+
+	// CapabilityHttpProxy indicates that the SDK supports setting an HTTP proxy, through which the SDK will
+	// make all requests. In this paradigm, the SDK communicates with the proxy over HTTP (no TLS) and the proxy
+	// then communicates with LaunchDarkly with TLS (or with Relay, which may or may not have TLS enabled.)
+	CapabilityHttpProxy = "http-proxy"
 )
 
 type StatusRep struct {

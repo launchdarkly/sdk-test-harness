@@ -197,6 +197,7 @@ func validateSDKConfig(config servicedef.SDKConfigParams) error {
 		return errors.New(
 			"neither streaming nor polling was enabled-- did you forget to include the SDKDataSource as a parameter?")
 	}
+
 	if config.Streaming.IsDefined() && config.Streaming.Value().BaseURI == "" &&
 		(!config.ServiceEndpoints.IsDefined() || config.ServiceEndpoints.Value().Streaming == "") {
 		return errors.New("streaming was enabled but base URI was not set")
