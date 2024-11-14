@@ -42,6 +42,7 @@ type DataSystem struct {
 	StoreMode     DataStoreMode          `json:"storeMode"`
 	Initializers  []DataInitializer      `json:"initializers"`
 	Synchronizers o.Maybe[Synchronizers] `json:"synchronizers,omitempty"`
+	PayloadFilter o.Maybe[string]        `json:"payloadFilter,omitempty"`
 }
 
 type DataStore struct {
@@ -76,13 +77,11 @@ type SDKConfigServiceEndpointsParams struct {
 type SDKConfigStreamingParams struct {
 	BaseURI             string                              `json:"baseUri,omitempty"`
 	InitialRetryDelayMS o.Maybe[ldtime.UnixMillisecondTime] `json:"initialRetryDelayMs,omitempty"`
-	Filter              o.Maybe[string]                     `json:"filter,omitempty"`
 }
 
 type SDKConfigPollingParams struct {
 	BaseURI        string                              `json:"baseUri,omitempty"`
 	PollIntervalMS o.Maybe[ldtime.UnixMillisecondTime] `json:"pollIntervalMs,omitempty"`
-	Filter         o.Maybe[string]                     `json:"filter,omitempty"`
 }
 
 type SDKConfigEventParams struct {

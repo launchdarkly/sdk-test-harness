@@ -78,9 +78,9 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 
 								_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 									append(configurers,
+										WithPayloadFilter(filter),
 										WithStreamingConfig(servicedef.SDKConfigStreamingParams{
 											BaseURI: streamURI,
-											Filter:  filter.Maybe,
 										}),
 										c.withFlagRequestMethod(method),
 									)...)...)
