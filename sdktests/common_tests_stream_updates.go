@@ -9,13 +9,13 @@ import (
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 )
 
-func (c CommonStreamingTests) makeSDKDataWithFlag(key string, version int, value ldvalue.Value) mockld.SDKData {
+func (c CommonStreamingTests) makeSDKDataWithFlag(version int, value ldvalue.Value) mockld.SDKData {
 	if c.isClientSide {
 		return mockld.NewClientSDKDataBuilder().
-			Flag(key, c.makeClientSideFlag(key, version, value).ClientSDKFlag).
+			Flag("flag-key", c.makeClientSideFlag("flag-key", version, value).ClientSDKFlag).
 			Build()
 	}
-	return mockld.NewServerSDKDataBuilder().Flag(c.makeServerSideFlag(key, version, value)).Build()
+	return mockld.NewServerSDKDataBuilder().Flag(c.makeServerSideFlag("flag-key", version, value)).Build()
 }
 
 func (c CommonStreamingTests) makeFlagData(key string, version int, value ldvalue.Value) []byte {
