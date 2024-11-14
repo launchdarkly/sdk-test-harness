@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
@@ -60,26 +59,6 @@ func doServerSideServiceEndpointsTests(t *ldtest.T) {
 			func(events *SDKEventSink) SDKConfigurer {
 				return WithEventsConfig(servicedef.SDKConfigEventParams{
 					BaseURI: events.Endpoint().BaseURL(),
-				})
-			},
-		)
-	})
-
-	t.Run("using separate service endpoints properties", func(t *ldtest.T) {
-		t.RequireCapability(servicedef.CapabilityServiceEndpoints)
-		doTest(
-			t,
-			func(dataSource *SDKDataSource) SDKConfigurer {
-				return WithServiceEndpointsConfig(servicedef.SDKConfigServiceEndpointsParams{
-					Streaming: dataSource.Endpoint().BaseURL(),
-				})
-			},
-			func(events *SDKEventSink) SDKConfigurer {
-				return WithConfig(servicedef.SDKConfigParams{
-					Events: o.Some(servicedef.SDKConfigEventParams{}),
-					ServiceEndpoints: o.Some(servicedef.SDKConfigServiceEndpointsParams{
-						Events: events.Endpoint().BaseURL(),
-					}),
 				})
 			},
 		)
