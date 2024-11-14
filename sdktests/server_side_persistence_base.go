@@ -349,7 +349,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 				Mode: servicedef.CacheModeOff,
 			})
 
-			sdkData := s.makeSDKDataWithFlag("flag-key", 1, ldvalue.String("value"))
+			sdkData := s.makeSDKDataWithFlag(1, ldvalue.String("value"))
 			_, configurers := s.setupDataSources(t, sdkData)
 			configurers = append(configurers, persistence)
 
@@ -370,7 +370,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 				Mode: servicedef.CacheModeOff,
 			})
 
-			sdkData := s.makeSDKDataWithFlag("flag-key", 1, ldvalue.String("value"))
+			sdkData := s.makeSDKDataWithFlag(1, ldvalue.String("value"))
 			stream, configurers := s.setupDataSources(t, sdkData)
 			configurers = append(configurers, persistence)
 
@@ -400,7 +400,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 				Mode: servicedef.CacheModeOff,
 			})
 
-			sdkData := s.makeSDKDataWithFlag("flag-key", 1, ldvalue.String("value"))
+			sdkData := s.makeSDKDataWithFlag(1, ldvalue.String("value"))
 			stream, configurers := s.setupDataSources(t, sdkData)
 			configurers = append(configurers, persistence)
 
@@ -444,7 +444,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 				Mode: servicedef.CacheModeOff,
 			})
 
-			sdkData := s.makeSDKDataWithFlag("flag-key", 100, ldvalue.String("value"))
+			sdkData := s.makeSDKDataWithFlag(100, ldvalue.String("value"))
 			stream, configurers := s.setupDataSources(t, sdkData)
 			configurers = append(configurers, persistence)
 
@@ -515,7 +515,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 					})
 					persistence.SetCache(cacheConfig)
 
-					sdkData := s.makeSDKDataWithFlag("flag-key", 1, ldvalue.String("value"))
+					sdkData := s.makeSDKDataWithFlag(1, ldvalue.String("value"))
 					stream, configurers := s.setupDataSources(t, sdkData)
 					configurers = append(configurers, persistence)
 
@@ -544,7 +544,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 					})
 					persistence.SetCache(cacheConfig)
 
-					sdkData := s.makeSDKDataWithFlag("flag-key", 1, ldvalue.String("value"))
+					sdkData := s.makeSDKDataWithFlag(1, ldvalue.String("value"))
 					_, configurers := s.setupDataSources(t, sdkData)
 					configurers = append(configurers, persistence)
 
@@ -596,7 +596,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 					})
 					persistence.SetCache(cacheConfig)
 
-					sdkData := s.makeSDKDataWithFlag("flag-key", 1, ldvalue.String("value"))
+					sdkData := s.makeSDKDataWithFlag(1, ldvalue.String("value"))
 					_, configurers := s.setupDataSources(t, sdkData)
 					configurers = append(configurers, persistence)
 

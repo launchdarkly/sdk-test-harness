@@ -44,7 +44,7 @@ func (c CommonStreamingTests) StateTransitions(t *ldtest.T) {
 }
 
 func (c CommonStreamingTests) InitializeFromEmptyState(t *ldtest.T) {
-	streamEndpoint, _ := makeSequentialStreamHandler(t, c.makeSDKDataWithFlag("flag-key", 1, initialValue))
+	streamEndpoint, _ := makeSequentialStreamHandler(t, c.makeSDKDataWithFlag(1, initialValue))
 	t.Defer(streamEndpoint.Close)
 	client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
 
@@ -53,7 +53,7 @@ func (c CommonStreamingTests) InitializeFromEmptyState(t *ldtest.T) {
 }
 
 func (c CommonStreamingTests) SavesPreviouslyKnownState(t *ldtest.T) {
-	dataBefore := c.makeSDKDataWithFlag("flag-key", 1, initialValue)
+	dataBefore := c.makeSDKDataWithFlag(1, initialValue)
 	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("xfer-none").IntentReason("up-to-date").Build()
 	streamEndpoint, _ := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
@@ -67,7 +67,7 @@ func (c CommonStreamingTests) SavesPreviouslyKnownState(t *ldtest.T) {
 }
 
 func (c CommonStreamingTests) ReplacesPreviouslyKnownState(t *ldtest.T) {
-	dataBefore := c.makeSDKDataWithFlag("flag-key", 1, initialValue)
+	dataBefore := c.makeSDKDataWithFlag(1, initialValue)
 	dataAfter := mockld.NewServerSDKDataBuilder().
 		IntentCode("xfer-full").
 		IntentReason("cant-catchup").
@@ -88,7 +88,7 @@ func (c CommonStreamingTests) ReplacesPreviouslyKnownState(t *ldtest.T) {
 }
 
 func (c CommonStreamingTests) UpdatesPreviouslyKnownState(t *ldtest.T) {
-	dataBefore := c.makeSDKDataWithFlag("flag-key", 1, initialValue)
+	dataBefore := c.makeSDKDataWithFlag(1, initialValue)
 	dataAfter := mockld.NewServerSDKDataBuilder().
 		IntentCode("xfer-changes").
 		IntentReason("stale").
@@ -108,7 +108,7 @@ func (c CommonStreamingTests) UpdatesPreviouslyKnownState(t *ldtest.T) {
 }
 
 func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent(t *ldtest.T) {
-	data := c.makeSDKDataWithFlag("flag-key", 1, initialValue)
+	data := c.makeSDKDataWithFlag(1, initialValue)
 	stream := NewSDKDataSourceWithoutEndpoint(t, data)
 	streamEndpoint := requireContext(t).harness.NewMockEndpoint(stream.Handler(), t.DebugLogger(),
 		harness.MockEndpointDescription("streaming service"))
@@ -148,7 +148,7 @@ func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent
 }
 
 func (c CommonStreamingTests) IgnoresModelVersion(t *ldtest.T) {
-	data := c.makeSDKDataWithFlag("flag-key", 100, initialValue)
+	data := c.makeSDKDataWithFlag(100, initialValue)
 	stream := NewSDKDataSourceWithoutEndpoint(t, data)
 	streamEndpoint := requireContext(t).harness.NewMockEndpoint(stream.Handler(), t.DebugLogger(),
 		harness.MockEndpointDescription("streaming service"))
@@ -173,7 +173,7 @@ func (c CommonStreamingTests) IgnoresModelVersion(t *ldtest.T) {
 }
 
 func (c CommonStreamingTests) IgnoresHeartBeat(t *ldtest.T) {
-	data := c.makeSDKDataWithFlag("flag-key", 1, initialValue)
+	data := c.makeSDKDataWithFlag(1, initialValue)
 	stream := NewSDKDataSourceWithoutEndpoint(t, data)
 	streamEndpoint := requireContext(t).harness.NewMockEndpoint(stream.Handler(), t.DebugLogger(),
 		harness.MockEndpointDescription("streaming service"))
@@ -196,7 +196,7 @@ func (c CommonStreamingTests) IgnoresHeartBeat(t *ldtest.T) {
 }
 
 func (c CommonStreamingTests) DiscardsEventsOnError(t *ldtest.T) {
-	data := c.makeSDKDataWithFlag("flag-key", 1, initialValue)
+	data := c.makeSDKDataWithFlag(1, initialValue)
 	stream := NewSDKDataSourceWithoutEndpoint(t, data)
 	streamEndpoint := requireContext(t).harness.NewMockEndpoint(stream.Handler(), t.DebugLogger(),
 		harness.MockEndpointDescription("streaming service"))
@@ -229,7 +229,7 @@ func (c CommonStreamingTests) DiscardsEventsOnError(t *ldtest.T) {
 }
 
 func (c CommonStreamingTests) DisconnectsOnGoodbye(t *ldtest.T) {
-	dataBefore := c.makeSDKDataWithFlag("flag-key", 1, initialValue)
+	dataBefore := c.makeSDKDataWithFlag(1, initialValue)
 	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("xfer-none").IntentReason("up-to-date").Build()
 	streamEndpoint, streams := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
