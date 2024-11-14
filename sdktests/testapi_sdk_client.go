@@ -77,7 +77,14 @@ func WithEventsConfig(eventsConfig servicedef.SDKConfigEventParams) SDKConfigure
 // WithPollingConfig is used with StartSDKClient to specify a non-default polling configuration.
 func WithPollingConfig(pollingConfig servicedef.SDKConfigPollingParams) SDKConfigurer {
 	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
-		configOut.Polling = o.Some(pollingConfig)
+		dataSystem := configOut.DataSystem.OrElse(servicedef.DataSystem{})
+		dataSystem.Synchronizers = o.Some(servicedef.Synchronizers{
+			Primary: servicedef.Synchronizer{
+				Polling: o.Some(pollingConfig),
+			},
+		})
+
+		configOut.DataSystem = o.Some(dataSystem)
 		return nil
 	})
 }
@@ -94,7 +101,14 @@ func WithServiceEndpointsConfig(endpointsConfig servicedef.SDKConfigServiceEndpo
 // WithStreamingConfig is used with StartSDKClient to specify a non-default streaming configuration.
 func WithStreamingConfig(streamingConfig servicedef.SDKConfigStreamingParams) SDKConfigurer {
 	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
-		configOut.Streaming = o.Some(streamingConfig)
+		dataSystem := configOut.DataSystem.OrElse(servicedef.DataSystem{})
+		dataSystem.Synchronizers = o.Some(servicedef.Synchronizers{
+			Primary: servicedef.Synchronizer{
+				Streaming: o.Some(streamingConfig),
+			},
+		})
+
+		configOut.DataSystem = o.Some(dataSystem)
 		return nil
 	})
 }
@@ -190,7 +204,9 @@ func TryNewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) (*SDKClient, err
 }
 
 func validateSDKConfig(config servicedef.SDKConfigParams) error {
-	if !config.Streaming.IsDefined() && !config.Polling.IsDefined() &&
+	//nolint:godox
+	// TODO: Add some validation here for the FDv2 config
+	if !config.Streaming.IsDefined() && !config.Polling.IsDefined() && !config.DataSystem.IsDefined() &&
 		!config.PersistentDataStore.IsDefined() && config.ServiceEndpoints.Value().Streaming == "" {
 		// Note that the default is streaming, so we don't necessarily need to set config.Streaming if there are
 		// no other customized options and if we used serviceEndpoints.streaming to set the stream URI

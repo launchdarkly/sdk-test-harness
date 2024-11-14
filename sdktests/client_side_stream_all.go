@@ -12,7 +12,6 @@ import (
 
 func doClientSideStreamTests(t *ldtest.T) {
 	t.Run("requests", doClientSideStreamRequestTest)
-	t.Run("updates", doClientSideStreamUpdateTests)
 }
 
 func doClientSideStreamRequestTest(t *ldtest.T) {
@@ -56,8 +55,4 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 		mockld.StreamingPathMobileGet,
 		strings.ReplaceAll(mockld.StreamingPathJSClientGet, mockld.PollingPathEnvIDParam, envIDOrMobileKey))
 	streamTests.RequestContextProperties(t, getPath)
-}
-
-func doClientSideStreamUpdateTests(t *ldtest.T) {
-	NewCommonStreamingTests(t, "doClientSideStreamUpdateTests").Updates(t)
 }

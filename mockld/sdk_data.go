@@ -237,8 +237,8 @@ func (b *ServerSDKDataBuilder) BuildServerSDKData() ServerSDKData {
 	segments := maps.Clone(b.segments)
 
 	return map[DataItemKind]map[string]json.RawMessage{
-		"flags":    flags,
-		"segments": segments,
+		"flag":    flags,
+		"segment": segments,
 	}
 }
 

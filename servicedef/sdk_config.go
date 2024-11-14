@@ -26,6 +26,43 @@ type SDKConfigParams struct {
 	Hooks               o.Maybe[SDKConfigHooksParams]               `json:"hooks,omitempty"`
 	Wrapper             o.Maybe[SDKConfigWrapper]                   `json:"wrapper,omitempty"`
 	PersistentDataStore o.Maybe[SDKConfigPersistentDataStoreParams] `json:"persistentDataStore,omitempty"`
+	DataSystem          o.Maybe[DataSystem]                         `json:"dataSystem,omitempty"`
+}
+
+type DataStoreMode int
+
+const (
+	// DataStoreModeRead indicates that the data store is read-only. Data will never be written back to the store by
+	// the SDK.
+	DataStoreModeRead = 0
+	// DataStoreModeReadWrite indicates that the data store is read-write. Data from initializers/synchronizers may be
+	// written to the store as necessary.
+	DataStoreModeReadWrite = 1
+)
+
+type DataSystem struct {
+	Store         o.Maybe[DataStore]     `json:"store,omitempty"`
+	StoreMode     DataStoreMode          `json:"storeMode"`
+	Initializers  []DataInitializer      `json:"initializers"`
+	Synchronizers o.Maybe[Synchronizers] `json:"synchronizers,omitempty"`
+}
+
+type DataStore struct {
+	PersistentDataStore o.Maybe[SDKConfigPersistentDataStoreParams] `json:"persistentDataStore,omitempty"`
+}
+
+type DataInitializer struct {
+	Polling o.Maybe[SDKConfigPollingParams] `json:"polling,omitempty"`
+}
+
+type Synchronizers struct {
+	Primary   Synchronizer          `json:"primary"`
+	Secondary o.Maybe[Synchronizer] `json:"secondary,omitempty"`
+}
+
+type Synchronizer struct {
+	Streaming o.Maybe[SDKConfigStreamingParams] `json:"streaming,omitempty"`
+	Polling   o.Maybe[SDKConfigPollingParams]   `json:"polling,omitempty"`
 }
 
 type SDKConfigTLSParams struct {
