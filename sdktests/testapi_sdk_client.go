@@ -74,6 +74,17 @@ func WithEventsConfig(eventsConfig servicedef.SDKConfigEventParams) SDKConfigure
 	})
 }
 
+// WithPayloadFilter is used to with StartSDKClient to apply a non-default payload filter configuration
+func WithPayloadFilter(filter environmentFilter) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		dataSystem := configOut.DataSystem.OrElse(servicedef.DataSystem{})
+		dataSystem.PayloadFilter = filter.Maybe
+
+		configOut.DataSystem = o.Some(dataSystem)
+		return nil
+	})
+}
+
 // WithPollingConfig is used with StartSDKClient to specify a non-default polling configuration.
 func WithPollingConfig(pollingConfig servicedef.SDKConfigPollingParams) SDKConfigurer {
 	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
