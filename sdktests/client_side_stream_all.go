@@ -22,6 +22,8 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 	streamTests := NewCommonStreamingTests(t, "doClientSideStreamRequestTest",
 		WithCredential(envIDOrMobileKey))
 
+	streamTests.RequestViaHTTPProxy(t)
+
 	streamTests.RequestMethodAndHeaders(t, envIDOrMobileKey)
 
 	requestPathMatcher := func(method flagRequestMethod) m.Matcher {

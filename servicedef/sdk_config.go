@@ -17,6 +17,7 @@ type SDKConfigParams struct {
 	InitCanFail         bool                                        `json:"initCanFail,omitempty"`
 	ServiceEndpoints    o.Maybe[SDKConfigServiceEndpointsParams]    `json:"serviceEndpoints,omitempty"`
 	TLS                 o.Maybe[SDKConfigTLSParams]                 `json:"tls,omitempty"`
+	Proxy               o.Maybe[SDKConfigProxyParams]               `json:"proxy,omitempty"`
 	Streaming           o.Maybe[SDKConfigStreamingParams]           `json:"streaming,omitempty"`
 	Polling             o.Maybe[SDKConfigPollingParams]             `json:"polling,omitempty"`
 	Events              o.Maybe[SDKConfigEventParams]               `json:"events,omitempty"`
@@ -31,6 +32,10 @@ type SDKConfigParams struct {
 type SDKConfigTLSParams struct {
 	SkipVerifyPeer bool   `json:"skipVerifyPeer,omitempty"`
 	CustomCAFile   string `json:"customCAFile,omitempty"`
+}
+
+type SDKConfigProxyParams struct {
+	HTTPProxy o.Maybe[string] `json:"httpProxy,omitempty"`
 }
 
 type SDKConfigServiceEndpointsParams struct {

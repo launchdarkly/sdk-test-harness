@@ -2,6 +2,7 @@ package sdktests
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -180,5 +181,42 @@ func (c CommonStreamingTests) RequestContextProperties(t *ldtest.T, getPath stri
 				}
 			})
 		}
+	})
+}
+
+func (c CommonStreamingTests) RequestViaHTTPProxy(t *ldtest.T) {
+	t.RequireCapability(servicedef.CapabilityHTTPProxy)
+	t.Run("http proxy", func(t *ldtest.T) {
+		dataSource, configurers := c.setupDataSources(t, nil)
+
+		// The idea here is that we'll configure the SDK's service endpoints with an arbitrary host, but with the
+		// correct path that the test harness expects (like /endpoints/1). Then, we'll inject the actual test harness's
+		// endpoint via the HTTP Proxy configuration.
+		//
+		// The SDK should therefore:
+		// 1. Open a socket to the test harness's host and port
+		// 2. Send an HTTP request that has the arbitrary host and the correct path
+		//
+		// If the SDK didn't support proxying, then it would attempt to connect to the arbitrary host and
+		// the harness should fail the connection assertion.
+		streamURI := strings.Replace(dataSource.Endpoint().BaseURL(), "localhost", "not.valid.local", 1)
+
+		u, err := url.Parse(dataSource.Endpoint().BaseURL())
+		if err != nil {
+			t.Errorf("unexpected error parsing URL: %s", err)
+			t.FailNow()
+		}
+		u.Path = ""
+
+		_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
+			append(configurers,
+				WithStreamingConfig(servicedef.SDKConfigStreamingParams{
+					BaseURI: streamURI,
+				}),
+				c.withHTTPProxy(u.String()),
+			)...)...)
+
+		_, err = dataSource.Endpoint().AwaitConnection(time.Second)
+		assert.NoError(t, err)
 	})
 }
