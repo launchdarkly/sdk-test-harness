@@ -290,6 +290,14 @@ A `POST` request indicates that the test harness wants to start an instance of t
        The error message itself is not tested by the framework at this time, as it is not a specified behavior.
         * `beforeEvaluation` (string, optional): The error/exception message that should be generated in the `beforeEvaluation` stage of the test hook. 
         * `afterEvaluation` (string, optional): The error/exception message that should be generated in the `afterEvaluation` stage of the test hook. 
+  * `persistentDataStore` (object, optional): If present, contains the configuration for driving a persistent data store instance.
+    * `store` (object, required): Contains the configuration for the persistent data store.
+        * `type` (string, required): The type of the persistent data store. This will be one of the following values: `consul`, `dynamodb`, `redis`.
+        * `prefix` (string, optional): If present, this prefix should be used as the prefix for all persistent store keys. If it is not set, the SDK should use its configured default.
+        * `dsn` (string, required): The DSN used to connect to the persistent store.
+    * `cache` (object, required): Configuration describing the behavior of the persistent store cache.
+        * `mode` (string, required): The mode of the cache. This will be one of the following values: `off`, `ttl`, or `infinite`.
+        * `ttl` (number, optional): If the cache mode is `ttl`, this value will be the time-to-live for cache entries in seconds.
   * `tls` (object, optional): If specified, contains configuration for establishing TLS connections.
     * `skipVerifyPeer` (bool, optional): If true, the SDK's TLS configuration should be set skip verification of the peer. If false or omitted, the SDK should perform peer verification.
     * `customCAFile` (string, optional): If set, contains a file path pointing to a custom CA file that should be 
