@@ -1,6 +1,7 @@
 package sdktests
 
 import (
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 	"strings"
 
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
@@ -22,7 +23,9 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 	streamTests := NewCommonStreamingTests(t, "doClientSideStreamRequestTest",
 		WithCredential(envIDOrMobileKey))
 
-	streamTests.RequestViaHTTPProxy(t)
+	if t.Capabilities().Has(servicedef.CapabilityHTTPProxy) {
+		streamTests.RequestViaHTTPProxy(t)
+	}
 
 	streamTests.RequestMethodAndHeaders(t, envIDOrMobileKey)
 
