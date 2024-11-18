@@ -64,6 +64,10 @@ const (
 	// CapabilityWrapper indicates that the SDK supports setting wrapper name and version and including them in request
 	// headers.
 	CapabilityWrapper = "wrapper"
+
+	// CapabilityHTTPProxy indicates that the SDK supports setting an HTTP proxy, through which the SDK will
+	// make all requests.
+	CapabilityHTTPProxy = "http-proxy"
 )
 
 type StatusRep struct {

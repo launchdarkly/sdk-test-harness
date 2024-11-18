@@ -233,3 +233,12 @@ func (c commonTestsBase) sendArbitraryEvent(t *ldtest.T, client *SDKClient) {
 	}
 	client.SendCustomEvent(t, params)
 }
+
+func (c commonTestsBase) withHTTPProxy(url string) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		configOut.Proxy = o.Some(servicedef.SDKConfigProxyParams{
+			HTTPProxy: o.Some(url),
+		})
+		return nil
+	})
+}

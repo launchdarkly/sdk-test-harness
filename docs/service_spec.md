@@ -229,6 +229,14 @@ This means the SDK supports setting the wrapper name and version and includes th
 
 When this capability is set a `wrapper` configuration will be included with a subset of tests.
 
+
+### Capability `"http-proxy"`
+
+This indicates the SDK is capable of configuring an HTTP proxy for its network requests. 
+
+All requests should be sent to the proxy. This is generally implemented in an SDK via standard networking
+library capabilities, such as setting an environment variable (like `http_proxy`) or a configuration option.
+
 ### Stop test service: `DELETE /`
 
 The test harness sends this request at the end of a test run if you have specified `--stop-service-at-end` on the [command line](./running.md). The test service should simply quit. This is a convenience so CI scripts can simply start the test service in the background and assume it will be stopped for them.
@@ -279,6 +287,14 @@ A `POST` request indicates that the test harness wants to start an instance of t
        The error message itself is not tested by the framework at this time, as it is not a specified behavior.
         * `beforeEvaluation` (string, optional): The error/exception message that should be generated in the `beforeEvaluation` stage of the test hook. 
         * `afterEvaluation` (string, optional): The error/exception message that should be generated in the `afterEvaluation` stage of the test hook. 
+  * `persistentDataStore` (object, optional): If present, contains the configuration for driving a persistent data store instance.
+    * `store` (object, required): Contains the configuration for the persistent data store.
+        * `type` (string, required): The type of the persistent data store. This will be one of the following values: `consul`, `dynamodb`, `redis`.
+        * `prefix` (string, optional): If present, this prefix should be used as the prefix for all persistent store keys. If it is not set, the SDK should use its configured default.
+        * `dsn` (string, required): The DSN used to connect to the persistent store.
+    * `cache` (object, required): Configuration describing the behavior of the persistent store cache.
+        * `mode` (string, required): The mode of the cache. This will be one of the following values: `off`, `ttl`, or `infinite`.
+        * `ttl` (number, optional): If the cache mode is `ttl`, this value will be the time-to-live for cache entries in seconds.
   * `tls` (object, optional): If specified, contains configuration for establishing TLS connections.
     * `skipVerifyPeer` (bool, optional): If true, the SDK's TLS configuration should be set skip verification of the peer. If false or omitted, the SDK should perform peer verification.
     * `customCAFile` (string, optional): If set, contains a file path pointing to a custom CA file that should be 
@@ -288,6 +304,8 @@ A `POST` request indicates that the test harness wants to start an instance of t
   * `wrapper` (object, optional): If specified contains wrapper configuration.
     * `name`: The name of the wrapper.
     * `version`: The version of the wrapper.
+  * `proxy` (object, optional): If specified contains proxy configuration.
+    * `httpProxy` (string, optional): An HTTP proxy, of the form `http://host:port`.
   
 The response to a valid request is any HTTP `2xx` status, with a `Location` header whose value is the URL of the test service resource representing this SDK client instance (that is, the one that would be used for "Close client" or "Send command" as described below).
 

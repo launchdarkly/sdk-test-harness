@@ -16,6 +16,7 @@ type SDKConfigParams struct {
 	StartWaitTimeMS     o.Maybe[ldtime.UnixMillisecondTime]         `json:"startWaitTimeMs,omitempty"`
 	InitCanFail         bool                                        `json:"initCanFail,omitempty"`
 	TLS                 o.Maybe[SDKConfigTLSParams]                 `json:"tls,omitempty"`
+	Proxy               o.Maybe[SDKConfigProxyParams]               `json:"proxy,omitempty"`
 	Events              o.Maybe[SDKConfigEventParams]               `json:"events,omitempty"`
 	BigSegments         o.Maybe[SDKConfigBigSegmentsParams]         `json:"bigSegments,omitempty"`
 	Tags                o.Maybe[SDKConfigTagsParams]                `json:"tags,omitempty"`
@@ -66,6 +67,10 @@ type Synchronizer struct {
 type SDKConfigTLSParams struct {
 	SkipVerifyPeer bool   `json:"skipVerifyPeer,omitempty"`
 	CustomCAFile   string `json:"customCAFile,omitempty"`
+}
+
+type SDKConfigProxyParams struct {
+	HTTPProxy o.Maybe[string] `json:"httpProxy,omitempty"`
 }
 
 type SDKConfigServiceEndpointsParams struct {
