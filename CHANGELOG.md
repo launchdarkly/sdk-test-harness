@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.26.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.25.1...v2.26.0) (2024-11-18)
+
+
+### Features
+
+* add streaming mode http proxy test ([#258](https://github.com/launchdarkly/sdk-test-harness/issues/258)) ([b4e149e](https://github.com/launchdarkly/sdk-test-harness/commit/b4e149e1b5beca3c2bdb9b996678277c540bde23))
+
 ## [2.25.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.25.0...v2.25.1) (2024-11-06)
 
 
