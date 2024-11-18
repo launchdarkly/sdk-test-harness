@@ -80,7 +80,7 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 								_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 									append(configurers,
 										WithPayloadFilter(filter),
-										WithStreamingConfig(servicedef.SDKConfigStreamingParams{
+										WithPrimaryStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 											BaseURI: streamURI,
 										}),
 										c.withFlagRequestMethod(method),
@@ -210,7 +210,7 @@ func (c CommonStreamingTests) RequestViaHTTPProxy(t *ldtest.T) {
 
 		_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 			append(configurers,
-				WithStreamingConfig(servicedef.SDKConfigStreamingParams{
+				WithPrimaryStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 					BaseURI: streamURI,
 				}),
 				c.withHTTPProxy(u.String()),

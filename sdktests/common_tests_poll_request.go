@@ -132,7 +132,7 @@ func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagReq
 								_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 									c.withFlagRequestMethod(method),
 									WithPayloadFilter(filter),
-									WithPollingConfig(servicedef.SDKConfigPollingParams{
+									WithPrimaryPollingSynchronizer(servicedef.SDKConfigPollingParams{
 										BaseURI: pollURI,
 									}),
 								)...)

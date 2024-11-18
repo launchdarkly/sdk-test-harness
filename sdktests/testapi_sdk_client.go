@@ -85,8 +85,8 @@ func WithPayloadFilter(filter environmentFilter) SDKConfigurer {
 	})
 }
 
-// WithPollingConfig is used with StartSDKClient to specify a non-default polling configuration.
-func WithPollingConfig(pollingConfig servicedef.SDKConfigPollingParams) SDKConfigurer {
+// WithPrimaryPollingSynchronizer is used with StartSDKClient to specify a non-default polling configuration.
+func WithPrimaryPollingSynchronizer(pollingConfig servicedef.SDKConfigPollingParams) SDKConfigurer {
 	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
 		dataSystem := configOut.DataSystem.OrElse(servicedef.DataSystem{})
 		dataSystem.Synchronizers = o.Some(servicedef.Synchronizers{
@@ -100,8 +100,8 @@ func WithPollingConfig(pollingConfig servicedef.SDKConfigPollingParams) SDKConfi
 	})
 }
 
-// WithStreamingConfig is used with StartSDKClient to specify a non-default streaming configuration.
-func WithStreamingConfig(streamingConfig servicedef.SDKConfigStreamingParams) SDKConfigurer {
+// WithPrimaryStreamingSynchronizer is used with StartSDKClient to specify a non-default streaming configuration.
+func WithPrimaryStreamingSynchronizer(streamingConfig servicedef.SDKConfigStreamingParams) SDKConfigurer {
 	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
 		dataSystem := configOut.DataSystem.OrElse(servicedef.DataSystem{})
 		dataSystem.Synchronizers = o.Some(servicedef.Synchronizers{

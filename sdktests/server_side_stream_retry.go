@@ -66,7 +66,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		streamEndpoint := makeStreamEndpoint(t, handler)
 		t.Defer(streamEndpoint.Close)
 
-		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
+		client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
@@ -91,7 +91,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 
 		stream := NewSDKDataSource(t, dataV1)
 		client := NewSDKClient(t,
-			WithStreamingConfig(servicedef.SDKConfigStreamingParams{
+			WithPrimaryStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 				InitialRetryDelayMS: o.Some(ldtime.UnixMillisecondTime(10000)),
 			}),
 			stream,
@@ -129,7 +129,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		streamEndpoint := makeStreamEndpoint(t, handler)
 		t.Defer(streamEndpoint.Close)
 
-		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
+		client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
@@ -164,7 +164,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		streamEndpoint := makeStreamEndpoint(t, handler)
 		t.Defer(streamEndpoint.Close)
 
-		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
+		client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
@@ -211,7 +211,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 				t.Defer(streamEndpoint.Close)
 
 				_ = NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{InitCanFail: true}),
-					WithStreamingConfig(baseStreamConfig(streamEndpoint)))
+					WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 
 				_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 
@@ -232,7 +232,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 				streamEndpoint := makeStreamEndpoint(t, handler)
 				t.Defer(streamEndpoint.Close)
 
-				client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
+				client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 				result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 				m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 

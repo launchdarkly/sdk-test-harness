@@ -37,7 +37,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 			harness.MockEndpointDescription("streaming service"))
 		t.Defer(streamEndpoint.Close)
 
-		client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
+		client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
@@ -106,7 +106,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 
 	shouldIgnoreEvent := func(t *ldtest.T, eventName string, eventData json.RawMessage) {
 		dataSource := NewSDKDataSource(t, dataV1)
-		client := NewSDKClient(t, WithStreamingConfig(servicedef.SDKConfigStreamingParams{
+		client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 			InitialRetryDelayMS: o.Some(briefDelay), // brief delay so we can easily detect if it reconnects
 		}), dataSource)
 

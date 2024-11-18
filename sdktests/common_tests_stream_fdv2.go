@@ -46,7 +46,7 @@ func (c CommonStreamingTests) StateTransitions(t *ldtest.T) {
 func (c CommonStreamingTests) InitializeFromEmptyState(t *ldtest.T) {
 	streamEndpoint, _ := makeSequentialStreamHandler(t, c.makeSDKDataWithFlag(1, initialValue))
 	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
+	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
 	validatePayloadReceived(t, streamEndpoint, client, "", expectedEvaluations)
@@ -57,7 +57,7 @@ func (c CommonStreamingTests) SavesPreviouslyKnownState(t *ldtest.T) {
 	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("xfer-none").IntentReason("up-to-date").Build()
 	streamEndpoint, _ := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
+	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
 	request := validatePayloadReceived(t, streamEndpoint, client, "", expectedEvaluations)
@@ -75,7 +75,7 @@ func (c CommonStreamingTests) ReplacesPreviouslyKnownState(t *ldtest.T) {
 		Build()
 	streamEndpoint, _ := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
+	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue, "new-flag-key": defaultValue}
 	request := validatePayloadReceived(t, streamEndpoint, client, "", expectedEvaluations)
@@ -97,7 +97,7 @@ func (c CommonStreamingTests) UpdatesPreviouslyKnownState(t *ldtest.T) {
 		Build()
 	streamEndpoint, _ := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
+	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue, "new-flag-key": defaultValue}
 	request := validatePayloadReceived(t, streamEndpoint, client, "", expectedEvaluations)
@@ -113,7 +113,7 @@ func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent
 	streamEndpoint := requireContext(t).harness.NewMockEndpoint(stream.Handler(), t.DebugLogger(),
 		harness.MockEndpointDescription("streaming service"))
 	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
+	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 
 	_, err := streamEndpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
@@ -153,7 +153,7 @@ func (c CommonStreamingTests) IgnoresModelVersion(t *ldtest.T) {
 	streamEndpoint := requireContext(t).harness.NewMockEndpoint(stream.Handler(), t.DebugLogger(),
 		harness.MockEndpointDescription("streaming service"))
 	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
+	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 
 	_, err := streamEndpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
@@ -178,7 +178,7 @@ func (c CommonStreamingTests) IgnoresHeartBeat(t *ldtest.T) {
 	streamEndpoint := requireContext(t).harness.NewMockEndpoint(stream.Handler(), t.DebugLogger(),
 		harness.MockEndpointDescription("streaming service"))
 	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
+	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 
 	_, err := streamEndpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
@@ -201,7 +201,7 @@ func (c CommonStreamingTests) DiscardsEventsOnError(t *ldtest.T) {
 	streamEndpoint := requireContext(t).harness.NewMockEndpoint(stream.Handler(), t.DebugLogger(),
 		harness.MockEndpointDescription("streaming service"))
 	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
+	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 
 	_, err := streamEndpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
@@ -233,7 +233,7 @@ func (c CommonStreamingTests) DisconnectsOnGoodbye(t *ldtest.T) {
 	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("xfer-none").IntentReason("up-to-date").Build()
 	streamEndpoint, streams := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithStreamingConfig(baseStreamConfig(streamEndpoint)))
+	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 
 	_, err := streamEndpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
