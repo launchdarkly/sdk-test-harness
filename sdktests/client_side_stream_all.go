@@ -1,8 +1,9 @@
 package sdktests
 
 import (
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 	"strings"
+
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
