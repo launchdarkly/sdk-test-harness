@@ -2,12 +2,11 @@ package sdktests
 
 import (
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
-
-	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
 
 func doClientSideEventTests(t *ldtest.T) {
@@ -39,6 +38,10 @@ func doClientSideEventRequestTests(t *ldtest.T) {
 		Header("X-LaunchDarkly-Payload-Id").Should(m.Not(m.Equal(""))),
 		Header("Content-Type").Should(m.StringContains("application/json")),
 	))
+
+	if t.Capabilities().Has(servicedef.CapabilityHTTPProxy) {
+		eventTests.HTTPProxy(t)
+	}
 
 	requestPathMatcher := h.IfElse(
 		sdkKind == mockld.JSClientSDK,
