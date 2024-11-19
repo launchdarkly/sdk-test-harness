@@ -40,14 +40,14 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T) {
 		return ret
 	}
 
-	dataSource := NewSDKDataSource(t, nil)
+	dataSystem := NewSDKDataSystem(t, nil)
 
 	t.Run("capacity is enforced", func(t *ldtest.T) {
 		events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 		client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 			WithClientSideInitialContext(context),
 			WithEventsConfig(eventsConfig),
-			dataSource,
+			dataSystem,
 			events)...)
 
 		for _, key := range keys {
@@ -68,7 +68,7 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T) {
 			WithClientSideInitialContext(context),
 
 			WithEventsConfig(eventsConfig),
-			dataSource,
+			dataSystem,
 			events)...)
 
 		for _, key := range keys {
@@ -98,7 +98,7 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T) {
 		events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 		client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 			WithEventsConfig(eventsConfig),
-			dataSource,
+			dataSystem,
 			events)...)
 
 		// Client-side SDK will always send an initial identify event; server-side SDK will send an initial

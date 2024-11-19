@@ -70,13 +70,13 @@ func (c CommonEvalParameterizedTestRunner[SDKDataType]) runTestSuite(
 	if c.FilterSDKData != nil {
 		sdkData = c.FilterSDKData(sdkData)
 	}
-	dataSource := NewSDKDataSource(t, sdkData)
+	dataSystem := NewSDKDataSystem(t, sdkData)
 
 	var clientConfig []SDKConfigurer
 	if c.SDKConfigurers != nil {
 		clientConfig = c.SDKConfigurers(suite)
 	}
-	client := NewSDKClient(t, append(clientConfig, dataSource)...)
+	client := NewSDKClient(t, append(clientConfig, dataSystem)...)
 
 	// We can't rely on the test framework's usual auto-closing of the client, because this method could
 	// be called multiple times for a single value of t.

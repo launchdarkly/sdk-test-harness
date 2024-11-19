@@ -15,7 +15,7 @@ func NewCommonStreamingTests(t *ldtest.T, testName string, baseSDKConfigurers ..
 	return CommonStreamingTests{newCommonTestsBase(t, testName, baseSDKConfigurers...)}
 }
 
-// Create a stream that can be used to push updates, and return the necessary configuration actions for
+// Create a data system that can be used to push updates, and return the necessary configuration actions for
 // creating an SDK client.
 //
 // This behavior differs between SDK types as follows:
@@ -28,13 +28,18 @@ func NewCommonStreamingTests(t *ldtest.T, testName string, baseSDKConfigurers ..
 //
 // - JS-based client-side SDKs in streaming mode always connect to the *polling* service first for their
 // initial data, and then connect to the streaming service for updates.
-func (c CommonStreamingTests) setupDataSources(
-	t *ldtest.T,
-	initialData mockld.SDKData,
-) (*SDKDataSource, []SDKConfigurer) {
-	var configurers []SDKConfigurer
+func (c CommonStreamingTests) setupDataSystems(
+	t *ldtest.T, initialData mockld.SDKData) (*SDKDataSystem, []SDKConfigurer) {
+	if initialData == nil {
+		initialData = mockld.EmptyData(c.sdkKind)
+	}
 
-	streamingDataSource := NewSDKDataSource(t, initialData, DataSourceOptionStreaming())
+	if d, ok := initialData.(mockld.ServerSDKData); ok {
+		initialData = d.ConvertToFDv2SDKData(t)
+	}
+
+	var configurers []SDKConfigurer
+	dataSystem := NewSDKDataSystem(t, initialData)
 
 	switch c.sdkKind {
 	case mockld.ServerSideSDK:
@@ -43,16 +48,16 @@ func (c CommonStreamingTests) setupDataSources(
 	case mockld.RokuSDK:
 		fallthrough
 	case mockld.MobileSDK:
-		emptyPollingDataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
+		emptyPollingDataSource := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 		configurers = append(configurers, emptyPollingDataSource)
 
 	case mockld.JSClientSDK:
-		pollingDataSourceWithInitialData := NewSDKDataSource(t, initialData, DataSourceOptionPolling())
+		pollingDataSourceWithInitialData := NewSDKDataSystem(t, initialData, DataSystemOptionPolling())
 		configurers = append(configurers, pollingDataSourceWithInitialData)
 
 	default:
 		panic("unknown SDK kind")
 	}
 
-	return streamingDataSource, append(configurers, streamingDataSource)
+	return dataSystem, append(configurers, dataSystem)
 }

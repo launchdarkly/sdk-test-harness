@@ -25,7 +25,7 @@ func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, credential st
 			t.Run(string(method), func(t *ldtest.T) {
 				for _, transport := range c.withAvailableTransports(t) {
 					transport.Run(t, func(t *ldtest.T) {
-						dataSource, configurers := c.setupDataSources(t, nil)
+						dataSystem, configurers := c.setupDataSystems(t, nil)
 
 						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 							append(configurers,
@@ -33,7 +33,7 @@ func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, credential st
 								transport.configurer,
 							)...)...)
 
-						request := dataSource.Endpoint().RequireConnection(t, time.Second)
+						request := dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
 						m.In(t).For("request method").Assert(request.Method, m.Equal(string(method)))
 						m.In(t).For("request headers").Assert(request.Headers, c.authorizationHeaderMatcher(credential))
 					})
@@ -43,11 +43,11 @@ func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, credential st
 	})
 	t.Run("invalid tls certificate", func(t *ldtest.T) {
 		c.withHTTPSTransport(t).Run(t, func(t *ldtest.T) {
-			dataSource, configurers := c.setupDataSources(t, nil)
+			dataSystem, configurers := c.setupDataSystems(t, nil)
 
 			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 
-			_, err := dataSource.Endpoint().AwaitConnection(time.Second)
+			_, err := dataSystem.PrimarySync().Endpoint().AwaitConnection(time.Second)
 			assert.Errorf(t, err, "expected connection error")
 		})
 	})
@@ -70,9 +70,9 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 						"base URI has no trailing slash"), func(t *ldtest.T) {
 						for _, method := range c.availableFlagRequestMethods() {
 							t.Run(string(method), func(t *ldtest.T) {
-								dataSource, configurers := c.setupDataSources(t, nil)
+								dataSystem, configurers := c.setupDataSystems(t, nil)
 
-								streamURI := strings.TrimSuffix(dataSource.Endpoint().BaseURL(), "/")
+								streamURI := strings.TrimSuffix(dataSystem.PrimarySync().Endpoint().BaseURL(), "/")
 								if trailingSlash {
 									streamURI += "/"
 								}
@@ -80,13 +80,13 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 								_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 									append(configurers,
 										WithPayloadFilter(filter),
-										WithStreamingConfig(servicedef.SDKConfigStreamingParams{
+										WithPrimaryStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 											BaseURI: streamURI,
 										}),
 										c.withFlagRequestMethod(method),
 									)...)...)
 
-								request := dataSource.Endpoint().RequireConnection(t, time.Second)
+								request := dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
 								m.In(t).For("request path").Assert(request.URL.Path, pathMatcher(method))
 								strict := t.Capabilities().Has(servicedef.CapabilityFilteringStrict)
 								m.In(t).For("filter key").Assert(request.URL.RawQuery, filter.Matcher(strict))
@@ -107,7 +107,7 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 				t.Run(fmt.Sprintf("evaluationReasons set to %s", withReasons), func(t *ldtest.T) {
 					for _, method := range c.availableFlagRequestMethods() {
 						t.Run(string(method), func(t *ldtest.T) {
-							dataSource, configurers := c.setupDataSources(t, nil)
+							dataSystem, configurers := c.setupDataSystems(t, nil)
 
 							_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 								append(configurers,
@@ -118,7 +118,7 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 									c.withFlagRequestMethod(method),
 								)...)...)
 
-							request := dataSource.Endpoint().RequireConnection(t, time.Second)
+							request := dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
 
 							var queryMatcher m.Matcher
 							if withReasons.Value() {
@@ -150,7 +150,7 @@ func (c CommonStreamingTests) RequestContextProperties(t *ldtest.T, getPath stri
 			t.Run(contexts.Description(), func(t *ldtest.T) {
 				for _, method := range c.availableFlagRequestMethods() {
 					t.Run(string(method), func(t *ldtest.T) {
-						dataSource, configurers := c.setupDataSources(t, nil)
+						dataSystem, configurers := c.setupDataSystems(t, nil)
 
 						context := contexts.NextUniqueContext()
 						contextJSONMatcher := JSONMatchesContext(context)
@@ -161,7 +161,7 @@ func (c CommonStreamingTests) RequestContextProperties(t *ldtest.T, getPath stri
 								c.withFlagRequestMethod(method),
 							)...)...)
 
-						request := dataSource.Endpoint().RequireConnection(t, time.Second)
+						request := dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
 
 						if method == flagRequestREPORT {
 							m.In(t).For("request body").Assert(request.Body, m.AllOf(
@@ -187,7 +187,7 @@ func (c CommonStreamingTests) RequestContextProperties(t *ldtest.T, getPath stri
 func (c CommonStreamingTests) RequestViaHTTPProxy(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityHTTPProxy)
 	t.Run("http proxy", func(t *ldtest.T) {
-		dataSource, configurers := c.setupDataSources(t, nil)
+		dataSystem, configurers := c.setupDataSystems(t, nil)
 
 		// The idea here is that we'll configure the SDK's service endpoints with an arbitrary host, but with the
 		// correct path that the test harness expects (like /endpoints/1). Then, we'll inject the actual test harness's
@@ -199,9 +199,9 @@ func (c CommonStreamingTests) RequestViaHTTPProxy(t *ldtest.T) {
 		//
 		// If the SDK didn't support proxying, then it would attempt to connect to the arbitrary host and
 		// the harness should fail the connection assertion.
-		streamURI := strings.Replace(dataSource.Endpoint().BaseURL(), "localhost", "not.valid.local", 1)
+		streamURI := strings.Replace(dataSystem.PrimarySync().Endpoint().BaseURL(), "localhost", "not.valid.local", 1)
 
-		u, err := url.Parse(dataSource.Endpoint().BaseURL())
+		u, err := url.Parse(dataSystem.PrimarySync().Endpoint().BaseURL())
 		if err != nil {
 			t.Errorf("unexpected error parsing URL: %s", err)
 			t.FailNow()
@@ -210,13 +210,13 @@ func (c CommonStreamingTests) RequestViaHTTPProxy(t *ldtest.T) {
 
 		_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 			append(configurers,
-				WithStreamingConfig(servicedef.SDKConfigStreamingParams{
+				WithPrimaryStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 					BaseURI: streamURI,
 				}),
 				c.withHTTPProxy(u.String()),
 			)...)...)
 
-		_, err = dataSource.Endpoint().AwaitConnection(time.Second)
+		_, err = dataSystem.PrimarySync().Endpoint().AwaitConnection(time.Second)
 		assert.NoError(t, err)
 	})
 }

@@ -43,15 +43,15 @@ func doClientSideClientIndependenceTestsSameEnvironment(t *ldtest.T) {
 	default1 := ldvalue.String("default1")
 
 	dataBuilder := mockld.NewClientSDKDataBuilder().Flag(flag1Key, flag1Result1).Build()
-	dataSource := NewSDKDataSource(t, dataBuilder)
+	dataSystem := NewSDKDataSystem(t, dataBuilder)
 	events := NewSDKEventSink(t)
 	clientA := NewSDKClient(t,
 		WithClientSideInitialContext(contextA1),
-		dataSource, events)
+		dataSystem, events)
 
 	clientB := NewSDKClient(t,
 		WithClientSideInitialContext(contextB1),
-		dataSource, events)
+		dataSystem, events)
 
 	clientA.FlushEvents(t)
 	clientB.FlushEvents(t)
@@ -80,7 +80,7 @@ func doClientSideClientIndependenceTestsSameEnvironment(t *ldtest.T) {
 
 	// change data from data source
 	dataBuilderFlag1Result2 := mockld.NewClientSDKDataBuilder().Flag(flag1Key, flag1Result2).Build()
-	dataSource.SetInitialData(dataBuilderFlag1Result2)
+	dataSystem.PrimarySync().streaming.SetInitialData(dataBuilderFlag1Result2)
 	clientA.SendIdentifyEvent(t, contextA1)
 	clientB.SendIdentifyEvent(t, contextB1)
 
@@ -124,18 +124,18 @@ func doClientSideClientIndependenceTestsMultipleEnvironmentsIndependent(t *ldtes
 	default2 := ldvalue.String("default2")
 
 	dataBuilderFlag1Result1 := mockld.NewClientSDKDataBuilder().Flag(flag1Key, flag1Result1).Build()
-	dataSourceA := NewSDKDataSource(t, dataBuilderFlag1Result1)
+	dataSystemA := NewSDKDataSystem(t, dataBuilderFlag1Result1)
 	eventsA := NewSDKEventSink(t)
 	clientA := NewSDKClient(t,
 		WithClientSideInitialContext(contextA1),
-		dataSourceA, eventsA)
+		dataSystemA, eventsA)
 
 	dataBuilderFlag2Result1 := mockld.NewClientSDKDataBuilder().Flag(flag2Key, flag2Result1).Build()
-	dataSourceB := NewSDKDataSource(t, dataBuilderFlag2Result1)
+	dataSystemB := NewSDKDataSystem(t, dataBuilderFlag2Result1)
 	eventsB := NewSDKEventSink(t)
 	clientB := NewSDKClient(t,
 		WithClientSideInitialContext(contextB1),
-		dataSourceB, eventsB)
+		dataSystemB, eventsB)
 
 	clientA.FlushEvents(t)
 	clientB.FlushEvents(t)
@@ -199,18 +199,18 @@ func doClientSideClientIndependenceTestsClientAManipulatedClientBUnaffected(t *l
 	default2 := ldvalue.String("default2")
 
 	dataBuilderFlag1Result1 := mockld.NewClientSDKDataBuilder().Flag(flag1Key, flag1Result1).Build()
-	dataSourceA := NewSDKDataSource(t, dataBuilderFlag1Result1)
+	dataSystemA := NewSDKDataSystem(t, dataBuilderFlag1Result1)
 	eventsA := NewSDKEventSink(t)
 	clientA := NewSDKClient(t,
 		WithClientSideInitialContext(contextA1),
-		dataSourceA, eventsA)
+		dataSystemA, eventsA)
 
 	dataBuilderFlag2Result1 := mockld.NewClientSDKDataBuilder().Flag(flag2Key, flag2Result1).Build()
-	dataSourceB := NewSDKDataSource(t, dataBuilderFlag2Result1)
+	dataSystemB := NewSDKDataSystem(t, dataBuilderFlag2Result1)
 	eventsB := NewSDKEventSink(t)
 	clientB := NewSDKClient(t,
 		WithClientSideInitialContext(contextB1),
-		dataSourceB, eventsB)
+		dataSystemB, eventsB)
 
 	clientA.FlushEvents(t)
 	clientB.FlushEvents(t)
@@ -249,7 +249,7 @@ func doClientSideClientIndependenceTestsClientAManipulatedClientBUnaffected(t *l
 
 	// now identify on A and verify event from A, but no event from B
 	dataBuilderFlag1Result2 := mockld.NewClientSDKDataBuilder().Flag(flag1Key, flag1Result2).Build()
-	dataSourceA.SetInitialData(dataBuilderFlag1Result2)
+	dataSystemA.PrimarySync().streaming.SetInitialData(dataBuilderFlag1Result2)
 	clientA.SendIdentifyEvent(t, contextA2)
 
 	// check that client A evaluates to a new value

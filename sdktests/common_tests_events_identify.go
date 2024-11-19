@@ -17,14 +17,14 @@ func (c CommonEventTests) IdentifyEvents(t *ldtest.T) {
 	// These do not include detailed tests of the encoding of user attributes in identify events,
 	// which are in server_side_events_users.go.
 
-	dataSource := NewSDKDataSource(t, nil)
+	dataSystem := NewSDKDataSystem(t, nil)
 	contextCategories := data.NewContextFactoriesForSingleAndMultiKind(c.contextFactory.Prefix())
 
 	t.Run("basic properties", func(t *ldtest.T) {
 		for _, contexts := range contextCategories {
 			t.Run(contexts.Description(), func(t *ldtest.T) {
 				events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
-				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
+				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem, events)...)
 
 				context := contexts.NextUniqueContext()
 				client.SendIdentifyEvent(t, context)
@@ -47,13 +47,13 @@ func (c CommonEventTests) IdentifyEvents(t *ldtest.T) {
 		t.RequireCapability(servicedef.CapabilityOmitAnonymousContexts)
 
 		setup := func() (*SDKClient, *SDKEventSink) {
-			dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+			dataSystem := NewSDKDataSystem(t, mockld.EmptyServerSDKData())
 			eventsConfig := baseEventsConfig()
 			eventsConfig.OmitAnonymousContexts = true
 			events := NewSDKEventSink(t)
 			eventsConfig.BaseURI = events.eventsEndpoint.BaseURL()
 
-			return NewSDKClient(t, dataSource, WithEventsConfig(eventsConfig)), events
+			return NewSDKClient(t, dataSystem, WithEventsConfig(eventsConfig)), events
 		}
 
 		t.Run("does not emit any events for single context which is anonymous", func(t *ldtest.T) {
@@ -100,7 +100,7 @@ func (c CommonEventTests) IdentifyEvents(t *ldtest.T) {
 			for _, contexts := range contextCategories {
 				t.Run(contexts.Description(), func(t *ldtest.T) {
 					events := NewSDKEventSink(t)
-					client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
+					client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem, events)...)
 
 					context := c.contextFactory.NextUniqueContext()
 					client.SendIdentifyEvent(t, context)

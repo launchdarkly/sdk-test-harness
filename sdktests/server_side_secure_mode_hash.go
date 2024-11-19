@@ -55,10 +55,10 @@ func doServerSideSecureModeHashTests(t *ldtest.T) {
 		},
 	}
 
-	dataSource := NewSDKDataSource(t, nil)
+	dataSystem := NewSDKDataSystem(t, nil)
 	for i, p := range allParams {
 		t.Run(fmt.Sprintf("test case %d", i+1), func(t *ldtest.T) {
-			client := NewSDKClient(t, WithCredential(p.sdkKey), dataSource)
+			client := NewSDKClient(t, WithCredential(p.sdkKey), dataSystem)
 			hash := client.GetSecureModeHash(t, p.context)
 			assert.Equal(t, p.expectedHash, hash)
 

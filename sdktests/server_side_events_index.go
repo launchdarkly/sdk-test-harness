@@ -36,9 +36,9 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 
 	t.Run("basic properties", func(t *ldtest.T) {
 		// Details of the JSON representation of the context are tested in server_side_events_contexts.go.
-		dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+		dataSystem := NewSDKDataSystem(t, mockld.EmptyServerSDKData())
 		events := NewSDKEventSink(t)
-		client := NewSDKClient(t, dataSource, events)
+		client := NewSDKClient(t, dataSystem, events)
 
 		context := contexts.NextUniqueContext()
 
@@ -54,7 +54,7 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 	})
 
 	t.Run("only one index event per evaluation context", func(t *ldtest.T) {
-		dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+		dataSystem := NewSDKDataSystem(t, mockld.EmptyServerSDKData())
 
 		// Contexts are supposed to be deduplicated not just by key, but by the fully qualified key which
 		// is different for different kinds, and is a composite key for multi-kind contexts. So, here we
@@ -92,7 +92,7 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 
 		t.Run("from feature event", func(t *ldtest.T) {
 			events := NewSDKEventSink(t)
-			client := NewSDKClient(t, dataSource, events)
+			client := NewSDKClient(t, dataSystem, events)
 
 			uniqueContexts, matchers := makeContextsAndIndexEventMatchers(t)
 
@@ -112,7 +112,7 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 
 		t.Run("from custom event", func(t *ldtest.T) {
 			events := NewSDKEventSink(t)
-			client := NewSDKClient(t, dataSource, events)
+			client := NewSDKClient(t, dataSystem, events)
 
 			uniqueContexts, matchers := makeContextsAndIndexEventMatchers(t)
 			for i := 0; i < 3; i++ { // 3 = arbitrary number of repetitions to prove we're deduplicating
@@ -160,13 +160,13 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 
 		for _, scenario := range scenarios {
 			setup := func() (*SDKClient, *SDKEventSink) {
-				dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+				dataSystem := NewSDKDataSystem(t, mockld.EmptyServerSDKData())
 				eventsConfig := baseEventsConfig()
 				eventsConfig.OmitAnonymousContexts = true
 				events := NewSDKEventSink(t)
 				eventsConfig.BaseURI = events.eventsEndpoint.BaseURL()
 
-				return NewSDKClient(t, dataSource, WithEventsConfig(eventsConfig)), events
+				return NewSDKClient(t, dataSystem, WithEventsConfig(eventsConfig)), events
 			}
 
 			t.Run(fmt.Sprintf("does not emit any events for single context which is anonymous for %s event",

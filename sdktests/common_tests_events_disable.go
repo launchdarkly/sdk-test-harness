@@ -21,9 +21,9 @@ func (c CommonEventTests) DisablingEvents(t *ldtest.T) {
 
 	doTest := func(t *ldtest.T, name string, actionThatCausesEvent func(*ldtest.T, *SDKClient)) {
 		t.Run(name, func(t *ldtest.T) {
-			dataSource := NewSDKDataSource(t, nil)
+			dataSystem := NewSDKDataSystem(t, nil)
 			events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
-			client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource)...)
+			client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem)...)
 
 			actionThatCausesEvent(t, client)
 			client.FlushEvents(t)

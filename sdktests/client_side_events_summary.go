@@ -59,11 +59,11 @@ func doClientSideSummaryEventBasicTest(t *ldtest.T) {
 	dataBuilder := mockld.NewClientSDKDataBuilder()
 	dataBuilder.Flag(flag1Key, flag1Result1).Flag(flag2Key, flag2Result)
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 	client := NewSDKClient(t,
 		WithClientSideInitialContext(contextA),
-		dataSource, events)
+		dataSystem, events)
 
 	// flag1: 2 evaluations for contextA
 	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1Key, DefaultValue: default1})
@@ -74,7 +74,7 @@ func doClientSideSummaryEventBasicTest(t *ldtest.T) {
 
 	// Now change the user to contextB, causing a flag data update, and do 1 more evaluation of flag1
 	dataBuilder.Flag(flag1Key, flag1Result2)
-	dataSource.SetInitialData(dataBuilder.Build())
+	dataSystem.PrimarySync().streaming.SetInitialData(dataBuilder.Build())
 	client.SendIdentifyEvent(t, contextB)
 
 	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1Key, DefaultValue: default1})
@@ -132,11 +132,11 @@ func doClientSideSummaryEventContextKindsTest(t *ldtest.T) {
 	dataBuilder := mockld.NewClientSDKDataBuilder()
 	dataBuilder.Flag(flag1Key, flag1Result).Flag(flag2Key, flag2Result)
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 	client := NewSDKClient(t,
 		WithClientSideInitialContext(initialContext),
-		dataSource, events)
+		dataSystem, events)
 
 	for _, contextAndFlags := range []struct {
 		context  ldcontext.Context
@@ -184,11 +184,11 @@ func doClientSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 
 	dataBuilder := mockld.NewClientSDKDataBuilder()
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 	client := NewSDKClient(t,
 		WithClientSideInitialContext(context),
-		dataSource, events)
+		dataSystem, events)
 
 	// evaluate the unknown flag twice
 	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: unknownKey, DefaultValue: default1})
@@ -231,11 +231,11 @@ func doClientSideSummaryEventResetTest(t *ldtest.T) {
 	dataBuilder := mockld.NewClientSDKDataBuilder()
 	dataBuilder.Flag(flagKey, flag1Result1)
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 	client := NewSDKClient(t,
 		WithClientSideInitialContext(contextA),
-		dataSource, events)
+		dataSystem, events)
 
 	// evaluate flag 10 times for contextA producing value-a, 3 times for contextB producing value-b
 	for i := 0; i < 10; i++ {
@@ -259,7 +259,7 @@ func doClientSideSummaryEventResetTest(t *ldtest.T) {
 	)
 
 	dataBuilder.Flag(flagKey, flag1Result2)
-	dataSource.SetInitialData(dataBuilder.Build())
+	dataSystem.PrimarySync().streaming.SetInitialData(dataBuilder.Build())
 	client.SendIdentifyEvent(t, contextB)
 
 	for i := 0; i < 3; i++ {
@@ -329,11 +329,11 @@ func doClientSideSummaryBasicPrereqTest(t *ldtest.T) {
 		Flag(prereq2Key, prereq2Result).
 		Flag(prereq3Key, prereq3Result)
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 	client := NewSDKClient(t,
 		WithClientSideInitialContext(contextA),
-		dataSource, events)
+		dataSystem, events)
 
 	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: prereq1Key, DefaultValue: default1})
 	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: topLevelKey, DefaultValue: default2})
@@ -395,11 +395,11 @@ func doClientSideSummaryPrereqUnknownFlagTest(t *ldtest.T) {
 	dataBuilder := mockld.NewClientSDKDataBuilder()
 	dataBuilder.Flag(topLevelKey, topLevelResult)
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 	client := NewSDKClient(t,
 		WithClientSideInitialContext(contextA),
-		dataSource, events)
+		dataSystem, events)
 
 	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: topLevelKey, DefaultValue: default1})
 

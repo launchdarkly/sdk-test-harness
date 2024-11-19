@@ -167,7 +167,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 		sdkData = mockld.NewServerSDKDataBuilder().Flag(flag, debugFlag).Build()
 	}
 
-	dataSource := NewSDKDataSource(t, sdkData)
+	dataSystem := NewSDKDataSystem(t, sdkData)
 
 	for _, p := range makeEventContextTestParams() {
 		outputMatcher := func(context ldcontext.Context) m.Matcher {
@@ -194,7 +194,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 			client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 				WithClientSideInitialContext(initialContext),
 				WithEventsConfig(p.eventsConfig),
-				dataSource,
+				dataSystem,
 				events)...)
 
 			if c.isClientSide {
@@ -367,7 +367,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 					client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 						WithClientSideConfig(servicedef.SDKConfigClientSideParams{InitialUser: user}),
 						WithEventsConfig(p.eventsConfig),
-						dataSource,
+						dataSystem,
 						events)...)
 
 					client.FlushEvents(t)

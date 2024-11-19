@@ -72,8 +72,8 @@ func doServerSideAllFlagsBasicTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag1, flag2, flag3, flag4)
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
-	client := NewSDKClient(t, dataSource)
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
+	client := NewSDKClient(t, dataSystem)
 	context := ldcontext.New("user-key")
 
 	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
@@ -122,8 +122,8 @@ func doServerSideAllFlagsWithReasonsTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag1, flag2)
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
-	client := NewSDKClient(t, dataSource)
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
+	client := NewSDKClient(t, dataSystem)
 	context := ldcontext.New("user-key")
 
 	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
@@ -165,8 +165,8 @@ func doServerSideAllFlagsExperimentationTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag1, flag2)
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
-	client := NewSDKClient(t, dataSource)
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
+	client := NewSDKClient(t, dataSystem)
 	context := ldcontext.New("user-key")
 
 	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
@@ -211,8 +211,8 @@ func doServerSideAllFlagsErrorInFlagTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag1, flag2)
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
-	client := NewSDKClient(t, dataSource)
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
+	client := NewSDKClient(t, dataSystem)
 	context := ldcontext.New("user-key")
 
 	t.Run("without reasons", func(t *ldtest.T) {
@@ -275,8 +275,8 @@ func doServerSideAllFlagsClientSideOnlyTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag1, flag2, flag3, flag4)
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
-	client := NewSDKClient(t, dataSource)
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
+	client := NewSDKClient(t, dataSystem)
 	context := ldcontext.New("user-key")
 
 	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
@@ -322,8 +322,8 @@ func doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag1, flag2, flag3)
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
-	client := NewSDKClient(t, dataSource)
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
+	client := NewSDKClient(t, dataSystem)
 	context := ldcontext.New("user-key")
 
 	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
@@ -354,11 +354,11 @@ func doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest(t *ldtest.T) {
 }
 
 func doServerSideAllFlagsClientNotReadyTest(t *ldtest.T) {
-	dataSource := NewSDKDataSource(t, mockld.BlockingUnavailableSDKData(mockld.ServerSideSDK))
+	dataSystem := NewSDKDataSystem(t, mockld.BlockingUnavailableSDKData(mockld.ServerSideSDK))
 	client := NewSDKClient(t,
 		WithConfig(servicedef.SDKConfigParams{StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(1)),
 			InitCanFail: true}),
-		dataSource)
+		dataSystem)
 	context := ldcontext.New("user-key")
 
 	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
@@ -385,8 +385,8 @@ func doServerSideAllFlagsCompactRepresentationsTest(t *ldtest.T) {
 		Build()
 
 	data := mockld.NewServerSDKDataBuilder().Flag(flag1, flag2).Build()
-	dataSource := NewSDKDataSource(t, data)
-	client := NewSDKClient(t, dataSource)
+	dataSystem := NewSDKDataSystem(t, data)
+	client := NewSDKClient(t, dataSystem)
 
 	context := ldcontext.New("user-key")
 
@@ -427,8 +427,8 @@ func doServerSideAllFlagsIncludesToplevelPreqrequisitesTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(topLevel, directPrereq1, directPrereq2, indirectPrereqOf1)
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
-	client := NewSDKClient(t, dataSource)
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
+	client := NewSDKClient(t, dataSystem)
 	context := ldcontext.New("user-key")
 
 	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
@@ -492,8 +492,8 @@ func doServerSideAllFlagsIgnoresPrereqsIfNotEvaluatedTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flagOn, flagOff, failedPrereq, prereq1, prereq2)
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
-	client := NewSDKClient(t, dataSource)
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
+	client := NewSDKClient(t, dataSystem)
 	context := ldcontext.New("user-key")
 
 	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
@@ -549,8 +549,8 @@ func doServerSideAllFlagsIgnoresClientSideOnlyForPrereqKeys(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag, prereq1, prereq2)
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
-	client := NewSDKClient(t, dataSource)
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
+	client := NewSDKClient(t, dataSystem)
 	context := ldcontext.New("user-key")
 
 	result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{

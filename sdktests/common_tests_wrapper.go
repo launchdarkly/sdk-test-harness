@@ -49,13 +49,13 @@ func (c CommonWrapperTests) Run(t *ldtest.T) {
 	}
 
 	t.Run("event posts", func(t *ldtest.T) {
-		dataSource := NewSDKDataSource(t, nil)
+		dataSystem := NewSDKDataSystem(t, nil)
 		t.Run("no wrapper config", func(t *ldtest.T) {
 			config := servicedef.SDKConfigWrapper{}
 			events := NewSDKEventSink(t)
 			client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 				withWrapper(config),
-				dataSource,
+				dataSystem,
 				events)...)
 
 			c.sendArbitraryEvent(t, client)
@@ -69,7 +69,7 @@ func (c CommonWrapperTests) Run(t *ldtest.T) {
 			events := NewSDKEventSink(t)
 			client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 				withWrapper(config),
-				dataSource,
+				dataSystem,
 				events)...)
 
 			c.sendArbitraryEvent(t, client)
@@ -83,7 +83,7 @@ func (c CommonWrapperTests) Run(t *ldtest.T) {
 			events := NewSDKEventSink(t)
 			client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 				withWrapper(config),
-				dataSource,
+				dataSystem,
 				events)...)
 
 			c.sendArbitraryEvent(t, client)
@@ -97,7 +97,7 @@ func (c CommonWrapperTests) Run(t *ldtest.T) {
 			events := NewSDKEventSink(t)
 			client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 				withWrapper(config),
-				dataSource,
+				dataSystem,
 				events)...)
 
 			c.sendArbitraryEvent(t, client)
@@ -110,28 +110,28 @@ func (c CommonWrapperTests) Run(t *ldtest.T) {
 	t.Run("stream requests", func(t *ldtest.T) {
 		t.Run("wrapper name and version", func(t *ldtest.T) {
 			config := servicedef.SDKConfigWrapper{Name: "TestName", Version: "1.0.0"}
-			dataSource := NewSDKDataSource(t, nil, DataSourceOptionStreaming())
+			dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionStreaming())
 			configurers := c.baseSDKConfigurationPlus(
 				withWrapper(config),
-				dataSource)
+				dataSystem)
 			if c.isClientSide {
 				// client-side SDKs in streaming mode may *also* need a polling data source
 				configurers = append(configurers,
-					NewSDKDataSource(t, nil, DataSourceOptionPolling()))
+					NewSDKDataSystem(t, nil, DataSystemOptionPolling()))
 			}
 			_ = NewSDKClient(t, configurers...)
-			verifyRequestHeader(t, config, dataSource.Endpoint())
+			verifyRequestHeader(t, config, dataSystem.PrimarySync().Endpoint())
 		})
 	})
 
 	t.Run("poll requests", func(t *ldtest.T) {
 		config := servicedef.SDKConfigWrapper{Name: "TestName", Version: "1.0.0"}
 		t.Run("wrapper name and version", func(t *ldtest.T) {
-			dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
+			dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 				withWrapper(config),
-				dataSource)...)
-			verifyRequestHeader(t, config, dataSource.Endpoint())
+				dataSystem)...)
+			verifyRequestHeader(t, config, dataSystem.PrimarySync().Endpoint())
 		})
 	})
 }

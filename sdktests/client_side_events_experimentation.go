@@ -48,11 +48,11 @@ func doClientSideExperimentationEventTests(t *ldtest.T) {
 				}).
 				Build()
 
-			dataSource := NewSDKDataSource(t, data)
+			dataSystem := NewSDKDataSystem(t, data)
 			eventSink := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 			client := NewSDKClient(t,
 				WithClientSideInitialContext(context),
-				dataSource,
+				dataSystem,
 				eventSink,
 			)
 
