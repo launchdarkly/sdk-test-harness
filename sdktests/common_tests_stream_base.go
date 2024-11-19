@@ -20,7 +20,7 @@ func NewCommonStreamingTests(t *ldtest.T, testName string, baseSDKConfigurers ..
 //
 // This behavior differs between SDK types as follows:
 //
-// - Server-side SDKs in streaming mode use *only* the streaming synchronizing service.
+// - Server-side SDKs in streaming mode use *only* the streaming service.
 //
 // - Mobile SDKs in streaming mode use the streaming service as their primary data source, but also need to
 // have a polling service available; the polling service won't be used in these tests, we just need to be

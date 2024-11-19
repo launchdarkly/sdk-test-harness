@@ -61,8 +61,8 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		dataSystem2 := NewSDKDataSystemWithoutEndpoints(t, dataV2)
 
 		handler := httphelpers.SequentialHandler(
-			dataSystem1.PrimarySync().streamingService,
-			dataSystem2.PrimarySync().streamingService,
+			dataSystem1.PrimarySync().streaming,
+			dataSystem2.PrimarySync().streaming,
 		)
 		streamEndpoint := makeStreamEndpoint(t, handler)
 		t.Defer(streamEndpoint.Close)
@@ -125,7 +125,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		handler := httphelpers.SequentialHandler(
 			errorHandler, // first request gets the error
 			errorHandler, // second request also gets the error
-			dataSystem.PrimarySync().streamingService, // third request succeeds and gets the stream
+			dataSystem.PrimarySync().streaming, // third request succeeds and gets the stream
 		)
 		streamEndpoint := makeStreamEndpoint(t, handler)
 		t.Defer(streamEndpoint.Close)
@@ -158,10 +158,10 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		dataSystem2 := NewSDKDataSystemWithoutEndpoints(t, dataV2)
 
 		handler := httphelpers.SequentialHandler(
-			dataSystem1.PrimarySync().streamingService, // first request gets the first stream data
+			dataSystem1.PrimarySync().streaming, // first request gets the first stream data
 			errorHandler, // second request gets the error
 			errorHandler, // third request also gets the error
-			dataSystem2.PrimarySync().streamingService, // fourth request gets the second stream data
+			dataSystem2.PrimarySync().streaming, // fourth request gets the second stream data
 		)
 		streamEndpoint := makeStreamEndpoint(t, handler)
 		t.Defer(streamEndpoint.Close)
@@ -209,7 +209,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 					// first request gets the error
 					httphelpers.HandlerWithStatus(status),
 					// second request would succeed and get the stream, but shouldn't happen
-					dataSystem.PrimarySync().streamingService,
+					dataSystem.PrimarySync().streaming,
 				)
 				streamEndpoint := makeStreamEndpoint(t, handler)
 				t.Defer(streamEndpoint.Close)
@@ -230,11 +230,11 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 				dataSystem := NewSDKDataSystemWithoutEndpoints(t, dataV1)
 				handler := httphelpers.SequentialHandler(
 					// first request gets the stream data
-					dataSystem.PrimarySync().streamingService,
+					dataSystem.PrimarySync().streaming,
 					// second request gets the error
 					httphelpers.HandlerWithStatus(status),
 					// third request would get the stream again, but shouldn't happen
-					dataSystem.PrimarySync().streamingService,
+					dataSystem.PrimarySync().streaming,
 				)
 				streamEndpoint := makeStreamEndpoint(t, handler)
 				t.Defer(streamEndpoint.Close)

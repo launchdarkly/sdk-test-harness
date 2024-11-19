@@ -244,7 +244,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 				context := contexts.NextUniqueContext()
 
 				dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
-				dataSystem.PrimarySync().pollingService.SetEtag(context.FullyQualifiedKey())
+				dataSystem.PrimarySync().polling.SetEtag(context.FullyQualifiedKey())
 
 				client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 					WithClientSideInitialContext(context),
@@ -282,7 +282,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 				for _, context := range contexts {
 					// Initialize and close clients with multiple contexts. Each one should use a different e-tag value
 					dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
-					dataSystem.PrimarySync().pollingService.SetEtag(context.FullyQualifiedKey())
+					dataSystem.PrimarySync().polling.SetEtag(context.FullyQualifiedKey())
 					client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 						WithClientSideInitialContext(context),
 						c.withFlagRequestMethod(method),
@@ -330,7 +330,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 
 				// Initialize and close clients with multiple contexts. Each one should use a different e-tag value
 				dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
-				dataSystem.PrimarySync().pollingService.SetEtag(context1.FullyQualifiedKey())
+				dataSystem.PrimarySync().polling.SetEtag(context1.FullyQualifiedKey())
 				client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 					WithClientSideInitialContext(context1),
 					c.withFlagRequestMethod(method),
@@ -362,7 +362,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 
 				// Setup an initial polling request with a defined e-tag value
 				dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
-				dataSystem.PrimarySync().pollingService.SetEtag(context.FullyQualifiedKey())
+				dataSystem.PrimarySync().polling.SetEtag(context.FullyQualifiedKey())
 
 				client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 					WithClientSideInitialContext(context),

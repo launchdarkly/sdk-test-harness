@@ -450,11 +450,11 @@ func doServerSideSummaryEventVersionTest(t *ldtest.T) {
 	initialValue := basicEvaluateFlag(t, client, flagKey, context, defaultValue)
 	m.In(t).Require(initialValue, m.JSONEqual(valueBefore))
 
-	dataSystem.PrimarySync().streamingService.PushUpdate(
+	dataSystem.PrimarySync().streaming.PushUpdate(
 		"flag", flagKey, flagAfter.Version, jsonhelpers.ToJSON(flagAfter))
 	//nolint:godox
 	// TODO: Need to determine which version this should be, and also what the state should be
-	dataSystem.PrimarySync().streamingService.PushPayloadTransferred("state", 2)
+	dataSystem.PrimarySync().streaming.PushPayloadTransferred("state", 2)
 
 	h.RequireEventually(
 		t,
