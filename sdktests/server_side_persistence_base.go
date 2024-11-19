@@ -350,7 +350,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			})
 
 			sdkData := s.makeSDKDataWithFlag(1, ldvalue.String("value"))
-			_, configurers := s.setupDataSources(t, sdkData)
+			_, configurers := s.setupDataSystems(t, sdkData)
 			configurers = append(configurers, persistence)
 
 			value, _ := s.persistentStore.Get(s.defaultPrefix, persistenceInitedKey)
@@ -371,7 +371,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			})
 
 			sdkData := s.makeSDKDataWithFlag(1, ldvalue.String("value"))
-			stream, configurers := s.setupDataSources(t, sdkData)
+			dataSystem, configurers := s.setupDataSystems(t, sdkData)
 			configurers = append(configurers, persistence)
 
 			value, _ := s.persistentStore.Get(s.defaultPrefix, persistenceInitedKey)
@@ -384,7 +384,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			})
 
 			updateData := s.makeFlagData("flag-key", 2, ldvalue.String("new-value"))
-			stream.StreamingService().PushUpdate("flags", "flag-key", 2, updateData)
+			dataSystem.Synchronizers.primary.streamingService.PushUpdate("flags", "flag-key", 2, updateData)
 			s.eventuallyValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key": basicFlagValidationMatcher("flag-key", 2, "new-value"),
 			})
@@ -401,7 +401,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			})
 
 			sdkData := s.makeSDKDataWithFlag(1, ldvalue.String("value"))
-			stream, configurers := s.setupDataSources(t, sdkData)
+			dataSystem, configurers := s.setupDataSystems(t, sdkData)
 			configurers = append(configurers, persistence)
 
 			_ = NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
@@ -411,7 +411,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 
 			// Lower versioned updates are ignored
 			updateData := s.makeFlagData("flag-key", 1, ldvalue.String("new-value"))
-			stream.StreamingService().PushUpdate("flags", "flag-key", 1, updateData)
+			dataSystem.Synchronizers.primary.streamingService.PushUpdate("flags", "flag-key", 1, updateData)
 			s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key":          basicFlagValidationMatcher("flag-key", 1, "new-value"),
 				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "value"),
@@ -419,7 +419,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 
 			// Same versioned updates are ignored
 			updateData = s.makeFlagData("flag-key", 100, ldvalue.String("new-value"))
-			stream.StreamingService().PushUpdate("flags", "flag-key", 100, updateData)
+			dataSystem.Synchronizers.primary.streamingService.PushUpdate("flags", "flag-key", 100, updateData)
 			s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key":          basicFlagValidationMatcher("flag-key", 1, "new-value"),
 				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "value"),
@@ -427,7 +427,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 
 			// Higher versioned updates are applied
 			updateData = s.makeFlagData("flag-key", 200, ldvalue.String("new-value"))
-			stream.StreamingService().PushUpdate("flags", "flag-key", 200, updateData)
+			dataSystem.Synchronizers.primary.streamingService.PushUpdate("flags", "flag-key", 200, updateData)
 			s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key":          basicFlagValidationMatcher("flag-key", 200, "new-value"),
 				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "value"),
@@ -445,7 +445,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			})
 
 			sdkData := s.makeSDKDataWithFlag(100, ldvalue.String("value"))
-			stream, configurers := s.setupDataSources(t, sdkData)
+			dataSystem, configurers := s.setupDataSystems(t, sdkData)
 			configurers = append(configurers, persistence)
 
 			_ = NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
@@ -454,14 +454,14 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
 
 			// Lower versioned deletes are ignored
-			stream.StreamingService().PushDelete("flags", "flag-key", 1)
+			dataSystem.Synchronizers.primary.streamingService.PushDelete("flags", "flag-key", 1)
 			s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key":          basicDeletedFlagValidationMatcher("flag-key", 1),
 				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "fallthrough"),
 			})
 
 			// Higher versioned deletes are applied
-			stream.StreamingService().PushDelete("flags", "flag-key", 200)
+			dataSystem.Synchronizers.primary.streamingService.PushDelete("flags", "flag-key", 200)
 			s.eventuallyValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key":          basicDeletedFlagValidationMatcher("flag-key", 200),
 				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "fallthrough"),
@@ -483,7 +483,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 					})
 					persistence.SetCache(cacheConfig)
 
-					stream, configurers := s.setupDataSources(t, mockld.NewServerSDKDataBuilder().Build())
+					dataSystem, configurers := s.setupDataSystems(t, mockld.NewServerSDKDataBuilder().Build())
 					configurers = append(configurers, persistence)
 
 					client := NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
@@ -500,7 +500,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 					m.In(t).Assert(response.Value, m.Equal(ldvalue.String("default")))
 
 					updateData := s.makeFlagData("flag-key", 2, ldvalue.String("new-value"))
-					stream.StreamingService().PushUpdate("flags", "flag-key", 2, updateData)
+					dataSystem.Synchronizers.primary.streamingService.PushUpdate("flags", "flag-key", 2, updateData)
 
 					h.RequireEventually(t,
 						checkForUpdatedValue(t, client, "flag-key", context,
@@ -516,7 +516,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 					persistence.SetCache(cacheConfig)
 
 					sdkData := s.makeSDKDataWithFlag(1, ldvalue.String("value"))
-					stream, configurers := s.setupDataSources(t, sdkData)
+					dataSystem, configurers := s.setupDataSystems(t, sdkData)
 					configurers = append(configurers, persistence)
 
 					client := NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
@@ -527,7 +527,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 						ldvalue.String("default"), ldvalue.String("value"), ldvalue.String("default"))
 
 					updateData := s.makeFlagData("flag-key", 2, ldvalue.String("new-value"))
-					stream.StreamingService().PushUpdate("flags", "flag-key", 2, updateData)
+					dataSystem.Synchronizers.primary.streamingService.PushUpdate("flags", "flag-key", 2, updateData)
 
 					// This change is reflected in less time than the cache TTL. This should
 					// prove it isn't caching that value.
@@ -545,7 +545,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 					persistence.SetCache(cacheConfig)
 
 					sdkData := s.makeSDKDataWithFlag(1, ldvalue.String("value"))
-					_, configurers := s.setupDataSources(t, sdkData)
+					_, configurers := s.setupDataSystems(t, sdkData)
 					configurers = append(configurers, persistence)
 
 					client := NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
@@ -597,7 +597,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 					persistence.SetCache(cacheConfig)
 
 					sdkData := s.makeSDKDataWithFlag(1, ldvalue.String("value"))
-					_, configurers := s.setupDataSources(t, sdkData)
+					_, configurers := s.setupDataSystems(t, sdkData)
 					configurers = append(configurers, persistence)
 
 					client := NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)

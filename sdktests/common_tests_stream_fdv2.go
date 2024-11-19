@@ -44,12 +44,11 @@ func (c CommonStreamingTests) StateTransitions(t *ldtest.T) {
 }
 
 func (c CommonStreamingTests) InitializeFromEmptyState(t *ldtest.T) {
-	streamEndpoint, _ := makeSequentialStreamHandler(t, c.makeSDKDataWithFlag(1, initialValue))
-	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
+	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
-	validatePayloadReceived(t, streamEndpoint, client, "", expectedEvaluations)
+	validatePayloadReceived(t, dataSystem.Synchronizers.primary.endpoint, client, "", expectedEvaluations)
 }
 
 func (c CommonStreamingTests) SavesPreviouslyKnownState(t *ldtest.T) {
@@ -108,22 +107,18 @@ func (c CommonStreamingTests) UpdatesPreviouslyKnownState(t *ldtest.T) {
 }
 
 func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent(t *ldtest.T) {
-	data := c.makeSDKDataWithFlag(1, initialValue)
-	stream := NewSDKDataSourceWithoutEndpoint(t, data)
-	streamEndpoint := requireContext(t).harness.NewMockEndpoint(stream.Handler(), t.DebugLogger(),
-		harness.MockEndpointDescription("streaming service"))
-	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
+	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 
-	_, err := streamEndpoint.AwaitConnection(time.Second)
+	_, err := dataSystem.Synchronizers.primary.endpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
 	context := ldcontext.New("context-key")
 	flagKeyValue := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
 	m.In(t).Assert(flagKeyValue, m.JSONEqual(initialValue))
 
-	stream.streamingService.PushDelete("flag", "flag-key", 2)
-	stream.streamingService.PushUpdate("flag", "new-flag-key", 1, c.makeFlagData("new-flag-key", 1, newInitialValue))
+	dataSystem.Synchronizers.primary.streamingService.PushDelete("flag", "flag-key", 2)
+	dataSystem.Synchronizers.primary.streamingService.PushUpdate("flag", "new-flag-key", 1, c.makeFlagData("new-flag-key", 1, newInitialValue))
 
 	require.Never(
 		t,
@@ -141,21 +136,17 @@ func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent
 		"flag value was updated, but it should not have been",
 	)
 
-	stream.streamingService.PushPayloadTransferred("updated", 2)
+	dataSystem.Synchronizers.primary.streamingService.PushPayloadTransferred("updated", 2)
 
 	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, defaultValue, defaultValue)
 	pollUntilFlagValueUpdated(t, client, "new-flag-key", context, defaultValue, newInitialValue, defaultValue)
 }
 
 func (c CommonStreamingTests) IgnoresModelVersion(t *ldtest.T) {
-	data := c.makeSDKDataWithFlag(100, initialValue)
-	stream := NewSDKDataSourceWithoutEndpoint(t, data)
-	streamEndpoint := requireContext(t).harness.NewMockEndpoint(stream.Handler(), t.DebugLogger(),
-		harness.MockEndpointDescription("streaming service"))
-	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(100, initialValue))
+	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 
-	_, err := streamEndpoint.AwaitConnection(time.Second)
+	_, err := dataSystem.Synchronizers.primary.endpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
 	context := ldcontext.New("context-key")
@@ -166,44 +157,36 @@ func (c CommonStreamingTests) IgnoresModelVersion(t *ldtest.T) {
 	// SDK. However, the state we are sending suggests it is later. The SDK
 	// should ignore the individual model version and just trust the overall
 	// state version.
-	stream.streamingService.PushUpdate("flag", "flag-key", 1, c.makeFlagData("flag-key", 1, updatedValue))
-	stream.streamingService.PushPayloadTransferred("updated", 2)
+	dataSystem.Synchronizers.primary.streamingService.PushUpdate("flag", "flag-key", 1, c.makeFlagData("flag-key", 1, updatedValue))
+	dataSystem.Synchronizers.primary.streamingService.PushPayloadTransferred("updated", 2)
 
 	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
 }
 
 func (c CommonStreamingTests) IgnoresHeartBeat(t *ldtest.T) {
-	data := c.makeSDKDataWithFlag(1, initialValue)
-	stream := NewSDKDataSourceWithoutEndpoint(t, data)
-	streamEndpoint := requireContext(t).harness.NewMockEndpoint(stream.Handler(), t.DebugLogger(),
-		harness.MockEndpointDescription("streaming service"))
-	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
+	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 
-	_, err := streamEndpoint.AwaitConnection(time.Second)
+	_, err := dataSystem.Synchronizers.primary.endpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
 	context := ldcontext.New("context-key")
 	flagKeyValue := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
 	m.In(t).Assert(flagKeyValue, m.JSONEqual(initialValue))
 
-	stream.streamingService.PushHeartbeat()
-	stream.streamingService.PushUpdate("flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
-	stream.streamingService.PushHeartbeat()
-	stream.streamingService.PushPayloadTransferred("updated", 2)
+	dataSystem.Synchronizers.primary.streamingService.PushHeartbeat()
+	dataSystem.Synchronizers.primary.streamingService.PushUpdate("flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
+	dataSystem.Synchronizers.primary.streamingService.PushHeartbeat()
+	dataSystem.Synchronizers.primary.streamingService.PushPayloadTransferred("updated", 2)
 
 	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
 }
 
 func (c CommonStreamingTests) DiscardsEventsOnError(t *ldtest.T) {
-	data := c.makeSDKDataWithFlag(1, initialValue)
-	stream := NewSDKDataSourceWithoutEndpoint(t, data)
-	streamEndpoint := requireContext(t).harness.NewMockEndpoint(stream.Handler(), t.DebugLogger(),
-		harness.MockEndpointDescription("streaming service"))
-	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
+	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 
-	_, err := streamEndpoint.AwaitConnection(time.Second)
+	_, err := dataSystem.Synchronizers.primary.endpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
 	context := ldcontext.New("context-key")
@@ -211,11 +194,11 @@ func (c CommonStreamingTests) DiscardsEventsOnError(t *ldtest.T) {
 	m.In(t).Assert(flagKeyValue, m.JSONEqual(initialValue))
 
 	// The error should cause this update to be discard.
-	stream.streamingService.PushUpdate("flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
-	stream.streamingService.PushError("some-id", "some reason")
+	dataSystem.Synchronizers.primary.streamingService.PushUpdate("flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
+	dataSystem.Synchronizers.primary.streamingService.PushError("some-id", "some reason")
 	// But this change should be applied.
-	stream.streamingService.PushUpdate("flag", "new-flag-key", 2, c.makeFlagData("new-flag-key", 2, newInitialValue))
-	stream.streamingService.PushPayloadTransferred("updated", 2)
+	dataSystem.Synchronizers.primary.streamingService.PushUpdate("flag", "new-flag-key", 2, c.makeFlagData("new-flag-key", 2, newInitialValue))
+	dataSystem.Synchronizers.primary.streamingService.PushPayloadTransferred("updated", 2)
 
 	require.Never(
 		t,
@@ -231,16 +214,16 @@ func (c CommonStreamingTests) DiscardsEventsOnError(t *ldtest.T) {
 func (c CommonStreamingTests) DisconnectsOnGoodbye(t *ldtest.T) {
 	dataBefore := c.makeSDKDataWithFlag(1, initialValue)
 	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("xfer-none").IntentReason("up-to-date").Build()
-	streamEndpoint, streams := makeSequentialStreamHandler(t, dataBefore, dataAfter)
+	streamEndpoint, dataSystems := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
 	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 
 	_, err := streamEndpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
-	streams[0].streamingService.PushUpdate("flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
+	dataSystems[0].Synchronizers.primary.streamingService.PushUpdate("flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
 	// This should prompt the SDK to discard previous events, disconnect, and then re-connect.
-	streams[0].streamingService.PushGoodbye("some-reason", false, false)
+	dataSystems[0].Synchronizers.primary.streamingService.PushGoodbye("some-reason", false, false)
 
 	_, err = streamEndpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
@@ -255,20 +238,21 @@ func (c CommonStreamingTests) DisconnectsOnGoodbye(t *ldtest.T) {
 	)
 }
 
-func makeSequentialStreamHandler(t *ldtest.T, dataSources ...mockld.SDKData) (*harness.MockEndpoint, []*SDKDataSource) {
-	sdkDataSources := make([]*SDKDataSource, len(dataSources))
+func makeSequentialStreamHandler(t *ldtest.T, dataSources ...mockld.SDKData) (*harness.MockEndpoint, []*SDKDataSystemSource) {
 	handlers := make([]http.Handler, len(dataSources))
+	dataSystemSource := make([]*SDKDataSystemSource, len(dataSources))
 
 	for i, data := range dataSources {
-		stream := NewSDKDataSourceWithoutEndpoint(t, data)
-		sdkDataSources[i] = stream
-		handlers[i] = stream.Handler()
+		dataSystem := NewSDKDataSystemSource(t, data)
+		handlers[i] = dataSystem.Synchronizers.primary.streamingService
+		dataSystemSource[i] = dataSystem
+
 	}
 
 	handler := httphelpers.SequentialHandler(handlers[0], handlers[1:]...)
 
 	return requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
-		harness.MockEndpointDescription("streaming service")), sdkDataSources
+		harness.MockEndpointDescription("streaming service")), dataSystemSource
 }
 
 func validatePayloadReceived(t *ldtest.T,

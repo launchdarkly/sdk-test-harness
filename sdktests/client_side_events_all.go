@@ -86,7 +86,7 @@ func doClientSideGzipEventRequestTests(t *ldtest.T) {
 	}
 
 	dataBuilder := mockld.NewClientSDKDataBuilder()
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
 	context := ldcontext.New("user")
 
 	for _, enableGzip := range []bool{true, false} {
@@ -103,7 +103,7 @@ func doClientSideGzipEventRequestTests(t *ldtest.T) {
 			events := NewSDKEventSinkWithGzip(t, enableGzip)
 			client := NewSDKClient(t,
 				WithClientSideInitialContext(context),
-				dataSource, events)
+				dataSystem, events)
 
 			client.FlushEvents(t)
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)

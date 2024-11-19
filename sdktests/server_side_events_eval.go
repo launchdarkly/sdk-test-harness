@@ -49,10 +49,10 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 	}
 	dataBuilder.Flag(malformedFlag, zeroSamplingRatioFlag)
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
 
-	client := NewSDKClient(t, dataSource, events)
+	client := NewSDKClient(t, dataSystem, events)
 
 	t.Run("only index + summary event for untracked flag", func(t *ldtest.T) {
 		for _, withReason := range []bool{false, true} {
@@ -323,14 +323,14 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 		for _, valueType := range getValueTypesToTest(t) {
 			dataBuilder.Flag(flags.MakeFlagForValueType(valueType))
 		}
-		dataSource := NewSDKDataSource(t, dataBuilder.Build())
+		dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
 
 		events := NewSDKEventSink(t)
 		if !lastKnownTimeFromLD.IsZero() {
 			events.Service().SetHostTimeOverride(lastKnownTimeFromLD)
 		}
 
-		client := NewSDKClient(t, dataSource, events)
+		client := NewSDKClient(t, dataSystem, events)
 
 		if !lastKnownTimeFromLD.IsZero() {
 			// In this scenario, we want the SDK to be aware of the LD host's clock because it
@@ -407,10 +407,10 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 
 		dataBuilder := mockld.NewServerSDKDataBuilder()
 		dataBuilder.Flag(zeroSamplingRatioFlag)
-		dataSource := NewSDKDataSource(t, dataBuilder.Build())
+		dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
 
 		events := NewSDKEventSink(t)
-		client := NewSDKClient(t, dataSource, events)
+		client := NewSDKClient(t, dataSystem, events)
 
 		context := contexts.NextUniqueContext()
 		result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
@@ -520,9 +520,9 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 			dataBuilder := mockld.NewServerSDKDataBuilder()
 			dataBuilder.Flag(flag1, flag2, flag3)
 
-			dataSource := NewSDKDataSource(t, dataBuilder.Build())
+			dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
 			events := NewSDKEventSink(t)
-			client := NewSDKClient(t, dataSource, events)
+			client := NewSDKClient(t, dataSystem, events)
 
 			result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 				FlagKey:      flag1.Key,
@@ -578,9 +578,9 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 		dataBuilder := mockld.NewServerSDKDataBuilder()
 		dataBuilder.Flag(flag1, flag2, flag3)
 
-		dataSource := NewSDKDataSource(t, dataBuilder.Build())
+		dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
 		events := NewSDKEventSink(t)
-		client := NewSDKClient(t, dataSource, events)
+		client := NewSDKClient(t, dataSystem, events)
 
 		_ = client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
 			Context: o.Some(context),

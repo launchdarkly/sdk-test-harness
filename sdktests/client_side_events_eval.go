@@ -47,12 +47,12 @@ func doClientSideFeatureEventTests(t *ldtest.T) {
 		dataBuilder.FullFlag(trackedFlags.MakeFlagForValueType(valueType))
 	}
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
 	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 
 	client := NewSDKClient(t,
 		WithClientSideInitialContext(context),
-		dataSource, events)
+		dataSystem, events)
 
 	client.FlushEvents(t)
 	_ = events.ExpectAnalyticsEvents(t, defaultEventTimeout) // discard initial identify event
@@ -274,13 +274,13 @@ func doClientSideInOrderPrereqEventTests(t *ldtest.T) {
 			TrackEvents: true,
 			Variation:   o.Some(0),
 		})
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
 	context := ldcontext.New("user")
 
 	events := NewSDKEventSink(t)
 	client := NewSDKClient(t,
 		WithClientSideInitialContext(context),
-		dataSource, events)
+		dataSystem, events)
 
 	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 		FlagKey:      "topLevel",
@@ -354,7 +354,7 @@ func doClientSideDebugEventTests(t *ldtest.T) {
 		for _, valueType := range getValueTypesToTest(t) {
 			dataBuilder.FullFlag(flags.MakeFlagForValueType(valueType))
 		}
-		dataSource := NewSDKDataSource(t, dataBuilder.Build())
+		dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
 
 		events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 		if !lastKnownTimeFromLD.IsZero() {
@@ -363,7 +363,7 @@ func doClientSideDebugEventTests(t *ldtest.T) {
 
 		client := NewSDKClient(t,
 			WithClientSideInitialContext(context),
-			dataSource, events)
+			dataSystem, events)
 
 		client.FlushEvents(t)
 		_ = events.ExpectAnalyticsEvents(t, defaultEventTimeout) // discard initial identify event

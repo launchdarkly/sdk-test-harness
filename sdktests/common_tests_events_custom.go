@@ -37,9 +37,9 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 			t.Run(contexts.Description(), func(t *ldtest.T) {
 				context := contexts.NextUniqueContext()
 
-				dataSource := NewSDKDataSource(t, nil)
+				dataSystem := NewSDKDataSystemSource(t, nil)
 				events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
-				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
+				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem, events)...)
 
 				if c.isClientSide {
 					client.SendIdentifyEvent(t, context)
@@ -73,9 +73,9 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 }
 
 func (c CommonEventTests) customEventsParameterizedTests(t *ldtest.T) {
-	dataSource := NewSDKDataSource(t, nil)
+	dataSystem := NewSDKDataSystemSource(t, nil)
 	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
-	client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
+	client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem, events)...)
 
 	if c.isClientSide {
 		// ignore the initial identify event

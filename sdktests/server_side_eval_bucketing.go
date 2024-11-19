@@ -223,8 +223,8 @@ func runServerSideEvalBucketingTests(t *ldtest.T) {
 			dataBuilder.Flag(flagForSegment).Segment(segmentWithRollout)
 		}
 
-		dataSource := NewSDKDataSource(t, dataBuilder.Build())
-		client := NewSDKClient(t, dataSource)
+		dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+		client := NewSDKClient(t, dataSystem)
 
 		expectedFallthroughResult := m.AllOf(
 			EvalResponseValue().Should(m.JSONEqual(expectedFallthroughValue)),
@@ -328,8 +328,8 @@ func runServerSideEvalBucketingTests(t *ldtest.T) {
 							Fallthrough(ldmodel.VariationOrRollout{Rollout: experiment}).
 							Build()
 						dataBuilder := mockld.NewServerSDKDataBuilder().Flag(flag)
-						dataSource := NewSDKDataSource(t, dataBuilder.Build())
-						client := NewSDKClient(t, dataSource)
+						dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+						client := NewSDKClient(t, dataSystem)
 						result := evaluateFlagDetail(t, client, flag.Key, context, defaultValue)
 						m.In(t).Assert(result, m.AllOf(
 							EvalResponseVariation().Should(m.Equal(o.Some(0))),

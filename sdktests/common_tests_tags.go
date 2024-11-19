@@ -57,17 +57,17 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 		for _, p := range c.makeValidTagsTestParams() {
 			t.Run(p.description, func(t *ldtest.T) {
 				tags := p.tags
-				dataSource := NewSDKDataSource(t, nil, DataSourceOptionStreaming())
+				dataSystem := NewSDKDataSystemSource(t, nil, DataSystemSourceOptionStreaming())
 				configurers := c.baseSDKConfigurationPlus(
 					withTagsConfig(tags),
-					dataSource)
+					dataSystem)
 				if c.isClientSide {
 					// client-side SDKs in streaming mode may *also* need a polling data source
 					configurers = append(configurers,
-						NewSDKDataSource(t, nil, DataSourceOptionPolling()))
+						NewSDKDataSystemSource(t, nil, DataSystemSourceOptionPolling()))
 				}
 				_ = NewSDKClient(t, configurers...)
-				verifyRequestHeader(t, p, dataSource.Endpoint())
+				verifyRequestHeader(t, p, dataSystem.Synchronizers.primary.Endpoint())
 			})
 		}
 	})
@@ -79,24 +79,24 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 		for _, p := range c.makeValidTagsTestParams() {
 			t.Run(p.description, func(t *ldtest.T) {
 				tags := p.tags
-				dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
+				dataSystem := NewSDKDataSystemSource(t, nil, DataSystemSourceOptionPolling())
 				_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 					withTagsConfig(tags),
-					dataSource)...)
-				verifyRequestHeader(t, p, dataSource.Endpoint())
+					dataSystem)...)
+				verifyRequestHeader(t, p, dataSystem.Synchronizers.primary.Endpoint())
 			})
 		}
 	})
 
 	t.Run("event posts", func(t *ldtest.T) {
-		dataSource := NewSDKDataSource(t, nil)
+		dataSystem := NewSDKDataSystemSource(t, nil)
 		for _, p := range c.makeValidTagsTestParams() {
 			t.Run(p.description, func(t *ldtest.T) {
 				tags := p.tags
 				events := NewSDKEventSink(t)
 				client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 					withTagsConfig(tags),
-					dataSource,
+					dataSystem,
 					events)...)
 
 				c.sendArbitraryEvent(t, client)
@@ -112,15 +112,15 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 			// We're not using t.Run to make a subtest here because there would be so many. We'll
 			// just print details of any failures we see.
 			tags := p.tags
-			dataSource := NewSDKDataSource(t, nil)
+			dataSystem := NewSDKDataSystemSource(t, nil)
 			client, err := TryNewSDKClient(t, c.baseSDKConfigurationPlus(
 				withTagsConfig(tags),
-				dataSource)...)
+				dataSystem)...)
 			if err != nil {
 				assert.Fail(t, "error initializing client", "for input tags: %s\nerror: %s", jsonhelpers.ToJSONString(tags), err)
 				continue
 			}
-			if request, err := dataSource.Endpoint().AwaitConnection(time.Second); err == nil {
+			if request, err := dataSystem.Synchronizers.primary.Endpoint().AwaitConnection(time.Second); err == nil {
 				headerTags := request.Headers.Get("X-LaunchDarkly-Tags")
 				if p.expectedHeaderValue != "" {
 					assert.Equal(t, p.expectedHeaderValue, headerTags, "for input tags: %s", jsonhelpers.ToJSONString(tags))

@@ -22,20 +22,20 @@ func doServerSideServiceEndpointsTests(t *ldtest.T) {
 
 	doTest := func(
 		t *ldtest.T,
-		makeStreamingConfig func(*SDKDataSource) SDKConfigurer,
+		makeStreamingConfig func(*SDKDataSystemSource) SDKConfigurer,
 		makeEventsConfig func(*SDKEventSink) SDKConfigurer,
 	) {
 		t.Run("streaming", func(t *ldtest.T) {
-			dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+			dataSystem := NewSDKDataSystemSource(t, mockld.EmptyServerSDKData())
 			_ = NewSDKClient(
 				t,
-				makeStreamingConfig(dataSource),
+				makeStreamingConfig(dataSystem),
 			)
-			_ = dataSource.Endpoint().RequireConnection(t, time.Second)
+			_ = dataSystem.Synchronizers.primary.Endpoint().RequireConnection(t, time.Second)
 		})
 
 		t.Run("events", func(t *ldtest.T) {
-			dataSource := NewSDKDataSource(t, mockld.EmptyServerSDKData())
+			dataSource := NewSDKDataSystemSource(t, mockld.EmptyServerSDKData())
 			events := NewSDKEventSink(t)
 			client := NewSDKClient(
 				t,
@@ -51,9 +51,9 @@ func doServerSideServiceEndpointsTests(t *ldtest.T) {
 	t.Run("using per-component configuration", func(t *ldtest.T) {
 		doTest(
 			t,
-			func(dataSource *SDKDataSource) SDKConfigurer {
+			func(dataSource *SDKDataSystemSource) SDKConfigurer {
 				return WithPrimaryStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
-					BaseURI: dataSource.Endpoint().BaseURL(),
+					BaseURI: dataSource.Synchronizers.primary.Endpoint().BaseURL(),
 				})
 			},
 			func(events *SDKEventSink) SDKConfigurer {

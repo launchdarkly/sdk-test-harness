@@ -49,9 +49,9 @@ func doServerSideSummaryEventBasicTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag1, flag2)
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
-	client := NewSDKClient(t, dataSource, events)
+	client := NewSDKClient(t, dataSystem, events)
 
 	// evaluations for flag1: two for o.Some(userA) producing value1a, one for o.Some(userB) producing value1b
 	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1.Key,
@@ -119,9 +119,9 @@ func flagIsExcludedFromSummaries(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag1, flag2)
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
-	client := NewSDKClient(t, dataSource, events)
+	client := NewSDKClient(t, dataSystem, events)
 
 	// evaluations for flag1: two for o.Some(userA) producing value1a, one for o.Some(userB) producing value1b
 	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1.Key,
@@ -172,9 +172,9 @@ func flagPreqIsExcludedFromSummaries(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag1, flag2)
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
-	client := NewSDKClient(t, dataSource, events)
+	client := NewSDKClient(t, dataSystem, events)
 
 	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag2.Key,
 		Context: o.Some(context), DefaultValue: ldvalue.Bool(false)})
@@ -220,9 +220,9 @@ func doServerSideSummaryEventContextKindsTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag1, flag2)
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
-	client := NewSDKClient(t, dataSource, events)
+	client := NewSDKClient(t, dataSystem, events)
 
 	// evaluations for flag1: two for o.Some(userA) producing value1a, one for o.Some(userB) producing value1b
 	for _, flagAndContext := range []struct {
@@ -269,9 +269,9 @@ func doServerSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
-	client := NewSDKClient(t, dataSource, events)
+	client := NewSDKClient(t, dataSystem, events)
 
 	// evaluate the unknown flag twice
 	_ = client.EvaluateFlag(t,
@@ -310,9 +310,9 @@ func doServerSideSummaryEventResetTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag)
 
-	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
-	client := NewSDKClient(t, dataSource, events)
+	client := NewSDKClient(t, dataSystem, events)
 
 	// evaluate flag 10 times for o.Some(userA) producing value-a, 3 times for o.Some(userB) producing value-b
 	for i := 0; i < 10; i++ {
@@ -389,9 +389,9 @@ func doServerSideSummaryEventPrerequisitesTest(t *ldtest.T) {
 		Build()
 
 	data := mockld.NewServerSDKDataBuilder().Flag(flag1, flag2, flag3).Build()
-	dataSource := NewSDKDataSource(t, data)
+	dataSystem := NewSDKDataSystemSource(t, data)
 	events := NewSDKEventSink(t)
-	client := NewSDKClient(t, dataSource, events)
+	client := NewSDKClient(t, dataSystem, events)
 
 	// evaluate flag1 3 times, which should cause flag2 and flag3 to also be evaluated 3 times
 	for i := 0; i < 3; i++ {
@@ -443,17 +443,17 @@ func doServerSideSummaryEventVersionTest(t *ldtest.T) {
 	context := ldcontext.New("user-key")
 
 	data := mockld.NewServerSDKDataBuilder().Flag(flagBefore).Build()
-	dataSource := NewSDKDataSource(t, data)
+	dataSystem := NewSDKDataSystemSource(t, data)
 	events := NewSDKEventSink(t)
-	client := NewSDKClient(t, dataSource, events)
+	client := NewSDKClient(t, dataSystem, events)
 
 	initialValue := basicEvaluateFlag(t, client, flagKey, context, defaultValue)
 	m.In(t).Require(initialValue, m.JSONEqual(valueBefore))
 
-	dataSource.StreamingService().PushUpdate("flag", flagKey, flagAfter.Version, jsonhelpers.ToJSON(flagAfter))
+	dataSystem.Synchronizers.primary.streamingService.PushUpdate("flag", flagKey, flagAfter.Version, jsonhelpers.ToJSON(flagAfter))
 	//nolint:godox
 	// TODO: Need to determine which version this should be, and also what the state should be
-	dataSource.StreamingService().PushPayloadTransferred("state", 2)
+	dataSystem.Synchronizers.primary.streamingService.PushPayloadTransferred("state", 2)
 
 	h.RequireEventually(
 		t,
