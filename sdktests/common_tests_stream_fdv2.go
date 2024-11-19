@@ -118,7 +118,8 @@ func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent
 	m.In(t).Assert(flagKeyValue, m.JSONEqual(initialValue))
 
 	dataSystem.Synchronizers.primary.streamingService.PushDelete("flag", "flag-key", 2)
-	dataSystem.Synchronizers.primary.streamingService.PushUpdate("flag", "new-flag-key", 1, c.makeFlagData("new-flag-key", 1, newInitialValue))
+	dataSystem.Synchronizers.primary.streamingService.PushUpdate(
+		"flag", "new-flag-key", 1, c.makeFlagData("new-flag-key", 1, newInitialValue))
 
 	require.Never(
 		t,
@@ -157,7 +158,8 @@ func (c CommonStreamingTests) IgnoresModelVersion(t *ldtest.T) {
 	// SDK. However, the state we are sending suggests it is later. The SDK
 	// should ignore the individual model version and just trust the overall
 	// state version.
-	dataSystem.Synchronizers.primary.streamingService.PushUpdate("flag", "flag-key", 1, c.makeFlagData("flag-key", 1, updatedValue))
+	dataSystem.Synchronizers.primary.streamingService.PushUpdate(
+		"flag", "flag-key", 1, c.makeFlagData("flag-key", 1, updatedValue))
 	dataSystem.Synchronizers.primary.streamingService.PushPayloadTransferred("updated", 2)
 
 	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
@@ -175,7 +177,8 @@ func (c CommonStreamingTests) IgnoresHeartBeat(t *ldtest.T) {
 	m.In(t).Assert(flagKeyValue, m.JSONEqual(initialValue))
 
 	dataSystem.Synchronizers.primary.streamingService.PushHeartbeat()
-	dataSystem.Synchronizers.primary.streamingService.PushUpdate("flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
+	dataSystem.Synchronizers.primary.streamingService.PushUpdate(
+		"flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
 	dataSystem.Synchronizers.primary.streamingService.PushHeartbeat()
 	dataSystem.Synchronizers.primary.streamingService.PushPayloadTransferred("updated", 2)
 
@@ -194,10 +197,12 @@ func (c CommonStreamingTests) DiscardsEventsOnError(t *ldtest.T) {
 	m.In(t).Assert(flagKeyValue, m.JSONEqual(initialValue))
 
 	// The error should cause this update to be discard.
-	dataSystem.Synchronizers.primary.streamingService.PushUpdate("flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
+	dataSystem.Synchronizers.primary.streamingService.PushUpdate(
+		"flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
 	dataSystem.Synchronizers.primary.streamingService.PushError("some-id", "some reason")
 	// But this change should be applied.
-	dataSystem.Synchronizers.primary.streamingService.PushUpdate("flag", "new-flag-key", 2, c.makeFlagData("new-flag-key", 2, newInitialValue))
+	dataSystem.Synchronizers.primary.streamingService.PushUpdate(
+		"flag", "new-flag-key", 2, c.makeFlagData("new-flag-key", 2, newInitialValue))
 	dataSystem.Synchronizers.primary.streamingService.PushPayloadTransferred("updated", 2)
 
 	require.Never(
@@ -221,7 +226,8 @@ func (c CommonStreamingTests) DisconnectsOnGoodbye(t *ldtest.T) {
 	_, err := streamEndpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
-	dataSystems[0].Synchronizers.primary.streamingService.PushUpdate("flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
+	dataSystems[0].Synchronizers.primary.streamingService.PushUpdate(
+		"flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
 	// This should prompt the SDK to discard previous events, disconnect, and then re-connect.
 	dataSystems[0].Synchronizers.primary.streamingService.PushGoodbye("some-reason", false, false)
 
@@ -238,7 +244,8 @@ func (c CommonStreamingTests) DisconnectsOnGoodbye(t *ldtest.T) {
 	)
 }
 
-func makeSequentialStreamHandler(t *ldtest.T, dataSources ...mockld.SDKData) (*harness.MockEndpoint, []*SDKDataSystemSource) {
+func makeSequentialStreamHandler(t *ldtest.T, dataSources ...mockld.SDKData) (
+	*harness.MockEndpoint, []*SDKDataSystemSource) {
 	handlers := make([]http.Handler, len(dataSources))
 	dataSystemSource := make([]*SDKDataSystemSource, len(dataSources))
 
@@ -246,7 +253,6 @@ func makeSequentialStreamHandler(t *ldtest.T, dataSources ...mockld.SDKData) (*h
 		dataSystem := NewSDKDataSystemSource(t, data)
 		handlers[i] = dataSystem.Synchronizers.primary.streamingService
 		dataSystemSource[i] = dataSystem
-
 	}
 
 	handler := httphelpers.SequentialHandler(handlers[0], handlers[1:]...)

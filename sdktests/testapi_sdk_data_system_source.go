@@ -204,19 +204,22 @@ func (d *Synchronizer) Endpoint() *harness.MockEndpoint { return d.endpoint }
 // The object's lifecycle is tied to the test scope that created it; it will be automatically closed
 // when this test scope exits. It can be reused by subtests until then. Debug output related to the
 // data source will be attached to this test scope.
-func NewSDKDataSystemSource(t *ldtest.T, data mockld.SDKData, options ...SDKDataSystemSourceOption) *SDKDataSystemSource {
+func NewSDKDataSystemSource(
+	t *ldtest.T, data mockld.SDKData, options ...SDKDataSystemSourceOption) *SDKDataSystemSource {
 	dataSystem := NewSDKDataSystemSourceWithoutEndpoints(t, data, options...)
 
 	if dataSystem.Synchronizers != nil {
 		isPolling := dataSystem.Synchronizers.primary.pollingService != nil
-		handler := helpers.IfElse[http.Handler](isPolling, dataSystem.Synchronizers.primary.pollingService, dataSystem.Synchronizers.primary.streamingService)
+		handler := helpers.IfElse[http.Handler](isPolling,
+			dataSystem.Synchronizers.primary.pollingService, dataSystem.Synchronizers.primary.streamingService)
 		dataSystem.Synchronizers.primary.endpoint =
 			requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
 				harness.MockEndpointDescription("streaming service"))
 
 		if dataSystem.Synchronizers.secondary != nil {
 			isPolling := dataSystem.Synchronizers.secondary.pollingService != nil
-			handler := helpers.IfElse[http.Handler](isPolling, dataSystem.Synchronizers.secondary.pollingService, dataSystem.Synchronizers.secondary.streamingService)
+			handler := helpers.IfElse[http.Handler](isPolling,
+				dataSystem.Synchronizers.secondary.pollingService, dataSystem.Synchronizers.secondary.streamingService)
 			dataSystem.Synchronizers.secondary.endpoint =
 				requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
 					harness.MockEndpointDescription("streaming service"))
@@ -226,11 +229,12 @@ func NewSDKDataSystemSource(t *ldtest.T, data mockld.SDKData, options ...SDKData
 	return dataSystem
 }
 
-// NewSDKDataSystemSourceWithoutEndpoint is the same as NewSDKDataSystemSource, but it does not allocate an
+// NewSDKDataSystemSourceWithoutEndpoints is the same as NewSDKDataSystemSource, but it does not allocate an
 // endpoint to accept incoming requests. Use this if you want to configure the endpoint separately,
 // for instance if you want it to delegate some requests to the data source but return an error
 // for some other requests.
-func NewSDKDataSystemSourceWithoutEndpoints(t *ldtest.T, data mockld.SDKData, options ...SDKDataSystemSourceOption) *SDKDataSystemSource {
+func NewSDKDataSystemSourceWithoutEndpoints(
+	t *ldtest.T, data mockld.SDKData, options ...SDKDataSystemSourceOption) *SDKDataSystemSource {
 	sdkKind := requireContext(t).sdkKind
 	if data == nil {
 		data = mockld.EmptyData(sdkKind)
@@ -248,7 +252,8 @@ func NewSDKDataSystemSourceWithoutEndpoints(t *ldtest.T, data mockld.SDKData, op
 	if config.polling.Value() || (!config.polling.IsDefined() && defaultIsPolling) {
 		d.Synchronizers = &Synchronizers{
 			primary: Synchronizer{
-				pollingService: mockld.NewPollingService(data, sdkKind, t.DebugLogger()).WithGzipCompression(t.Capabilities().Has(servicedef.CapabilityPollingGzip)),
+				pollingService: mockld.NewPollingService(data, sdkKind, t.DebugLogger()).
+					WithGzipCompression(t.Capabilities().Has(servicedef.CapabilityPollingGzip)),
 			},
 		}
 	} else {

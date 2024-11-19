@@ -121,7 +121,8 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 		dataSystem.Synchronizers.primary.streamingService.PushEvent(eventName, eventData)
 
 		// Then, push a patch event, so we can detect if the SDK continued processing the stream as it should
-		dataSystem.Synchronizers.primary.streamingService.PushUpdate("flag", flagKey, flagV2.Version, jsonhelpers.ToJSON(flagV2))
+		dataSystem.Synchronizers.primary.streamingService.PushUpdate(
+			"flag", flagKey, flagV2.Version, jsonhelpers.ToJSON(flagV2))
 		//nolint:godox
 		// TODO: Need to determine which version this should be, and also what the state should be
 		dataSystem.Synchronizers.primary.streamingService.PushPayloadTransferred("state", 2)

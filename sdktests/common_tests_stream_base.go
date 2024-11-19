@@ -28,7 +28,8 @@ func NewCommonStreamingTests(t *ldtest.T, testName string, baseSDKConfigurers ..
 //
 // - JS-based client-side SDKs in streaming mode always connect to the *polling* service first for their
 // initial data, and then connect to the streaming service for updates.
-func (c CommonStreamingTests) setupDataSystems(t *ldtest.T, initialData mockld.SDKData) (*SDKDataSystemSource, []SDKConfigurer) {
+func (c CommonStreamingTests) setupDataSystems(
+	t *ldtest.T, initialData mockld.SDKData) (*SDKDataSystemSource, []SDKConfigurer) {
 	if initialData == nil {
 		initialData = mockld.EmptyData(c.sdkKind)
 	}
