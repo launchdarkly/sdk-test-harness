@@ -2,6 +2,14 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.27.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.26.0...v2.27.0) (2024-11-19)
+
+
+### Features
+
+* add http proxy test for client-side events ([#265](https://github.com/launchdarkly/sdk-test-harness/issues/265)) ([dfec55f](https://github.com/launchdarkly/sdk-test-harness/commit/dfec55fda44142fd16f5755fcc098e78fad15a1c))
+* add http proxy test for client-side polling ([#264](https://github.com/launchdarkly/sdk-test-harness/issues/264)) ([1ef3bc2](https://github.com/launchdarkly/sdk-test-harness/commit/1ef3bc261d1de20cf9a2e13789a4865a12d4c2f3))
+
 ## [2.26.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.25.1...v2.26.0) (2024-11-18)
 
 
