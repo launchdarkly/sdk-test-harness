@@ -49,7 +49,7 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 	}
 	dataBuilder.Flag(malformedFlag, zeroSamplingRatioFlag)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
 
 	client := NewSDKClient(t, dataSystem, events)
@@ -323,7 +323,7 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 		for _, valueType := range getValueTypesToTest(t) {
 			dataBuilder.Flag(flags.MakeFlagForValueType(valueType))
 		}
-		dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+		dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 
 		events := NewSDKEventSink(t)
 		if !lastKnownTimeFromLD.IsZero() {
@@ -407,7 +407,7 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 
 		dataBuilder := mockld.NewServerSDKDataBuilder()
 		dataBuilder.Flag(zeroSamplingRatioFlag)
-		dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+		dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 
 		events := NewSDKEventSink(t)
 		client := NewSDKClient(t, dataSystem, events)
@@ -520,7 +520,7 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 			dataBuilder := mockld.NewServerSDKDataBuilder()
 			dataBuilder.Flag(flag1, flag2, flag3)
 
-			dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+			dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 			events := NewSDKEventSink(t)
 			client := NewSDKClient(t, dataSystem, events)
 
@@ -578,7 +578,7 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 		dataBuilder := mockld.NewServerSDKDataBuilder()
 		dataBuilder.Flag(flag1, flag2, flag3)
 
-		dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+		dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 		events := NewSDKEventSink(t)
 		client := NewSDKClient(t, dataSystem, events)
 

@@ -49,7 +49,7 @@ func doServerSideSummaryEventBasicTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag1, flag2)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
 	client := NewSDKClient(t, dataSystem, events)
 
@@ -119,7 +119,7 @@ func flagIsExcludedFromSummaries(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag1, flag2)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
 	client := NewSDKClient(t, dataSystem, events)
 
@@ -172,7 +172,7 @@ func flagPreqIsExcludedFromSummaries(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag1, flag2)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
 	client := NewSDKClient(t, dataSystem, events)
 
@@ -220,7 +220,7 @@ func doServerSideSummaryEventContextKindsTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag1, flag2)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
 	client := NewSDKClient(t, dataSystem, events)
 
@@ -269,7 +269,7 @@ func doServerSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
 	client := NewSDKClient(t, dataSystem, events)
 
@@ -310,7 +310,7 @@ func doServerSideSummaryEventResetTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
 	client := NewSDKClient(t, dataSystem, events)
 
@@ -389,7 +389,7 @@ func doServerSideSummaryEventPrerequisitesTest(t *ldtest.T) {
 		Build()
 
 	data := mockld.NewServerSDKDataBuilder().Flag(flag1, flag2, flag3).Build()
-	dataSystem := NewSDKDataSystemSource(t, data)
+	dataSystem := NewSDKDataSystem(t, data)
 	events := NewSDKEventSink(t)
 	client := NewSDKClient(t, dataSystem, events)
 
@@ -443,7 +443,7 @@ func doServerSideSummaryEventVersionTest(t *ldtest.T) {
 	context := ldcontext.New("user-key")
 
 	data := mockld.NewServerSDKDataBuilder().Flag(flagBefore).Build()
-	dataSystem := NewSDKDataSystemSource(t, data)
+	dataSystem := NewSDKDataSystem(t, data)
 	events := NewSDKEventSink(t)
 	client := NewSDKClient(t, dataSystem, events)
 

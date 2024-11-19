@@ -70,7 +70,7 @@ func (c CommonEvalParameterizedTestRunner[SDKDataType]) runTestSuite(
 	if c.FilterSDKData != nil {
 		sdkData = c.FilterSDKData(sdkData)
 	}
-	dataSystem := NewSDKDataSystemSource(t, sdkData)
+	dataSystem := NewSDKDataSystem(t, sdkData)
 
 	var clientConfig []SDKConfigurer
 	if c.SDKConfigurers != nil {

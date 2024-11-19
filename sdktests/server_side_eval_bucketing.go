@@ -223,7 +223,7 @@ func runServerSideEvalBucketingTests(t *ldtest.T) {
 			dataBuilder.Flag(flagForSegment).Segment(segmentWithRollout)
 		}
 
-		dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+		dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 		client := NewSDKClient(t, dataSystem)
 
 		expectedFallthroughResult := m.AllOf(
@@ -328,7 +328,7 @@ func runServerSideEvalBucketingTests(t *ldtest.T) {
 							Fallthrough(ldmodel.VariationOrRollout{Rollout: experiment}).
 							Build()
 						dataBuilder := mockld.NewServerSDKDataBuilder().Flag(flag)
-						dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+						dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 						client := NewSDKClient(t, dataSystem)
 						result := evaluateFlagDetail(t, client, flag.Key, context, defaultValue)
 						m.In(t).Assert(result, m.AllOf(

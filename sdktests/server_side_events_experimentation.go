@@ -69,7 +69,7 @@ func doServerSideExperimentationEventTests(t *ldtest.T) {
 			flag := builder.Build()
 			data := mockld.NewServerSDKDataBuilder().Flag(flag).Build()
 
-			dataSystem := NewSDKDataSystemSource(t, data)
+			dataSystem := NewSDKDataSystem(t, data)
 			eventSink := NewSDKEventSink(t)
 			client := NewSDKClient(t, dataSystem, eventSink)
 

@@ -85,7 +85,7 @@ func doPHPFeatureEventTests(t *ldtest.T) {
 		On(true).Variations(ldvalue.Bool(true), ldvalue.Bool(false)).ExcludeFromSummaries(true).Build()
 	dataBuilder.Flag(excludeFromSummaries)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
 
 	client := NewSDKClient(t, dataSystem, events)

@@ -36,7 +36,7 @@ func runParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
 	context := ldcontext.New("user-key")
 	expectedReason := ldreason.NewEvalReasonError(ldreason.EvalErrorClientNotReady)
 
-	dataSystem := NewSDKDataSystemSource(t, mockld.BlockingUnavailableSDKData(mockld.ServerSideSDK))
+	dataSystem := NewSDKDataSystem(t, mockld.BlockingUnavailableSDKData(mockld.ServerSideSDK))
 	client := NewSDKClient(t,
 		WithConfig(servicedef.SDKConfigParams{StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(1)),
 			InitCanFail: true}),

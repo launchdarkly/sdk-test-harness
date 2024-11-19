@@ -167,7 +167,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 		sdkData = mockld.NewServerSDKDataBuilder().Flag(flag, debugFlag).Build()
 	}
 
-	dataSystem := NewSDKDataSystemSource(t, sdkData)
+	dataSystem := NewSDKDataSystem(t, sdkData)
 
 	for _, p := range makeEventContextTestParams() {
 		outputMatcher := func(context ldcontext.Context) m.Matcher {

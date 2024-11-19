@@ -17,7 +17,7 @@ func (c CommonEventTests) IdentifyEvents(t *ldtest.T) {
 	// These do not include detailed tests of the encoding of user attributes in identify events,
 	// which are in server_side_events_users.go.
 
-	dataSystem := NewSDKDataSystemSource(t, nil)
+	dataSystem := NewSDKDataSystem(t, nil)
 	contextCategories := data.NewContextFactoriesForSingleAndMultiKind(c.contextFactory.Prefix())
 
 	t.Run("basic properties", func(t *ldtest.T) {
@@ -47,7 +47,7 @@ func (c CommonEventTests) IdentifyEvents(t *ldtest.T) {
 		t.RequireCapability(servicedef.CapabilityOmitAnonymousContexts)
 
 		setup := func() (*SDKClient, *SDKEventSink) {
-			dataSystem := NewSDKDataSystemSource(t, mockld.EmptyServerSDKData())
+			dataSystem := NewSDKDataSystem(t, mockld.EmptyServerSDKData())
 			eventsConfig := baseEventsConfig()
 			eventsConfig.OmitAnonymousContexts = true
 			events := NewSDKEventSink(t)

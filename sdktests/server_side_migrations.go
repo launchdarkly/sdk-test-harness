@@ -1224,7 +1224,7 @@ func createClient(t *ldtest.T, variationIndex int) (*SDKClient, *SDKEventSink) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(migrationFlag, noConsistencyCheckFlag, noSamplingRatioFlag, invalidStageFlag, wrongTypeFlag)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
 	client := NewSDKClient(t, dataSystem, events)
 

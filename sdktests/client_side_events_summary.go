@@ -59,7 +59,7 @@ func doClientSideSummaryEventBasicTest(t *ldtest.T) {
 	dataBuilder := mockld.NewClientSDKDataBuilder()
 	dataBuilder.Flag(flag1Key, flag1Result1).Flag(flag2Key, flag2Result)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 	client := NewSDKClient(t,
 		WithClientSideInitialContext(contextA),
@@ -132,7 +132,7 @@ func doClientSideSummaryEventContextKindsTest(t *ldtest.T) {
 	dataBuilder := mockld.NewClientSDKDataBuilder()
 	dataBuilder.Flag(flag1Key, flag1Result).Flag(flag2Key, flag2Result)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 	client := NewSDKClient(t,
 		WithClientSideInitialContext(initialContext),
@@ -184,7 +184,7 @@ func doClientSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 
 	dataBuilder := mockld.NewClientSDKDataBuilder()
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 	client := NewSDKClient(t,
 		WithClientSideInitialContext(context),
@@ -231,7 +231,7 @@ func doClientSideSummaryEventResetTest(t *ldtest.T) {
 	dataBuilder := mockld.NewClientSDKDataBuilder()
 	dataBuilder.Flag(flagKey, flag1Result1)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 	client := NewSDKClient(t,
 		WithClientSideInitialContext(contextA),
@@ -329,7 +329,7 @@ func doClientSideSummaryBasicPrereqTest(t *ldtest.T) {
 		Flag(prereq2Key, prereq2Result).
 		Flag(prereq3Key, prereq3Result)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 	client := NewSDKClient(t,
 		WithClientSideInitialContext(contextA),
@@ -395,7 +395,7 @@ func doClientSideSummaryPrereqUnknownFlagTest(t *ldtest.T) {
 	dataBuilder := mockld.NewClientSDKDataBuilder()
 	dataBuilder.Flag(topLevelKey, topLevelResult)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 	client := NewSDKClient(t,
 		WithClientSideInitialContext(contextA),

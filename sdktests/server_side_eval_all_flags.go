@@ -72,7 +72,7 @@ func doServerSideAllFlagsBasicTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag1, flag2, flag3, flag4)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	client := NewSDKClient(t, dataSystem)
 	context := ldcontext.New("user-key")
 
@@ -122,7 +122,7 @@ func doServerSideAllFlagsWithReasonsTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag1, flag2)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	client := NewSDKClient(t, dataSystem)
 	context := ldcontext.New("user-key")
 
@@ -165,7 +165,7 @@ func doServerSideAllFlagsExperimentationTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag1, flag2)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	client := NewSDKClient(t, dataSystem)
 	context := ldcontext.New("user-key")
 
@@ -211,7 +211,7 @@ func doServerSideAllFlagsErrorInFlagTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag1, flag2)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	client := NewSDKClient(t, dataSystem)
 	context := ldcontext.New("user-key")
 
@@ -275,7 +275,7 @@ func doServerSideAllFlagsClientSideOnlyTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag1, flag2, flag3, flag4)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	client := NewSDKClient(t, dataSystem)
 	context := ldcontext.New("user-key")
 
@@ -322,7 +322,7 @@ func doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag1, flag2, flag3)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	client := NewSDKClient(t, dataSystem)
 	context := ldcontext.New("user-key")
 
@@ -354,7 +354,7 @@ func doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest(t *ldtest.T) {
 }
 
 func doServerSideAllFlagsClientNotReadyTest(t *ldtest.T) {
-	dataSystem := NewSDKDataSystemSource(t, mockld.BlockingUnavailableSDKData(mockld.ServerSideSDK))
+	dataSystem := NewSDKDataSystem(t, mockld.BlockingUnavailableSDKData(mockld.ServerSideSDK))
 	client := NewSDKClient(t,
 		WithConfig(servicedef.SDKConfigParams{StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(1)),
 			InitCanFail: true}),
@@ -385,7 +385,7 @@ func doServerSideAllFlagsCompactRepresentationsTest(t *ldtest.T) {
 		Build()
 
 	data := mockld.NewServerSDKDataBuilder().Flag(flag1, flag2).Build()
-	dataSystem := NewSDKDataSystemSource(t, data)
+	dataSystem := NewSDKDataSystem(t, data)
 	client := NewSDKClient(t, dataSystem)
 
 	context := ldcontext.New("user-key")
@@ -427,7 +427,7 @@ func doServerSideAllFlagsIncludesToplevelPreqrequisitesTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(topLevel, directPrereq1, directPrereq2, indirectPrereqOf1)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	client := NewSDKClient(t, dataSystem)
 	context := ldcontext.New("user-key")
 
@@ -492,7 +492,7 @@ func doServerSideAllFlagsIgnoresPrereqsIfNotEvaluatedTest(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flagOn, flagOff, failedPrereq, prereq1, prereq2)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	client := NewSDKClient(t, dataSystem)
 	context := ldcontext.New("user-key")
 
@@ -549,7 +549,7 @@ func doServerSideAllFlagsIgnoresClientSideOnlyForPrereqKeys(t *ldtest.T) {
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	dataBuilder.Flag(flag, prereq1, prereq2)
 
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	client := NewSDKClient(t, dataSystem)
 	context := ldcontext.New("user-key")
 

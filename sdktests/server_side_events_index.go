@@ -36,7 +36,7 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 
 	t.Run("basic properties", func(t *ldtest.T) {
 		// Details of the JSON representation of the context are tested in server_side_events_contexts.go.
-		dataSystem := NewSDKDataSystemSource(t, mockld.EmptyServerSDKData())
+		dataSystem := NewSDKDataSystem(t, mockld.EmptyServerSDKData())
 		events := NewSDKEventSink(t)
 		client := NewSDKClient(t, dataSystem, events)
 
@@ -54,7 +54,7 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 	})
 
 	t.Run("only one index event per evaluation context", func(t *ldtest.T) {
-		dataSystem := NewSDKDataSystemSource(t, mockld.EmptyServerSDKData())
+		dataSystem := NewSDKDataSystem(t, mockld.EmptyServerSDKData())
 
 		// Contexts are supposed to be deduplicated not just by key, but by the fully qualified key which
 		// is different for different kinds, and is a composite key for multi-kind contexts. So, here we
@@ -160,7 +160,7 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 
 		for _, scenario := range scenarios {
 			setup := func() (*SDKClient, *SDKEventSink) {
-				dataSystem := NewSDKDataSystemSource(t, mockld.EmptyServerSDKData())
+				dataSystem := NewSDKDataSystem(t, mockld.EmptyServerSDKData())
 				eventsConfig := baseEventsConfig()
 				eventsConfig.OmitAnonymousContexts = true
 				events := NewSDKEventSink(t)

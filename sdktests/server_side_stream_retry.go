@@ -57,8 +57,8 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 	}
 
 	t.Run("retry after stream is closed", func(t *ldtest.T) {
-		dataSystem1 := NewSDKDataSystemSourceWithoutEndpoints(t, dataV1)
-		dataSystem2 := NewSDKDataSystemSourceWithoutEndpoints(t, dataV2)
+		dataSystem1 := NewSDKDataSystemWithoutEndpoints(t, dataV1)
+		dataSystem2 := NewSDKDataSystemWithoutEndpoints(t, dataV2)
 
 		handler := httphelpers.SequentialHandler(
 			dataSystem1.Synchronizers.primary.streamingService,
@@ -90,7 +90,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		// the initial delay to a very large value, we should not see a reconnection attempt within a
 		// short time.
 
-		dataSystem := NewSDKDataSystemSource(t, dataV1)
+		dataSystem := NewSDKDataSystem(t, dataV1)
 		client := NewSDKClient(t,
 			WithPrimaryStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 				InitialRetryDelayMS: o.Some(ldtime.UnixMillisecondTime(10000)),
@@ -121,7 +121,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 	})
 
 	shouldRetryAfterErrorOnInitialConnect := func(t *ldtest.T, errorHandler http.Handler) {
-		dataSystem := NewSDKDataSystemSourceWithoutEndpoints(t, dataV1)
+		dataSystem := NewSDKDataSystemWithoutEndpoints(t, dataV1)
 		handler := httphelpers.SequentialHandler(
 			errorHandler, // first request gets the error
 			errorHandler, // second request also gets the error
@@ -154,8 +154,8 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 	})
 
 	shouldRetryAfterErrorOnReconnect := func(t *ldtest.T, errorHandler http.Handler) {
-		dataSystem1 := NewSDKDataSystemSourceWithoutEndpoints(t, dataV1)
-		dataSystem2 := NewSDKDataSystemSourceWithoutEndpoints(t, dataV2)
+		dataSystem1 := NewSDKDataSystemWithoutEndpoints(t, dataV1)
+		dataSystem2 := NewSDKDataSystemWithoutEndpoints(t, dataV2)
 
 		handler := httphelpers.SequentialHandler(
 			dataSystem1.Synchronizers.primary.streamingService, // first request gets the first stream data
@@ -204,7 +204,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 	t.Run("do not retry after unrecoverable HTTP error on initial connect", func(t *ldtest.T) {
 		for _, status := range unrecoverableErrors {
 			t.Run(fmt.Sprintf("error %d", status), func(t *ldtest.T) {
-				dataSystem := NewSDKDataSystemSourceWithoutEndpoints(t, dataV1)
+				dataSystem := NewSDKDataSystemWithoutEndpoints(t, dataV1)
 				handler := httphelpers.SequentialHandler(
 					// first request gets the error
 					httphelpers.HandlerWithStatus(status),
@@ -227,7 +227,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 	t.Run("do not retry after unrecoverable HTTP error on reconnect", func(t *ldtest.T) {
 		for _, status := range unrecoverableErrors {
 			t.Run(fmt.Sprintf("error %d", status), func(t *ldtest.T) {
-				dataSystem := NewSDKDataSystemSourceWithoutEndpoints(t, dataV1)
+				dataSystem := NewSDKDataSystemWithoutEndpoints(t, dataV1)
 				handler := httphelpers.SequentialHandler(
 					// first request gets the stream data
 					dataSystem.Synchronizers.primary.streamingService,

@@ -57,14 +57,14 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 		for _, p := range c.makeValidTagsTestParams() {
 			t.Run(p.description, func(t *ldtest.T) {
 				tags := p.tags
-				dataSystem := NewSDKDataSystemSource(t, nil, DataSystemSourceOptionStreaming())
+				dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionStreaming())
 				configurers := c.baseSDKConfigurationPlus(
 					withTagsConfig(tags),
 					dataSystem)
 				if c.isClientSide {
 					// client-side SDKs in streaming mode may *also* need a polling data source
 					configurers = append(configurers,
-						NewSDKDataSystemSource(t, nil, DataSystemSourceOptionPolling()))
+						NewSDKDataSystem(t, nil, DataSystemOptionPolling()))
 				}
 				_ = NewSDKClient(t, configurers...)
 				verifyRequestHeader(t, p, dataSystem.Synchronizers.primary.Endpoint())
@@ -79,7 +79,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 		for _, p := range c.makeValidTagsTestParams() {
 			t.Run(p.description, func(t *ldtest.T) {
 				tags := p.tags
-				dataSystem := NewSDKDataSystemSource(t, nil, DataSystemSourceOptionPolling())
+				dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 				_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 					withTagsConfig(tags),
 					dataSystem)...)
@@ -89,7 +89,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 	})
 
 	t.Run("event posts", func(t *ldtest.T) {
-		dataSystem := NewSDKDataSystemSource(t, nil)
+		dataSystem := NewSDKDataSystem(t, nil)
 		for _, p := range c.makeValidTagsTestParams() {
 			t.Run(p.description, func(t *ldtest.T) {
 				tags := p.tags
@@ -112,7 +112,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 			// We're not using t.Run to make a subtest here because there would be so many. We'll
 			// just print details of any failures we see.
 			tags := p.tags
-			dataSystem := NewSDKDataSystemSource(t, nil)
+			dataSystem := NewSDKDataSystem(t, nil)
 			client, err := TryNewSDKClient(t, c.baseSDKConfigurationPlus(
 				withTagsConfig(tags),
 				dataSystem)...)

@@ -64,7 +64,7 @@ func doBigSegmentsEvaluateSegment(t *ldtest.T) {
 		Flag(basicFlag, flagForSegmentWithRule, flagForSegmentWithOtherKind).
 		Segment(basicSegment, segmentWithRule, segmentWithOtherKind).
 		Build()
-	dataSystem := NewSDKDataSystemSource(t, data)
+	dataSystem := NewSDKDataSystem(t, data)
 
 	for _, status := range []ldreason.BigSegmentsStatus{ldreason.BigSegmentsHealthy, ldreason.BigSegmentsStale} {
 		t.Run(fmt.Sprintf("status %s", status), func(t *ldtest.T) {
@@ -207,7 +207,7 @@ func doBigSegmentsMembershipCachingTests(t *ldtest.T) {
 			)).
 		Build()
 	data := mockld.NewServerSDKDataBuilder().Flag(flag).Segment(segment1, segment2, segment3).Build()
-	dataSystem := NewSDKDataSystemSource(t, data)
+	dataSystem := NewSDKDataSystem(t, data)
 
 	t.Run("membership query is cached for multiple tests in one evaluation", func(t *ldtest.T) {
 		// Set up membership so the context is included in segment2, and not included in segment1.
@@ -399,7 +399,7 @@ func doBigSegmentsMembershipCachingTests(t *ldtest.T) {
 }
 
 func doBigSegmentsStatusPollingTests(t *ldtest.T) {
-	dataSystem := NewSDKDataSystemSource(t, mockld.EmptyServerSDKData())
+	dataSystem := NewSDKDataSystem(t, mockld.EmptyServerSDKData())
 
 	t.Run("polling can be set to a short interval", func(t *ldtest.T) {
 		bigSegmentStore := NewBigSegmentStore(t, ldreason.BigSegmentsHealthy)
@@ -481,7 +481,7 @@ func doBigSegmentsStatusPollingTests(t *ldtest.T) {
 		flag := makeFlagToCheckSegmentMatch("flag-key", segment.Key, ldvalue.Bool(false), ldvalue.Bool(true))
 		data := mockld.NewServerSDKDataBuilder().Flag(flag).Segment(segment).Build()
 
-		dataSystem := NewSDKDataSystemSource(t, data)
+		dataSystem := NewSDKDataSystem(t, data)
 		bigSegmentStore := NewBigSegmentStore(t, ldreason.BigSegmentsHealthy)
 
 		client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
@@ -510,7 +510,7 @@ func doBigSegmentsErrorHandlingTests(t *ldtest.T) {
 		flag := makeFlagToCheckSegmentMatch("flag-key", segment.Key, ldvalue.Bool(false), ldvalue.Bool(true))
 		data := mockld.NewServerSDKDataBuilder().Flag(flag).Segment(segment).Build()
 
-		dataSystem := NewSDKDataSystemSource(t, data)
+		dataSystem := NewSDKDataSystem(t, data)
 		client := NewSDKClient(t, dataSystem)
 
 		result := evaluateFlagDetail(t, client, flag.Key, bigSegmentsContext, ldvalue.Null())
@@ -532,7 +532,7 @@ func doBigSegmentsErrorHandlingTests(t *ldtest.T) {
 		flag := makeFlagToCheckSegmentMatch("flag-key", segment.Key, ldvalue.Bool(false), ldvalue.Bool(true))
 		data := mockld.NewServerSDKDataBuilder().Flag(flag).Segment(segment).Build()
 
-		dataSystem := NewSDKDataSystemSource(t, data)
+		dataSystem := NewSDKDataSystem(t, data)
 		bigSegmentStore := NewBigSegmentStore(t, ldreason.BigSegmentsHealthy)
 		client := NewSDKClient(t, dataSystem, bigSegmentStore)
 
@@ -553,7 +553,7 @@ func doBigSegmentsErrorHandlingTests(t *ldtest.T) {
 		flag := makeFlagToCheckSegmentMatch("flag-key", segment.Key, ldvalue.Bool(false), ldvalue.Bool(true))
 		data := mockld.NewServerSDKDataBuilder().Flag(flag).Segment(segment).Build()
 
-		dataSystem := NewSDKDataSystemSource(t, data)
+		dataSystem := NewSDKDataSystem(t, data)
 		bigSegmentStore := NewBigSegmentStore(t, ldreason.BigSegmentsHealthy)
 		client := NewSDKClient(t, dataSystem, bigSegmentStore)
 

@@ -27,8 +27,8 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 	context := ldcontext.New("user-key")
 
 	shouldDropAndReconnectAfterEvent := func(t *ldtest.T, badEventName string, badEventData json.RawMessage) {
-		dataSystem1 := NewSDKDataSystemSourceWithoutEndpoints(t, dataV1)
-		dataSystem2 := NewSDKDataSystemSourceWithoutEndpoints(t, dataV2)
+		dataSystem1 := NewSDKDataSystemWithoutEndpoints(t, dataV1)
+		dataSystem2 := NewSDKDataSystemWithoutEndpoints(t, dataV2)
 
 		handler := httphelpers.SequentialHandler(
 			dataSystem1.Synchronizers.primary.streamingService,
@@ -106,7 +106,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 	})
 
 	shouldIgnoreEvent := func(t *ldtest.T, eventName string, eventData json.RawMessage) {
-		dataSystem := NewSDKDataSystemSource(t, dataV1)
+		dataSystem := NewSDKDataSystem(t, dataV1)
 		client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 			InitialRetryDelayMS: o.Some(briefDelay), // brief delay so we can easily detect if it reconnects
 		}), dataSystem)

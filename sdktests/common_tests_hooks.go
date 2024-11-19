@@ -400,17 +400,17 @@ func createClientForHooksWithErrors(t *ldtest.T, instances []string,
 		migrationFlag,
 	}
 
-	var dataSystem *SDKDataSystemSource
+	var dataSystem *SDKDataSystem
 	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
 		dataBuilder := mockld.NewClientSDKDataBuilder()
 		for _, flag := range flags {
 			dataBuilder.Flag(flag.Key, mockld.ClientSDKFlag{Value: flag.Variations[1]})
 		}
-		dataSystem = NewSDKDataSystemSource(t, dataBuilder.Build())
+		dataSystem = NewSDKDataSystem(t, dataBuilder.Build())
 	} else {
 		dataBuilder := mockld.NewServerSDKDataBuilder()
 		dataBuilder.Flag(flags...)
-		dataSystem = NewSDKDataSystemSource(t, dataBuilder.Build())
+		dataSystem = NewSDKDataSystem(t, dataBuilder.Build())
 	}
 
 	hooks := NewHooks(requireContext(t).harness, t.DebugLogger(), instances, hookData, hookErrors)

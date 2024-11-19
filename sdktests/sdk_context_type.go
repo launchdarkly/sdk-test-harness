@@ -33,7 +33,7 @@ func doSDKContextTypeTests(t *ldtest.T) {
 // at a client instance.
 
 func doSDKContextBuildTests(t *ldtest.T) {
-	dataSystem := NewSDKDataSystemSource(t, nil)
+	dataSystem := NewSDKDataSystem(t, nil)
 	client := NewSDKClient(t, dataSystem)
 
 	optStr := func(s string) *string { return &s }
@@ -113,7 +113,7 @@ func doSDKContextBuildTests(t *ldtest.T) {
 }
 
 func doSDKContextConvertTests(t *ldtest.T) {
-	dataSystem := NewSDKDataSystemSource(t, nil)
+	dataSystem := NewSDKDataSystem(t, nil)
 	client := NewSDKClient(t, dataSystem)
 
 	basicInputPlusProps := func(extraProps string) string {
@@ -319,7 +319,7 @@ func doSDKContextConvertTests(t *ldtest.T) {
 }
 
 func doSDKContextComparisonTests(t *ldtest.T) {
-	dataSystem := NewSDKDataSystemSource(t, nil)
+	dataSystem := NewSDKDataSystem(t, nil)
 	client := NewSDKClient(t, dataSystem)
 	address := ldvalue.ObjectBuild().SetString("street", "123 Easy St").SetString("city", "Anytown").Build()
 	privateAttributes := []servicedef.PrivateAttribute{

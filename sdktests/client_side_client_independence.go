@@ -43,7 +43,7 @@ func doClientSideClientIndependenceTestsSameEnvironment(t *ldtest.T) {
 	default1 := ldvalue.String("default1")
 
 	dataBuilder := mockld.NewClientSDKDataBuilder().Flag(flag1Key, flag1Result1).Build()
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder)
+	dataSystem := NewSDKDataSystem(t, dataBuilder)
 	events := NewSDKEventSink(t)
 	clientA := NewSDKClient(t,
 		WithClientSideInitialContext(contextA1),
@@ -124,14 +124,14 @@ func doClientSideClientIndependenceTestsMultipleEnvironmentsIndependent(t *ldtes
 	default2 := ldvalue.String("default2")
 
 	dataBuilderFlag1Result1 := mockld.NewClientSDKDataBuilder().Flag(flag1Key, flag1Result1).Build()
-	dataSystemA := NewSDKDataSystemSource(t, dataBuilderFlag1Result1)
+	dataSystemA := NewSDKDataSystem(t, dataBuilderFlag1Result1)
 	eventsA := NewSDKEventSink(t)
 	clientA := NewSDKClient(t,
 		WithClientSideInitialContext(contextA1),
 		dataSystemA, eventsA)
 
 	dataBuilderFlag2Result1 := mockld.NewClientSDKDataBuilder().Flag(flag2Key, flag2Result1).Build()
-	dataSystemB := NewSDKDataSystemSource(t, dataBuilderFlag2Result1)
+	dataSystemB := NewSDKDataSystem(t, dataBuilderFlag2Result1)
 	eventsB := NewSDKEventSink(t)
 	clientB := NewSDKClient(t,
 		WithClientSideInitialContext(contextB1),
@@ -199,14 +199,14 @@ func doClientSideClientIndependenceTestsClientAManipulatedClientBUnaffected(t *l
 	default2 := ldvalue.String("default2")
 
 	dataBuilderFlag1Result1 := mockld.NewClientSDKDataBuilder().Flag(flag1Key, flag1Result1).Build()
-	dataSystemA := NewSDKDataSystemSource(t, dataBuilderFlag1Result1)
+	dataSystemA := NewSDKDataSystem(t, dataBuilderFlag1Result1)
 	eventsA := NewSDKEventSink(t)
 	clientA := NewSDKClient(t,
 		WithClientSideInitialContext(contextA1),
 		dataSystemA, eventsA)
 
 	dataBuilderFlag2Result1 := mockld.NewClientSDKDataBuilder().Flag(flag2Key, flag2Result1).Build()
-	dataSystemB := NewSDKDataSystemSource(t, dataBuilderFlag2Result1)
+	dataSystemB := NewSDKDataSystem(t, dataBuilderFlag2Result1)
 	eventsB := NewSDKEventSink(t)
 	clientB := NewSDKClient(t,
 		WithClientSideInitialContext(contextB1),

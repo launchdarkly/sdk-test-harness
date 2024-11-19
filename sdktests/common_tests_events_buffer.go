@@ -40,7 +40,7 @@ func (c CommonEventTests) BufferBehavior(t *ldtest.T) {
 		return ret
 	}
 
-	dataSystem := NewSDKDataSystemSource(t, nil)
+	dataSystem := NewSDKDataSystem(t, nil)
 
 	t.Run("capacity is enforced", func(t *ldtest.T) {
 		events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))

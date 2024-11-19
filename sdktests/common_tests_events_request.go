@@ -22,7 +22,7 @@ func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string
 	t.Run("method and headers", func(t *ldtest.T) {
 		for _, transport := range c.withAvailableTransports(t) {
 			transport.Run(t, func(t *ldtest.T) {
-				dataSystem := NewSDKDataSystemSource(t, nil)
+				dataSystem := NewSDKDataSystem(t, nil)
 				events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem, WithEventsConfig(servicedef.SDKConfigEventParams{
 					EnableGzip: o.Some(t.Capabilities().Has(servicedef.CapabilityEventGzip)),
@@ -52,7 +52,7 @@ func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string
 			//// It's not expected that the data source connection will succeed (since it's an https url, and the SDK's
 			//// default trust store won't contain the self-signed cert.) This test is only concerned with events; the
 			//// data source is being configured because it is required by the harness.
-			dataSystem := NewSDKDataSystemSource(t, nil)
+			dataSystem := NewSDKDataSystem(t, nil)
 			events := NewSDKEventSink(t)
 			client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem, events)...)
 
@@ -69,7 +69,7 @@ func (c CommonEventTests) RequestURLPath(t *ldtest.T, pathMatcher m.Matcher) {
 	t.Run("URL path is computed correctly", func(t *ldtest.T) {
 		for _, trailingSlash := range []bool{false, true} {
 			t.Run(h.IfElse(trailingSlash, "base URI has a trailing slash", "base URI has no trailing slash"), func(t *ldtest.T) {
-				dataSystem := NewSDKDataSystemSource(t, nil)
+				dataSystem := NewSDKDataSystem(t, nil)
 				events := NewSDKEventSink(t)
 
 				eventsURI := strings.TrimSuffix(events.Endpoint().BaseURL(), "/")
@@ -95,7 +95,7 @@ func (c CommonEventTests) RequestURLPath(t *ldtest.T, pathMatcher m.Matcher) {
 
 func (c CommonEventTests) UniquePayloadIDs(t *ldtest.T) {
 	t.Run("new payload ID for each post", func(t *ldtest.T) {
-		dataSystem := NewSDKDataSystemSource(t, nil)
+		dataSystem := NewSDKDataSystem(t, nil)
 		events := NewSDKEventSink(t)
 		client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem, events)...)
 

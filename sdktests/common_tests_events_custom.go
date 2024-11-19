@@ -37,7 +37,7 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 			t.Run(contexts.Description(), func(t *ldtest.T) {
 				context := contexts.NextUniqueContext()
 
-				dataSystem := NewSDKDataSystemSource(t, nil)
+				dataSystem := NewSDKDataSystem(t, nil)
 				events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 				client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem, events)...)
 
@@ -73,7 +73,7 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 }
 
 func (c CommonEventTests) customEventsParameterizedTests(t *ldtest.T) {
-	dataSystem := NewSDKDataSystemSource(t, nil)
+	dataSystem := NewSDKDataSystem(t, nil)
 	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 	client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem, events)...)
 

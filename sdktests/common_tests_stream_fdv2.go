@@ -245,20 +245,20 @@ func (c CommonStreamingTests) DisconnectsOnGoodbye(t *ldtest.T) {
 }
 
 func makeSequentialStreamHandler(t *ldtest.T, dataSources ...mockld.SDKData) (
-	*harness.MockEndpoint, []*SDKDataSystemSource) {
+	*harness.MockEndpoint, []*SDKDataSystem) {
 	handlers := make([]http.Handler, len(dataSources))
-	dataSystemSource := make([]*SDKDataSystemSource, len(dataSources))
+	dataSystems := make([]*SDKDataSystem, len(dataSources))
 
 	for i, data := range dataSources {
-		dataSystem := NewSDKDataSystemSource(t, data)
+		dataSystem := NewSDKDataSystem(t, data)
 		handlers[i] = dataSystem.Synchronizers.primary.streamingService
-		dataSystemSource[i] = dataSystem
+		dataSystems[i] = dataSystem
 	}
 
 	handler := httphelpers.SequentialHandler(handlers[0], handlers[1:]...)
 
 	return requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
-		harness.MockEndpointDescription("streaming service")), dataSystemSource
+		harness.MockEndpointDescription("streaming service")), dataSystems
 }
 
 func validatePayloadReceived(t *ldtest.T,

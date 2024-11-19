@@ -28,7 +28,7 @@ func (c CommonPollingTests) RequestMethodAndHeaders(t *ldtest.T, credential stri
 			t.Run(string(method), func(t *ldtest.T) {
 				for _, transport := range c.withAvailableTransports(t) {
 					transport.Run(t, func(t *ldtest.T) {
-						dataSystem := NewSDKDataSystemSource(t, nil, DataSystemSourceOptionPolling())
+						dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 							c.withFlagRequestMethod(method),
 							dataSystem,
@@ -48,7 +48,7 @@ func (c CommonPollingTests) RequestMethodAndHeaders(t *ldtest.T, credential stri
 	})
 	t.Run("invalid tls certificate", func(t *ldtest.T) {
 		c.withHTTPSTransport(t).Run(t, func(t *ldtest.T) {
-			dataSystem := NewSDKDataSystemSource(t, nil, DataSystemSourceOptionPolling())
+			dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 
 			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem)...)
 
@@ -74,7 +74,7 @@ func (c CommonPollingTests) LargePayloads(t *ldtest.T) {
 	}
 
 	sdkData := mockld.NewServerSDKDataBuilder().Flag(flags...).Build()
-	dataSystem := NewSDKDataSystemSource(t, sdkData, DataSystemSourceOptionPolling())
+	dataSystem := NewSDKDataSystem(t, sdkData, DataSystemOptionPolling())
 
 	t.Run("large payloads", func(t *ldtest.T) {
 		client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem)...)
@@ -122,7 +122,7 @@ func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagReq
 						"base URI has no trailing slash"), func(t *ldtest.T) {
 						for _, method := range c.availableFlagRequestMethods() {
 							t.Run(string(method), func(t *ldtest.T) {
-								dataSystem := NewSDKDataSystemSource(t, nil, DataSystemSourceOptionPolling())
+								dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 
 								pollURI := strings.TrimSuffix(dataSystem.Synchronizers.primary.Endpoint().BaseURL(), "/")
 								if trailingSlash {
@@ -158,7 +158,7 @@ func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagReq
 				t.Run(fmt.Sprintf("evaluationReasons set to %s", withReasons), func(t *ldtest.T) {
 					for _, method := range c.availableFlagRequestMethods() {
 						t.Run(string(method), func(t *ldtest.T) {
-							dataSystem := NewSDKDataSystemSource(t, nil, DataSystemSourceOptionPolling())
+							dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 
 							_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 								c.withFlagRequestMethod(method),
@@ -201,7 +201,7 @@ func (c CommonPollingTests) RequestContextProperties(t *ldtest.T, getPath string
 			t.Run(contexts.Description(), func(t *ldtest.T) {
 				for _, method := range c.availableFlagRequestMethods() {
 					t.Run(string(method), func(t *ldtest.T) {
-						dataSystem := NewSDKDataSystemSource(t, nil, DataSystemSourceOptionPolling())
+						dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 
 						context := contexts.NextUniqueContext()
 						contextJSONMatcher := JSONMatchesContext(context)
@@ -243,7 +243,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 			for _, method := range c.availableFlagRequestMethods() {
 				context := contexts.NextUniqueContext()
 
-				dataSystem := NewSDKDataSystemSource(t, nil, DataSystemSourceOptionPolling())
+				dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 				dataSystem.Synchronizers.primary.pollingService.SetEtag(context.FullyQualifiedKey())
 
 				client := NewSDKClient(t, c.baseSDKConfigurationPlus(
@@ -257,7 +257,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 
 				_ = client.Close()
 
-				dataSystem = NewSDKDataSystemSource(t, nil, DataSystemSourceOptionPolling())
+				dataSystem = NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 				client = NewSDKClient(t, c.baseSDKConfigurationPlus(
 					WithClientSideInitialContext(context),
 					c.withFlagRequestMethod(method),
@@ -281,7 +281,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 
 				for _, context := range contexts {
 					// Initialize and close clients with multiple contexts. Each one should use a different e-tag value
-					dataSystem := NewSDKDataSystemSource(t, nil, DataSystemSourceOptionPolling())
+					dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 					dataSystem.Synchronizers.primary.pollingService.SetEtag(context.FullyQualifiedKey())
 					client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 						WithClientSideInitialContext(context),
@@ -297,7 +297,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 
 				// Then re-initialize each context, verifying the e-tag is right for each.
 				for _, context := range contexts {
-					dataSystem := NewSDKDataSystemSource(t, nil, DataSystemSourceOptionPolling())
+					dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 					client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 						WithClientSideInitialContext(context),
 						c.withFlagRequestMethod(method),
@@ -329,7 +329,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 				m.In(t).Assert(context1.FullyQualifiedKey(), m.Equal(context2.FullyQualifiedKey()))
 
 				// Initialize and close clients with multiple contexts. Each one should use a different e-tag value
-				dataSystem := NewSDKDataSystemSource(t, nil, DataSystemSourceOptionPolling())
+				dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 				dataSystem.Synchronizers.primary.pollingService.SetEtag(context1.FullyQualifiedKey())
 				client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 					WithClientSideInitialContext(context1),
@@ -342,7 +342,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 
 				_ = client.Close()
 
-				dataSystem = NewSDKDataSystemSource(t, nil, DataSystemSourceOptionPolling())
+				dataSystem = NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 				client = NewSDKClient(t, c.baseSDKConfigurationPlus(
 					WithClientSideInitialContext(context2),
 					c.withFlagRequestMethod(method),
@@ -361,7 +361,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 				context := contexts.NextUniqueContext()
 
 				// Setup an initial polling request with a defined e-tag value
-				dataSystem := NewSDKDataSystemSource(t, nil, DataSystemSourceOptionPolling())
+				dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 				dataSystem.Synchronizers.primary.pollingService.SetEtag(context.FullyQualifiedKey())
 
 				client := NewSDKClient(t, c.baseSDKConfigurationPlus(
@@ -376,7 +376,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 				_ = client.Close()
 
 				// Initializing a new instance with a streaming mode connection. This should not affect the cached e-tag
-				dataSystem = NewSDKDataSystemSource(t, nil)
+				dataSystem = NewSDKDataSystem(t, nil)
 				client = NewSDKClient(t, c.baseSDKConfigurationPlus(
 					WithClientSideInitialContext(context),
 					c.withFlagRequestMethod(method),
@@ -387,7 +387,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 				_ = client.Close()
 
 				// So setup another polling client and make sure the e-tag value is blank.
-				dataSystem = NewSDKDataSystemSource(t, nil, DataSystemSourceOptionPolling())
+				dataSystem = NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 				client = NewSDKClient(t, c.baseSDKConfigurationPlus(
 					WithClientSideInitialContext(context),
 					c.withFlagRequestMethod(method),

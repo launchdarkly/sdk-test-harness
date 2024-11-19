@@ -29,7 +29,7 @@ func NewCommonStreamingTests(t *ldtest.T, testName string, baseSDKConfigurers ..
 // - JS-based client-side SDKs in streaming mode always connect to the *polling* service first for their
 // initial data, and then connect to the streaming service for updates.
 func (c CommonStreamingTests) setupDataSystems(
-	t *ldtest.T, initialData mockld.SDKData) (*SDKDataSystemSource, []SDKConfigurer) {
+	t *ldtest.T, initialData mockld.SDKData) (*SDKDataSystem, []SDKConfigurer) {
 	if initialData == nil {
 		initialData = mockld.EmptyData(c.sdkKind)
 	}
@@ -39,7 +39,7 @@ func (c CommonStreamingTests) setupDataSystems(
 	}
 
 	var configurers []SDKConfigurer
-	dataSystem := NewSDKDataSystemSource(t, initialData)
+	dataSystem := NewSDKDataSystem(t, initialData)
 
 	switch c.sdkKind {
 	case mockld.ServerSideSDK:
@@ -48,11 +48,11 @@ func (c CommonStreamingTests) setupDataSystems(
 	case mockld.RokuSDK:
 		fallthrough
 	case mockld.MobileSDK:
-		emptyPollingDataSource := NewSDKDataSystemSource(t, nil, DataSystemSourceOptionPolling())
+		emptyPollingDataSource := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 		configurers = append(configurers, emptyPollingDataSource)
 
 	case mockld.JSClientSDK:
-		pollingDataSourceWithInitialData := NewSDKDataSystemSource(t, initialData, DataSystemSourceOptionPolling())
+		pollingDataSourceWithInitialData := NewSDKDataSystem(t, initialData, DataSystemOptionPolling())
 		configurers = append(configurers, pollingDataSourceWithInitialData)
 
 	default:

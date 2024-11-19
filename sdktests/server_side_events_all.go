@@ -51,7 +51,7 @@ func doServerSideGzipEventRequestTests(t *ldtest.T) {
 	}
 
 	dataBuilder := mockld.NewServerSDKDataBuilder()
-	dataSystem := NewSDKDataSystemSource(t, dataBuilder.Build())
+	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 
 	for _, enableGzip := range []bool{true, false} {
 		if !enableGzip && !t.Capabilities().Has(servicedef.CapabilityOptionalEventGzip) {

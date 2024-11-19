@@ -37,7 +37,7 @@ func doClientSideAutoEnvAttributesRequestingTests(t *ldtest.T) {
 // Start tests for events
 func doClientSideAutoEnvAttributesEventsNoCollisionsTests(t *ldtest.T) {
 	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesEventsNoCollisionsTests")
-	dataSystem := NewSDKDataSystemSource(t, nil)
+	dataSystem := NewSDKDataSystem(t, nil)
 	contextFactories := data.NewContextFactoriesForSingleAndMultiKind(base.contextFactory.Prefix())
 
 	t.Run("opted in", func(t *ldtest.T) {
@@ -114,7 +114,7 @@ func doClientSideAutoEnvAttributesEventsNoCollisionsTests(t *ldtest.T) {
 
 func doClientSideAutoEnvAttributesEventsCollisionsTests(t *ldtest.T) {
 	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesEventsCollisionsTests")
-	dataSystem := NewSDKDataSystemSource(t, nil)
+	dataSystem := NewSDKDataSystem(t, nil)
 	contextFactories := data.NewContextFactoriesForSingleAndMultiKind(base.contextFactory.Prefix())
 
 	t.Run("does not overwrite", func(t *ldtest.T) {
@@ -178,12 +178,12 @@ func doClientSideAutoEnvAttributesEventsCollisionsTests(t *ldtest.T) {
 // start tests for streaming/polling
 func doClientSideAutoEnvAttributesRequestingNoCollisionsTests(t *ldtest.T) {
 	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesPollNoCollisionsTests")
-	dsos := []SDKDataSystemSourceOption{DataSystemSourceOptionPolling(), DataSystemSourceOptionStreaming()}
+	dsos := []SDKDataSystemOption{DataSystemOptionPolling(), DataSystemOptionStreaming()}
 	for _, dso := range dsos {
 		contextFactories := data.NewContextFactoriesForSingleAndMultiKind(base.contextFactory.Prefix())
 		for _, contexts := range contextFactories {
 			t.Run(contexts.Description(), func(t *ldtest.T) {
-				dataSystem := NewSDKDataSystemSource(t, nil, dso)
+				dataSystem := NewSDKDataSystem(t, nil, dso)
 				context := contexts.NextUniqueContext()
 
 				_ = NewSDKClient(t, base.baseSDKConfigurationPlus(
@@ -208,14 +208,14 @@ func doClientSideAutoEnvAttributesRequestingNoCollisionsTests(t *ldtest.T) {
 
 func doClientSideAutoEnvAttributesRequestingCollisionsTests(t *ldtest.T) {
 	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesPollCollisionsTests")
-	dsos := []SDKDataSystemSourceOption{DataSystemSourceOptionPolling(), DataSystemSourceOptionStreaming()}
+	dsos := []SDKDataSystemOption{DataSystemOptionPolling(), DataSystemOptionStreaming()}
 	for _, dso := range dsos {
 		f1 := data.NewContextFactory(base.contextFactory.Prefix(), func(b *ldcontext.Builder) { b.Kind("ld_application") })
 		f2 := data.NewMultiContextFactory(base.contextFactory.Prefix(), []ldcontext.Kind{"ld_application", "other"})
 		contextFactories := []*data.ContextFactory{f1, f2}
 		for _, contexts := range contextFactories {
 			t.Run(contexts.Description(), func(t *ldtest.T) {
-				dataSystem := NewSDKDataSystemSource(t, nil, dso)
+				dataSystem := NewSDKDataSystem(t, nil, dso)
 				context := contexts.NextUniqueContext()
 
 				_ = NewSDKClient(t, base.baseSDKConfigurationPlus(
@@ -273,7 +273,7 @@ func doClientSideAutoEnvAttributesHeaderTests(t *ldtest.T) {
 	}
 
 	t.Run("stream requests", func(t *ldtest.T) {
-		dataSystem := NewSDKDataSystemSource(t, nil, DataSystemSourceOptionStreaming())
+		dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionStreaming())
 		configurers := base.baseSDKConfigurationPlus(
 			WithClientSideConfig(servicedef.SDKConfigClientSideParams{IncludeEnvironmentAttributes: opt.Some(true)}),
 			dataSystem)
@@ -281,14 +281,14 @@ func doClientSideAutoEnvAttributesHeaderTests(t *ldtest.T) {
 		if base.isClientSide {
 			// client-side SDKs in streaming mode may *also* need a polling data source
 			configurers = append(configurers,
-				NewSDKDataSystemSource(t, nil, DataSystemSourceOptionPolling()))
+				NewSDKDataSystem(t, nil, DataSystemOptionPolling()))
 		}
 		_ = NewSDKClient(t, configurers...)
 		verifyRequestHeader(t, dataSystem.Synchronizers.primary.Endpoint())
 	})
 
 	t.Run("poll requests", func(t *ldtest.T) {
-		dataSystem := NewSDKDataSystemSource(t, nil, DataSystemSourceOptionPolling())
+		dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 		_ = NewSDKClient(t, base.baseSDKConfigurationPlus(
 			WithClientSideConfig(servicedef.SDKConfigClientSideParams{IncludeEnvironmentAttributes: opt.Some(true)}),
 			dataSystem)...)
@@ -296,7 +296,7 @@ func doClientSideAutoEnvAttributesHeaderTests(t *ldtest.T) {
 	})
 
 	t.Run("event posts", func(t *ldtest.T) {
-		dataSystem := NewSDKDataSystemSource(t, nil)
+		dataSystem := NewSDKDataSystem(t, nil)
 		events := NewSDKEventSink(t)
 		client := NewSDKClient(t, base.baseSDKConfigurationPlus(
 			WithClientSideConfig(servicedef.SDKConfigClientSideParams{IncludeEnvironmentAttributes: opt.Some(true)}),
