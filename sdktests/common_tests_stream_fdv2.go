@@ -48,7 +48,7 @@ func (c CommonStreamingTests) InitializeFromEmptyState(t *ldtest.T) {
 	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
-	validatePayloadReceived(t, dataSystem.Synchronizers.primary.endpoint, client, "", expectedEvaluations)
+	validatePayloadReceived(t, dataSystem.PrimarySync().endpoint, client, "", expectedEvaluations)
 }
 
 func (c CommonStreamingTests) SavesPreviouslyKnownState(t *ldtest.T) {
@@ -110,15 +110,15 @@ func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
 	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 
-	_, err := dataSystem.Synchronizers.primary.endpoint.AwaitConnection(time.Second)
+	_, err := dataSystem.PrimarySync().endpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
 	context := ldcontext.New("context-key")
 	flagKeyValue := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
 	m.In(t).Assert(flagKeyValue, m.JSONEqual(initialValue))
 
-	dataSystem.Synchronizers.primary.streamingService.PushDelete("flag", "flag-key", 2)
-	dataSystem.Synchronizers.primary.streamingService.PushUpdate(
+	dataSystem.PrimarySync().streamingService.PushDelete("flag", "flag-key", 2)
+	dataSystem.PrimarySync().streamingService.PushUpdate(
 		"flag", "new-flag-key", 1, c.makeFlagData("new-flag-key", 1, newInitialValue))
 
 	require.Never(
@@ -137,7 +137,7 @@ func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent
 		"flag value was updated, but it should not have been",
 	)
 
-	dataSystem.Synchronizers.primary.streamingService.PushPayloadTransferred("updated", 2)
+	dataSystem.PrimarySync().streamingService.PushPayloadTransferred("updated", 2)
 
 	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, defaultValue, defaultValue)
 	pollUntilFlagValueUpdated(t, client, "new-flag-key", context, defaultValue, newInitialValue, defaultValue)
@@ -147,7 +147,7 @@ func (c CommonStreamingTests) IgnoresModelVersion(t *ldtest.T) {
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(100, initialValue))
 	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 
-	_, err := dataSystem.Synchronizers.primary.endpoint.AwaitConnection(time.Second)
+	_, err := dataSystem.PrimarySync().endpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
 	context := ldcontext.New("context-key")
@@ -158,9 +158,9 @@ func (c CommonStreamingTests) IgnoresModelVersion(t *ldtest.T) {
 	// SDK. However, the state we are sending suggests it is later. The SDK
 	// should ignore the individual model version and just trust the overall
 	// state version.
-	dataSystem.Synchronizers.primary.streamingService.PushUpdate(
+	dataSystem.PrimarySync().streamingService.PushUpdate(
 		"flag", "flag-key", 1, c.makeFlagData("flag-key", 1, updatedValue))
-	dataSystem.Synchronizers.primary.streamingService.PushPayloadTransferred("updated", 2)
+	dataSystem.PrimarySync().streamingService.PushPayloadTransferred("updated", 2)
 
 	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
 }
@@ -169,18 +169,18 @@ func (c CommonStreamingTests) IgnoresHeartBeat(t *ldtest.T) {
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
 	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 
-	_, err := dataSystem.Synchronizers.primary.endpoint.AwaitConnection(time.Second)
+	_, err := dataSystem.PrimarySync().endpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
 	context := ldcontext.New("context-key")
 	flagKeyValue := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
 	m.In(t).Assert(flagKeyValue, m.JSONEqual(initialValue))
 
-	dataSystem.Synchronizers.primary.streamingService.PushHeartbeat()
-	dataSystem.Synchronizers.primary.streamingService.PushUpdate(
+	dataSystem.PrimarySync().streamingService.PushHeartbeat()
+	dataSystem.PrimarySync().streamingService.PushUpdate(
 		"flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
-	dataSystem.Synchronizers.primary.streamingService.PushHeartbeat()
-	dataSystem.Synchronizers.primary.streamingService.PushPayloadTransferred("updated", 2)
+	dataSystem.PrimarySync().streamingService.PushHeartbeat()
+	dataSystem.PrimarySync().streamingService.PushPayloadTransferred("updated", 2)
 
 	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
 }
@@ -189,7 +189,7 @@ func (c CommonStreamingTests) DiscardsEventsOnError(t *ldtest.T) {
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
 	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 
-	_, err := dataSystem.Synchronizers.primary.endpoint.AwaitConnection(time.Second)
+	_, err := dataSystem.PrimarySync().endpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
 	context := ldcontext.New("context-key")
@@ -197,13 +197,13 @@ func (c CommonStreamingTests) DiscardsEventsOnError(t *ldtest.T) {
 	m.In(t).Assert(flagKeyValue, m.JSONEqual(initialValue))
 
 	// The error should cause this update to be discard.
-	dataSystem.Synchronizers.primary.streamingService.PushUpdate(
+	dataSystem.PrimarySync().streamingService.PushUpdate(
 		"flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
-	dataSystem.Synchronizers.primary.streamingService.PushError("some-id", "some reason")
+	dataSystem.PrimarySync().streamingService.PushError("some-id", "some reason")
 	// But this change should be applied.
-	dataSystem.Synchronizers.primary.streamingService.PushUpdate(
+	dataSystem.PrimarySync().streamingService.PushUpdate(
 		"flag", "new-flag-key", 2, c.makeFlagData("new-flag-key", 2, newInitialValue))
-	dataSystem.Synchronizers.primary.streamingService.PushPayloadTransferred("updated", 2)
+	dataSystem.PrimarySync().streamingService.PushPayloadTransferred("updated", 2)
 
 	require.Never(
 		t,
@@ -226,10 +226,10 @@ func (c CommonStreamingTests) DisconnectsOnGoodbye(t *ldtest.T) {
 	_, err := streamEndpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
-	dataSystems[0].Synchronizers.primary.streamingService.PushUpdate(
+	dataSystems[0].PrimarySync().streamingService.PushUpdate(
 		"flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
 	// This should prompt the SDK to discard previous events, disconnect, and then re-connect.
-	dataSystems[0].Synchronizers.primary.streamingService.PushGoodbye("some-reason", false, false)
+	dataSystems[0].PrimarySync().streamingService.PushGoodbye("some-reason", false, false)
 
 	_, err = streamEndpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
@@ -251,7 +251,7 @@ func makeSequentialStreamHandler(t *ldtest.T, dataSources ...mockld.SDKData) (
 
 	for i, data := range dataSources {
 		dataSystem := NewSDKDataSystem(t, data)
-		handlers[i] = dataSystem.Synchronizers.primary.streamingService
+		handlers[i] = dataSystem.PrimarySync().streamingService
 		dataSystems[i] = dataSystem
 	}
 

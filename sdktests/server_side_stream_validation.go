@@ -31,8 +31,8 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 		dataSystem2 := NewSDKDataSystemWithoutEndpoints(t, dataV2)
 
 		handler := httphelpers.SequentialHandler(
-			dataSystem1.Synchronizers.primary.streamingService,
-			dataSystem2.Synchronizers.primary.streamingService,
+			dataSystem1.PrimarySync().streamingService,
+			dataSystem2.PrimarySync().streamingService,
 		)
 		streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
 			harness.MockEndpointDescription("streaming service"))
@@ -46,7 +46,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 		_ = streamEndpoint.RequireConnection(t, time.Second*5)
 
 		// Send the bad event; this should cause the SDK to drop the first stream
-		dataSystem1.Synchronizers.primary.streamingService.PushEvent(badEventName, badEventData)
+		dataSystem1.PrimarySync().streamingService.PushEvent(badEventName, badEventData)
 
 		// Expect the second request; it succeeds and gets the second stream data
 		_ = streamEndpoint.RequireConnection(t, time.Second*5)
@@ -115,23 +115,23 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get & discard the request info for the first request
-		_ = dataSystem.Synchronizers.primary.Endpoint().RequireConnection(t, time.Second*5)
+		_ = dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second*5)
 
 		// Push an event that isn't recognized, but isn't bad enough to cause any problems
-		dataSystem.Synchronizers.primary.streamingService.PushEvent(eventName, eventData)
+		dataSystem.PrimarySync().streamingService.PushEvent(eventName, eventData)
 
 		// Then, push a patch event, so we can detect if the SDK continued processing the stream as it should
-		dataSystem.Synchronizers.primary.streamingService.PushUpdate(
+		dataSystem.PrimarySync().streamingService.PushUpdate(
 			"flag", flagKey, flagV2.Version, jsonhelpers.ToJSON(flagV2))
 		//nolint:godox
 		// TODO: Need to determine which version this should be, and also what the state should be
-		dataSystem.Synchronizers.primary.streamingService.PushPayloadTransferred("state", 2)
+		dataSystem.PrimarySync().streamingService.PushPayloadTransferred("state", 2)
 
 		// Check that the client got the new data
 		pollUntilFlagValueUpdated(t, client, flagKey, context, expectedValueV1, expectedValueV2, ldvalue.Null())
 
 		// Verify that it did not reconnect
-		dataSystem.Synchronizers.primary.Endpoint().RequireNoMoreConnections(t, time.Millisecond*100)
+		dataSystem.PrimarySync().Endpoint().RequireNoMoreConnections(t, time.Millisecond*100)
 	}
 
 	t.Run("unrecognized data that can be safely ignored", func(t *ldtest.T) {

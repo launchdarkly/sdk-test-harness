@@ -31,7 +31,7 @@ func doServerSideServiceEndpointsTests(t *ldtest.T) {
 				t,
 				makeStreamingConfig(dataSystem),
 			)
-			_ = dataSystem.Synchronizers.primary.Endpoint().RequireConnection(t, time.Second)
+			_ = dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
 		})
 
 		t.Run("events", func(t *ldtest.T) {
@@ -53,7 +53,7 @@ func doServerSideServiceEndpointsTests(t *ldtest.T) {
 			t,
 			func(dataSource *SDKDataSystem) SDKConfigurer {
 				return WithPrimaryStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
-					BaseURI: dataSource.Synchronizers.primary.Endpoint().BaseURL(),
+					BaseURI: dataSource.PrimarySync().Endpoint().BaseURL(),
 				})
 			},
 			func(events *SDKEventSink) SDKConfigurer {

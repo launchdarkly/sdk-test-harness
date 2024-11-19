@@ -34,7 +34,7 @@ func (c CommonPollingTests) RequestMethodAndHeaders(t *ldtest.T, credential stri
 							dataSystem,
 							transport.configurer)...)
 
-						request := dataSystem.Synchronizers.primary.Endpoint().RequireConnection(t, time.Second)
+						request := dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
 						m.In(t).For("request method").Assert(request.Method, m.Equal(string(method)))
 						m.In(t).For("request headers").Assert(request.Headers, c.authorizationHeaderMatcher(credential))
 						if t.Capabilities().Has(servicedef.CapabilityPollingGzip) {
@@ -52,7 +52,7 @@ func (c CommonPollingTests) RequestMethodAndHeaders(t *ldtest.T, credential stri
 
 			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem)...)
 
-			_, err := dataSystem.Synchronizers.primary.Endpoint().AwaitConnection(time.Second)
+			_, err := dataSystem.PrimarySync().Endpoint().AwaitConnection(time.Second)
 			assert.Errorf(t, err, "expected connection error")
 		})
 	})
@@ -79,7 +79,7 @@ func (c CommonPollingTests) LargePayloads(t *ldtest.T) {
 	t.Run("large payloads", func(t *ldtest.T) {
 		client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem)...)
 
-		dataSystem.Synchronizers.primary.Endpoint().RequireConnection(t, time.Second)
+		dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
 
 		resp := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 			FlagKey:      "flag-key-0",
@@ -124,7 +124,7 @@ func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagReq
 							t.Run(string(method), func(t *ldtest.T) {
 								dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 
-								pollURI := strings.TrimSuffix(dataSystem.Synchronizers.primary.Endpoint().BaseURL(), "/")
+								pollURI := strings.TrimSuffix(dataSystem.PrimarySync().Endpoint().BaseURL(), "/")
 								if trailingSlash {
 									pollURI += "/"
 								}
@@ -137,7 +137,7 @@ func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagReq
 									}),
 								)...)
 
-								request := dataSystem.Synchronizers.primary.Endpoint().RequireConnection(t, time.Second)
+								request := dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
 								m.In(t).For("request path").Assert(request.URL.Path, pathMatcher(method))
 								strict := t.Capabilities().Has(servicedef.CapabilityFilteringStrict)
 								m.In(t).For("filter key").Assert(request.URL.RawQuery, filter.Matcher(strict))
@@ -169,7 +169,7 @@ func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagReq
 								dataSystem,
 							)...)
 
-							request := dataSystem.Synchronizers.primary.Endpoint().RequireConnection(t, time.Second)
+							request := dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
 
 							var queryMatcher m.Matcher
 							if withReasons.Value() {
@@ -212,7 +212,7 @@ func (c CommonPollingTests) RequestContextProperties(t *ldtest.T, getPath string
 							dataSystem,
 						)...)
 
-						request := dataSystem.Synchronizers.primary.Endpoint().RequireConnection(t, time.Second)
+						request := dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
 
 						if method == flagRequestREPORT {
 							m.In(t).For("request body").Assert(request.Body, m.AllOf(
@@ -244,7 +244,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 				context := contexts.NextUniqueContext()
 
 				dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
-				dataSystem.Synchronizers.primary.pollingService.SetEtag(context.FullyQualifiedKey())
+				dataSystem.PrimarySync().pollingService.SetEtag(context.FullyQualifiedKey())
 
 				client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 					WithClientSideInitialContext(context),
@@ -252,7 +252,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 					dataSystem,
 				)...)
 
-				request := dataSystem.Synchronizers.primary.Endpoint().RequireConnection(t, time.Second)
+				request := dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
 				m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal("")))
 
 				_ = client.Close()
@@ -264,7 +264,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 					dataSystem,
 				)...)
 
-				request = dataSystem.Synchronizers.primary.Endpoint().RequireConnection(t, time.Second)
+				request = dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
 				m.In(t).For("request headers").Assert(
 					request.Headers,
 					Header("If-None-Match").Should(m.Equal(context.FullyQualifiedKey())),
@@ -282,14 +282,14 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 				for _, context := range contexts {
 					// Initialize and close clients with multiple contexts. Each one should use a different e-tag value
 					dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
-					dataSystem.Synchronizers.primary.pollingService.SetEtag(context.FullyQualifiedKey())
+					dataSystem.PrimarySync().pollingService.SetEtag(context.FullyQualifiedKey())
 					client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 						WithClientSideInitialContext(context),
 						c.withFlagRequestMethod(method),
 						dataSystem,
 					)...)
 
-					request := dataSystem.Synchronizers.primary.Endpoint().RequireConnection(t, time.Second)
+					request := dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
 					m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal("")))
 
 					_ = client.Close()
@@ -304,7 +304,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 						dataSystem,
 					)...)
 
-					request := dataSystem.Synchronizers.primary.Endpoint().RequireConnection(t, time.Second)
+					request := dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
 					m.In(t).For("request headers").Assert(
 						request.Headers,
 						Header("If-None-Match").Should(m.Equal(context.FullyQualifiedKey())),
@@ -330,14 +330,14 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 
 				// Initialize and close clients with multiple contexts. Each one should use a different e-tag value
 				dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
-				dataSystem.Synchronizers.primary.pollingService.SetEtag(context1.FullyQualifiedKey())
+				dataSystem.PrimarySync().pollingService.SetEtag(context1.FullyQualifiedKey())
 				client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 					WithClientSideInitialContext(context1),
 					c.withFlagRequestMethod(method),
 					dataSystem,
 				)...)
 
-				request := dataSystem.Synchronizers.primary.Endpoint().RequireConnection(t, time.Second)
+				request := dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
 				m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal("")))
 
 				_ = client.Close()
@@ -349,7 +349,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 					dataSystem,
 				)...)
 
-				request = dataSystem.Synchronizers.primary.Endpoint().RequireConnection(t, time.Second)
+				request = dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
 				m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal("")))
 
 				_ = client.Close()
@@ -362,7 +362,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 
 				// Setup an initial polling request with a defined e-tag value
 				dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
-				dataSystem.Synchronizers.primary.pollingService.SetEtag(context.FullyQualifiedKey())
+				dataSystem.PrimarySync().pollingService.SetEtag(context.FullyQualifiedKey())
 
 				client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 					WithClientSideInitialContext(context),
@@ -370,7 +370,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 					dataSystem,
 				)...)
 
-				request := dataSystem.Synchronizers.primary.Endpoint().RequireConnection(t, time.Second)
+				request := dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
 				m.In(t).For("request headers").Assert(request.Headers, Header("If-None-Match").Should(m.Equal("")))
 
 				_ = client.Close()
@@ -383,7 +383,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 					dataSystem,
 				)...)
 
-				request = dataSystem.Synchronizers.primary.Endpoint().RequireConnection(t, time.Second)
+				request = dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
 				_ = client.Close()
 
 				// So setup another polling client and make sure the e-tag value is blank.
@@ -394,7 +394,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 					dataSystem,
 				)...)
 
-				request = dataSystem.Synchronizers.primary.Endpoint().RequireConnection(t, time.Second)
+				request = dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
 				m.In(t).For("request headers").Assert(
 					request.Headers,
 					Header("If-None-Match").Should(m.Equal(context.FullyQualifiedKey())),

@@ -67,7 +67,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 						NewSDKDataSystem(t, nil, DataSystemOptionPolling()))
 				}
 				_ = NewSDKClient(t, configurers...)
-				verifyRequestHeader(t, p, dataSystem.Synchronizers.primary.Endpoint())
+				verifyRequestHeader(t, p, dataSystem.PrimarySync().Endpoint())
 			})
 		}
 	})
@@ -83,7 +83,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 				_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 					withTagsConfig(tags),
 					dataSystem)...)
-				verifyRequestHeader(t, p, dataSystem.Synchronizers.primary.Endpoint())
+				verifyRequestHeader(t, p, dataSystem.PrimarySync().Endpoint())
 			})
 		}
 	})
@@ -120,7 +120,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 				assert.Fail(t, "error initializing client", "for input tags: %s\nerror: %s", jsonhelpers.ToJSONString(tags), err)
 				continue
 			}
-			if request, err := dataSystem.Synchronizers.primary.Endpoint().AwaitConnection(time.Second); err == nil {
+			if request, err := dataSystem.PrimarySync().Endpoint().AwaitConnection(time.Second); err == nil {
 				headerTags := request.Headers.Get("X-LaunchDarkly-Tags")
 				if p.expectedHeaderValue != "" {
 					assert.Equal(t, p.expectedHeaderValue, headerTags, "for input tags: %s", jsonhelpers.ToJSONString(tags))
