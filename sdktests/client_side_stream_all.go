@@ -3,6 +3,8 @@ package sdktests
 import (
 	"strings"
 
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
@@ -22,7 +24,9 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 	streamTests := NewCommonStreamingTests(t, "doClientSideStreamRequestTest",
 		WithCredential(envIDOrMobileKey))
 
-	streamTests.RequestViaHTTPProxy(t)
+	if t.Capabilities().Has(servicedef.CapabilityHTTPProxy) {
+		streamTests.RequestViaHTTPProxy(t)
+	}
 
 	streamTests.RequestMethodAndHeaders(t, envIDOrMobileKey)
 
