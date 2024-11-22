@@ -39,7 +39,8 @@ func (c CommonStreamingTests) FDv2(t *ldtest.T) {
 func (c CommonStreamingTests) StateTransitions(t *ldtest.T) {
 	t.Run("initializes from an empty state", c.InitializeFromEmptyState)
 	t.Run("initializes from polling initializer", c.InitializeFromPollingInitializer)
-	t.Run("initializes from polling initializer + streaming updates", c.InitializeFromPollingInitializerWithStreamingUpdates)
+	t.Run("initializes from polling initializer + streaming updates",
+		c.InitializeFromPollingInitializerWithStreamingUpdates)
 	t.Run("initializes from 2 polling initializers", c.InitializeFromTwoPollingInitializers)
 	t.Run("saves previously known state", c.SavesPreviouslyKnownState)
 	t.Run("replaces previously known state", c.ReplacesPreviouslyKnownState)
@@ -109,7 +110,8 @@ func (c CommonStreamingTests) InitializeFromTwoPollingInitializers(t *ldtest.T) 
 		IntentReason("up-to-date").
 		State("expected-state").
 		Build()
-	dataSystem := NewSDKDataSystem(t, streamingData, DataSystemOptionPollingInitializer(statelessInitialData), DataSystemOptionPollingInitializer(initialStatefulData))
+	dataSystem := NewSDKDataSystem(t, streamingData,
+		DataSystemOptionPollingInitializer(statelessInitialData), DataSystemOptionPollingInitializer(initialStatefulData))
 
 	client := NewSDKClient(t, dataSystem)
 
