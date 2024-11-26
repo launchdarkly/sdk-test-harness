@@ -38,6 +38,10 @@ func (c CommonStreamingTests) FDv2(t *ldtest.T) {
 
 func (c CommonStreamingTests) StateTransitions(t *ldtest.T) {
 	t.Run("initializes from an empty state", c.InitializeFromEmptyState)
+	t.Run("initializes from polling initializer", c.InitializeFromPollingInitializer)
+	t.Run("initializes from polling initializer + streaming updates",
+		c.InitializeFromPollingInitializerWithStreamingUpdates)
+	t.Run("initializes from 2 polling initializers", c.InitializeFromTwoPollingInitializers)
 	t.Run("saves previously known state", c.SavesPreviouslyKnownState)
 	t.Run("replaces previously known state", c.ReplacesPreviouslyKnownState)
 	t.Run("updates previously known state", c.UpdatesPreviouslyKnownState)
@@ -49,6 +53,70 @@ func (c CommonStreamingTests) InitializeFromEmptyState(t *ldtest.T) {
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
 	validatePayloadReceived(t, dataSystem.PrimarySync().endpoint, client, "", expectedEvaluations)
+}
+
+func (c CommonStreamingTests) InitializeFromPollingInitializer(t *ldtest.T) {
+	dataBefore := mockld.NewServerSDKDataBuilder().Flag(c.makeServerSideFlag("flag-key", 1, initialValue)).Build()
+	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("xfer-none").IntentReason("up-to-date").Build()
+	dataSystem := NewSDKDataSystem(t, dataAfter, DataSystemOptionPollingInitializer(dataBefore))
+
+	client := NewSDKClient(t, dataSystem)
+
+	_, err := dataSystem.Initializers[0].Endpoint().AwaitConnection(time.Second)
+	require.NoError(t, err)
+
+	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
+	validatePayloadReceived(t, dataSystem.PrimarySync().Endpoint(), client, "initial", expectedEvaluations)
+}
+
+func (c CommonStreamingTests) InitializeFromPollingInitializerWithStreamingUpdates(t *ldtest.T) {
+	dataBefore := mockld.NewServerSDKDataBuilder().Flag(c.makeServerSideFlag("flag-key", 1, initialValue)).Build()
+	dataAfter := mockld.NewServerSDKDataBuilder().
+		IntentCode("xfer-changes").
+		IntentReason("stale").
+		Flag(c.makeServerSideFlag("flag-key", 2, updatedValue)).
+		Flag(c.makeServerSideFlag("new-flag-key", 1, newInitialValue)).
+		Build()
+	dataSystem := NewSDKDataSystem(t, dataBefore, DataSystemOptionPollingInitializer(dataBefore))
+	dataSystem.PrimarySync().streaming.SetInitialData(dataAfter)
+
+	client := NewSDKClient(t, dataSystem)
+
+	_, err := dataSystem.Initializers[0].Endpoint().AwaitConnection(time.Second)
+	require.NoError(t, err)
+
+	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue, "new-flag-key": newInitialValue}
+	validatePayloadReceived(t, dataSystem.PrimarySync().Endpoint(), client, "initial", expectedEvaluations)
+}
+
+func (c CommonStreamingTests) InitializeFromTwoPollingInitializers(t *ldtest.T) {
+	emptyPayload := mockld.NewServerSDKDataBuilder().
+		Build()
+	initialStatefulData := mockld.NewServerSDKDataBuilder().
+		IntentCode("xfer-full").
+		IntentReason("payload-missing").
+		State("expected-state").
+		Flag(c.makeServerSideFlag("flag-key", 2, updatedValue)).
+		Build()
+	streamingData := mockld.NewServerSDKDataBuilder().
+		IntentCode("none").
+		IntentReason("up-to-date").
+		State("expected-state").
+		Build()
+	dataSystem := NewSDKDataSystem(t, streamingData,
+		DataSystemOptionPollingInitializer(emptyPayload), DataSystemOptionPollingInitializer(initialStatefulData))
+
+	// Force the first endpoint to fail
+	dataSystem.Initializers[0].Endpoint().Close()
+
+	client := NewSDKClient(t, dataSystem)
+
+	// Verify the initializers fall over to the next initializer in line.
+	_, err := dataSystem.Initializers[1].Endpoint().AwaitConnection(time.Second)
+	require.NoError(t, err)
+
+	expectedEvaluations := map[string]ldvalue.Value{"flag-key": updatedValue}
+	validatePayloadReceived(t, dataSystem.PrimarySync().Endpoint(), client, "expected-state", expectedEvaluations)
 }
 
 func (c CommonStreamingTests) SavesPreviouslyKnownState(t *ldtest.T) {

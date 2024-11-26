@@ -13,11 +13,20 @@ import (
 )
 
 type sdkDataSystemConfig struct {
-	polling o.Maybe[bool] // true, false, or "undefined, use the default"
+	polling             o.Maybe[bool] // true, false, or "undefined, use the default"
+	pollingInitializers []mockld.FDv2SDKData
 }
 
 // SDKDataSystemOption is the interface for options to NewSDKDataSystem.
 type SDKDataSystemOption helpers.ConfigOption[sdkDataSystemConfig]
+
+// DataSystemOptionPollingInitializer adds support for a polling initializer
+func DataSystemOptionPollingInitializer(data mockld.FDv2SDKData) SDKDataSystemOption {
+	return helpers.ConfigOptionFunc[sdkDataSystemConfig](func(c *sdkDataSystemConfig) error {
+		c.pollingInitializers = append(c.pollingInitializers, data)
+		return nil
+	})
+}
 
 // DataSystemOptionPolling makes an SDKDataSystem simulate the polling service.
 func DataSystemOptionPolling() SDKDataSystemOption {
@@ -212,6 +221,20 @@ func NewSDKDataSystem(
 	t *ldtest.T, data mockld.SDKData, options ...SDKDataSystemOption) *SDKDataSystem {
 	dataSystem := NewSDKDataSystemWithoutEndpoints(t, data, options...)
 
+	if dataSystem.Initializers != nil {
+		for i, initializer := range dataSystem.Initializers {
+			if initializer.pollingService == nil {
+				continue
+			}
+
+			initializer.endpoint =
+				requireContext(t).harness.NewMockEndpoint(initializer.pollingService, t.DebugLogger(),
+					harness.MockEndpointDescription("polling initializer"))
+
+			dataSystem.Initializers[i] = initializer
+		}
+	}
+
 	if dataSystem.Synchronizers != nil {
 		isPolling := dataSystem.PrimarySync().polling != nil
 		handler := helpers.IfElse[http.Handler](isPolling,
@@ -251,8 +274,17 @@ func NewSDKDataSystemWithoutEndpoints(
 	var config sdkDataSystemConfig
 	_ = helpers.ApplyOptions(&config, options...)
 
-	defaultIsPolling := sdkKind == mockld.JSClientSDK || sdkKind == mockld.PHPSDK
 	d := &SDKDataSystem{}
+	d.t = t
+
+	for _, initializer := range config.pollingInitializers {
+		d.Initializers = append(d.Initializers, DataInitializer{
+			pollingService: mockld.NewPollingService(initializer, sdkKind, t.DebugLogger()).
+				WithGzipCompression(t.Capabilities().Has(servicedef.CapabilityPollingGzip)),
+		})
+	}
+
+	defaultIsPolling := sdkKind == mockld.JSClientSDK || sdkKind == mockld.PHPSDK
 	if config.polling.Value() || (!config.polling.IsDefined() && defaultIsPolling) {
 		d.Synchronizers = &Synchronizers{
 			primary: Synchronizer{
