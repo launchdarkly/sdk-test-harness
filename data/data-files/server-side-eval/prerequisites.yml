@@ -316,14 +316,14 @@ evaluations:
     flagKey: flag-with-prereq-cycle-at-top-level-1
     context: { kind: "user", key: "user-key" }
     expect:
-      value: false
+      value: null
       reason: { "kind": "ERROR", "errorKind": "MALFORMED_FLAG" }
 
   - name: prerequisite cycle is detected at deeper level, recursion stops
     flagKey: flag-with-prereq-cycle-at-deeper-level-1
     context: { kind: "user", key: "user-key" }
     expect:
-      value: false
+      value: null
       reason: { "kind": "ERROR", "errorKind": "MALFORMED_FLAG" }
 
   - name: first prerequisite is a prerequisite of the second prerequisite
