@@ -7,6 +7,7 @@ import (
 	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 
@@ -70,11 +71,12 @@ func (c CommonStreamingTests) InitializeFromPollingInitializer(t *ldtest.T) {
 }
 
 func (c CommonStreamingTests) InitializeFromPollingInitializerWithStreamingUpdates(t *ldtest.T) {
-	dataBefore := mockld.NewServerSDKDataBuilder().Flag(c.makeServerSideFlag("flag-key", 1, initialValue)).Build()
+	dataBefore := mockld.NewServerSDKDataBuilder().
+		Flag(c.makeServerSideFlag("flag-key", 1, initialValue)).
+		Build()
 	dataAfter := mockld.NewServerSDKDataBuilder().
 		IntentCode("xfer-changes").
 		IntentReason("stale").
-		Flag(c.makeServerSideFlag("flag-key", 2, updatedValue)).
 		Flag(c.makeServerSideFlag("new-flag-key", 1, newInitialValue)).
 		Build()
 	dataSystem := NewSDKDataSystem(t, dataBefore, DataSystemOptionPollingInitializer(dataBefore))
@@ -215,12 +217,8 @@ func (c CommonStreamingTests) IgnoresModelVersion(t *ldtest.T) {
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(100, initialValue))
 	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 
-	_, err := dataSystem.PrimarySync().endpoint.AwaitConnection(time.Second)
-	require.NoError(t, err)
-
-	context := ldcontext.New("context-key")
-	flagKeyValue := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
-	m.In(t).Assert(flagKeyValue, m.JSONEqual(initialValue))
+	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
+	validatePayloadReceived(t, dataSystem.PrimarySync().Endpoint(), client, "", expectedEvaluations)
 
 	// This flag's version is less than the version previously given to the
 	// SDK. However, the state we are sending suggests it is later. The SDK
@@ -230,6 +228,7 @@ func (c CommonStreamingTests) IgnoresModelVersion(t *ldtest.T) {
 		"flag", "flag-key", 1, c.makeFlagData("flag-key", 1, updatedValue))
 	dataSystem.PrimarySync().streaming.PushPayloadTransferred("updated", 2)
 
+	context := ldcontext.New("context-key")
 	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
 }
 
@@ -338,10 +337,17 @@ func validatePayloadReceived(t *ldtest.T,
 	m.In(t).Assert(request.URL.Query().Get("basis"), m.Equal(state))
 
 	context := ldcontext.New("context-key")
-	for flagKey, expectedValue := range evaluations {
-		actualValue := basicEvaluateFlag(t, client, flagKey, context, defaultValue)
-		m.In(t).Assert(actualValue, m.JSONEqual(expectedValue))
-	}
+
+	h.RequireEventually(t, func() bool {
+		for flagKey, expectedValue := range evaluations {
+			actualValue := basicEvaluateFlag(t, client, flagKey, context, defaultValue)
+			if !m.In(t).Assert(actualValue, m.JSONEqual(expectedValue)) {
+				return false
+			}
+		}
+
+		return true
+	}, time.Second, time.Millisecond*20, "failed to evaluate flag")
 
 	return request
 }
