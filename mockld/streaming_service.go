@@ -164,6 +164,36 @@ func (s *StreamingService) makeXferFull() []eventsource.Event {
 	return events
 }
 
+func (s *StreamingService) PushServerIntent(intentCode, intentReason string) {
+	event := eventImpl{
+		name: "server-intent",
+		data: framework.ServerIntent{
+			Payloads: []framework.Payload{
+				{
+					ID:     "payloadID",
+					Target: 1,
+					Code:   intentCode,
+					Reason: intentReason,
+				},
+			},
+		},
+	}
+
+	s.lock.Lock()
+	alreadyStarted := s.started
+	if !alreadyStarted {
+		s.queuedEvents = append(s.queuedEvents, event)
+	}
+	s.lock.Unlock()
+
+	if alreadyStarted {
+		s.logEvent(event)
+		s.streams.Publish([]string{allDataChannel}, event)
+	} else {
+		s.debugLogger.Println("Will send server-intent event after connection has started")
+	}
+}
+
 // PushEvent sends an SSE event to all clients that are currently connected to the stream-- or, if no client
 // has connected yet, queues the event so that it will be sent (after the initial data) to the
 // first client that connects. (The latter is necessary to avoid race conditions, since even after
