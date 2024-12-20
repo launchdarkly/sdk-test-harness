@@ -20,6 +20,7 @@ import (
 var (
 	initialValue = ldvalue.String("initial value") //nolint:gochecknoglobals
 	updatedValue = ldvalue.String("updated value") //nolint:gochecknoglobals
+	finalValue   = ldvalue.String("final value")   //nolint:gochecknoglobals
 
 	newInitialValue = ldvalue.String("new initial value") //nolint:gochecknoglobals
 
@@ -31,6 +32,7 @@ func (c CommonStreamingTests) FDv2(t *ldtest.T) {
 	t.Run(
 		"updates are not complete until payload transferred is sent",
 		c.UpdatesAreNotCompleteUntilPayloadTransferredIsSent)
+	t.Run("handles multiple updates", c.HandlesMultipleUpdates)
 	t.Run("ignores model version", c.IgnoresModelVersion)
 	t.Run("ignores heart beat", c.IgnoresHeartBeat)
 	t.Run("can discard partial events on errors", c.CanDiscardPartialEventsOnError)
@@ -212,6 +214,32 @@ func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent
 
 	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, defaultValue, defaultValue)
 	pollUntilFlagValueUpdated(t, client, "new-flag-key", context, defaultValue, newInitialValue, defaultValue)
+}
+
+func (c CommonStreamingTests) HandlesMultipleUpdates(t *ldtest.T) {
+	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
+	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
+	context := ldcontext.New("context-key")
+
+	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
+	validatePayloadReceived(t, dataSystem.PrimarySync().Endpoint(), client, "", expectedEvaluations)
+
+	dataSystem.PrimarySync().streaming.PushUpdate(
+		"flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
+	dataSystem.PrimarySync().streaming.PushPayloadTransferred("updated", 2)
+	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
+
+	dataSystem.PrimarySync().streaming.PushUpdate(
+		"flag", "new-flag-key", 2, c.makeFlagData("new-flag-key", 2, newInitialValue))
+	dataSystem.PrimarySync().streaming.PushPayloadTransferred("updated", 3)
+	pollUntilFlagValueUpdated(t, client, "new-flag-key", context, defaultValue, newInitialValue, defaultValue)
+
+	dataSystem.PrimarySync().streaming.PushServerIntent("xfer-full", "stale")
+	dataSystem.PrimarySync().streaming.PushUpdate(
+		"flag", "flag-key", 3, c.makeFlagData("flag-key", 3, finalValue))
+	dataSystem.PrimarySync().streaming.PushPayloadTransferred("updated", 4)
+	pollUntilFlagValueUpdated(t, client, "flag-key", context, updatedValue, finalValue, defaultValue)
+	pollUntilFlagValueUpdated(t, client, "new-flag-key", context, newInitialValue, defaultValue, defaultValue)
 }
 
 func (c CommonStreamingTests) IgnoresModelVersion(t *ldtest.T) {
