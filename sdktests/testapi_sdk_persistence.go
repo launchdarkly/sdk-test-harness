@@ -8,8 +8,9 @@ import (
 )
 
 type Persistence struct {
-	Store o.Maybe[servicedef.SDKConfigPersistentStore]
-	Cache o.Maybe[servicedef.SDKConfigPersistentCache]
+	Store     o.Maybe[servicedef.SDKConfigPersistentStore]
+	StoreMode o.Maybe[servicedef.DataStoreMode]
+	Cache     o.Maybe[servicedef.SDKConfigPersistentCache]
 }
 
 func NewPersistence() *Persistence {
@@ -18,6 +19,10 @@ func NewPersistence() *Persistence {
 
 func (p *Persistence) SetStore(store servicedef.SDKConfigPersistentStore) {
 	p.Store = o.Some(store)
+}
+
+func (p *Persistence) SetStoreMode(mode servicedef.DataStoreMode) {
+	p.StoreMode = o.Some(mode)
 }
 
 func (p *Persistence) SetCache(cache servicedef.SDKConfigPersistentCache) {
@@ -29,10 +34,16 @@ func (p Persistence) Configure(target *servicedef.SDKConfigParams) error {
 		return errors.New("Persistence must have a store and cache configuration")
 	}
 
-	target.PersistentDataStore = o.Some(servicedef.SDKConfigPersistentDataStoreParams{
-		Store: p.Store.Value(),
-		Cache: p.Cache.Value(),
+	dataSystem := target.DataSystem.OrElse(servicedef.DataSystem{})
+	dataSystem.Store = o.Some(servicedef.DataStore{
+		PersistentDataStore: o.Some(servicedef.SDKConfigPersistentDataStoreParams{
+			Store: p.Store.Value(),
+			Cache: p.Cache.Value(),
+		}),
 	})
+	dataSystem.StoreMode = p.StoreMode.OrElse(servicedef.DataStoreModeRead)
+
+	target.DataSystem = o.Some(dataSystem)
 
 	return nil
 }
