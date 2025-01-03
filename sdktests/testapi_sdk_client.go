@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"sync/atomic"
+	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
@@ -13,6 +14,7 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 
 	"github.com/stretchr/testify/require"
 )
@@ -62,6 +64,15 @@ func WithClientSideInitialContext(context ldcontext.Context) SDKConfigurer {
 		cs := configOut.ClientSide.Value()
 		cs.InitialContext = o.Some(context)
 		configOut.ClientSide = o.Some(cs)
+		return nil
+	})
+}
+
+// WithWaitToStart is used to control the start wait time and whether the SDK is allowed to fail to start.
+func WithWaitToStart(duration time.Duration, canFail bool) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		configOut.StartWaitTimeMS = o.Some(ldtime.UnixMillisecondTime(duration.Milliseconds()))
+		configOut.InitCanFail = canFail
 		return nil
 	})
 }

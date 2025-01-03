@@ -132,6 +132,23 @@ func (d *DynamoDBPersistentStore) GetMap(prefix, key string) (map[string]string,
 	return results, nil
 }
 
+func (d *DynamoDBPersistentStore) Write(prefix, key, data string) error {
+	requests := []*dynamodb.WriteRequest{{
+		PutRequest: &dynamodb.PutRequest{Item: map[string]*dynamodb.AttributeValue{
+			dynamoDBTablePartitionKey: {S: aws.String(addPrefix(prefix, persistenceInitedKey))},
+			dynamoDBTableSortKey:      {S: aws.String(persistenceInitedKey)},
+		}},
+	}}
+
+	if err := batchWriteRequests(d.dynamodb, dynamoDBTableName, requests); err != nil {
+		// COVERAGE: can't cause an error here in unit tests because we only get this far if the
+		// DynamoDB client is successful on the initial query
+		return fmt.Errorf("failed to write %d items(s) in batches: %s", len(requests), err)
+	}
+
+	return nil
+}
+
 func (d *DynamoDBPersistentStore) WriteMap(prefix, key string, data map[string]string) error {
 	unusedKeys := make(map[string]struct{})
 
@@ -195,14 +212,6 @@ func (d *DynamoDBPersistentStore) WriteMap(prefix, key string, data map[string]s
 			DeleteRequest: &dynamodb.DeleteRequest{Key: delKey},
 		})
 	}
-
-	// Now set the special key that we check in InitializedInternal()
-	requests = append(requests, &dynamodb.WriteRequest{
-		PutRequest: &dynamodb.PutRequest{Item: map[string]*dynamodb.AttributeValue{
-			dynamoDBTablePartitionKey: {S: aws.String(addPrefix(prefix, persistenceInitedKey))},
-			dynamoDBTableSortKey:      {S: aws.String(persistenceInitedKey)},
-		}},
-	})
 
 	if err := batchWriteRequests(d.dynamodb, dynamoDBTableName, requests); err != nil {
 		// COVERAGE: can't cause an error here in unit tests because we only get this far if the

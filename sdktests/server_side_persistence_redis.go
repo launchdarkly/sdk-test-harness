@@ -42,6 +42,12 @@ func (r *RedisPersistentStore) GetMap(prefix, key string) (map[string]string, er
 	return r.redis.HGetAll(ctx, prefix+":"+key).Result()
 }
 
+func (r *RedisPersistentStore) Write(prefix, key, data string) error {
+	var ctx = context.Background()
+	_, err := r.redis.Set(ctx, prefix+":"+key, data, 0).Result()
+	return err
+}
+
 func (r *RedisPersistentStore) WriteMap(prefix, key string, data map[string]string) error {
 	var ctx = context.Background()
 	_, err := r.redis.HSet(ctx, prefix+":"+key, data).Result()
