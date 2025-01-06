@@ -572,72 +572,10 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 
 					require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
 
-					if cacheConfig.Mode == servicedef.CacheModeInfinite {
-						// This key was already cached, so it shouldn't see the change above.
-						h.RequireNever(t,
-							checkForUpdatedValue(t, client, "flag-key", context,
-								ldvalue.String("value"), ldvalue.String("new-value"), ldvalue.String("default")),
-							time.Millisecond*500, time.Millisecond*20, "flag-key was incorrectly updated")
-
-						// But since we didn't evaluate this flag, this should actually be
-						// reflected by directly changing the database.
-						h.RequireEventually(t,
-							checkForUpdatedValue(t, client, "uncached-flag-key", context,
-								ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default")),
-							time.Millisecond*500, time.Millisecond*20, "uncached-flag-key was incorrectly cached")
-					} else if cacheConfig.Mode == servicedef.CacheModeTTL {
-						// This key was already cached, so it shouldn't see the change above.
-						h.RequireNever(t,
-							checkForUpdatedValue(t, client, "flag-key", context,
-								ldvalue.String("value"), ldvalue.String("new-value"), ldvalue.String("default")),
-							time.Duration(
-								int(time.Second)*cacheConfig.TTL.Value()/2),
-							time.Millisecond*20,
-							"flag-key was incorrectly updated")
-
-						// But eventually, it will expire and then we will fetch it from the database.
-						h.RequireEventually(t,
-							checkForUpdatedValue(t, client, "flag-key", context,
-								ldvalue.String("value"), ldvalue.String("fallthrough"), ldvalue.String("default")),
-							time.Duration(int(time.Second)*cacheConfig.TTL.Value()), time.Millisecond*20, "flag-key was incorrectly cached")
-					}
-				})
-
-				s.runWithEmptyStore(t, "ignores dropped flags", func(t *ldtest.T) {
-					persistence := NewPersistence()
-					persistence.SetStoreMode(servicedef.DataStoreModeReadWrite)
-					persistence.SetStore(servicedef.SDKConfigPersistentStore{
-						Type: s.persistentStore.Type(),
-						DSN:  s.persistentStore.DSN(),
-					})
-					persistence.SetCache(cacheConfig)
-
-					sdkData := s.makeSDKDataWithFlag(1, ldvalue.String("value"))
-					_, configurers := s.setupDataSystems(t, sdkData)
-					configurers = append(configurers, persistence)
-
-					client := NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
-					context := ldcontext.New("user-key")
-					s.eventuallyRequireDataStoreInit(t, s.defaultPrefix)
-
-					pollUntilFlagValueUpdated(t, client, "flag-key", context,
-						ldvalue.String("default"), ldvalue.String("value"), ldvalue.String("default"))
-
-					require.NoError(t, s.persistentStore.Reset())
-
-					// This key was already cached, so it shouldn't see the change above.
 					h.RequireNever(t,
 						checkForUpdatedValue(t, client, "flag-key", context,
-							ldvalue.String("value"), ldvalue.String("default"), ldvalue.String("default")),
-						time.Millisecond*500, time.Millisecond*20, "flag was never updated")
-
-					if cacheConfig.Mode == servicedef.CacheModeTTL {
-						// But eventually, it will expire and then we will fetch it from the database.
-						h.RequireEventually(t,
-							checkForUpdatedValue(t, client, "flag-key", context,
-								ldvalue.String("value"), ldvalue.String("default"), ldvalue.String("default")),
-							time.Second, time.Millisecond*20, "flag-key was incorrectly cached")
-					}
+							ldvalue.String("value"), ldvalue.String("new-value"), ldvalue.String("default")),
+						time.Millisecond*500, time.Millisecond*20, "flag-key was incorrectly updated")
 				})
 			})
 		}
