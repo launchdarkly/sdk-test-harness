@@ -56,6 +56,12 @@ func (c *ConsulPersistentStore) GetMap(prefix, key string) (map[string]string, e
 	return results, nil
 }
 
+func (c *ConsulPersistentStore) Write(prefix, key, data string) error {
+	kv := c.consul.KV()
+	_, err := kv.Put(&consul.KVPair{Key: prefix + "/" + key, Value: []byte(data)}, nil)
+	return err
+}
+
 func (c *ConsulPersistentStore) WriteMap(prefix, key string, data map[string]string) error {
 	kv := c.consul.KV()
 
