@@ -114,6 +114,7 @@ func doAllPHPTests(t *ldtest.T) {
 	t.Run("context type", doSDKContextTypeTests)
 	t.Run("secure mode hash", doServerSideSecureModeHashTests)
 	t.Run("migrations", doServerSideMigrationTests)
+	t.Run("big segments", doServerSideBigSegmentsTests)
 }
 
 func allImportantServerSideCapabilities() framework.Capabilities {
