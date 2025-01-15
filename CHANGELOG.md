@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.28.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.27.0...v2.28.0) (2025-01-15)
+
+
+### Features
+
+* Expand big segment support to PHP ([#276](https://github.com/launchdarkly/sdk-test-harness/issues/276)) ([0f4591a](https://github.com/launchdarkly/sdk-test-harness/commit/0f4591abc22dac807fd6de9f96c0fb959bb14614))
+
 ## [2.27.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.26.0...v2.27.0) (2024-11-19)
 
 
