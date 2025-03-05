@@ -10,6 +10,7 @@ import (
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )
@@ -17,6 +18,7 @@ import (
 func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 	// These do not include detailed tests of the encoding of context attributes in custom events,
 	// which are in common_tests_events_contexts.go.
+	willInlineAllContexts := t.Capabilities().Has(servicedef.CapabilityInlineContextAll)
 
 	t.Run("data and metricValue parameters", c.customEventsParameterizedTests)
 
@@ -25,7 +27,7 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 
 		customEventProperties := []string{
 			"kind", "creationDate", "key", "data", "metricValue",
-			h.IfElse(c.isPHP, "context", "contextKeys"), // only PHP has inline contexts in custom events
+			h.IfElse(willInlineAllContexts || c.isPHP, "context", "contextKeys"),
 		}
 		if t.Capabilities().Has(servicedef.CapabilityClientSide) &&
 			!t.Capabilities().Has(servicedef.CapabilityMobile) {
@@ -64,12 +66,107 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 				expectedEvents = append(expectedEvents, m.AllOf(
 					JSONPropertyKeysCanOnlyBe(customEventProperties...),
 					IsCustomEvent(),
-					h.IfElse(c.isPHP, HasContextObjectWithMatchingKeys(context), HasContextKeys(context)),
+					h.IfElse(c.isPHP || willInlineAllContexts, HasContextObjectWithMatchingKeys(context), HasContextKeys(context)),
 				))
 				m.In(t).Assert(payload, m.ItemsInAnyOrder(expectedEvents...))
 			})
 		}
 	})
+
+	if t.Capabilities().Has(servicedef.CapabilityAnonymousRedaction) {
+		t.Run("single-kind anonymous context redacts all attributes", func(t *ldtest.T) {
+			anonymousFactory := data.NewContextFactory("anonymous", func(b *ldcontext.Builder) {
+				b.Anonymous(true)
+				b.Name("Example name")
+				b.SetString("setup", "Why do programmers always confused Halloween and Christmas?")
+				b.SetString("punchline", "Because OCT 31 = DEC 25")
+			})
+			anonymousContext := anonymousFactory.NextUniqueContext()
+
+			dataSource := NewSDKDataSource(t, nil)
+			events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
+			client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
+			client.SendCustomEvent(t, servicedef.CustomEventParams{
+				EventKey: "event-key",
+				Context:  o.Some(anonymousContext),
+			})
+			client.FlushEvents(t)
+
+			expectedContext := ldcontext.NewBuilderFromContext(anonymousContext).
+				SetValue("name", ldvalue.Null()).
+				SetValue("setup", ldvalue.Null()).
+				SetValue("punchline", ldvalue.Null()).
+				Build()
+
+			expectedEvents := []m.Matcher{}
+			if !c.isClientSide && !c.isPHP {
+				expectedEvents = append(expectedEvents, IsIndexEvent())
+			}
+
+			expectedContextMatcher := JSONMatchesEventContext(
+				expectedContext,
+				map[string][]string{"user": {"name", "setup", "punchline"}})
+			expectedEvents = append(
+				expectedEvents,
+				m.AllOf(IsCustomEvent(), m.JSONProperty("context").Should(expectedContextMatcher)))
+
+			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(expectedEvents...))
+		})
+
+		t.Run("multi-kind with anonymous context redacts attributes appropriately", func(t *ldtest.T) {
+			userContextFactory := data.NewContextFactory("user", func(b *ldcontext.Builder) {
+				b.Anonymous(true)
+				b.Kind("user")
+				b.Name("User name")
+				b.SetString("setup", "Why do programmers always confused Halloween and Christmas?")
+				b.SetString("punchline", "Because OCT 31 = DEC 25")
+			})
+			orgContextFactory := data.NewContextFactory("org", func(b *ldcontext.Builder) {
+				b.Name("Org name")
+				b.Kind("org")
+				b.SetString("setup", "Why did the edge server go bankrupt?")
+				b.SetString("punchline", "Because it ran out of cache")
+			})
+
+			userContext := userContextFactory.NextUniqueContext()
+			orgContext := orgContextFactory.NextUniqueContext()
+			multiContext := ldcontext.NewMultiBuilder().Add(userContext).Add(orgContext).Build()
+
+			dataSource := NewSDKDataSource(t, nil)
+			events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
+			client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
+
+			client.SendCustomEvent(t, servicedef.CustomEventParams{
+				EventKey: "event-key",
+				Context:  o.Some(multiContext),
+			})
+			client.FlushEvents(t)
+
+			expectedUser := ldcontext.NewBuilderFromContext(userContext).
+				SetValue("name", ldvalue.Null()).
+				SetValue("setup", ldvalue.Null()).
+				SetValue("punchline", ldvalue.Null()).
+				Build()
+
+			expectedMultiKind := ldcontext.NewMultiBuilder().Add(expectedUser).Add(orgContext).Build()
+
+			expectedEvents := []m.Matcher{}
+			if !c.isClientSide && !c.isPHP {
+				expectedEvents = append(expectedEvents, IsIndexEvent())
+			}
+
+			expectedContextMatcher := JSONMatchesEventContext(
+				expectedMultiKind,
+				map[string][]string{"user": {"name", "setup", "punchline"}})
+			expectedEvents = append(
+				expectedEvents,
+				m.AllOf(IsCustomEvent(), m.JSONProperty("context").Should(expectedContextMatcher)))
+
+			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(expectedEvents...))
+		})
+	}
 }
 
 func (c CommonEventTests) customEventsParameterizedTests(t *ldtest.T) {

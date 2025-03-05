@@ -115,6 +115,7 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 			client := NewSDKClient(t, dataSource, events)
 
 			uniqueContexts, matchers := makeContextsAndIndexEventMatchers(t)
+
 			for i := 0; i < 3; i++ { // 3 = arbitrary number of repetitions to prove we're deduplicating
 				for _, c := range uniqueContexts {
 					client.SendCustomEvent(t, servicedef.CustomEventParams{EventKey: "event1", Context: o.Some(c)})
@@ -124,7 +125,6 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 
 			client.FlushEvents(t)
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
-
 			m.In(t).Assert(payload, m.ItemsInAnyOrder(matchers...))
 		})
 	})

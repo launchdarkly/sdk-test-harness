@@ -85,7 +85,8 @@ func IsValidFeatureEventWithConditions(
 	propertyKeys := []string{"kind", "creationDate", "key", "version",
 		"value", "variation", "reason", "default", "prereqOf"}
 
-	canInlineContexts := t.Capabilities().Has(servicedef.CapabilityInlineContext)
+	canInlineContexts := t.Capabilities().Has(servicedef.CapabilityInlineContext) ||
+		t.Capabilities().Has(servicedef.CapabilityInlineContextAll)
 	switch {
 	case isPHP:
 		propertyKeys = append(propertyKeys, "trackEvents", "debugEventsUntilDate", "context", "excludeFromSummaries")
@@ -114,24 +115,37 @@ func IsValidSummaryEventWithFlags(keyValueMatchers ...m.KeyValueMatcher) m.Match
 	)
 }
 
-func IsValidMigrationOpEventWithConditions(context ldcontext.Context, matchers ...m.Matcher) m.Matcher {
+func IsValidMigrationOpEventWithConditions(
+	context ldcontext.Context,
+	shouldInlineContext bool,
+	matchers ...m.Matcher,
+) m.Matcher {
 	propertyKeys := []string{
 		"kind",
 		"operation",
 		"creationDate",
 		"samplingRatio",
-		"contextKeys",
 		"evaluation",
 		"measurements",
 	}
 
-	return m.AllOf(
-		append(
-			[]m.Matcher{
-				IsMigrationOpEvent(),
-				HasAnyCreationDate(),
-				JSONPropertyKeysCanOnlyBe(propertyKeys...),
-				HasContextKeys(context),
-			},
-			matchers...)...)
+	if shouldInlineContext {
+		propertyKeys = append(propertyKeys, "context")
+	} else {
+		propertyKeys = append(propertyKeys, "contextKeys")
+	}
+
+	defaultMatchers := []m.Matcher{
+		IsMigrationOpEvent(),
+		HasAnyCreationDate(),
+		JSONPropertyKeysCanOnlyBe(propertyKeys...),
+	}
+
+	if shouldInlineContext {
+		defaultMatchers = append(defaultMatchers, HasContextObjectWithMatchingKeys(context))
+	} else {
+		defaultMatchers = append(defaultMatchers, HasContextKeys(context))
+	}
+
+	return m.AllOf(append(defaultMatchers, matchers...)...)
 }

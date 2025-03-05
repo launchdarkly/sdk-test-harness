@@ -35,6 +35,7 @@ const (
 	CapabilityOptionalEventGzip           = "optional-event-gzip"
 	CapabilityETagCaching                 = "etag-caching"
 	CapabilityInlineContext               = "inline-context"
+	CapabilityInlineContextAll            = "inline-context-all"
 	CapabilityAnonymousRedaction          = "anonymous-redaction"
 	CapabilityPollingGzip                 = "polling-gzip"
 	CapabilityEvaluationHooks             = "evaluation-hooks"
