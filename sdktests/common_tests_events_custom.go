@@ -18,7 +18,7 @@ import (
 func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 	// These do not include detailed tests of the encoding of context attributes in custom events,
 	// which are in common_tests_events_contexts.go.
-	willInlineAllContexts := t.Capabilities().Has(servicedef.CapabilityInlineContextAll)
+	willInlineContext := t.Capabilities().Has(servicedef.CapabilityInlineContextAll) || c.isPHP
 
 	t.Run("data and metricValue parameters", c.customEventsParameterizedTests)
 
@@ -27,7 +27,7 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 
 		customEventProperties := []string{
 			"kind", "creationDate", "key", "data", "metricValue",
-			h.IfElse(willInlineAllContexts || c.isPHP, "context", "contextKeys"),
+			h.IfElse(willInlineContext, "context", "contextKeys"),
 		}
 		if t.Capabilities().Has(servicedef.CapabilityClientSide) &&
 			!t.Capabilities().Has(servicedef.CapabilityMobile) {
@@ -66,7 +66,7 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 				expectedEvents = append(expectedEvents, m.AllOf(
 					JSONPropertyKeysCanOnlyBe(customEventProperties...),
 					IsCustomEvent(),
-					h.IfElse(c.isPHP || willInlineAllContexts, HasContextObjectWithMatchingKeys(context), HasContextKeys(context)),
+					h.IfElse(willInlineContext, HasContextObjectWithMatchingKeys(context), HasContextKeys(context)),
 				))
 				m.In(t).Assert(payload, m.ItemsInAnyOrder(expectedEvents...))
 			})
