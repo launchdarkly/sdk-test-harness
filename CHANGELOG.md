@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.29.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.29.0...v2.29.1) (2025-03-13)
+
+
+### Bug Fixes
+
+* Replace custom event redaction test with appropriate capability ([#281](https://github.com/launchdarkly/sdk-test-harness/issues/281)) ([ce976cd](https://github.com/launchdarkly/sdk-test-harness/commit/ce976cda29a40ca0708a919f325e275c59b75441))
+
 ## [2.29.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.28.0...v2.29.0) (2025-03-13)
 
 
