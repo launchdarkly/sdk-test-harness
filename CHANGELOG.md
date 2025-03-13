@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.29.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.28.0...v2.29.0) (2025-03-13)
+
+
+### Features
+
+* Inline context for custom and migration op events ([#278](https://github.com/launchdarkly/sdk-test-harness/issues/278)) ([c5d13d1](https://github.com/launchdarkly/sdk-test-harness/commit/c5d13d1633cac4ea26cdd06d1306330ca7461d5c))
+
 ## [2.28.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.27.0...v2.28.0) (2025-01-15)
 
 
