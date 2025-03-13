@@ -96,7 +96,13 @@ This means that the SDK supports event sampling; the SDK can limit the number of
 
 #### Capability `"inline-context"`
 
-v4 of the event schema originally required a `contextKeys` property on all feature events. This event format was later broadened to accept either `contextKeys` or `contexts`. It is preferred that SDKs send over the `context` value. Opting into this capability will ensure the appropriate property is set.
+v4 of the event schema originally required a `contextKeys` property on all feature events. This event format was later broadened to accept either `contextKeys` or `contexts`. It is preferred that SDKs send over the `contexts` value. Opting into this capability will ensure the appropriate property is set.
+
+#### Capability `"inline-context-all"`
+
+v4 of the event schema originally required a `contextKeys` property on several different types of events. This event format was later broadened to accept either `contextKeys` or `contexts`. It is preferred that SDKs send over the `contexts` value. Opting into this capability will ensure the `context` property is used for all events.
+
+This capability is a superset of `"inline-context"`, as it was introduced afterwards.
 
 #### Capability `"migrations"`
 
