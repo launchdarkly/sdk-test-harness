@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.29.3](https://github.com/launchdarkly/sdk-test-harness/compare/v2.29.2...v2.29.3) (2025-03-18)
+
+
+### Bug Fixes
+
+* Add missing capability guard to custom event test ([#285](https://github.com/launchdarkly/sdk-test-harness/issues/285)) ([8464e9f](https://github.com/launchdarkly/sdk-test-harness/commit/8464e9ffd0f93920a13cc8181967097277d12491))
+
 ## [2.29.2](https://github.com/launchdarkly/sdk-test-harness/compare/v2.29.1...v2.29.2) (2025-03-18)
 
 
