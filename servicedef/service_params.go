@@ -36,6 +36,7 @@ const (
 	CapabilityETagCaching                 = "etag-caching"
 	CapabilityInlineContext               = "inline-context"
 	CapabilityInlineContextAll            = "inline-context-all"
+	CapabilityInstanceID                  = "instance-id"
 	CapabilityAnonymousRedaction          = "anonymous-redaction"
 	CapabilityPollingGzip                 = "polling-gzip"
 	CapabilityEvaluationHooks             = "evaluation-hooks"
