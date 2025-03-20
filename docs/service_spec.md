@@ -104,6 +104,10 @@ v4 of the event schema originally required a `contextKeys` property on several d
 
 This capability is a superset of `"inline-context"`, as it was introduced afterwards.
 
+#### Capability `"instance-id"`
+
+Supports sending the `X-LaunchDarkly-Instance-Id` header in HTTP requests.
+
 #### Capability `"migrations"`
 
 This means that the SDK supports technology migrations, a feature which allows customers to migrate between data sources using well-defined migration stages.
