@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.30.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.29.3...v2.30.0) (2025-03-20)
+
+
+### Features
+
+* Add `instance-id` capability to ensure headers are set ([#287](https://github.com/launchdarkly/sdk-test-harness/issues/287)) ([a889661](https://github.com/launchdarkly/sdk-test-harness/commit/a889661caae870f22365947474500f6912edc1b4))
+
 ## [2.29.3](https://github.com/launchdarkly/sdk-test-harness/compare/v2.29.2...v2.29.3) (2025-03-18)
 
 
