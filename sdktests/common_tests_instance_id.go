@@ -42,13 +42,13 @@ func (c CommonInstanceIDTests) Run(t *ldtest.T) {
 		verifyRequestHeader(t, dataSource.Endpoint())
 	})
 
-	t.Run("poll requests", func(t *ldtest.T) {
-		t.Capabilities().HasAny(servicedef.CapabilityServerSidePolling, servicedef.CapabilityClientSide)
-
-		dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
-		_ = NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource)...)
-		verifyRequestHeader(t, dataSource.Endpoint())
-	})
+	if t.Capabilities().HasAny(servicedef.CapabilityClientSide, servicedef.CapabilityServerSidePolling) {
+		t.Run("poll requests", func(t *ldtest.T) {
+			dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
+			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource)...)
+			verifyRequestHeader(t, dataSource.Endpoint())
+		})
+	}
 
 	t.Run("event posts", func(t *ldtest.T) {
 		dataSource := NewSDKDataSource(t, nil)
