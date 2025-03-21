@@ -72,21 +72,20 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 		}
 	})
 
-	t.Run("poll requests", func(t *ldtest.T) {
-		// Currently server-side SDK test services do not support polling
-		t.RequireCapability(servicedef.CapabilityClientSide)
-
-		for _, p := range c.makeValidTagsTestParams() {
-			t.Run(p.description, func(t *ldtest.T) {
-				tags := p.tags
-				dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
-				_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
-					withTagsConfig(tags),
-					dataSource)...)
-				verifyRequestHeader(t, p, dataSource.Endpoint())
-			})
-		}
-	})
+	if t.Capabilities().HasAny(servicedef.CapabilityClientSide, servicedef.CapabilityServerSidePolling) {
+		t.Run("poll requests", func(t *ldtest.T) {
+			for _, p := range c.makeValidTagsTestParams() {
+				t.Run(p.description, func(t *ldtest.T) {
+					tags := p.tags
+					dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
+					_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
+						withTagsConfig(tags),
+						dataSource)...)
+					verifyRequestHeader(t, p, dataSource.Endpoint())
+				})
+			}
+		})
+	}
 
 	t.Run("event posts", func(t *ldtest.T) {
 		dataSource := NewSDKDataSource(t, nil)
@@ -207,10 +206,20 @@ func (c CommonTagsTests) makeValidTagsTestParams() []tagsTestParams {
 		o.None[string](),
 		o.Some(""), // empty string
 	}
-	for i := 0; i < len(allAllowedTagChars); i += maxTagValueLength {
-		j := h.IfElse(i > len(allAllowedTagChars), len(allAllowedTagChars), i)
-		values = append(values, o.Some(allAllowedTagChars[i:j]))
+
+	// Generate test to use all valid characters
+	batchSize := min(maxTagValueLength, len(allAllowedTagChars))
+	for i := 0; i < len(allAllowedTagChars)-batchSize; i += batchSize {
+		if i+batchSize > len(allAllowedTagChars) {
+			values = append(values, o.Some(allAllowedTagChars[i:]))
+		} else {
+			values = append(values, o.Some(allAllowedTagChars[i:i+batchSize]))
+		}
 	}
+
+	// Ensure we test the maximum length
+	values = append(values, o.Some(strings.Repeat(allAllowedTagChars[1:2], maxTagValueLength)))
+
 	for _, appID := range values {
 		for _, appVersion := range values {
 			tags := servicedef.SDKConfigTagsParams{ApplicationID: appID, ApplicationVersion: appVersion}
