@@ -54,7 +54,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 	}
 
 	t.Run("stream requests", func(t *ldtest.T) {
-		for _, p := range c.makeValidTagsTestParams() {
+		for _, p := range c.makeValidTagsTestParams(t) {
 			t.Run(p.description, func(t *ldtest.T) {
 				tags := p.tags
 				dataSource := NewSDKDataSource(t, nil, DataSourceOptionStreaming())
@@ -74,7 +74,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 
 	if t.Capabilities().HasAny(servicedef.CapabilityClientSide, servicedef.CapabilityServerSidePolling) {
 		t.Run("poll requests", func(t *ldtest.T) {
-			for _, p := range c.makeValidTagsTestParams() {
+			for _, p := range c.makeValidTagsTestParams(t) {
 				t.Run(p.description, func(t *ldtest.T) {
 					tags := p.tags
 					dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
@@ -89,7 +89,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 
 	t.Run("event posts", func(t *ldtest.T) {
 		dataSource := NewSDKDataSource(t, nil)
-		for _, p := range c.makeValidTagsTestParams() {
+		for _, p := range c.makeValidTagsTestParams(t) {
 			t.Run(p.description, func(t *ldtest.T) {
 				tags := p.tags
 				events := NewSDKEventSink(t)
@@ -146,6 +146,24 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 				},
 				expectedHeaderValue: tagNameAppID + "/ok " + tagNameAppVersion + "/ok",
 			})
+			if t.Capabilities().Has(servicedef.CapabilityAutoEnvAttributes) {
+				params = append(params, tagsTestParams{
+					tags: servicedef.SDKConfigTagsParams{
+						ApplicationID:      o.Some(badString),
+						ApplicationVersion: o.Some("iShouldntBeSeenBecauseInvalidIDTriggersFallback"),
+					},
+					unexpectedHeaderValue: tagNameAppVersion + "/iShouldntBeSeenBecauseInvalidIDTriggersFallback",
+				})
+			} else {
+				params = append(params, tagsTestParams{
+					tags: servicedef.SDKConfigTagsParams{
+						ApplicationID:      o.Some(badString),
+						ApplicationVersion: o.Some("ok"),
+					},
+					expectedHeaderValue: tagNameAppVersion + "/ok",
+				})
+			}
+
 			params = append(params, tagsTestParams{
 				tags: servicedef.SDKConfigTagsParams{
 					ApplicationID:      o.Some("ok"),
@@ -153,13 +171,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 				},
 				expectedHeaderValue: tagNameAppID + "/ok",
 			})
-			params = append(params, tagsTestParams{
-				tags: servicedef.SDKConfigTagsParams{
-					ApplicationID:      o.Some(badString),
-					ApplicationVersion: o.Some("iShouldntBeSeenBecauseInvalidIDTriggersFallback"),
-				},
-				unexpectedHeaderValue: "iShouldntBeSeenBecauseInvalidIDTriggersFallback",
-			})
+
 		}
 		runPermutations(t, params)
 	})
@@ -198,13 +210,19 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 	})
 }
 
-func (c CommonTagsTests) makeValidTagsTestParams() []tagsTestParams {
+func (c CommonTagsTests) makeValidTagsTestParams(t *ldtest.T) []tagsTestParams {
 	ret := make([]tagsTestParams, 0)
-	values := []o.Maybe[string]{
-		// Note that on *some* platforms, there's a distinction between "undefined" and "empty string".
-		// We test both, to ensure that empty strings are correctly ignored in terms of the header.
-		o.None[string](),
-		o.Some(""), // empty string
+	values := make([]o.Maybe[string], 0)
+
+	// The auto env spec does not allow for specifying only an ID or a version.
+	// Therefore, we exclude these "empty" options.
+	if !t.Capabilities().Has(servicedef.CapabilityAutoEnvAttributes) {
+		values = []o.Maybe[string]{
+			// Note that on *some* platforms, there's a distinction between "undefined" and "empty string".
+			// We test both, to ensure that empty strings are correctly ignored in terms of the header.
+			o.None[string](),
+			o.Some(""), // empty string
+		}
 	}
 
 	// Generate test to use all valid characters
