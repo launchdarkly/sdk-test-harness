@@ -171,7 +171,6 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 				},
 				expectedHeaderValue: tagNameAppID + "/ok",
 			})
-
 		}
 		runPermutations(t, params)
 	})
