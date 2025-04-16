@@ -17,7 +17,7 @@ import (
 // value, because there is just one current value for the flag at a time depending on the current user.
 
 func doClientSideSummaryEventTests(t *ldtest.T) {
-	if t.Capabilities().Has(servicedef.CapabilityPerContextSummaries) {
+	if t.Capabilities().Has(servicedef.CapabilityClientPerContextSummaries) {
 		t.Run("basic counter behavior for per context summaries", doClientSidePerContextSummaryEventBasicTest)
 		t.Run("context kinds for per context summaries", doClientSidePerContxtSummaryEventContextKindsTest)
 	} else {
@@ -91,7 +91,7 @@ func doClientSideSummaryEventBasicTest(t *ldtest.T) {
 		IsIdentifyEventForContext(contextA),
 		IsIdentifyEventForContext(contextB),
 		IsValidSummaryEventWithFlags(
-			t.Capabilities().Has(servicedef.CapabilityPerContextSummaries),
+			t.Capabilities().Has(servicedef.CapabilityClientPerContextSummaries),
 			m.KV(flag1Key, m.MapOf(
 				m.KV("default", m.JSONEqual(default1)),
 				m.KV("counters", m.ItemsInAnyOrder(
@@ -256,7 +256,7 @@ func doClientSideSummaryEventContextKindsTest(t *ldtest.T) {
 		IsIdentifyEvent(),
 		IsIdentifyEvent(),
 		IsValidSummaryEventWithFlags(
-			t.Capabilities().Has(servicedef.CapabilityPerContextSummaries),
+			t.Capabilities().Has(servicedef.CapabilityClientPerContextSummaries),
 			m.KV(flag1Key, m.MapOf(
 				m.KV("default", m.Not(m.BeNil())),
 				m.KV("counters", m.JSONArray().Should(m.Not(m.BeNil()))),
@@ -369,7 +369,7 @@ func doClientSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 	m.In(t).Assert(payload, m.ItemsInAnyOrder(
 		IsIdentifyEventForContext(context),
 		IsValidSummaryEventWithFlags(
-			t.Capabilities().Has(servicedef.CapabilityPerContextSummaries),
+			t.Capabilities().Has(servicedef.CapabilityClientPerContextSummaries),
 			m.KV(unknownKey, m.MapOf(
 				m.KV("default", m.JSONEqual(default1)),
 				m.KV("counters", m.ItemsInAnyOrder(
@@ -418,7 +418,7 @@ func doClientSideSummaryEventResetTest(t *ldtest.T) {
 	m.In(t).Assert(payload1, m.ItemsInAnyOrder(
 		IsIdentifyEventForContext(contextA),
 		IsValidSummaryEventWithFlags(
-			t.Capabilities().Has(servicedef.CapabilityPerContextSummaries),
+			t.Capabilities().Has(servicedef.CapabilityClientPerContextSummaries),
 			m.KV(flagKey, m.MapOf(
 				m.KV("default", m.JSONEqual(defaultValue)),
 				m.KV("counters", m.ItemsInAnyOrder(
@@ -443,7 +443,7 @@ func doClientSideSummaryEventResetTest(t *ldtest.T) {
 	m.In(t).Assert(payload2, m.ItemsInAnyOrder(
 		IsIdentifyEventForContext(contextB),
 		IsValidSummaryEventWithFlags(
-			t.Capabilities().Has(servicedef.CapabilityPerContextSummaries),
+			t.Capabilities().Has(servicedef.CapabilityClientPerContextSummaries),
 			m.KV(flagKey, m.MapOf(
 				m.KV("default", m.JSONEqual(defaultValue)),
 				m.KV("counters", m.ItemsInAnyOrder(
@@ -517,7 +517,7 @@ func doClientSideSummaryBasicPrereqTest(t *ldtest.T) {
 	m.In(t).Assert(payload, m.ItemsInAnyOrder(
 		IsIdentifyEventForContext(contextA),
 		IsValidSummaryEventWithFlags(
-			t.Capabilities().Has(servicedef.CapabilityPerContextSummaries),
+			t.Capabilities().Has(servicedef.CapabilityClientPerContextSummaries),
 			m.KV(topLevelKey, m.MapOf(
 				// Was first evaluated through the EvaluateFlag call, so it has a default value.
 				m.KV("default", m.JSONEqual(default2)),
@@ -582,7 +582,7 @@ func doClientSideSummaryPrereqUnknownFlagTest(t *ldtest.T) {
 	m.In(t).Assert(payload, m.ItemsInAnyOrder(
 		IsIdentifyEventForContext(contextA),
 		IsValidSummaryEventWithFlags(
-			t.Capabilities().Has(servicedef.CapabilityPerContextSummaries),
+			t.Capabilities().Has(servicedef.CapabilityClientPerContextSummaries),
 			m.KV(topLevelKey, m.MapOf(
 				// Was first evaluated through the EvaluateFlag call, so it has a default value.
 				m.KV("default", m.JSONEqual(default1)),
