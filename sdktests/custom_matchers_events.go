@@ -107,10 +107,24 @@ func IsValidFeatureEventWithConditions(
 			matchers...)...)
 }
 
-func IsValidSummaryEventWithFlags(keyValueMatchers ...m.KeyValueMatcher) m.Matcher {
+func IsValidSummaryEventWithContextAndFlags(ctx ldcontext.Context, keyValueMatchers ...m.KeyValueMatcher) m.Matcher {
+	return m.AllOf(
+		IsValidSummaryEventWithFlags(true, keyValueMatchers...),
+		HasContextObjectWithMatchingKeys(ctx),
+	)
+}
+
+func IsValidSummaryEventWithFlags(shouldInlineContext bool, keyValueMatchers ...m.KeyValueMatcher) m.Matcher {
+	propertyKeys := []string{
+		"kind", "startDate", "endDate", "features", "context",
+	}
+	if shouldInlineContext {
+		propertyKeys = append(propertyKeys, "context")
+	}
+
 	return m.AllOf(
 		IsSummaryEvent(),
-		JSONPropertyKeysCanOnlyBe("kind", "startDate", "endDate", "features"),
+		JSONPropertyKeysCanOnlyBe("kind", "startDate", "endDate", "features", "context"),
 		m.JSONProperty("features").Should(m.MapOf(keyValueMatchers...)),
 	)
 }
