@@ -11,8 +11,8 @@ type PollingPayload struct {
 }
 
 type PayloadEvent struct {
-	Event      string      `json:"event"`
-	EventData interface{}  `json:"data"`
+	Event     string      `json:"event"`
+	EventData interface{} `json:"data"`
 }
 
 type ChangeSet struct {
