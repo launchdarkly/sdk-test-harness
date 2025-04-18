@@ -145,7 +145,7 @@ func (p *PollingService) standardPollingHandler() http.Handler {
 		events := make([]framework.PayloadEvent, 0, len(fdv2SdkData.events)+2)
 
 		events = append(events, framework.PayloadEvent{
-			Name: "server-intent",
+			Event: "server-intent",
 			EventData: framework.ServerIntent{
 				Payloads: []framework.Payload{
 					{
@@ -159,13 +159,13 @@ func (p *PollingService) standardPollingHandler() http.Handler {
 
 		for _, obj := range fdv2SdkData.events {
 			events = append(events, framework.PayloadEvent{
-				Name:      "put-object",
+				Event:     "put-object",
 				EventData: obj,
 			})
 		}
 
 		events = append(events, framework.PayloadEvent{
-			Name: "payload-transferred",
+			Event: "payload-transferred",
 			EventData: framework.PayloadTransferred{
 				State:   fdv2SdkData.state,
 				Version: 1,
