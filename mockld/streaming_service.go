@@ -53,8 +53,8 @@ type StreamingService struct {
 }
 
 type eventImpl struct {
-	name string
-	data interface{}
+	event string
+	data  interface{}
 }
 
 const (
@@ -131,7 +131,7 @@ func (s *StreamingService) makeXferFull() []eventsource.Event {
 
 	events := make([]eventsource.Event, 0, len(fdv2SdkData.events)+2)
 	events = append(events, eventImpl{
-		name: "server-intent",
+		event: "server-intent",
 		data: framework.ServerIntent{
 			Payloads: []framework.Payload{
 				{
@@ -146,13 +146,13 @@ func (s *StreamingService) makeXferFull() []eventsource.Event {
 
 	for _, obj := range fdv2SdkData.events {
 		events = append(events, eventImpl{
-			name: "put-object",
-			data: obj,
+			event: "put-object",
+			data:  obj,
 		})
 	}
 
 	events = append(events, eventImpl{
-		name: "payload-transferred",
+		event: "payload-transferred",
 		data: framework.PayloadTransferred{
 			State:   fdv2SdkData.state,
 			Version: 1,
@@ -166,7 +166,7 @@ func (s *StreamingService) makeXferFull() []eventsource.Event {
 
 func (s *StreamingService) PushServerIntent(intentCode, intentReason string) {
 	event := eventImpl{
-		name: "server-intent",
+		event: "server-intent",
 		data: framework.ServerIntent{
 			Payloads: []framework.Payload{
 				{
@@ -202,8 +202,8 @@ func (s *StreamingService) PushServerIntent(intentCode, intentReason string) {
 // the eventsource Publish method before a subscription existed, the event would be lost.)
 func (s *StreamingService) PushEvent(eventName string, eventData interface{}) {
 	event := eventImpl{
-		name: eventName,
-		data: eventData,
+		event: eventName,
+		data:  eventData,
 	}
 
 	s.lock.Lock()
@@ -325,7 +325,7 @@ func (s *StreamingService) logEvent(e eventsource.Event) {
 	s.debugLogger.Printf("Sending %s event with data: %s", e.Event(), e.Data())
 }
 
-func (e eventImpl) Event() string { return e.name }
+func (e eventImpl) Event() string { return e.event }
 func (e eventImpl) Id() string    { return "" } //nolint:stylecheck
 func (e eventImpl) Data() string {
 	if raw, ok := e.data.(json.RawMessage); ok {
