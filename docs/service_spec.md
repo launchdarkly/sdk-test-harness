@@ -248,6 +248,10 @@ This indicates the SDK is capable of configuring an HTTP proxy for its network r
 All requests should be sent to the proxy. This is generally implemented in an SDK via standard networking
 library capabilities, such as setting an environment variable (like `http_proxy`) or a configuration option.
 
+### Capability `"client-per-context-summaries`
+
+This indicates that a client-side SDK will emit a summary event per identified context which has evaluated flags.
+
 ### Stop test service: `DELETE /`
 
 The test harness sends this request at the end of a test run if you have specified `--stop-service-at-end` on the [command line](./running.md). The test service should simply quit. This is a convenience so CI scripts can simply start the test service in the background and assume it will be stopped for them.

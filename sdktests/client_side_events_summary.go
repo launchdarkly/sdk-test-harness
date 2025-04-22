@@ -17,8 +17,13 @@ import (
 // value, because there is just one current value for the flag at a time depending on the current user.
 
 func doClientSideSummaryEventTests(t *ldtest.T) {
-	t.Run("basic counter behavior", doClientSideSummaryEventBasicTest)
-	t.Run("context kinds", doClientSideSummaryEventContextKindsTest)
+	if t.Capabilities().Has(servicedef.CapabilityClientPerContextSummaries) {
+		t.Run("basic counter behavior for per context summaries", doClientSidePerContextSummaryEventBasicTest)
+		t.Run("context kinds for per context summaries", doClientSidePerContxtSummaryEventContextKindsTest)
+	} else {
+		t.Run("basic counter behavior", doClientSideSummaryEventBasicTest)
+		t.Run("context kinds", doClientSideSummaryEventContextKindsTest)
+	}
 	t.Run("unknown flag", doClientSideSummaryEventUnknownFlagTest)
 	t.Run("reset after each flush", doClientSideSummaryEventResetTest)
 
@@ -86,6 +91,7 @@ func doClientSideSummaryEventBasicTest(t *ldtest.T) {
 		IsIdentifyEventForContext(contextA),
 		IsIdentifyEventForContext(contextB),
 		IsValidSummaryEventWithFlags(
+			t.Capabilities().Has(servicedef.CapabilityClientPerContextSummaries),
 			m.KV(flag1Key, m.MapOf(
 				m.KV("default", m.JSONEqual(default1)),
 				m.KV("counters", m.ItemsInAnyOrder(
@@ -99,6 +105,93 @@ func doClientSideSummaryEventBasicTest(t *ldtest.T) {
 				m.KV("counters", m.ItemsInAnyOrder(
 					// Did not include a FlagVersion, so it should use version.
 					flagCounter(flag2Result.Value, flag2Result.Variation.Value(), flag2Result.Version, 1),
+				)),
+				m.KV("contextKinds", anyContextKindsList()),
+			)),
+		)),
+	)
+}
+
+func doClientSidePerContextSummaryEventBasicTest(t *ldtest.T) {
+	flag1Key := "flag1"
+	flag1Result1 := mockld.ClientSDKFlag{
+		Value:       ldvalue.String("value1-a"),
+		Variation:   o.Some(0),
+		FlagVersion: o.Some(1),
+		Version:     11,
+	}
+	flag1Result2 := mockld.ClientSDKFlag{
+		Value:       ldvalue.String("value1-b"),
+		Variation:   o.Some(2),
+		FlagVersion: o.Some(2),
+		Version:     12,
+	}
+	flag2Key := "flag2"
+	flag2Result := mockld.ClientSDKFlag{
+		Value:     ldvalue.String("value-b"),
+		Variation: o.Some(2),
+		// Omitting FlagVersion to check fallback logic.
+		Version: 13,
+	}
+
+	contextA := ldcontext.New("user-a")
+	contextB := ldcontext.New("user-b")
+	default1 := ldvalue.String("default1")
+	default2 := ldvalue.String("default2")
+
+	dataBuilder := mockld.NewClientSDKDataBuilder()
+	dataBuilder.Flag(flag1Key, flag1Result1).Flag(flag2Key, flag2Result)
+
+	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
+	client := NewSDKClient(t,
+		WithClientSideInitialContext(contextA),
+		dataSource, events)
+
+	// flag1: 2 evaluations for contextA
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1Key, DefaultValue: default1})
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1Key, DefaultValue: default1})
+
+	// flag2: 1 evaluation for contextA
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag2Key, DefaultValue: default2})
+
+	// Now change the user to contextB, causing a flag data update, and do 1 more evaluation of flag1
+	dataBuilder.Flag(flag1Key, flag1Result2)
+	dataSource.SetInitialData(dataBuilder.Build())
+	client.SendIdentifyEvent(t, contextB)
+
+	_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flag1Key, DefaultValue: default1})
+
+	client.FlushEvents(t)
+	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+	m.In(t).Assert(payload, m.ItemsInAnyOrder(
+		IsIdentifyEventForContext(contextA),
+		IsIdentifyEventForContext(contextB),
+		IsValidSummaryEventWithContextAndFlags(
+			contextA,
+			m.KV(flag1Key, m.MapOf(
+				m.KV("default", m.JSONEqual(default1)),
+				m.KV("counters", m.ItemsInAnyOrder(
+					flagCounter(flag1Result1.Value, flag1Result1.Variation.Value(), flag1Result1.FlagVersion.Value(), 2),
+				)),
+				m.KV("contextKinds", anyContextKindsList()),
+			)),
+			m.KV(flag2Key, m.MapOf(
+				m.KV("default", m.JSONEqual(default2)),
+				m.KV("counters", m.ItemsInAnyOrder(
+					// Did not include a FlagVersion, so it should use version.
+					flagCounter(flag2Result.Value, flag2Result.Variation.Value(), flag2Result.Version, 1),
+				)),
+				m.KV("contextKinds", anyContextKindsList()),
+			)),
+		),
+		IsValidSummaryEventWithContextAndFlags(
+			contextB,
+			m.KV(flag1Key, m.MapOf(
+				m.KV("default", m.JSONEqual(default1)),
+				m.KV("counters", m.ItemsInAnyOrder(
+					flagCounter(flag1Result2.Value, flag1Result2.Variation.Value(), flag1Result2.FlagVersion.Value(), 1),
 				)),
 				m.KV("contextKinds", anyContextKindsList()),
 			)),
@@ -163,10 +256,86 @@ func doClientSideSummaryEventContextKindsTest(t *ldtest.T) {
 		IsIdentifyEvent(),
 		IsIdentifyEvent(),
 		IsValidSummaryEventWithFlags(
+			t.Capabilities().Has(servicedef.CapabilityClientPerContextSummaries),
 			m.KV(flag1Key, m.MapOf(
 				m.KV("default", m.Not(m.BeNil())),
 				m.KV("counters", m.JSONArray().Should(m.Not(m.BeNil()))),
 				m.KV("contextKinds", contextKindsList(kind1, kind2)),
+			)),
+			m.KV(flag2Key, m.MapOf(
+				m.KV("default", m.Not(m.BeNil())),
+				m.KV("counters", m.JSONArray().Should(m.Not(m.BeNil()))),
+				m.KV("contextKinds", contextKindsList(kind2, kind3)),
+			)),
+		)),
+	)
+}
+
+func doClientSidePerContxtSummaryEventContextKindsTest(t *ldtest.T) {
+	flag1Key := "flag1"
+	flag1Result := mockld.ClientSDKFlag{
+		Value:     ldvalue.String("value1-a"),
+		Variation: o.Some(0),
+		Version:   1,
+	}
+	flag2Key := "flag2"
+	flag2Result := mockld.ClientSDKFlag{
+		Value:     ldvalue.String("value-b"),
+		Variation: o.Some(2),
+		Version:   2,
+	}
+
+	kind1, kind2, kind3 := ldcontext.Kind("kind1"), ldcontext.Kind("kind2"), ldcontext.Kind("kind3")
+	initialContext := ldcontext.NewWithKind("other", "unimportant")
+
+	contextMultiA := ldcontext.NewMulti(ldcontext.NewWithKind(kind1, "key1"), ldcontext.NewWithKind(kind2, "key2"))
+	contextMultiB := ldcontext.NewMulti(ldcontext.NewWithKind(kind2, "key1"), ldcontext.NewWithKind(kind3, "key2"))
+
+	defaultValue := ldvalue.String("default")
+
+	dataBuilder := mockld.NewClientSDKDataBuilder()
+	dataBuilder.Flag(flag1Key, flag1Result).Flag(flag2Key, flag2Result)
+
+	dataSource := NewSDKDataSource(t, dataBuilder.Build())
+	events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
+	client := NewSDKClient(t,
+		WithClientSideInitialContext(initialContext),
+		dataSource, events)
+
+	for _, contextAndFlags := range []struct {
+		context  ldcontext.Context
+		flagKeys []string
+	}{
+		{contextMultiA, []string{flag1Key}},
+		{contextMultiB, []string{flag1Key, flag2Key}},
+	} {
+		client.SendIdentifyEvent(t, contextAndFlags.context)
+		for _, flagKey := range contextAndFlags.flagKeys {
+			_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{FlagKey: flagKey, DefaultValue: defaultValue})
+		}
+	}
+
+	client.FlushEvents(t)
+	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+	m.In(t).Assert(payload, m.ItemsInAnyOrder(
+		IsIdentifyEvent(),
+		IsIdentifyEvent(),
+		IsIdentifyEvent(),
+		IsValidSummaryEventWithContextAndFlags(
+			contextMultiA,
+			m.KV(flag1Key, m.MapOf(
+				m.KV("default", m.Not(m.BeNil())),
+				m.KV("counters", m.JSONArray().Should(m.Not(m.BeNil()))),
+				m.KV("contextKinds", contextKindsList(kind1, kind2)),
+			)),
+		),
+		IsValidSummaryEventWithContextAndFlags(
+			contextMultiB,
+			m.KV(flag1Key, m.MapOf(
+				m.KV("default", m.Not(m.BeNil())),
+				m.KV("counters", m.JSONArray().Should(m.Not(m.BeNil()))),
+				m.KV("contextKinds", contextKindsList(kind2, kind3)),
 			)),
 			m.KV(flag2Key, m.MapOf(
 				m.KV("default", m.Not(m.BeNil())),
@@ -200,6 +369,7 @@ func doClientSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 	m.In(t).Assert(payload, m.ItemsInAnyOrder(
 		IsIdentifyEventForContext(context),
 		IsValidSummaryEventWithFlags(
+			t.Capabilities().Has(servicedef.CapabilityClientPerContextSummaries),
 			m.KV(unknownKey, m.MapOf(
 				m.KV("default", m.JSONEqual(default1)),
 				m.KV("counters", m.ItemsInAnyOrder(
@@ -248,6 +418,7 @@ func doClientSideSummaryEventResetTest(t *ldtest.T) {
 	m.In(t).Assert(payload1, m.ItemsInAnyOrder(
 		IsIdentifyEventForContext(contextA),
 		IsValidSummaryEventWithFlags(
+			t.Capabilities().Has(servicedef.CapabilityClientPerContextSummaries),
 			m.KV(flagKey, m.MapOf(
 				m.KV("default", m.JSONEqual(defaultValue)),
 				m.KV("counters", m.ItemsInAnyOrder(
@@ -272,6 +443,7 @@ func doClientSideSummaryEventResetTest(t *ldtest.T) {
 	m.In(t).Assert(payload2, m.ItemsInAnyOrder(
 		IsIdentifyEventForContext(contextB),
 		IsValidSummaryEventWithFlags(
+			t.Capabilities().Has(servicedef.CapabilityClientPerContextSummaries),
 			m.KV(flagKey, m.MapOf(
 				m.KV("default", m.JSONEqual(defaultValue)),
 				m.KV("counters", m.ItemsInAnyOrder(
@@ -345,6 +517,7 @@ func doClientSideSummaryBasicPrereqTest(t *ldtest.T) {
 	m.In(t).Assert(payload, m.ItemsInAnyOrder(
 		IsIdentifyEventForContext(contextA),
 		IsValidSummaryEventWithFlags(
+			t.Capabilities().Has(servicedef.CapabilityClientPerContextSummaries),
 			m.KV(topLevelKey, m.MapOf(
 				// Was first evaluated through the EvaluateFlag call, so it has a default value.
 				m.KV("default", m.JSONEqual(default2)),
@@ -409,6 +582,7 @@ func doClientSideSummaryPrereqUnknownFlagTest(t *ldtest.T) {
 	m.In(t).Assert(payload, m.ItemsInAnyOrder(
 		IsIdentifyEventForContext(contextA),
 		IsValidSummaryEventWithFlags(
+			t.Capabilities().Has(servicedef.CapabilityClientPerContextSummaries),
 			m.KV(topLevelKey, m.MapOf(
 				// Was first evaluated through the EvaluateFlag call, so it has a default value.
 				m.KV("default", m.JSONEqual(default1)),
