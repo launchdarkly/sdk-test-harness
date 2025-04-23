@@ -38,6 +38,7 @@ func doServerSideMigrationTests(t *ldtest.T) {
 	t.Run("migrationVariation uses default stage when appropriate", usesDefaultWhenAppropriate)
 	t.Run("migration events for missing flags", itHandlesMigrationEventsForMissingFlags)
 	t.Run("uses wrong type for non-migration flag", itHandlesNonMigrationFlags)
+	t.Run("redacts anonymous context attributes", itRedactsAnonymousContextAttributes)
 }
 
 func withExecutionOrders(test func(*ldtest.T, ldmigration.ExecutionOrder)) func(t *ldtest.T) {
@@ -421,6 +422,7 @@ func tracksInvoked(t *ldtest.T, order ldmigration.ExecutionOrder) {
 				t, events, context,
 				IsValidMigrationOpEventWithConditions(
 					context,
+					t.Capabilities().Has(servicedef.CapabilityInlineContextAll),
 					opEventMatchers...,
 				),
 			)
@@ -533,6 +535,7 @@ func tracksLatency(t *ldtest.T, order ldmigration.ExecutionOrder) {
 				t, events, context,
 				IsValidMigrationOpEventWithConditions(
 					context,
+					t.Capabilities().Has(servicedef.CapabilityInlineContextAll),
 					opEventMatchers...,
 				),
 			)
@@ -628,6 +631,7 @@ func writeFailuresShouldGenerateErrorMetrics(t *ldtest.T, order ldmigration.Exec
 				t, events, context,
 				IsValidMigrationOpEventWithConditions(
 					context,
+					t.Capabilities().Has(servicedef.CapabilityInlineContextAll),
 					opEventMatchers...,
 				),
 			)
@@ -703,6 +707,7 @@ func successfulHandlersShouldNotGenerateErrorMetrics(t *ldtest.T, order ldmigrat
 				t, events, context,
 				IsValidMigrationOpEventWithConditions(
 					context,
+					t.Capabilities().Has(servicedef.CapabilityInlineContextAll),
 					opEventMatchers...,
 				),
 			)
@@ -781,11 +786,78 @@ func itHandlesMigrationEventsForMissingFlags(t *ldtest.T) {
 				t, events, context,
 				IsValidMigrationOpEventWithConditions(
 					context,
+					t.Capabilities().Has(servicedef.CapabilityInlineContextAll),
 					opEventMatchers...,
 				),
 			)
 		})
 	}
+}
+
+func itRedactsAnonymousContextAttributes(t *ldtest.T) {
+	t.RequireCapability(servicedef.CapabilityAnonymousRedaction)
+	successfulHandler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
+
+	// Variation index does not matter for this test.
+	client, events := createClient(t, 0)
+
+	service := mockld.NewMigrationCallbackService(requireContext(t).harness, t.DebugLogger(), successfulHandler, successfulHandler)
+	t.Defer(service.Close)
+
+	context := ldcontext.NewBuilder("user-key").
+		Anonymous(true).
+		Name("Example name").
+		SetString("setup", "Why do programmers always confused Halloween and Christmas?").
+		SetString("punchline", "Because OCT 31 = DEC 25").
+		Build()
+
+	params := servicedef.MigrationOperationParams{
+		Key:                "missing-key",
+		Context:            context,
+		DefaultStage:       ldmigration.Off,
+		ReadExecutionOrder: ldmigration.Concurrent,
+		OldEndpoint:        service.OldEndpoint().BaseURL(),
+		NewEndpoint:        service.NewEndpoint().BaseURL(),
+		Operation:          ldmigration.Read,
+		TrackErrors:        true,
+	}
+
+	_ = client.MigrationOperation(t, params)
+	client.FlushEvents(t)
+
+	opEventMatchers := []m.Matcher{
+		m.JSONOptProperty("samplingRatio").Should(m.BeNil()),
+		m.JSONProperty("operation").Should(m.Equal(string(ldmigration.Read))),
+		m.JSONProperty("evaluation").Should(
+			m.AllOf(
+				m.JSONProperty("key").Should(m.Equal("missing-key")),
+				m.JSONProperty("default").Should(m.Equal(string(ldmigration.Off))),
+				m.JSONProperty("value").Should(m.Equal(string(ldmigration.Off))),
+				m.JSONOptProperty("variation").Should(m.BeNil()),
+				m.JSONOptProperty("version").Should(m.BeNil()),
+				m.JSONProperty("reason").Should(m.AllOf(
+					m.JSONProperty("kind").Should(m.Equal("ERROR")),
+					m.JSONProperty("errorKind").Should(m.Equal("FLAG_NOT_FOUND")),
+				)),
+			),
+		),
+		m.JSONProperty("measurements").Should(m.Length().Should(m.Equal(1))),
+	}
+
+	expectedContext := ldcontext.NewBuilderFromContext(context).
+		SetValue("name", ldvalue.Null()).
+		SetValue("setup", ldvalue.Null()).
+		SetValue("punchline", ldvalue.Null()).
+		Build()
+
+	expectEvents(
+		t, events, context,
+		IsValidMigrationOpEventWithConditions(
+			expectedContext,
+			t.Capabilities().Has(servicedef.CapabilityInlineContextAll),
+			opEventMatchers...,
+		),
+	)
 }
 
 func itHandlesNonMigrationFlags(t *ldtest.T) {
@@ -858,6 +930,7 @@ func itHandlesNonMigrationFlags(t *ldtest.T) {
 				t, events, context,
 				IsValidMigrationOpEventWithConditions(
 					context,
+					t.Capabilities().Has(servicedef.CapabilityInlineContextAll),
 					opEventMatchers...,
 				),
 			)
@@ -1036,6 +1109,7 @@ func tracksConsistencyCorrectlyBasedOnStage(t *ldtest.T, order ldmigration.Execu
 				t, events, context,
 				IsValidMigrationOpEventWithConditions(
 					context,
+					t.Capabilities().Has(servicedef.CapabilityInlineContextAll),
 					opEventMatchers...,
 				),
 			)
@@ -1111,6 +1185,7 @@ func tracksConsistencyIsDisabledByCheckRatio(t *ldtest.T, order ldmigration.Exec
 				t, events, context,
 				IsValidMigrationOpEventWithConditions(
 					context,
+					t.Capabilities().Has(servicedef.CapabilityInlineContextAll),
 					opEventMatchers...,
 				),
 			)
@@ -1186,6 +1261,7 @@ func tracksConsistencyIsDisabledIfCallbackFails(t *ldtest.T, order ldmigration.E
 				t, events, context,
 				IsValidMigrationOpEventWithConditions(
 					context,
+					t.Capabilities().Has(servicedef.CapabilityInlineContextAll),
 					opEventMatchers...,
 				),
 			)

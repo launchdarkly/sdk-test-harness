@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	StreamingPathServerSide         = "/all"
+	StreamingPathServerSide         = "/sdk/stream"
 	StreamingPathMobileGet          = "/meval/{context}"
 	StreamingPathMobileReport       = "/meval"
 	StreamingPathRokuHandshake      = "/handshake"

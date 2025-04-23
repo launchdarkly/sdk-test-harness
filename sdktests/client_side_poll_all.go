@@ -27,6 +27,10 @@ func doClientSidePollRequestTest(t *ldtest.T) {
 		pollTests.InitialRequestIncludesCorrectEtag(t)
 	}
 
+	if t.Capabilities().Has(servicedef.CapabilityHTTPProxy) {
+		pollTests.RequestViaHTTPProxy(t)
+	}
+
 	requestPathMatcher := func(method flagRequestMethod) m.Matcher {
 		switch sdkKind {
 		case mockld.RokuSDK:

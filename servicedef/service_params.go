@@ -35,6 +35,8 @@ const (
 	CapabilityOptionalEventGzip           = "optional-event-gzip"
 	CapabilityETagCaching                 = "etag-caching"
 	CapabilityInlineContext               = "inline-context"
+	CapabilityInlineContextAll            = "inline-context-all"
+	CapabilityInstanceID                  = "instance-id"
 	CapabilityAnonymousRedaction          = "anonymous-redaction"
 	CapabilityPollingGzip                 = "polling-gzip"
 	CapabilityEvaluationHooks             = "evaluation-hooks"
@@ -42,6 +44,7 @@ const (
 	CapabilityPersistentDataStoreRedis    = "persistent-data-store-redis"
 	CapabilityPersistentDataStoreConsul   = "persistent-data-store-consul"
 	CapabilityPersistentDataStoreDynamoDB = "persistent-data-store-dynamodb"
+	CapabilityClientPerContextSummaries   = "client-per-context-summaries"
 
 	// CapabilityTLSVerifyPeer means the SDK is capable of establishing a TLS session and verifying
 	// its peer. This is generally a standard capability of all SDKs.

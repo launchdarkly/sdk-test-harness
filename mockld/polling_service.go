@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	PollingPathServerSide     = "/sdk/latest-all"
+	PollingPathServerSide = "/sdk/poll"
+
 	PollingPathMobileGet      = "/msdk/evalx/contexts/{context}"
 	PollingPathMobileReport   = "/msdk/evalx/context"
 	PollingPathJSClientGet    = "/sdk/evalx/{env}/contexts/{context}"

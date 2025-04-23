@@ -175,7 +175,7 @@ func inferDefaultFromFlag(sdkData mockld.SDKData, flagKey string) ldvalue.Value 
 func makeCharactersNotInAllowedCharsetString(allowed string) []rune {
 	var badChars []rune
 	badChars = append(badChars, '\t', '\n', '\r') // don't bother including every control character
-	for ch := 32; ch <= 127; ch++ {
+	for ch := 33; ch <= 127; ch++ {
 		if strings.ContainsRune(allowed, rune(ch)) {
 			continue
 		}

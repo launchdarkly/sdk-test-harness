@@ -1,6 +1,7 @@
 package sdktests
 
 import (
+	"net/url"
 	"strings"
 	"time"
 
@@ -117,5 +118,44 @@ func (c CommonEventTests) UniquePayloadIDs(t *ldtest.T) {
 			}
 			seenIDs[id] = true
 		}
+	})
+}
+
+func (c CommonEventTests) HTTPProxy(t *ldtest.T) {
+	t.Run("http proxy", func(t *ldtest.T) {
+		events := NewSDKEventSink(t)
+
+		// The idea here is that we'll configure the SDK's service endpoints with an arbitrary host, but with the
+		// correct path that the test harness expects (like /endpoints/1). Then, we'll inject the actual test harness's
+		// endpoint via the HTTP Proxy configuration.
+		//
+		// The SDK should therefore:
+		// 1. Open a socket to the test harness's host and port
+		// 2. Send an HTTP request that has the arbitrary host and the correct path
+		//
+		// If the SDK didn't support proxying, then it would attempt to connect to the arbitrary host and
+		// the harness should fail the connection assertion.
+		eventURI := strings.Replace(events.Endpoint().BaseURL(), "localhost", "not.valid.local", 1)
+
+		u, err := url.Parse(events.Endpoint().BaseURL())
+		if err != nil {
+			t.Errorf("unexpected error parsing URL: %s", err)
+			t.FailNow()
+		}
+		u.Path = ""
+
+		dataSystem := NewSDKDataSystem(t, nil)
+
+		client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem, events, WithEventsConfig(
+			servicedef.SDKConfigEventParams{
+				BaseURI: eventURI,
+			}), c.withHTTPProxy(u.String()))...)
+
+		c.sendArbitraryEvent(t, client)
+		client.FlushEvents(t)
+
+		request := events.Endpoint().RequireConnection(t, time.Second)
+
+		m.In(t).For("request method").Assert(request.Method, m.Equal("POST"))
 	})
 }

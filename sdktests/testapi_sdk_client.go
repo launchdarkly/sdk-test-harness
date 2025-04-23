@@ -143,9 +143,9 @@ type SDKClient struct {
 // components such as SDKDataSource implement this interface so that they can insert the appropriate
 // base URIs into the configuration, so a common pattern is:
 //
-//	dataSource := NewSDKDataSource(t, ...)
+//	dataSystem := NewSDKDataSystem(t, ...)
 //	eventSink := NewSDKEventSink(t, ...)
-//	client := NewSDKClient(t, dataSource, eventSink)
+//	client := NewSDKClient(t, dataSystem, eventSink)
 //
 // Since the client will attempt to connect to its data source and possibly send events as soon as it
 // starts up, the test fixtures must always be created first. You may reuse a previously created data

@@ -325,9 +325,15 @@ func doBigSegmentsMembershipCachingTests(t *ldtest.T) {
 
 	t.Run("context cache expiration (cache time)", func(t *ldtest.T) {
 		bigSegmentStore := NewBigSegmentStore(t, ldreason.BigSegmentsHealthy)
+		cacheTime := ldtime.UnixMillisecondTime(10)
+		if t.Capabilities().Has(servicedef.CapabilityPHP) {
+			// PHP SDKs only support second-level granularity
+			cacheTime = ldtime.UnixMillisecondTime(1_000)
+		}
+
 		client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
 			BigSegments: o.Some(servicedef.SDKConfigBigSegmentsParams{
-				UserCacheTimeMS: o.Some(ldtime.UnixMillisecondTime(10)),
+				UserCacheTimeMS: o.Some(cacheTime),
 			}),
 		}), dataSystem, bigSegmentStore)
 
@@ -401,29 +407,32 @@ func doBigSegmentsMembershipCachingTests(t *ldtest.T) {
 func doBigSegmentsStatusPollingTests(t *ldtest.T) {
 	dataSystem := NewSDKDataSystem(t, mockld.EmptyServerSDKData())
 
-	t.Run("polling can be set to a short interval", func(t *ldtest.T) {
-		bigSegmentStore := NewBigSegmentStore(t, ldreason.BigSegmentsHealthy)
+	// PHP SDKs only support second-level granularity
+	if !t.Capabilities().Has(servicedef.CapabilityPHP) {
+		t.Run("polling can be set to a short interval", func(t *ldtest.T) {
+			bigSegmentStore := NewBigSegmentStore(t, ldreason.BigSegmentsHealthy)
 
-		_ = NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
-			BigSegments: o.Some(servicedef.SDKConfigBigSegmentsParams{
-				StatusPollIntervalMS: o.Some(ldtime.UnixMillisecondTime(10)),
-			}),
-		}), dataSystem, bigSegmentStore)
+			_ = NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
+				BigSegments: o.Some(servicedef.SDKConfigBigSegmentsParams{
+					StatusPollIntervalMS: o.Some(ldtime.UnixMillisecondTime(10)),
+				}),
+			}), dataSystem, bigSegmentStore)
 
-		for i := 0; i < 3; i++ {
-			// Using a long timeout here just so we're not sensitive to random fluctuations in host speed.
-			// We don't really care if it's greater than the configured interval, as long as it's nowhere
-			// near the default interval of 5 seconds.
-			bigSegmentStore.ExpectMetadataQuery(t, time.Millisecond*500)
-		}
-	})
+			for i := 0; i < 3; i++ {
+				// Using a long timeout here just so we're not sensitive to random fluctuations in host speed.
+				// We don't really care if it's greater than the configured interval, as long as it's nowhere
+				// near the default interval of 5 seconds.
+				bigSegmentStore.ExpectMetadataQuery(t, time.Millisecond*500)
+			}
+		})
+	}
 
 	t.Run("polling can be set to a long interval", func(t *ldtest.T) {
 		bigSegmentStore := NewBigSegmentStore(t, ldreason.BigSegmentsHealthy)
 
 		client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
 			BigSegments: o.Some(servicedef.SDKConfigBigSegmentsParams{
-				StatusPollIntervalMS: o.Some(ldtime.UnixMillisecondTime(10000)),
+				StatusPollIntervalMS: o.Some(ldtime.UnixMillisecondTime(10_000)),
 			}),
 		}), dataSystem, bigSegmentStore)
 
@@ -438,9 +447,15 @@ func doBigSegmentsStatusPollingTests(t *ldtest.T) {
 		t.Run(fmt.Sprintf("polling detects change from %s to %s", oldStatus, newStatus), func(t *ldtest.T) {
 			bigSegmentStore := NewBigSegmentStore(t, oldStatus)
 
+			statusPollInterval := ldtime.UnixMillisecondTime(10)
+			if t.Capabilities().Has(servicedef.CapabilityPHP) {
+				// PHP SDKs only support second-level granularity
+				statusPollInterval = ldtime.UnixMillisecondTime(1_000)
+			}
+
 			client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
 				BigSegments: o.Some(servicedef.SDKConfigBigSegmentsParams{
-					StatusPollIntervalMS: o.Some(ldtime.UnixMillisecondTime(10)),
+					StatusPollIntervalMS: o.Some(statusPollInterval),
 				}),
 			}), dataSystem, bigSegmentStore)
 
@@ -474,32 +489,34 @@ func doBigSegmentsStatusPollingTests(t *ldtest.T) {
 	doStatusChangeTest(ldreason.BigSegmentsHealthy, ldreason.BigSegmentsStale)
 	doStatusChangeTest(ldreason.BigSegmentsStale, ldreason.BigSegmentsHealthy)
 
-	t.Run("multiple evaluations don't cause another status poll before next interval", func(t *ldtest.T) {
-		segment := ldbuilders.NewSegmentBuilder("segment-key").Version(1).
-			Included(bigSegmentsContext.Key()). // regular include list should be ignored if unbounded=true
-			Unbounded(true).Generation(100).Build()
-		flag := makeFlagToCheckSegmentMatch("flag-key", segment.Key, ldvalue.Bool(false), ldvalue.Bool(true))
-		data := mockld.NewServerSDKDataBuilder().Flag(flag).Segment(segment).Build()
+	if !t.Capabilities().Has(servicedef.CapabilityPHP) {
+		t.Run("multiple evaluations don't cause another status poll before next interval", func(t *ldtest.T) {
+			segment := ldbuilders.NewSegmentBuilder("segment-key").Version(1).
+				Included(bigSegmentsContext.Key()). // regular include list should be ignored if unbounded=true
+				Unbounded(true).Generation(100).Build()
+			flag := makeFlagToCheckSegmentMatch("flag-key", segment.Key, ldvalue.Bool(false), ldvalue.Bool(true))
+			data := mockld.NewServerSDKDataBuilder().Flag(flag).Segment(segment).Build()
 
-		dataSystem := NewSDKDataSystem(t, data)
-		bigSegmentStore := NewBigSegmentStore(t, ldreason.BigSegmentsHealthy)
+			dataSystem := NewSDKDataSystem(t, data)
+			bigSegmentStore := NewBigSegmentStore(t, ldreason.BigSegmentsHealthy)
 
-		client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
-			BigSegments: o.Some(servicedef.SDKConfigBigSegmentsParams{
-				StatusPollIntervalMS: o.Some(ldtime.UnixMillisecondTime(10000)),
-			}),
-		}), dataSystem, bigSegmentStore)
+			client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
+				BigSegments: o.Some(servicedef.SDKConfigBigSegmentsParams{
+					StatusPollIntervalMS: o.Some(ldtime.UnixMillisecondTime(10_000)),
+				}),
+			}), dataSystem, bigSegmentStore)
 
-		initialStatus := client.GetBigSegmentStoreStatus(t)
-		require.Equal(t, servicedef.BigSegmentStoreStatusResponse{Available: true, Stale: false}, initialStatus)
-		bigSegmentStore.ExpectMetadataQuery(t, time.Millisecond*500)
+			initialStatus := client.GetBigSegmentStoreStatus(t)
+			require.Equal(t, servicedef.BigSegmentStoreStatusResponse{Available: true, Stale: false}, initialStatus)
+			bigSegmentStore.ExpectMetadataQuery(t, time.Millisecond*500)
 
-		for i := 0; i < 10; i++ {
-			basicEvaluateFlag(t, client, flag.Key, ldcontext.New(fmt.Sprintf("user-%d", i)), ldvalue.Null())
-		}
+			for i := 0; i < 10; i++ {
+				basicEvaluateFlag(t, client, flag.Key, ldcontext.New(fmt.Sprintf("user-%d", i)), ldvalue.Null())
+			}
 
-		bigSegmentStore.ExpectNoMoreMetadataQueries(t, time.Millisecond*50)
-	})
+			bigSegmentStore.ExpectNoMoreMetadataQueries(t, time.Millisecond*50)
+		})
+	}
 }
 
 func doBigSegmentsErrorHandlingTests(t *ldtest.T) {
