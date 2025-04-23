@@ -31,7 +31,7 @@ As with `testing.T`, the test logic can signal any number of failures that accum
 
 The `sdktests` package includes facades for the SDK test service that actually runs the SDK, and for the test fixtures that simulate LaunchDarkly services. The typical way for tests to use these is as follows:
 
-1. Set up a test harness endpoint for providing SDK data, with `NewSDKDataSource`.
+1. Set up a test harness endpoint for providing SDK data, with `NewSDKDataSystem`.
 2. If the test will need to validate event output, set up a test harness endpoint that will receive events, with `NewSDKEventSink`.
 3. Tell the test service to start the SDK, with `NewSDKClient`. This takes the objects created in steps 1 and 2 as parameters, so that it can pass the URLs of those test endpoints to the SDK.
 4. Perform some operations on the object returned by `NewSDKClient`, such as evaluating flags.

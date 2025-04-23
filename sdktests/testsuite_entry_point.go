@@ -87,6 +87,9 @@ func doAllServerSideTests(t *ldtest.T) {
 	t.Run("big segments", doServerSideBigSegmentsTests)
 	t.Run("service endpoints", doServerSideServiceEndpointsTests)
 	t.Run("tags", doServerSideTagsTests)
+	t.Run("instance id", func(t *ldtest.T) {
+		NewCommonInstanceIDTests(t, "doServerSideInstanceIdTests").Run(t)
+	})
 	t.Run("secure mode hash", doServerSideSecureModeHashTests)
 	t.Run("context type", doSDKContextTypeTests)
 	t.Run("migrations", doServerSideMigrationTests)
@@ -101,6 +104,9 @@ func doAllClientSideTests(t *ldtest.T) {
 	t.Run("streaming", doClientSideStreamTests)
 	t.Run("polling", doClientSidePollTests)
 	t.Run("tags", doClientSideTagsTests)
+	t.Run("instance id", func(t *ldtest.T) {
+		NewCommonInstanceIDTests(t, "doClientSideInstanceIdTests").Run(t)
+	})
 	t.Run("context type", doSDKContextTypeTests)
 	t.Run("autoEnvAttributes", doClientSideAutoEnvAttributesTests)
 	t.Run("client independence", doClientSideClientIndependenceTests)
@@ -114,6 +120,10 @@ func doAllPHPTests(t *ldtest.T) {
 	t.Run("context type", doSDKContextTypeTests)
 	t.Run("secure mode hash", doServerSideSecureModeHashTests)
 	t.Run("migrations", doServerSideMigrationTests)
+	t.Run("big segments", doServerSideBigSegmentsTests)
+	t.Run("instance id", func(t *ldtest.T) {
+		NewCommonInstanceIDTests(t, "doPHPInstanceIdTests").RunPHP(t)
+	})
 }
 
 func allImportantServerSideCapabilities() framework.Capabilities {

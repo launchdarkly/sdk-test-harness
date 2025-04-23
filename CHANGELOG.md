@@ -2,6 +2,77 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.30.2](https://github.com/launchdarkly/sdk-test-harness/compare/v2.30.1...v2.30.2) (2025-04-15)
+
+
+### Bug Fixes
+
+* Adjust application tag tests to consider auto env capability ([#292](https://github.com/launchdarkly/sdk-test-harness/issues/292)) ([faab725](https://github.com/launchdarkly/sdk-test-harness/commit/faab725f00d393ece15572f74bc66c3205d48af0))
+
+## [2.30.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.30.0...v2.30.1) (2025-03-21)
+
+
+### Bug Fixes
+
+* Fix generation of `tags` capability tests ([#290](https://github.com/launchdarkly/sdk-test-harness/issues/290)) ([9046560](https://github.com/launchdarkly/sdk-test-harness/commit/90465605267fff8b6d5e24187e62236db759d59c))
+
+## [2.30.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.29.3...v2.30.0) (2025-03-20)
+
+
+### Features
+
+* Add `instance-id` capability to ensure headers are set ([#287](https://github.com/launchdarkly/sdk-test-harness/issues/287)) ([a889661](https://github.com/launchdarkly/sdk-test-harness/commit/a889661caae870f22365947474500f6912edc1b4))
+
+## [2.29.3](https://github.com/launchdarkly/sdk-test-harness/compare/v2.29.2...v2.29.3) (2025-03-18)
+
+
+### Bug Fixes
+
+* Add missing capability guard to custom event test ([#285](https://github.com/launchdarkly/sdk-test-harness/issues/285)) ([8464e9f](https://github.com/launchdarkly/sdk-test-harness/commit/8464e9ffd0f93920a13cc8181967097277d12491))
+
+## [2.29.2](https://github.com/launchdarkly/sdk-test-harness/compare/v2.29.1...v2.29.2) (2025-03-18)
+
+
+### Bug Fixes
+
+* Add missing capability guard to custom event test ([#283](https://github.com/launchdarkly/sdk-test-harness/issues/283)) ([8fcb395](https://github.com/launchdarkly/sdk-test-harness/commit/8fcb395efec927ab6fd5972b57e3ac00110f75cf))
+
+## [2.29.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.29.0...v2.29.1) (2025-03-13)
+
+
+### Bug Fixes
+
+* Replace custom event redaction test with appropriate capability ([#281](https://github.com/launchdarkly/sdk-test-harness/issues/281)) ([ce976cd](https://github.com/launchdarkly/sdk-test-harness/commit/ce976cda29a40ca0708a919f325e275c59b75441))
+
+## [2.29.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.28.0...v2.29.0) (2025-03-13)
+
+
+### Features
+
+* Inline context for custom and migration op events ([#278](https://github.com/launchdarkly/sdk-test-harness/issues/278)) ([c5d13d1](https://github.com/launchdarkly/sdk-test-harness/commit/c5d13d1633cac4ea26cdd06d1306330ca7461d5c))
+
+## [2.28.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.27.0...v2.28.0) (2025-01-15)
+
+
+### Features
+
+* Expand big segment support to PHP ([#276](https://github.com/launchdarkly/sdk-test-harness/issues/276)) ([0f4591a](https://github.com/launchdarkly/sdk-test-harness/commit/0f4591abc22dac807fd6de9f96c0fb959bb14614))
+
+## [2.27.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.26.0...v2.27.0) (2024-11-19)
+
+
+### Features
+
+* add http proxy test for client-side events ([#265](https://github.com/launchdarkly/sdk-test-harness/issues/265)) ([dfec55f](https://github.com/launchdarkly/sdk-test-harness/commit/dfec55fda44142fd16f5755fcc098e78fad15a1c))
+* add http proxy test for client-side polling ([#264](https://github.com/launchdarkly/sdk-test-harness/issues/264)) ([1ef3bc2](https://github.com/launchdarkly/sdk-test-harness/commit/1ef3bc261d1de20cf9a2e13789a4865a12d4c2f3))
+
+## [2.26.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.25.1...v2.26.0) (2024-11-18)
+
+
+### Features
+
+* add streaming mode http proxy test ([#258](https://github.com/launchdarkly/sdk-test-harness/issues/258)) ([b4e149e](https://github.com/launchdarkly/sdk-test-harness/commit/b4e149e1b5beca3c2bdb9b996678277c540bde23))
+
 ## [2.25.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.25.0...v2.25.1) (2024-11-06)
 
 

@@ -2,6 +2,7 @@ package sdktests
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -402,5 +403,40 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 				_ = client.Close()
 			}
 		})
+	})
+}
+
+func (c CommonPollingTests) RequestViaHTTPProxy(t *ldtest.T) {
+	t.Run("http proxy", func(t *ldtest.T) {
+		dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
+
+		// The idea here is that we'll configure the SDK's service endpoints with an arbitrary host, but with the
+		// correct path that the test harness expects (like /endpoints/1). Then, we'll inject the actual test harness's
+		// endpoint via the HTTP Proxy configuration.
+		//
+		// The SDK should therefore:
+		// 1. Open a socket to the test harness's host and port
+		// 2. Send an HTTP request that has the arbitrary host and the correct path
+		//
+		// If the SDK didn't support proxying, then it would attempt to connect to the arbitrary host and
+		// the harness should fail the connection assertion.
+		pollURI := strings.Replace(dataSystem.PrimarySync().Endpoint().BaseURL(), "localhost", "not.valid.local", 1)
+
+		u, err := url.Parse(dataSystem.PrimarySync().Endpoint().BaseURL())
+		if err != nil {
+			t.Errorf("unexpected error parsing URL: %s", err)
+			t.FailNow()
+		}
+		u.Path = ""
+
+		_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
+			WithPrimaryPollingSynchronizer(servicedef.SDKConfigPollingParams{
+				BaseURI: pollURI,
+			}),
+			c.withHTTPProxy(u.String()),
+		)...)
+
+		_, err = dataSystem.PrimarySync().Endpoint().AwaitConnection(time.Second)
+		assert.NoError(t, err)
 	})
 }

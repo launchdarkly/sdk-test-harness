@@ -96,7 +96,17 @@ This means that the SDK supports event sampling; the SDK can limit the number of
 
 #### Capability `"inline-context"`
 
-v4 of the event schema originally required a `contextKeys` property on all feature events. This event format was later broadened to accept either `contextKeys` or `contexts`. It is preferred that SDKs send over the `context` value. Opting into this capability will ensure the appropriate property is set.
+v4 of the event schema originally required a `contextKeys` property on all feature events. This event format was later broadened to accept either `contextKeys` or `contexts`. It is preferred that SDKs send over the `contexts` value. Opting into this capability will ensure the appropriate property is set.
+
+#### Capability `"inline-context-all"`
+
+v4 of the event schema originally required a `contextKeys` property on several different types of events. This event format was later broadened to accept either `contextKeys` or `contexts`. It is preferred that SDKs send over the `contexts` value. Opting into this capability will ensure the `context` property is used for all events.
+
+This capability is a superset of `"inline-context"`, as it was introduced afterwards.
+
+#### Capability `"instance-id"`
+
+Supports sending the `X-LaunchDarkly-Instance-Id` header in HTTP requests.
 
 #### Capability `"migrations"`
 
@@ -236,6 +246,10 @@ This indicates the SDK is capable of configuring an HTTP proxy for its network r
 
 All requests should be sent to the proxy. This is generally implemented in an SDK via standard networking
 library capabilities, such as setting an environment variable (like `http_proxy`) or a configuration option.
+
+### Capability `"client-per-context-summaries`
+
+This indicates that a client-side SDK will emit a summary event per identified context which has evaluated flags.
 
 ### Stop test service: `DELETE /`
 
