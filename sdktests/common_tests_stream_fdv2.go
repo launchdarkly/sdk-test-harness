@@ -10,10 +10,12 @@ import (
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,6 +27,11 @@ var (
 	newInitialValue = ldvalue.String("new initial value") //nolint:gochecknoglobals
 
 	defaultValue = ldvalue.String("default value") //nolint:gochecknoglobals
+
+	// When we're asserting "there are no more connections", we should use a timeout that isn't too
+	// long because that *will* make successful tests run slow, but long enough that we have a
+	// reasonable chance of detecting an inappropriate retry that happened promptly.
+	noMoreConnectionsTimeout = time.Millisecond * 100
 )
 
 func (c CommonStreamingTests) FDv2(t *ldtest.T) {
@@ -38,6 +45,7 @@ func (c CommonStreamingTests) FDv2(t *ldtest.T) {
 	t.Run("can discard partial events on errors", c.CanDiscardPartialEventsOnError)
 	t.Run("can discard full events on errors", c.CanDiscardFullEventsOnError)
 	t.Run("disconnects on goodbye", c.DisconnectsOnGoodbye)
+	t.Run("fallback to FDv1 handling", c.FallbackFromFDv2ToFDv1)
 }
 
 func (c CommonStreamingTests) StateTransitions(t *ldtest.T) {
@@ -122,6 +130,28 @@ func (c CommonStreamingTests) InitializeFromTwoPollingInitializers(t *ldtest.T) 
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": updatedValue}
 	validatePayloadReceived(t, dataSystem.PrimarySync().Endpoint(), client, "expected-state", expectedEvaluations)
+}
+
+func (c CommonStreamingTests) FallbackFromFDv2ToFDv1(t *ldtest.T) {
+	handler, channel := httphelpers.RecordingHandler(httphelpers.HandlerWithResponse(403, http.Header{"X-LD-FD-Fallback": []string{"true"}}, nil))
+	endpoint := requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
+		harness.MockEndpointDescription("streaming service"))
+	t.Defer(endpoint.Close)
+
+	_ = NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{InitCanFail: true}), WithPrimaryStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+		BaseURI: endpoint.BaseURL(),
+	}), WithSecondaryPollingSynchronizer(servicedef.SDKConfigPollingParams{
+		BaseURI: endpoint.BaseURL(),
+	}))
+
+	endpoint.AwaitConnection(time.Second * 5)
+	<-channel
+
+	endpoint.AwaitConnection(time.Second * 5)
+	resp2 := <-channel
+	assert.Equal(t, resp2.Request.URL.Path, "/sdk/latest-all")
+
+	endpoint.RequireNoMoreConnections(t, noMoreConnectionsTimeout)
 }
 
 func (c CommonStreamingTests) SavesPreviouslyKnownState(t *ldtest.T) {
