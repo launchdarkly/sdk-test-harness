@@ -128,7 +128,8 @@ func (c CommonStreamingTests) InitializeFromTwoPollingInitializers(t *ldtest.T) 
 }
 
 func (c CommonStreamingTests) FallbackFromFDv2ToFDv1(t *ldtest.T) {
-	handler, channel := httphelpers.RecordingHandler(httphelpers.HandlerWithResponse(403, http.Header{"X-LD-FD-Fallback": []string{"true"}}, nil))
+	handler, channel := httphelpers.RecordingHandler(httphelpers.HandlerWithResponse(
+		403, http.Header{"X-LD-FD-Fallback": []string{"true"}}, nil))
 	endpoint := requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
 		harness.MockEndpointDescription("streaming service"))
 	t.Defer(endpoint.Close)
