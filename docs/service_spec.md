@@ -200,6 +200,23 @@ A test hook must:
       * `stage` (string, optional): If executing a stage, for example `beforeEvaluation`, this should be the stage.
   - Return data from the stages as specified via the `data` configuration. For instance the return value from the `beforeEvaluation` hook should be `data['beforeEvaluation']` merged with the input data for the stage.
 
+#### Capability `"track-hooks"`
+
+This means that the SDK has support for hooks and has the ability to register track hooks.
+
+For a test service to support hooks testing it must support a `test-hook`. The configuration will specify registering one or more `test-hooks`.
+
+A test hook must:
+  - Implement the SDK hook interface.
+  - Whenever an evaluation stage is called POST information about that call to the `callbackUrl` of the hook.
+  - The POST should not take place if the hook was configured to return/throw an error for that stage (`errors` object in the configuration).
+    - The payload is an object with the following properties:
+      * `trackSeriesContext` (object, optional): If a track stage was executed, then this should be the associated context.
+        * `key` (string, required): The key for the event being tracked.
+        * `context` (object, required): The context associated with the track operation.
+        * `data` (any): The data associated with the track operation.
+        * `metricValue` (number, optional): The metric value associated with the track operation.
+      * `stage` (string, optional): If executing a stage, for example `afterTrack`, this should be the stage.
 
 #### Capability `"tls:verify-peer"`
 

@@ -193,18 +193,29 @@ type HookStage string
 const (
 	BeforeEvaluation HookStage = "beforeEvaluation"
 	AfterEvaluation  HookStage = "afterEvaluation"
+	AfterTrack       HookStage = "afterTrack"
 )
 
 type EvaluationSeriesContext struct {
-	FlagKey      string            `json:"flagKey"`
-	Context      ldcontext.Context `json:"context"`
-	DefaultValue ldvalue.Value     `json:"defaultValue"`
-	Method       string            `json:"method"`
+	FlagKey       string            `json:"flagKey"`
+	Context       ldcontext.Context `json:"context"`
+	DefaultValue  ldvalue.Value     `json:"defaultValue"`
+	Method        string            `json:"method"`
+	EnvironmentID o.Maybe[string]   `json:"environmentId"`
+}
+
+type TrackSeriesContext struct {
+	Context       ldcontext.Context      `json:"context"`
+	Key           string                 `json:"key"`
+	MetricValue   o.Maybe[float64]       `json:"metricValue"`
+	Data          o.Maybe[ldvalue.Value] `json:"data"`
+	EnvironmentID o.Maybe[string]        `json:"environmentId"`
 }
 
 type HookExecutionPayload struct {
 	EvaluationSeriesContext o.Maybe[EvaluationSeriesContext]  `json:"evaluationSeriesContext"`
 	EvaluationSeriesData    o.Maybe[map[string]ldvalue.Value] `json:"evaluationSeriesData"`
 	EvaluationDetail        o.Maybe[EvaluateFlagResponse]     `json:"evaluationDetail"`
+	TrackSeriesContext      o.Maybe[TrackSeriesContext]       `json:"trackSeriesContext"`
 	Stage                   o.Maybe[HookStage]                `json:"stage"`
 }
