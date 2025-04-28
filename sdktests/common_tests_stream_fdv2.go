@@ -9,10 +9,12 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 
 	"github.com/stretchr/testify/assert"
@@ -135,7 +137,10 @@ func (c CommonStreamingTests) FallbackFromFDv2ToFDv1(t *ldtest.T) {
 	t.Defer(endpoint.Close)
 
 	_ = NewSDKClient(t,
-		WithConfig(servicedef.SDKConfigParams{InitCanFail: true}),
+		WithConfig(servicedef.SDKConfigParams{
+			InitCanFail:     true,
+			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(1)),
+		}),
 		WithPrimaryStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 			BaseURI: endpoint.BaseURL(),
 		}),
