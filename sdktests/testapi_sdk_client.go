@@ -100,12 +100,11 @@ func WithPayloadFilter(filter environmentFilter) SDKConfigurer {
 func WithPrimaryPollingSynchronizer(pollingConfig servicedef.SDKConfigPollingParams) SDKConfigurer {
 	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
 		dataSystem := configOut.DataSystem.OrElse(servicedef.DataSystem{})
-		dataSystem.Synchronizers = o.Some(servicedef.Synchronizers{
-			Primary: servicedef.Synchronizer{
-				Polling: o.Some(pollingConfig),
-			},
-		})
-
+		synchronizers := dataSystem.Synchronizers.OrElse(servicedef.Synchronizers{})
+		synchronizers.Primary = servicedef.Synchronizer{
+			Polling: o.Some(pollingConfig),
+		}
+		dataSystem.Synchronizers = o.Some(synchronizers)
 		configOut.DataSystem = o.Some(dataSystem)
 		return nil
 	})
@@ -115,12 +114,37 @@ func WithPrimaryPollingSynchronizer(pollingConfig servicedef.SDKConfigPollingPar
 func WithPrimaryStreamingSynchronizer(streamingConfig servicedef.SDKConfigStreamingParams) SDKConfigurer {
 	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
 		dataSystem := configOut.DataSystem.OrElse(servicedef.DataSystem{})
-		dataSystem.Synchronizers = o.Some(servicedef.Synchronizers{
-			Primary: servicedef.Synchronizer{
-				Streaming: o.Some(streamingConfig),
-			},
-		})
+		synchronizers := dataSystem.Synchronizers.OrElse(servicedef.Synchronizers{})
+		synchronizers.Primary = servicedef.Synchronizer{
+			Streaming: o.Some(streamingConfig),
+		}
+		dataSystem.Synchronizers = o.Some(synchronizers)
+		configOut.DataSystem = o.Some(dataSystem)
+		return nil
+	})
+}
 
+func WithSecondaryPollingSynchronizer(pollingConfig servicedef.SDKConfigPollingParams) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		dataSystem := configOut.DataSystem.OrElse(servicedef.DataSystem{})
+		synchronizers := dataSystem.Synchronizers.OrElse(servicedef.Synchronizers{})
+		synchronizers.Secondary = o.Some(servicedef.Synchronizer{
+			Polling: o.Some(pollingConfig),
+		})
+		dataSystem.Synchronizers = o.Some(synchronizers)
+		configOut.DataSystem = o.Some(dataSystem)
+		return nil
+	})
+}
+
+func WithSecondaryStreamingSynchronizer(streamingConfig servicedef.SDKConfigStreamingParams) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		dataSystem := configOut.DataSystem.OrElse(servicedef.DataSystem{})
+		synchronizers := dataSystem.Synchronizers.OrElse(servicedef.Synchronizers{})
+		synchronizers.Secondary = o.Some(servicedef.Synchronizer{
+			Streaming: o.Some(streamingConfig),
+		})
+		dataSystem.Synchronizers = o.Some(synchronizers)
 		configOut.DataSystem = o.Some(dataSystem)
 		return nil
 	})

@@ -9,11 +9,15 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,6 +42,7 @@ func (c CommonStreamingTests) FDv2(t *ldtest.T) {
 	t.Run("can discard partial events on errors", c.CanDiscardPartialEventsOnError)
 	t.Run("can discard full events on errors", c.CanDiscardFullEventsOnError)
 	t.Run("disconnects on goodbye", c.DisconnectsOnGoodbye)
+	t.Run("fallback to FDv1 handling", c.FallbackFromFDv2ToFDv1)
 }
 
 func (c CommonStreamingTests) StateTransitions(t *ldtest.T) {
@@ -122,6 +127,35 @@ func (c CommonStreamingTests) InitializeFromTwoPollingInitializers(t *ldtest.T) 
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": updatedValue}
 	validatePayloadReceived(t, dataSystem.PrimarySync().Endpoint(), client, "expected-state", expectedEvaluations)
+}
+
+func (c CommonStreamingTests) FallbackFromFDv2ToFDv1(t *ldtest.T) {
+	handler, channel := httphelpers.RecordingHandler(httphelpers.HandlerWithResponse(
+		403, http.Header{"X-LD-FD-Fallback": []string{"true"}}, nil))
+	endpoint := requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
+		harness.MockEndpointDescription("streaming service"))
+	t.Defer(endpoint.Close)
+
+	_ = NewSDKClient(t,
+		WithConfig(servicedef.SDKConfigParams{
+			InitCanFail:     true,
+			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(1)),
+		}),
+		WithPrimaryStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+			BaseURI: endpoint.BaseURL(),
+		}),
+		WithSecondaryPollingSynchronizer(servicedef.SDKConfigPollingParams{
+			BaseURI: endpoint.BaseURL(),
+		}))
+
+	_, _ = endpoint.AwaitConnection(time.Second * 5)
+	<-channel
+
+	_, _ = endpoint.AwaitConnection(time.Second * 5)
+	resp2 := <-channel
+	assert.Equal(t, resp2.Request.URL.Path, "/sdk/latest-all")
+
+	endpoint.RequireNoMoreConnections(t, time.Millisecond*100)
 }
 
 func (c CommonStreamingTests) SavesPreviouslyKnownState(t *ldtest.T) {
