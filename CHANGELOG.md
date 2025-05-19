@@ -2,6 +2,34 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.32.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.31.0...v2.32.0) (2025-04-25)
+
+
+### Features
+
+* Add `track-hooks` capability ([#299](https://github.com/launchdarkly/sdk-test-harness/issues/299)) ([dfd6ed6](https://github.com/launchdarkly/sdk-test-harness/commit/dfd6ed6f7bf197692660025262ef18d3fbdfccf0))
+
+## [2.31.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.30.2...v2.31.0) (2025-04-22)
+
+
+### Features
+
+* Add support for client-side per-context summary events. ([#294](https://github.com/launchdarkly/sdk-test-harness/issues/294)) ([0a225b3](https://github.com/launchdarkly/sdk-test-harness/commit/0a225b36c7082a87aeab04a5d207fc555df1c14a))
+
+## [2.30.2](https://github.com/launchdarkly/sdk-test-harness/compare/v2.30.1...v2.30.2) (2025-04-15)
+
+
+### Bug Fixes
+
+* Adjust application tag tests to consider auto env capability ([#292](https://github.com/launchdarkly/sdk-test-harness/issues/292)) ([faab725](https://github.com/launchdarkly/sdk-test-harness/commit/faab725f00d393ece15572f74bc66c3205d48af0))
+
+## [2.30.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.30.0...v2.30.1) (2025-03-21)
+
+
+### Bug Fixes
+
+* Fix generation of `tags` capability tests ([#290](https://github.com/launchdarkly/sdk-test-harness/issues/290)) ([9046560](https://github.com/launchdarkly/sdk-test-harness/commit/90465605267fff8b6d5e24187e62236db759d59c))
+
 ## [2.30.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.29.3...v2.30.0) (2025-03-20)
 
 
