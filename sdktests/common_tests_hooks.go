@@ -20,6 +20,11 @@ import (
 )
 
 func doCommonHooksTests(t *ldtest.T) {
+	t.Run("evaluation", doEvaluationSeriesTests)
+	t.Run("track", doTrackSeriesTests)
+}
+
+func doEvaluationSeriesTests(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityEvaluationHooks)
 	t.Run("executes beforeEvaluation stage", executesBeforeEvaluationStage)
 	t.Run("executes afterEvaluation stage", executesAfterEvaluationStage)
@@ -28,6 +33,12 @@ func doCommonHooksTests(t *ldtest.T) {
 	t.Run("data propagates from before to after", beforeEvaluationDataPropagatesToAfter)
 	t.RequireCapability(servicedef.CapabilityMigrations)
 	t.Run("data propagates from before to after for migrations", beforeEvaluationDataPropagatesToAfterMigration)
+}
+
+func doTrackSeriesTests(t *ldtest.T) {
+	t.RequireCapability(servicedef.CapabilityTrackHooks)
+	t.Run("executes afterTrack stage", executesAfterTrackStage)
+	t.Run("a hook error prevents afterTrack stage", errorInHookPreventsAfterTrackStage)
 }
 
 func executesBeforeEvaluationStage(t *ldtest.T) {
@@ -94,6 +105,47 @@ func variationTestParams(detail bool) []VariationParameters {
 			defaultValue: ldvalue.ObjectBuild().Build(),
 			valueType:    servicedef.ValueTypeAny,
 			detail:       detail,
+		},
+	}
+}
+
+type TrackParameters struct {
+	Name string
+	servicedef.CustomEventParams
+}
+
+func trackTestParams(context o.Maybe[ldcontext.Context]) []TrackParameters {
+	return []TrackParameters{{
+		Name: "no metricValue and no data",
+		CustomEventParams: servicedef.CustomEventParams{
+			EventKey: "custom-event-1",
+			Context:  context,
+		},
+	},
+		{
+			Name: "metricValue and no data",
+			CustomEventParams: servicedef.CustomEventParams{
+				EventKey:    "custom-event-2",
+				Context:     context,
+				MetricValue: o.Some(11111.00),
+			},
+		},
+		{
+			Name: "no metricValue and data",
+			CustomEventParams: servicedef.CustomEventParams{
+				EventKey: "custom-event-3",
+				Context:  context,
+				Data:     ldvalue.ObjectBuild().SetBool("boolData", true).SetString("stringData", "value").Build(),
+			},
+		},
+		{
+			Name: "metricValue and data",
+			CustomEventParams: servicedef.CustomEventParams{
+				EventKey:    "custom-event-4",
+				Context:     context,
+				MetricValue: o.Some(11111.00),
+				Data:        ldvalue.ObjectBuild().SetBool("boolData", true).SetString("stringData", "value").Build(),
+			},
 		},
 	}
 }
@@ -359,6 +411,65 @@ func errorInBeforeStageDoesNotAffectAfterStage(t *ldtest.T) {
 		assert.Equal(t, 0, len(call.EvaluationSeriesData.Value()), "HOOKS:1.3.7.1: Since "+
 			"beforeEvaluation should have failed, the data passed to afterEvaluation should be empty")
 	}
+}
+
+func executesAfterTrackStage(t *ldtest.T) {
+	hookName := "executesAfterTrackStage"
+	context := ldcontext.New("user-key")
+	flagContext := o.Some(context)
+	configurers := []SDKConfigurer{}
+
+	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
+		configurers = append(configurers, WithClientSideInitialContext(context))
+		flagContext = o.None[ldcontext.Context]()
+	}
+
+	client, hooks := createClientForHooks(t, []string{hookName}, nil, configurers...)
+	defer hooks.Close()
+
+	testParams := trackTestParams(flagContext)
+
+	for _, testParam := range testParams {
+		t.Run(testParam.Name, func(t *ldtest.T) {
+			client.SendCustomEvent(t, testParam.CustomEventParams)
+
+			hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
+				if payload.Stage.Value() == servicedef.AfterTrack {
+					hookContext := payload.TrackSeriesContext.Value()
+					assert.Equal(t, testParam.EventKey, hookContext.Key)
+					assert.Equal(t, context, hookContext.Context)
+					assert.Equal(t, testParam.MetricValue, hookContext.MetricValue)
+					assert.Equal(t, testParam.Data, hookContext.Data.Value())
+					return true
+				}
+				return false
+			})
+		})
+	}
+}
+
+func errorInHookPreventsAfterTrackStage(t *ldtest.T) {
+	hookName := "doesNotExecuteAfterTrackStage"
+	context := ldcontext.New("user-key")
+	flagContext := o.Some(context)
+	configurers := []SDKConfigurer{}
+
+	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
+		configurers = append(configurers, WithClientSideInitialContext(context))
+		flagContext = o.None[ldcontext.Context]()
+	}
+
+	client, hooks := createClientForHooksWithErrors(t, []string{hookName}, nil, map[servicedef.HookStage]o.Maybe[string]{
+		servicedef.AfterTrack: o.Some("something went wrong"),
+	}, configurers...)
+	defer hooks.Close()
+
+	client.SendCustomEvent(t, servicedef.CustomEventParams{
+		EventKey: "custom-event",
+		Context:  flagContext,
+	})
+	client.FlushEvents(t)
+	hooks.ExpectNoCall(t, hookName)
 }
 
 func createClientForHooks(t *ldtest.T, instances []string,

@@ -72,6 +72,7 @@ func doServerSideSummaryEventBasicTest(t *ldtest.T) {
 		IsIndexEvent(),
 		IsIndexEvent(),
 		IsValidSummaryEventWithFlags(
+			false,
 			m.KV(flag1.Key, m.MapOf(
 				m.KV("default", m.JSONEqual(default1)),
 				m.KV("counters", m.ItemsInAnyOrder(
@@ -142,6 +143,7 @@ func flagIsExcludedFromSummaries(t *ldtest.T) {
 		IsIndexEvent(),
 		IsIndexEvent(),
 		IsValidSummaryEventWithFlags(
+			false,
 			m.KV(flag2.Key, m.MapOf(
 				m.KV("default", m.JSONEqual(default2)),
 				m.KV("counters", m.ItemsInAnyOrder(
@@ -185,6 +187,7 @@ func flagPreqIsExcludedFromSummaries(t *ldtest.T) {
 	m.In(t).Assert(payload, m.ItemsInAnyOrder(
 		IsIndexEvent(),
 		IsValidSummaryEventWithFlags(
+			false,
 			m.KV(flag2.Key, m.MapOf(
 				m.KV("default", m.JSONEqual(false)),
 				m.KV("counters", m.ItemsInAnyOrder(
@@ -248,6 +251,7 @@ func doServerSideSummaryEventContextKindsTest(t *ldtest.T) {
 		IsIndexEvent(),
 		IsIndexEvent(),
 		IsValidSummaryEventWithFlags(
+			false,
 			m.KV(flag1.Key, m.MapOf(
 				m.KV("default", m.Not(m.BeNil())),
 				m.KV("counters", m.JSONArray().Should(m.Not(m.BeNil()))),
@@ -285,6 +289,7 @@ func doServerSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 	m.In(t).Assert(payload, m.ItemsInAnyOrder(
 		IsIndexEventForContext(context),
 		IsValidSummaryEventWithFlags(
+			false,
 			m.KV(unknownKey, m.MapOf(
 				m.KV("default", m.JSONEqual(default1)),
 				m.KV("counters", m.ItemsInAnyOrder(
@@ -331,6 +336,7 @@ func doServerSideSummaryEventResetTest(t *ldtest.T) {
 		IsIndexEvent(),
 		IsIndexEvent(),
 		IsValidSummaryEventWithFlags(
+			false,
 			m.KV(flag.Key, m.MapOf(
 				m.KV("default", m.JSONEqual(defaultValue)),
 				m.KV("counters", m.ItemsInAnyOrder(
@@ -353,6 +359,7 @@ func doServerSideSummaryEventResetTest(t *ldtest.T) {
 
 	m.In(t).Assert(payload2, m.Items(
 		IsValidSummaryEventWithFlags(
+			false,
 			m.KV(flag.Key, m.MapOf(
 				m.KV("default", m.JSONEqual(defaultValue)),
 				m.KV("counters", m.ItemsInAnyOrder(
@@ -405,6 +412,7 @@ func doServerSideSummaryEventPrerequisitesTest(t *ldtest.T) {
 	m.In(t).Assert(payload, m.ItemsInAnyOrder(
 		IsIndexEvent(),
 		IsValidSummaryEventWithFlags(
+			false,
 			m.KV(flag1.Key, m.MapOf(
 				m.KV("default", m.JSONEqual(defaultValue)),
 				m.KV("counters", m.Items(
@@ -466,6 +474,7 @@ func doServerSideSummaryEventVersionTest(t *ldtest.T) {
 	m.In(t).Assert(payload, m.ItemsInAnyOrder(
 		IsIndexEvent(),
 		IsValidSummaryEventWithFlags(
+			false,
 			m.KV(flagKey, m.MapOf(
 				m.KV("default", m.JSONEqual(defaultValue)),
 				m.KV("counters", m.ItemsInAnyOrder(
