@@ -117,7 +117,6 @@ func (d ClientSDKData) ConvertToFDv2SDKClientData(t *ldtest.T) FDv2SDKData {
 	payloadObjects := make([]framework.BaseObject, 0)
 
 	for key, item := range d {
-
 		json, err := json.Marshal(item)
 		if err != nil {
 			panic(err)
