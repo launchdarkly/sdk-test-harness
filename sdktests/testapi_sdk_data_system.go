@@ -271,12 +271,9 @@ func NewSDKDataSystemWithoutEndpoints(
 	case mockld.ServerSDKData:
 		data = v.ConvertToFDv2SDKData(t)
 	case mockld.ClientSDKData:
-		data = v.ConvertToFDv2SDKClientData(t)
-	case mockld.FDv2SDKData:
-		// no-op, can use FDv2 data as is
-		break
+		data = v.ConvertToFDv2SDKClientData(t, "initial")
 	default:
-		panic("NewSDKDataSystemWithoutEndpoints called with unknown data type")
+		// no-op, for other data types
 	}
 
 	var config sdkDataSystemConfig

@@ -113,7 +113,7 @@ func (d ServerSDKData) ConvertToFDv2SDKData(t *ldtest.T) FDv2SDKData {
 // This does not include flag or segment configurations, but only flag evaluation results for a specific user.
 type ClientSDKData map[string]ClientSDKFlag
 
-func (d ClientSDKData) ConvertToFDv2SDKClientData(t *ldtest.T) FDv2SDKData {
+func (d ClientSDKData) ConvertToFDv2SDKClientData(t *ldtest.T, state string) FDv2SDKData {
 	payloadObjects := make([]framework.BaseObject, 0)
 
 	for key, item := range d {
@@ -124,7 +124,7 @@ func (d ClientSDKData) ConvertToFDv2SDKClientData(t *ldtest.T) FDv2SDKData {
 
 		payloadObjects = append(payloadObjects, framework.BaseObject{
 			Kind:    "flag",
-			Version: 1,
+			Version: item.Version,
 			Key:     key,
 			Object:  json,
 		})
@@ -133,7 +133,7 @@ func (d ClientSDKData) ConvertToFDv2SDKClientData(t *ldtest.T) FDv2SDKData {
 	return FDv2SDKData{
 		intentCode:   "xfer-full",
 		intentReason: "initial",
-		state:        "initial",
+		state:        state,
 		events:       payloadObjects,
 	}
 }
