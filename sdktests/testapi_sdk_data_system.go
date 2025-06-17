@@ -267,8 +267,13 @@ func NewSDKDataSystemWithoutEndpoints(
 		data = mockld.EmptyData(sdkKind)
 	}
 
-	if d, ok := data.(mockld.ServerSDKData); ok {
-		data = d.ConvertToFDv2SDKData(t)
+	switch v := data.(type) {
+	case mockld.ServerSDKData:
+		data = v.ConvertToFDv2SDKData(t)
+	case mockld.ClientSDKData:
+		data = v.ConvertToFDv2SDKClientData(t, "initial")
+	default:
+		// no-op, for other data types
 	}
 
 	var config sdkDataSystemConfig

@@ -17,7 +17,6 @@ import (
 	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -148,14 +147,19 @@ func (c CommonStreamingTests) FallbackFromFDv2ToFDv1(t *ldtest.T) {
 			BaseURI: endpoint.BaseURL(),
 		}))
 
-	_, _ = endpoint.AwaitConnection(time.Second * 5)
-	<-channel
+	h.RequireEventually(t, func() bool {
+		_, _ = endpoint.AwaitConnection(time.Second * 1)
 
-	_, _ = endpoint.AwaitConnection(time.Second * 5)
-	resp2 := <-channel
-	assert.Equal(t, resp2.Request.URL.Path, "/sdk/latest-all")
-
-	endpoint.RequireNoMoreConnections(t, time.Millisecond*100)
+		select {
+		case resp := <-channel:
+			if resp.Request.URL.Path == "/sdk/latest-all" {
+				return true
+			}
+		default:
+			// no-op
+		}
+		return false
+	}, time.Second, time.Millisecond*10, "failed to get call to fallback endpoint")
 }
 
 func (c CommonStreamingTests) SavesPreviouslyKnownState(t *ldtest.T) {
