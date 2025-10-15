@@ -18,7 +18,6 @@ import (
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func (c CommonStreamingTests) Updates(t *ldtest.T) {
@@ -84,10 +83,10 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 				if shouldApply {
 					pollUntilFlagValueUpdated(t, client, flagKey, context, valueBefore, expectedValueIfUpdated, defaultValue)
 				} else {
-					require.Never(
+					h.RequireNever(
 						t,
 						checkForUpdatedValue(t, client, flagKey, context, valueBefore, expectedValueIfUpdated, defaultValue),
-						time.Millisecond*100,
+						time.Millisecond*200,
 						time.Millisecond*20,
 						"flag value was updated, but it should not have been",
 					)
@@ -141,7 +140,7 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 					if shouldApply {
 						pollUntilFlagValueUpdated(t, client, flagKey, context, valueBefore, valueAfter, defaultValue)
 					} else {
-						require.Never(
+						h.RequireNever(
 							t,
 							checkForUpdatedValue(t, client, flagKey, context, valueBefore, expectedValueIfUpdated, defaultValue),
 							time.Millisecond*100,
@@ -208,7 +207,7 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 					// A delete for an unknown segment should be persisted by the SDK so it knows this version was
 					// deleted. A subsequent update for the same segment with an equal or lower version should be ignored.
 					stream.StreamingService().PushUpdate("segments", segmentKey, jsonhelpers.ToJSON(segment))
-					require.Never(
+					h.RequireNever(
 						t,
 						checkForUpdatedValue(t, client, flagKey, context, valueBefore, valueAfter, defaultValue),
 						time.Millisecond*100,
