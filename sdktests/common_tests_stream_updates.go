@@ -86,7 +86,7 @@ func (c CommonStreamingTests) Updates(t *ldtest.T) {
 					h.RequireNever(
 						t,
 						checkForUpdatedValue(t, client, flagKey, context, valueBefore, expectedValueIfUpdated, defaultValue),
-						time.Millisecond*200,
+						time.Millisecond*100,
 						time.Millisecond*20,
 						"flag value was updated, but it should not have been",
 					)
