@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.32.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.32.0...v2.32.1) (2025-10-17)
+
+
+### Bug Fixes
+
+* Only use h.RequireNever, not require.Never. ([#305](https://github.com/launchdarkly/sdk-test-harness/issues/305)) ([8b95fa5](https://github.com/launchdarkly/sdk-test-harness/commit/8b95fa5d446417d6cb2c159a7ecf628a68645832))
+
 ## [2.32.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.31.0...v2.32.0) (2025-04-25)
 
 
