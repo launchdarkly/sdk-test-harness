@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.33.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.32.1...v2.33.0) (2025-10-31)
+
+
+### Features
+
+* Add test count summary to display total and skipped tests ([#307](https://github.com/launchdarkly/sdk-test-harness/issues/307)) ([7662be6](https://github.com/launchdarkly/sdk-test-harness/commit/7662be6e1ccf7102f1478a8a912dfcad740246f1))
+
 ## [2.32.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.32.0...v2.32.1) (2025-10-17)
 
 
