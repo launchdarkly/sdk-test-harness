@@ -79,10 +79,17 @@ func run(params commandParams) (*ldtest.Results, error) {
 		}}
 	}
 
-	results := sdktests.RunSDKTestSuite(harness, params.filters, testLogger)
+	countingLogger := ldtest.NewCountingTestLogger(testLogger)
+	testLogger = countingLogger
+
+	results := sdktests.RunSDKTestSuite(harness, params.filters, countingLogger)
 
 	fmt.Println()
 	logErr := testLogger.EndLog(results)
+
+	total, skipped := countingLogger.GetCounts()
+	fmt.Printf("Test Summary: %d total, %d skipped, %d ran\n", total, skipped, total-skipped)
+	fmt.Println()
 
 	if params.stopServiceAtEnd {
 		fmt.Println("Stopping test service")
