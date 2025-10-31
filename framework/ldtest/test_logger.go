@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
@@ -42,6 +43,51 @@ type ConsoleTestLogger struct {
 
 type MultiTestLogger struct {
 	Loggers []TestLogger
+}
+
+type CountingTestLogger struct {
+	wrapped      TestLogger
+	totalTests   int
+	skippedTests int
+	mu           sync.Mutex
+}
+
+func NewCountingTestLogger(wrapped TestLogger) *CountingTestLogger {
+	return &CountingTestLogger{
+		wrapped: wrapped,
+	}
+}
+
+func (c *CountingTestLogger) TestStarted(id TestID) {
+	c.mu.Lock()
+	c.totalTests++
+	c.mu.Unlock()
+	c.wrapped.TestStarted(id)
+}
+
+func (c *CountingTestLogger) TestError(id TestID, err error) {
+	c.wrapped.TestError(id, err)
+}
+
+func (c *CountingTestLogger) TestFinished(id TestID, result TestResult, debugOutput framework.CapturedOutput) {
+	c.wrapped.TestFinished(id, result, debugOutput)
+}
+
+func (c *CountingTestLogger) TestSkipped(id TestID, reason string) {
+	c.mu.Lock()
+	c.skippedTests++
+	c.mu.Unlock()
+	c.wrapped.TestSkipped(id, reason)
+}
+
+func (c *CountingTestLogger) EndLog(results Results) error {
+	return c.wrapped.EndLog(results)
+}
+
+func (c *CountingTestLogger) GetCounts() (total, skipped int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.totalTests, c.skippedTests
 }
 
 func (c ConsoleTestLogger) TestStarted(id TestID) {
