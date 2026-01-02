@@ -65,7 +65,7 @@ func (c CommonStreamingTests) InitializeFromEmptyState(t *ldtest.T) {
 
 func (c CommonStreamingTests) InitializeFromPollingInitializer(t *ldtest.T) {
 	dataBefore := mockld.NewServerSDKDataBuilder().Flag(c.makeServerSideFlag("flag-key", 1, initialValue)).Build()
-	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("xfer-none").IntentReason("up-to-date").Build()
+	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("none").IntentReason("up-to-date").Build()
 	dataSystem := NewSDKDataSystem(t, dataAfter, DataSystemOptionPollingInitializer(dataBefore))
 
 	client := NewSDKClient(t, dataSystem)
@@ -164,7 +164,7 @@ func (c CommonStreamingTests) FallbackFromFDv2ToFDv1(t *ldtest.T) {
 
 func (c CommonStreamingTests) SavesPreviouslyKnownState(t *ldtest.T) {
 	dataBefore := c.makeSDKDataWithFlag(1, initialValue)
-	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("xfer-none").IntentReason("up-to-date").Build()
+	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("none").IntentReason("up-to-date").Build()
 	streamEndpoint, _ := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
 	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
@@ -377,7 +377,7 @@ func (c CommonStreamingTests) CanDiscardFullEventsOnError(t *ldtest.T) {
 
 func (c CommonStreamingTests) DisconnectsOnGoodbye(t *ldtest.T) {
 	dataBefore := c.makeSDKDataWithFlag(1, initialValue)
-	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("xfer-none").IntentReason("up-to-date").Build()
+	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("none").IntentReason("up-to-date").Build()
 	streamEndpoint, dataSystems := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
 	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
