@@ -381,13 +381,13 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 					closeWhenReady := make(chan bool)
 					endpoint := blockingEndpoint(closeWhenReady, dataSystem.PrimarySync().streaming)
 
+					require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
+					require.NoError(t, s.persistentStore.Write(s.defaultPrefix, persistenceInitedKey, "1"))
+
 					client := NewSDKClient(t,
 						persistence,
 						WithWaitToStart(time.Millisecond, true),
 						WithPrimaryStreamingSynchronizer(baseStreamConfig(endpoint)))
-
-					require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
-					require.NoError(t, s.persistentStore.Write(s.defaultPrefix, persistenceInitedKey, "1"))
 
 					response := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 						FlagKey:      "flag-key",
