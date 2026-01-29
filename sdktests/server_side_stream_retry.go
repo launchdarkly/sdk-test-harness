@@ -123,8 +123,8 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 	shouldRetryAfterErrorOnInitialConnect := func(t *ldtest.T, errorHandler http.Handler) {
 		dataSystem := NewSDKDataSystemWithoutEndpoints(t, dataV1)
 		handler := httphelpers.SequentialHandler(
-			errorHandler,                       // first request gets the error
-			errorHandler,                       // second request also gets the error
+			errorHandler,                          // first request gets the error
+			errorHandler,                          // second request also gets the error
 			dataSystem.Synchronizers[0].streaming, // third request succeeds and gets the stream
 		)
 		streamEndpoint := makeStreamEndpoint(t, handler)
@@ -159,8 +159,8 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 
 		handler := httphelpers.SequentialHandler(
 			dataSystem1.Synchronizers[0].streaming, // first request gets the first stream data
-			errorHandler,                        // second request gets the error
-			errorHandler,                        // third request also gets the error
+			errorHandler,                           // second request gets the error
+			errorHandler,                           // third request also gets the error
 			dataSystem2.Synchronizers[0].streaming, // fourth request gets the second stream data
 		)
 		streamEndpoint := makeStreamEndpoint(t, handler)
