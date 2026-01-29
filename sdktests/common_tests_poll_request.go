@@ -133,7 +133,7 @@ func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagReq
 								_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 									c.withFlagRequestMethod(method),
 									WithPayloadFilter(filter),
-									WithPrimaryPollingSynchronizer(servicedef.SDKConfigPollingParams{
+									WithPollingSynchronizer(servicedef.SDKConfigPollingParams{
 										BaseURI: pollURI,
 									}),
 								)...)
@@ -430,7 +430,7 @@ func (c CommonPollingTests) RequestViaHTTPProxy(t *ldtest.T) {
 		u.Path = ""
 
 		_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
-			WithPrimaryPollingSynchronizer(servicedef.SDKConfigPollingParams{
+			WithPollingSynchronizer(servicedef.SDKConfigPollingParams{
 				BaseURI: pollURI,
 			}),
 			c.withHTTPProxy(u.String()),

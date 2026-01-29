@@ -47,29 +47,19 @@ func DataSystemOptionStreaming() SDKDataSystemOption {
 type SDKDataSystem struct {
 	t             *ldtest.T
 	Initializers  []DataInitializer
-	Synchronizers *Synchronizers
+	Synchronizers []DataSynchronizer
 }
 
 func (s *SDKDataSystem) AddDataInitializer(initializer DataInitializer) {
 	s.Initializers = append(s.Initializers, initializer)
 }
 
-func (s *SDKDataSystem) SetPrimarySynchronizer(synchronizer Synchronizer) {
-	if s.Synchronizers == nil {
-		s.Synchronizers = &Synchronizers{}
-	}
-	s.Synchronizers.primary = synchronizer
+func (s *SDKDataSystem) AddDataSynchronizer(synchronizer DataSynchronizer) {
+	s.Synchronizers = append(s.Synchronizers, synchronizer)
 }
 
-func (s *SDKDataSystem) SetSecondarySynchronizer(synchronizer Synchronizer) {
-	if s.Synchronizers == nil {
-		s.Synchronizers = &Synchronizers{}
-	}
-	s.Synchronizers.secondary = &synchronizer
-}
-
-func (s *SDKDataSystem) PrimarySync() *Synchronizer {
-	return &s.Synchronizers.primary
+func (s *SDKDataSystem) PrimarySync() *DataSynchronizer {
+	return &s.Synchronizers[0]
 }
 
 // Configure updates the SDK client configuration for NewSDKClient, causing the SDK
@@ -78,7 +68,7 @@ func (s *SDKDataSystem) PrimarySync() *Synchronizer {
 // created as a handler to be used in a separately configured endpoint, you have to set the
 // base URI in the test logic rather than using this shortcut.
 func (s *SDKDataSystem) Configure(config *servicedef.SDKConfigParams) error {
-	if len(s.Initializers) == 0 && s.Synchronizers == nil {
+	if len(s.Initializers) == 0 && len(s.Synchronizers) == 0 {
 		return errors.New("tried to use an SDKDataSystem with no initializers or synchronizers")
 	}
 
@@ -109,71 +99,39 @@ func (s *SDKDataSystem) Configure(config *servicedef.SDKConfigParams) error {
 		dataSystem.Initializers = initializers
 	}
 
-	if s.Synchronizers != nil {
-		synchronizers := dataSystem.Synchronizers.OrElse(servicedef.Synchronizers{})
-		if s.PrimarySync().streaming != nil {
-			streaming := synchronizers.Primary.Streaming.Value()
+	if len(s.Synchronizers) > 0 {
+		synchronizers := make([]servicedef.DataSynchronizer, len(s.Synchronizers))
 
-			if s.PrimarySync().endpoint == nil {
-				s.PrimarySync().endpoint =
-					requireContext(s.t).harness.NewMockEndpoint(
-						s.PrimarySync().streaming,
-						s.t.DebugLogger(),
-						harness.MockEndpointDescription("streaming initializer"))
-				s.t.Defer(s.PrimarySync().endpoint.Close)
-			}
-			streaming.BaseURI = s.PrimarySync().endpoint.BaseURL()
-			synchronizers.Primary.Streaming = o.Some(streaming)
-		} else if s.PrimarySync().polling != nil {
-			polling := synchronizers.Primary.Polling.Value()
-
-			if s.PrimarySync().endpoint == nil {
-				s.PrimarySync().endpoint =
-					requireContext(s.t).harness.NewMockEndpoint(
-						s.PrimarySync().polling,
-						s.t.DebugLogger(),
-						harness.MockEndpointDescription("polling initializer"))
-				s.t.Defer(s.PrimarySync().endpoint.Close)
-			}
-			polling.BaseURI = s.PrimarySync().endpoint.BaseURL()
-			synchronizers.Primary.Polling = o.Some(polling)
-		}
-
-		if s.Synchronizers.secondary != nil {
-			if s.Synchronizers.secondary.streaming != nil {
-				secondary := synchronizers.Secondary.Value()
-				streaming := synchronizers.Secondary.Value().Streaming.Value()
-
-				if s.Synchronizers.secondary.endpoint == nil {
-					s.Synchronizers.secondary.endpoint =
+		for i := range s.Synchronizers {
+			sync := &s.Synchronizers[i]
+			if sync.streaming != nil {
+				if sync.endpoint == nil {
+					sync.endpoint =
 						requireContext(s.t).harness.NewMockEndpoint(
-							s.Synchronizers.secondary.streaming,
+							sync.streaming,
 							s.t.DebugLogger(),
 							harness.MockEndpointDescription("streaming synchronizer"))
-					s.t.Defer(s.Synchronizers.secondary.endpoint.Close)
+					s.t.Defer(sync.endpoint.Close)
 				}
-
-				secondary.Streaming = o.Some(streaming)
-				synchronizers.Secondary = o.Some(secondary)
-			} else if s.Synchronizers.secondary.polling != nil {
-				secondary := synchronizers.Secondary.Value()
-				polling := synchronizers.Secondary.Value().Polling.Value()
-
-				if s.Synchronizers.secondary.endpoint == nil {
-					s.Synchronizers.secondary.endpoint =
+				synchronizers[i].Streaming = o.Some(servicedef.SDKConfigStreamingParams{
+					BaseURI: sync.endpoint.BaseURL(),
+				})
+			} else if sync.polling != nil {
+				if sync.endpoint == nil {
+					sync.endpoint =
 						requireContext(s.t).harness.NewMockEndpoint(
-							s.Synchronizers.secondary.polling,
+							sync.polling,
 							s.t.DebugLogger(),
 							harness.MockEndpointDescription("polling synchronizer"))
-					s.t.Defer(s.Synchronizers.secondary.endpoint.Close)
+					s.t.Defer(sync.endpoint.Close)
 				}
-
-				secondary.Polling = o.Some(polling)
-				synchronizers.Secondary = o.Some(secondary)
+				synchronizers[i].Polling = o.Some(servicedef.SDKConfigPollingParams{
+					BaseURI: sync.endpoint.BaseURL(),
+				})
 			}
 		}
 
-		dataSystem.Synchronizers = o.Some(synchronizers)
+		dataSystem.Synchronizers = synchronizers
 	}
 
 	config.DataSystem = o.Some(dataSystem)
@@ -188,18 +146,13 @@ type DataInitializer struct {
 
 func (d *DataInitializer) Endpoint() *harness.MockEndpoint { return d.endpoint }
 
-type Synchronizers struct {
-	primary   Synchronizer
-	secondary *Synchronizer
-}
-
-type Synchronizer struct {
+type DataSynchronizer struct {
 	streaming *mockld.StreamingService
 	polling   *mockld.PollingService
 	endpoint  *harness.MockEndpoint
 }
 
-func (d *Synchronizer) Endpoint() *harness.MockEndpoint { return d.endpoint }
+func (d *DataSynchronizer) Endpoint() *harness.MockEndpoint { return d.endpoint }
 
 // NewSDKDataSystem creates a new SDKDataSystem with the specified initial data set.
 //
@@ -235,22 +188,12 @@ func NewSDKDataSystem(
 		}
 	}
 
-	if dataSystem.Synchronizers != nil {
-		isPolling := dataSystem.PrimarySync().polling != nil
-		handler := helpers.IfElse[http.Handler](isPolling,
-			dataSystem.PrimarySync().polling, dataSystem.PrimarySync().streaming)
-		dataSystem.PrimarySync().endpoint =
-			requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
-				harness.MockEndpointDescription("streaming service"))
-
-		if dataSystem.Synchronizers.secondary != nil {
-			isPolling := dataSystem.Synchronizers.secondary.polling != nil
-			handler := helpers.IfElse[http.Handler](isPolling,
-				dataSystem.Synchronizers.secondary.polling, dataSystem.Synchronizers.secondary.streaming)
-			dataSystem.Synchronizers.secondary.endpoint =
-				requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
-					harness.MockEndpointDescription("streaming service"))
-		}
+	for i := range dataSystem.Synchronizers {
+		sync := &dataSystem.Synchronizers[i]
+		isPolling := sync.polling != nil
+		handler := helpers.IfElse[http.Handler](isPolling, sync.polling, sync.streaming)
+		sync.endpoint = requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
+			harness.MockEndpointDescription("synchronizer service"))
 	}
 
 	return dataSystem
@@ -291,18 +234,14 @@ func NewSDKDataSystemWithoutEndpoints(
 
 	defaultIsPolling := sdkKind == mockld.JSClientSDK || sdkKind == mockld.PHPSDK
 	if config.polling.Value() || (!config.polling.IsDefined() && defaultIsPolling) {
-		d.Synchronizers = &Synchronizers{
-			primary: Synchronizer{
-				polling: mockld.NewPollingService(data, sdkKind, t.DebugLogger()).
-					WithGzipCompression(t.Capabilities().Has(servicedef.CapabilityPollingGzip)),
-			},
-		}
+		d.AddDataSynchronizer(DataSynchronizer{
+			polling: mockld.NewPollingService(data, sdkKind, t.DebugLogger()).
+				WithGzipCompression(t.Capabilities().Has(servicedef.CapabilityPollingGzip)),
+		})
 	} else {
-		d.Synchronizers = &Synchronizers{
-			primary: Synchronizer{
-				streaming: mockld.NewStreamingService(data, sdkKind, t.DebugLogger()),
-			},
-		}
+		d.AddDataSynchronizer(DataSynchronizer{
+			streaming: mockld.NewStreamingService(data, sdkKind, t.DebugLogger()),
+		})
 	}
 
 	return d

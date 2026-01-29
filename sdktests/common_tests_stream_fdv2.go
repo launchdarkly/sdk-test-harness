@@ -140,10 +140,10 @@ func (c CommonStreamingTests) FallbackFromFDv2ToFDv1(t *ldtest.T) {
 			InitCanFail:     true,
 			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(1)),
 		}),
-		WithPrimaryStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 			BaseURI: endpoint.BaseURL(),
 		}),
-		WithSecondaryPollingSynchronizer(servicedef.SDKConfigPollingParams{
+		WithPollingSynchronizer(servicedef.SDKConfigPollingParams{
 			BaseURI: endpoint.BaseURL(),
 		}))
 
@@ -167,7 +167,7 @@ func (c CommonStreamingTests) SavesPreviouslyKnownState(t *ldtest.T) {
 	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("none").IntentReason("up-to-date").Build()
 	streamEndpoint, _ := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+	client := NewSDKClient(t, WithStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
 	request := validatePayloadReceived(t, streamEndpoint, client, "", expectedEvaluations)
@@ -185,7 +185,7 @@ func (c CommonStreamingTests) ReplacesPreviouslyKnownState(t *ldtest.T) {
 		Build()
 	streamEndpoint, _ := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+	client := NewSDKClient(t, WithStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue, "new-flag-key": defaultValue}
 	request := validatePayloadReceived(t, streamEndpoint, client, "", expectedEvaluations)
@@ -207,7 +207,7 @@ func (c CommonStreamingTests) UpdatesPreviouslyKnownState(t *ldtest.T) {
 		Build()
 	streamEndpoint, _ := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+	client := NewSDKClient(t, WithStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue, "new-flag-key": defaultValue}
 	request := validatePayloadReceived(t, streamEndpoint, client, "", expectedEvaluations)
@@ -380,7 +380,7 @@ func (c CommonStreamingTests) DisconnectsOnGoodbye(t *ldtest.T) {
 	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("none").IntentReason("up-to-date").Build()
 	streamEndpoint, dataSystems := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+	client := NewSDKClient(t, WithStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 
 	conn := streamEndpoint.RequireConnection(t, time.Second)
 

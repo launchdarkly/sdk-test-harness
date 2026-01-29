@@ -328,7 +328,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 					client := NewSDKClient(t,
 						persistence,
 						WithWaitToStart(time.Millisecond, true),
-						WithPrimaryStreamingSynchronizer(baseStreamConfig(endpoint)))
+						WithStreamingSynchronizer(baseStreamConfig(endpoint)))
 
 					require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
 
@@ -387,7 +387,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 					client := NewSDKClient(t,
 						persistence,
 						WithWaitToStart(time.Millisecond, true),
-						WithPrimaryStreamingSynchronizer(baseStreamConfig(endpoint)))
+						WithStreamingSynchronizer(baseStreamConfig(endpoint)))
 
 					response := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 						FlagKey:      "flag-key",
