@@ -120,7 +120,7 @@ func (c CommonWrapperTests) Run(t *ldtest.T) {
 					NewSDKDataSystem(t, nil, DataSystemOptionPolling()))
 			}
 			_ = NewSDKClient(t, configurers...)
-			verifyRequestHeader(t, config, dataSystem.PrimarySync().Endpoint())
+			verifyRequestHeader(t, config, dataSystem.Synchronizers[0].Endpoint())
 		})
 	})
 
@@ -131,7 +131,7 @@ func (c CommonWrapperTests) Run(t *ldtest.T) {
 			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 				withWrapper(config),
 				dataSystem)...)
-			verifyRequestHeader(t, config, dataSystem.PrimarySync().Endpoint())
+			verifyRequestHeader(t, config, dataSystem.Synchronizers[0].Endpoint())
 		})
 	})
 }

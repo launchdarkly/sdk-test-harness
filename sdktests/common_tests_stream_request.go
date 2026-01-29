@@ -33,7 +33,7 @@ func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, credential st
 								transport.configurer,
 							)...)...)
 
-						request := dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
+						request := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
 						m.In(t).For("request method").Assert(request.Method, m.Equal(string(method)))
 						m.In(t).For("request headers").Assert(request.Headers, c.authorizationHeaderMatcher(credential))
 					})
@@ -47,7 +47,7 @@ func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, credential st
 
 			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 
-			_, err := dataSystem.PrimarySync().Endpoint().AwaitConnection(time.Second)
+			_, err := dataSystem.Synchronizers[0].Endpoint().AwaitConnection(time.Second)
 			assert.Errorf(t, err, "expected connection error")
 		})
 	})
@@ -72,7 +72,7 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 							t.Run(string(method), func(t *ldtest.T) {
 								dataSystem, configurers := c.setupDataSystems(t, nil)
 
-								streamURI := strings.TrimSuffix(dataSystem.PrimarySync().Endpoint().BaseURL(), "/")
+								streamURI := strings.TrimSuffix(dataSystem.Synchronizers[0].Endpoint().BaseURL(), "/")
 								if trailingSlash {
 									streamURI += "/"
 								}
@@ -86,7 +86,7 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 										c.withFlagRequestMethod(method),
 									)...)...)
 
-								request := dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
+								request := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
 								m.In(t).For("request path").Assert(request.URL.Path, pathMatcher(method))
 								strict := t.Capabilities().Has(servicedef.CapabilityFilteringStrict)
 								m.In(t).For("filter key").Assert(request.URL.RawQuery, filter.Matcher(strict))
@@ -118,7 +118,7 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 									c.withFlagRequestMethod(method),
 								)...)...)
 
-							request := dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
+							request := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
 
 							var queryMatcher m.Matcher
 							if withReasons.Value() {
@@ -161,7 +161,7 @@ func (c CommonStreamingTests) RequestContextProperties(t *ldtest.T, getPath stri
 								c.withFlagRequestMethod(method),
 							)...)...)
 
-						request := dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
+						request := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
 
 						if method == flagRequestREPORT {
 							m.In(t).For("request body").Assert(request.Body, m.AllOf(
@@ -198,9 +198,9 @@ func (c CommonStreamingTests) RequestViaHTTPProxy(t *ldtest.T) {
 		//
 		// If the SDK didn't support proxying, then it would attempt to connect to the arbitrary host and
 		// the harness should fail the connection assertion.
-		streamURI := strings.Replace(dataSystem.PrimarySync().Endpoint().BaseURL(), "localhost", "not.valid.local", 1)
+		streamURI := strings.Replace(dataSystem.Synchronizers[0].Endpoint().BaseURL(), "localhost", "not.valid.local", 1)
 
-		u, err := url.Parse(dataSystem.PrimarySync().Endpoint().BaseURL())
+		u, err := url.Parse(dataSystem.Synchronizers[0].Endpoint().BaseURL())
 		if err != nil {
 			t.Errorf("unexpected error parsing URL: %s", err)
 			t.FailNow()
@@ -215,7 +215,7 @@ func (c CommonStreamingTests) RequestViaHTTPProxy(t *ldtest.T) {
 				c.withHTTPProxy(u.String()),
 			)...)...)
 
-		_, err = dataSystem.PrimarySync().Endpoint().AwaitConnection(time.Second)
+		_, err = dataSystem.Synchronizers[0].Endpoint().AwaitConnection(time.Second)
 		assert.NoError(t, err)
 	})
 }

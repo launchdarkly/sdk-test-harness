@@ -58,10 +58,6 @@ func (s *SDKDataSystem) AddDataSynchronizer(synchronizer DataSynchronizer) {
 	s.Synchronizers = append(s.Synchronizers, synchronizer)
 }
 
-func (s *SDKDataSystem) PrimarySync() *DataSynchronizer {
-	return &s.Synchronizers[0]
-}
-
 // Configure updates the SDK client configuration for NewSDKClient, causing the SDK
 // to connect to the appropriate base URI for the data source test fixture. This only works if
 // the data source was created along with its own endpoint, with NewSDKDataSystem; if it was

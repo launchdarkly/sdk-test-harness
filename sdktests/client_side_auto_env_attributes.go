@@ -193,7 +193,7 @@ func doClientSideAutoEnvAttributesRequestingNoCollisionsTests(t *ldtest.T) {
 					dataSystem,
 				)...)
 
-				request := dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
+				request := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
 
 				m.In(t).For("request body").Assert(request.Body, m.AllOf(
 					m.JSONProperty("ld_application").Should(m.AllOf(
@@ -225,7 +225,7 @@ func doClientSideAutoEnvAttributesRequestingCollisionsTests(t *ldtest.T) {
 					dataSystem,
 				)...)
 
-				request := dataSystem.PrimarySync().Endpoint().RequireConnection(t, time.Second)
+				request := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
 
 				if context.Multiple() {
 					m.In(t).For("request body").Assert(request.Body, m.AllOf(
@@ -284,7 +284,7 @@ func doClientSideAutoEnvAttributesHeaderTests(t *ldtest.T) {
 				NewSDKDataSystem(t, nil, DataSystemOptionPolling()))
 		}
 		_ = NewSDKClient(t, configurers...)
-		verifyRequestHeader(t, dataSystem.PrimarySync().Endpoint())
+		verifyRequestHeader(t, dataSystem.Synchronizers[0].Endpoint())
 	})
 
 	t.Run("poll requests", func(t *ldtest.T) {
@@ -292,7 +292,7 @@ func doClientSideAutoEnvAttributesHeaderTests(t *ldtest.T) {
 		_ = NewSDKClient(t, base.baseSDKConfigurationPlus(
 			WithClientSideConfig(servicedef.SDKConfigClientSideParams{IncludeEnvironmentAttributes: opt.Some(true)}),
 			dataSystem)...)
-		verifyRequestHeader(t, dataSystem.PrimarySync().Endpoint())
+		verifyRequestHeader(t, dataSystem.Synchronizers[0].Endpoint())
 	})
 
 	t.Run("event posts", func(t *ldtest.T) {

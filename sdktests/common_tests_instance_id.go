@@ -39,14 +39,14 @@ func (c CommonInstanceIDTests) Run(t *ldtest.T) {
 				NewSDKDataSystem(t, nil, DataSystemOptionPolling()))
 		}
 		_ = NewSDKClient(t, configurers...)
-		verifyRequestHeader(t, dataSystem.PrimarySync().Endpoint())
+		verifyRequestHeader(t, dataSystem.Synchronizers[0].Endpoint())
 	})
 
 	if t.Capabilities().HasAny(servicedef.CapabilityClientSide, servicedef.CapabilityServerSidePolling) {
 		t.Run("poll requests", func(t *ldtest.T) {
 			dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem)...)
-			verifyRequestHeader(t, dataSystem.PrimarySync().Endpoint())
+			verifyRequestHeader(t, dataSystem.Synchronizers[0].Endpoint())
 		})
 	}
 
@@ -83,7 +83,7 @@ func (c CommonInstanceIDTests) RunPHP(t *ldtest.T) {
 			Detail:       false,
 		})
 
-		verifyRequestHeader(t, dataSystem.PrimarySync().Endpoint())
+		verifyRequestHeader(t, dataSystem.Synchronizers[0].Endpoint())
 	})
 
 	t.Run("event posts", func(t *ldtest.T) {
