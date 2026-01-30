@@ -157,7 +157,7 @@ func (c CommonStreamingTests) RecoverableFallbackToSecondarySynchronizer(t *ldte
 	client := NewSDKClient(t,
 		WithConfig(servicedef.SDKConfigParams{
 			// Allow initialization to eventually succeed via secondary
-			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(30000)),
+			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(30 * time.Second)),
 		}),
 		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 			BaseURI: hangingEndpoint.BaseURL(),
@@ -212,19 +212,13 @@ func (c CommonStreamingTests) RecoverableFallbackWithRecovery(t *ldtest.T) {
 	// - Third: healthy, serves data
 	// After 5 minutes, SDK should recover back to the first synchronizer.
 
-	// Track which endpoints receive connections
-	firstEndpointConnections := 0
-	firstHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		firstEndpointConnections++
-		if firstEndpointConnections == 1 {
-			// First connection: hang to trigger fallback
-			select {}
-		}
-		// Subsequent connections: serve valid data (recovery)
-		streamingData := c.makeSDKDataWithFlag(2, updatedValue)
-		stream := mockld.NewStreamingService(streamingData, requireContext(t).sdkKind, t.DebugLogger())
-		stream.ServeHTTP(w, r)
+	// First synchronizer: hangs on first connection, serves data on recovery
+	hangingHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {}
 	})
+	recoveryData := c.makeSDKDataWithFlag(2, updatedValue)
+	recoveryStream := mockld.NewStreamingService(recoveryData, requireContext(t).sdkKind, t.DebugLogger())
+	firstHandler := httphelpers.SequentialHandler(hangingHandler, recoveryStream)
 	firstEndpoint := requireContext(t).harness.NewMockEndpoint(firstHandler, t.DebugLogger(),
 		harness.MockEndpointDescription("first streaming service"))
 	t.Defer(firstEndpoint.Close)
@@ -282,10 +276,11 @@ func (c CommonStreamingTests) RecoverableFallbackWithRecovery(t *ldtest.T) {
 	// Wait for recovery period (5 minutes + buffer)
 	time.Sleep(5*time.Minute + 15*time.Second)
 
-	// Verify SDK recovered back to first synchronizer with updated data
+	// Verify SDK recovered back to first synchronizer with updated data.
+	// The sequential handler serves updatedValue only on the second connection,
+	// so receiving it proves the SDK reconnected after recovery.
 	expectedEvaluations = map[string]ldvalue.Value{"flag-key": updatedValue}
 	validatePayloadReceived(t, firstEndpoint, client, "", expectedEvaluations)
-	require.Greater(t, firstEndpointConnections, 1, "SDK should have reconnected to first synchronizer")
 }
 
 func (c CommonStreamingTests) PermanentFallbackWithRecovery(t *ldtest.T) {
@@ -307,19 +302,13 @@ func (c CommonStreamingTests) PermanentFallbackWithRecovery(t *ldtest.T) {
 		harness.MockEndpointDescription("unauthorized streaming service"))
 	t.Defer(firstEndpoint.Close)
 
-	// Track connections to second endpoint
-	secondEndpointConnections := 0
-	secondHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		secondEndpointConnections++
-		if secondEndpointConnections == 1 {
-			// First connection: hang to trigger fallback
-			select {}
-		}
-		// Subsequent connections: serve valid data (recovery)
-		streamingData := c.makeSDKDataWithFlag(2, updatedValue)
-		stream := mockld.NewStreamingService(streamingData, requireContext(t).sdkKind, t.DebugLogger())
-		stream.ServeHTTP(w, r)
+	// Second synchronizer: hangs on first connection, serves data on recovery
+	hangingHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {}
 	})
+	recoveryData := c.makeSDKDataWithFlag(2, updatedValue)
+	recoveryStream := mockld.NewStreamingService(recoveryData, requireContext(t).sdkKind, t.DebugLogger())
+	secondHandler := httphelpers.SequentialHandler(hangingHandler, recoveryStream)
 	secondEndpoint := requireContext(t).harness.NewMockEndpoint(secondHandler, t.DebugLogger(),
 		harness.MockEndpointDescription("second streaming service"))
 	t.Defer(secondEndpoint.Close)
@@ -369,10 +358,11 @@ func (c CommonStreamingTests) PermanentFallbackWithRecovery(t *ldtest.T) {
 	// Wait for recovery period (5 minutes + buffer)
 	time.Sleep(5*time.Minute + 15*time.Second)
 
-	// Verify SDK recovered to second synchronizer (NOT first) with updated data
+	// Verify SDK recovered to second synchronizer (NOT first) with updated data.
+	// The sequential handler serves updatedValue only on the second connection,
+	// so receiving it proves the SDK reconnected after recovery.
 	expectedEvaluations = map[string]ldvalue.Value{"flag-key": updatedValue}
 	validatePayloadReceived(t, secondEndpoint, client, "", expectedEvaluations)
-	require.Greater(t, secondEndpointConnections, 1, "SDK should have reconnected to second synchronizer")
 }
 
 func (c CommonStreamingTests) FallbackFromFDv2ToFDv1(t *ldtest.T) {
