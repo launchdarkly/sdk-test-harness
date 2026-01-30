@@ -262,8 +262,25 @@ func (c CommonStreamingTests) RecoverableFallbackWithRecovery(t *ldtest.T) {
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
 	validatePayloadReceived(t, thirdEndpoint, client, "", expectedEvaluations)
 
+	// Send periodic heartbeats to keep the third stream connection alive
+	// (prevents SSE read timeout from firing before recovery condition is met)
+	stopHeartbeats := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(2 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				thirdStream.PushHeartbeat()
+			case <-stopHeartbeats:
+				return
+			}
+		}
+	}()
+	defer close(stopHeartbeats)
+
 	// Wait for recovery period (5 minutes + buffer)
-	time.Sleep(5*time.Minute + 30*time.Second)
+	time.Sleep(5*time.Minute + 15*time.Second)
 
 	// Verify SDK recovered back to first synchronizer with updated data
 	expectedEvaluations = map[string]ldvalue.Value{"flag-key": updatedValue}
