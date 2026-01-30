@@ -16,6 +16,7 @@ func RunSDKTestSuite(
 	harness *harness.TestHarness,
 	filter ldtest.Filter,
 	testLogger ldtest.TestLogger,
+	enableLongRunningTests bool,
 ) ldtest.Results {
 	capabilities := harness.TestServiceInfo().Capabilities
 	var importantCapabilities framework.Capabilities
@@ -58,9 +59,10 @@ func RunSDKTestSuite(
 	}
 
 	config := ldtest.TestConfiguration{
-		Filter:       filter,
-		Capabilities: harness.TestServiceInfo().Capabilities,
-		TestLogger:   testLogger,
+		Filter:                 filter,
+		Capabilities:           harness.TestServiceInfo().Capabilities,
+		TestLogger:             testLogger,
+		EnableLongRunningTests: enableLongRunningTests,
 		Context: SDKTestContext{
 			harness: harness,
 			sdkKind: sdkKind,

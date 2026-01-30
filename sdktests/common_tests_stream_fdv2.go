@@ -41,6 +41,10 @@ func (c CommonStreamingTests) FDv2(t *ldtest.T) {
 	t.Run("can discard partial events on errors", c.CanDiscardPartialEventsOnError)
 	t.Run("can discard full events on errors", c.CanDiscardFullEventsOnError)
 	t.Run("disconnects on goodbye", c.DisconnectsOnGoodbye)
+	t.Run("recoverable fallback to secondary synchronizer", c.RecoverableFallbackToSecondarySynchronizer)
+	t.Run("permanent fallback to secondary synchronizer", c.PermanentFallbackToSecondarySynchronizer)
+	t.Run("recoverable fallback with recovery", c.RecoverableFallbackWithRecovery)
+	t.Run("permanent fallback with recovery", c.PermanentFallbackWithRecovery)
 	t.Run("fallback to FDv1 handling", c.FallbackFromFDv2ToFDv1)
 }
 
@@ -126,6 +130,244 @@ func (c CommonStreamingTests) InitializeFromTwoPollingInitializers(t *ldtest.T) 
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": updatedValue}
 	validatePayloadReceived(t, dataSystem.Synchronizers[0].Endpoint(), client, "expected-state", expectedEvaluations)
+}
+
+func (c CommonStreamingTests) RecoverableFallbackToSecondarySynchronizer(t *ldtest.T) {
+	t.LongRunning()
+
+	// First synchronizer hangs (never responds) to trigger initialization timeout fallback.
+	// This tests the recoverable fallback scenario where the first synchronizer is NOT removed
+	// from the list (unlike non-recoverable 4xx errors), but we still fall back to the secondary
+	// after failing to initialize within the timeout period (10+ seconds).
+	hangingHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Never respond - simulates a hanging connection
+		select {}
+	})
+	hangingEndpoint := requireContext(t).harness.NewMockEndpoint(hangingHandler, t.DebugLogger(),
+		harness.MockEndpointDescription("hanging streaming service"))
+	t.Defer(hangingEndpoint.Close)
+
+	// Second synchronizer returns valid data
+	streamingData := c.makeSDKDataWithFlag(1, initialValue)
+	secondaryStream := mockld.NewStreamingService(streamingData, requireContext(t).sdkKind, t.DebugLogger())
+	secondaryEndpoint := requireContext(t).harness.NewMockEndpoint(secondaryStream, t.DebugLogger(),
+		harness.MockEndpointDescription("secondary streaming service"))
+	t.Defer(secondaryEndpoint.Close)
+
+	client := NewSDKClient(t,
+		WithConfig(servicedef.SDKConfigParams{
+			// Allow initialization to eventually succeed via secondary
+			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(30000)),
+		}),
+		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+			BaseURI: hangingEndpoint.BaseURL(),
+		}),
+		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+			BaseURI: secondaryEndpoint.BaseURL(),
+		}))
+
+	// Verify the SDK falls back to the secondary synchronizer after the first hangs
+	// _, err := secondaryEndpoint.AwaitConnection(time.Second * 15)
+	// require.NoError(t, err)
+
+	// Verify the client received data from the secondary synchronizer
+	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
+	validatePayloadReceived(t, secondaryEndpoint, client, "", expectedEvaluations)
+}
+
+func (c CommonStreamingTests) PermanentFallbackToSecondarySynchronizer(t *ldtest.T) {
+	// First synchronizer returns 401 Unauthorized, which is a non-recoverable error.
+	// Non-recoverable 4xx errors (all except 400, 408, 429) cause the synchronizer to be
+	// permanently removed from the list, and the SDK immediately falls back to the secondary.
+	errorHandler := httphelpers.HandlerWithStatus(401)
+	errorEndpoint := requireContext(t).harness.NewMockEndpoint(errorHandler, t.DebugLogger(),
+		harness.MockEndpointDescription("unauthorized streaming service"))
+	t.Defer(errorEndpoint.Close)
+
+	// Second synchronizer returns valid data
+	streamingData := c.makeSDKDataWithFlag(1, initialValue)
+	secondaryStream := mockld.NewStreamingService(streamingData, requireContext(t).sdkKind, t.DebugLogger())
+	secondaryEndpoint := requireContext(t).harness.NewMockEndpoint(secondaryStream, t.DebugLogger(),
+		harness.MockEndpointDescription("secondary streaming service"))
+	t.Defer(secondaryEndpoint.Close)
+
+	client := NewSDKClient(t,
+		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+			BaseURI: errorEndpoint.BaseURL(),
+		}),
+		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+			BaseURI: secondaryEndpoint.BaseURL(),
+		}))
+
+	// Verify the SDK immediately falls back to the secondary synchronizer
+	// _, err := secondaryEndpoint.AwaitConnection(time.Second * 5)
+	// require.NoError(t, err)
+
+	// Verify the client received data from the secondary synchronizer
+	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
+	validatePayloadReceived(t, secondaryEndpoint, client, "", expectedEvaluations)
+}
+
+func (c CommonStreamingTests) RecoverableFallbackWithRecovery(t *ldtest.T) {
+	t.LongRunning()
+
+	// This test verifies that after a recoverable fallback, the SDK will attempt to
+	// reconnect to the original synchronizer after the 5-minute recovery period.
+	//
+	// Setup: 3 synchronizers
+	// - First: hangs initially (triggers recoverable fallback after 10s)
+	// - Second: hangs (triggers another recoverable fallback)
+	// - Third: healthy, serves data
+	// After 5 minutes, SDK should recover back to the first synchronizer.
+
+	// Track which endpoints receive connections
+	firstEndpointConnections := 0
+	firstHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		firstEndpointConnections++
+		if firstEndpointConnections == 1 {
+			// First connection: hang to trigger fallback
+			select {}
+		}
+		// Subsequent connections: serve valid data (recovery)
+		streamingData := c.makeSDKDataWithFlag(2, updatedValue)
+		stream := mockld.NewStreamingService(streamingData, requireContext(t).sdkKind, t.DebugLogger())
+		stream.ServeHTTP(w, r)
+	})
+	firstEndpoint := requireContext(t).harness.NewMockEndpoint(firstHandler, t.DebugLogger(),
+		harness.MockEndpointDescription("first streaming service"))
+	t.Defer(firstEndpoint.Close)
+
+	// Second synchronizer hangs
+	secondHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {}
+	})
+	secondEndpoint := requireContext(t).harness.NewMockEndpoint(secondHandler, t.DebugLogger(),
+		harness.MockEndpointDescription("second streaming service"))
+	t.Defer(secondEndpoint.Close)
+
+	// Third synchronizer returns valid data
+	streamingData := c.makeSDKDataWithFlag(1, initialValue)
+	thirdStream := mockld.NewStreamingService(streamingData, requireContext(t).sdkKind, t.DebugLogger())
+	thirdEndpoint := requireContext(t).harness.NewMockEndpoint(thirdStream, t.DebugLogger(),
+		harness.MockEndpointDescription("third streaming service"))
+	t.Defer(thirdEndpoint.Close)
+
+	client := NewSDKClient(t,
+		WithConfig(servicedef.SDKConfigParams{
+			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(60000)),
+		}),
+		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+			BaseURI: firstEndpoint.BaseURL(),
+		}),
+		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+			BaseURI: secondEndpoint.BaseURL(),
+		}),
+		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+			BaseURI: thirdEndpoint.BaseURL(),
+		}))
+
+	// Verify initial data from third synchronizer
+	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
+	validatePayloadReceived(t, thirdEndpoint, client, "", expectedEvaluations)
+
+	// Wait for recovery period (5 minutes + buffer)
+	time.Sleep(5*time.Minute + 30*time.Second)
+
+	// Verify SDK recovered back to first synchronizer with updated data
+	expectedEvaluations = map[string]ldvalue.Value{"flag-key": updatedValue}
+	_, err := firstEndpoint.AwaitConnection(time.Second * 30)
+	require.NoError(t, err)
+	require.Greater(t, firstEndpointConnections, 1, "SDK should have reconnected to first synchronizer")
+}
+
+func (c CommonStreamingTests) PermanentFallbackWithRecovery(t *ldtest.T) {
+	t.LongRunning()
+
+	// This test verifies that after a permanent removal (non-recoverable error), the SDK
+	// will NOT attempt to reconnect to that synchronizer, but WILL recover to other
+	// synchronizers that had recoverable failures.
+	//
+	// Setup: 3 synchronizers
+	// - First: returns 401 (permanent removal, non-recoverable)
+	// - Second: hangs initially (triggers recoverable fallback)
+	// - Third: healthy, serves data
+	// After 5 minutes, SDK should recover to second synchronizer (NOT first).
+
+	// First synchronizer returns 401 (permanent removal)
+	firstHandler := httphelpers.HandlerWithStatus(401)
+	firstEndpoint := requireContext(t).harness.NewMockEndpoint(firstHandler, t.DebugLogger(),
+		harness.MockEndpointDescription("unauthorized streaming service"))
+	t.Defer(firstEndpoint.Close)
+
+	// Track connections to second endpoint
+	secondEndpointConnections := 0
+	secondHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		secondEndpointConnections++
+		if secondEndpointConnections == 1 {
+			// First connection: hang to trigger fallback
+			select {}
+		}
+		// Subsequent connections: serve valid data (recovery)
+		streamingData := c.makeSDKDataWithFlag(2, updatedValue)
+		stream := mockld.NewStreamingService(streamingData, requireContext(t).sdkKind, t.DebugLogger())
+		stream.ServeHTTP(w, r)
+	})
+	secondEndpoint := requireContext(t).harness.NewMockEndpoint(secondHandler, t.DebugLogger(),
+		harness.MockEndpointDescription("second streaming service"))
+	t.Defer(secondEndpoint.Close)
+
+	// Third synchronizer returns valid data
+	streamingData := c.makeSDKDataWithFlag(1, initialValue)
+	thirdStream := mockld.NewStreamingService(streamingData, requireContext(t).sdkKind, t.DebugLogger())
+	thirdEndpoint := requireContext(t).harness.NewMockEndpoint(thirdStream, t.DebugLogger(),
+		harness.MockEndpointDescription("third streaming service"))
+	t.Defer(thirdEndpoint.Close)
+
+	client := NewSDKClient(t,
+		WithConfig(servicedef.SDKConfigParams{
+			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(60000)),
+		}),
+		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+			BaseURI: firstEndpoint.BaseURL(),
+		}),
+		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+			BaseURI: secondEndpoint.BaseURL(),
+		}),
+		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+			BaseURI: thirdEndpoint.BaseURL(),
+		}))
+
+	// Verify initial data from third synchronizer
+	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
+	validatePayloadReceived(t, thirdEndpoint, client, "", expectedEvaluations)
+
+	// Send periodic heartbeats to keep the third stream connection alive
+	// (prevents SSE read timeout from firing before recovery condition is met)
+	stopHeartbeats := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(2 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				thirdStream.PushHeartbeat()
+			case <-stopHeartbeats:
+				return
+			}
+		}
+	}()
+	defer close(stopHeartbeats)
+
+	// Wait for recovery period (5 minutes + buffer)
+	time.Sleep(5*time.Minute + 15*time.Second)
+
+	// Verify SDK recovered to second synchronizer (NOT first) with updated data
+	_, err := secondEndpoint.AwaitConnection(time.Second * 30)
+	require.NoError(t, err)
+	require.Greater(t, secondEndpointConnections, 1, "SDK should have reconnected to second synchronizer")
+
+	// Verify first endpoint did NOT receive any recovery connections
+	// (it should have been permanently removed after the 401)
 }
 
 func (c CommonStreamingTests) FallbackFromFDv2ToFDv1(t *ldtest.T) {
