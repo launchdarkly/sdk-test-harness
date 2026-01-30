@@ -82,7 +82,7 @@ func run(params commandParams) (*ldtest.Results, error) {
 	countingLogger := ldtest.NewCountingTestLogger(testLogger)
 	testLogger = countingLogger
 
-	results := sdktests.RunSDKTestSuite(harness, params.filters, countingLogger)
+	results := sdktests.RunSDKTestSuite(harness, params.filters, countingLogger, params.enableLongRunningTests)
 
 	fmt.Println()
 	logErr := testLogger.EndLog(results)
