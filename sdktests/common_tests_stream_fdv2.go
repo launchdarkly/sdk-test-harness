@@ -166,10 +166,6 @@ func (c CommonStreamingTests) RecoverableFallbackToSecondarySynchronizer(t *ldte
 			BaseURI: secondaryEndpoint.BaseURL(),
 		}))
 
-	// Verify the SDK falls back to the secondary synchronizer after the first hangs
-	// _, err := secondaryEndpoint.AwaitConnection(time.Second * 15)
-	// require.NoError(t, err)
-
 	// Verify the client received data from the secondary synchronizer
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
 	validatePayloadReceived(t, secondaryEndpoint, client, "", expectedEvaluations)
@@ -198,10 +194,6 @@ func (c CommonStreamingTests) PermanentFallbackToSecondarySynchronizer(t *ldtest
 		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 			BaseURI: secondaryEndpoint.BaseURL(),
 		}))
-
-	// Verify the SDK immediately falls back to the secondary synchronizer
-	// _, err := secondaryEndpoint.AwaitConnection(time.Second * 5)
-	// require.NoError(t, err)
 
 	// Verify the client received data from the secondary synchronizer
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
@@ -275,8 +267,7 @@ func (c CommonStreamingTests) RecoverableFallbackWithRecovery(t *ldtest.T) {
 
 	// Verify SDK recovered back to first synchronizer with updated data
 	expectedEvaluations = map[string]ldvalue.Value{"flag-key": updatedValue}
-	_, err := firstEndpoint.AwaitConnection(time.Second * 30)
-	require.NoError(t, err)
+	validatePayloadReceived(t, firstEndpoint, client, "", expectedEvaluations)
 	require.Greater(t, firstEndpointConnections, 1, "SDK should have reconnected to first synchronizer")
 }
 
@@ -362,12 +353,9 @@ func (c CommonStreamingTests) PermanentFallbackWithRecovery(t *ldtest.T) {
 	time.Sleep(5*time.Minute + 15*time.Second)
 
 	// Verify SDK recovered to second synchronizer (NOT first) with updated data
-	_, err := secondEndpoint.AwaitConnection(time.Second * 30)
-	require.NoError(t, err)
+	expectedEvaluations = map[string]ldvalue.Value{"flag-key": updatedValue}
+	validatePayloadReceived(t, secondEndpoint, client, "", expectedEvaluations)
 	require.Greater(t, secondEndpointConnections, 1, "SDK should have reconnected to second synchronizer")
-
-	// Verify first endpoint did NOT receive any recovery connections
-	// (it should have been permanently removed after the 401)
 }
 
 func (c CommonStreamingTests) FallbackFromFDv2ToFDv1(t *ldtest.T) {
