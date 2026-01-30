@@ -96,57 +96,28 @@ func WithPayloadFilter(filter environmentFilter) SDKConfigurer {
 	})
 }
 
-// WithPrimaryPollingSynchronizer is used with StartSDKClient to specify a non-default polling configuration.
-func WithPrimaryPollingSynchronizer(pollingConfig servicedef.SDKConfigPollingParams) SDKConfigurer {
+// WithDataSynchronizer is used with StartSDKClient to add a data synchronizer configuration.
+// Synchronizers are used in order: the first added is the primary, second is secondary, etc.
+func WithDataSynchronizer(synchronizer servicedef.DataSynchronizer) SDKConfigurer {
 	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
 		dataSystem := configOut.DataSystem.OrElse(servicedef.DataSystem{})
-		synchronizers := dataSystem.Synchronizers.OrElse(servicedef.Synchronizers{})
-		synchronizers.Primary = servicedef.Synchronizer{
-			Polling: o.Some(pollingConfig),
-		}
-		dataSystem.Synchronizers = o.Some(synchronizers)
+		dataSystem.Synchronizers = append(dataSystem.Synchronizers, synchronizer)
 		configOut.DataSystem = o.Some(dataSystem)
 		return nil
 	})
 }
 
-// WithPrimaryStreamingSynchronizer is used with StartSDKClient to specify a non-default streaming configuration.
-func WithPrimaryStreamingSynchronizer(streamingConfig servicedef.SDKConfigStreamingParams) SDKConfigurer {
-	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
-		dataSystem := configOut.DataSystem.OrElse(servicedef.DataSystem{})
-		synchronizers := dataSystem.Synchronizers.OrElse(servicedef.Synchronizers{})
-		synchronizers.Primary = servicedef.Synchronizer{
-			Streaming: o.Some(streamingConfig),
-		}
-		dataSystem.Synchronizers = o.Some(synchronizers)
-		configOut.DataSystem = o.Some(dataSystem)
-		return nil
+// WithPollingSynchronizer is a convenience for adding a polling data synchronizer.
+func WithPollingSynchronizer(pollingConfig servicedef.SDKConfigPollingParams) SDKConfigurer {
+	return WithDataSynchronizer(servicedef.DataSynchronizer{
+		Polling: o.Some(pollingConfig),
 	})
 }
 
-func WithSecondaryPollingSynchronizer(pollingConfig servicedef.SDKConfigPollingParams) SDKConfigurer {
-	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
-		dataSystem := configOut.DataSystem.OrElse(servicedef.DataSystem{})
-		synchronizers := dataSystem.Synchronizers.OrElse(servicedef.Synchronizers{})
-		synchronizers.Secondary = o.Some(servicedef.Synchronizer{
-			Polling: o.Some(pollingConfig),
-		})
-		dataSystem.Synchronizers = o.Some(synchronizers)
-		configOut.DataSystem = o.Some(dataSystem)
-		return nil
-	})
-}
-
-func WithSecondaryStreamingSynchronizer(streamingConfig servicedef.SDKConfigStreamingParams) SDKConfigurer {
-	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
-		dataSystem := configOut.DataSystem.OrElse(servicedef.DataSystem{})
-		synchronizers := dataSystem.Synchronizers.OrElse(servicedef.Synchronizers{})
-		synchronizers.Secondary = o.Some(servicedef.Synchronizer{
-			Streaming: o.Some(streamingConfig),
-		})
-		dataSystem.Synchronizers = o.Some(synchronizers)
-		configOut.DataSystem = o.Some(dataSystem)
-		return nil
+// WithStreamingSynchronizer is a convenience for adding a streaming data synchronizer.
+func WithStreamingSynchronizer(streamingConfig servicedef.SDKConfigStreamingParams) SDKConfigurer {
+	return WithDataSynchronizer(servicedef.DataSynchronizer{
+		Streaming: o.Some(streamingConfig),
 	})
 }
 

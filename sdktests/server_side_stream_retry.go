@@ -61,13 +61,13 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		dataSystem2 := NewSDKDataSystemWithoutEndpoints(t, dataV2)
 
 		handler := httphelpers.SequentialHandler(
-			dataSystem1.PrimarySync().streaming,
-			dataSystem2.PrimarySync().streaming,
+			dataSystem1.Synchronizers[0].streaming,
+			dataSystem2.Synchronizers[0].streaming,
 		)
 		streamEndpoint := makeStreamEndpoint(t, handler)
 		t.Defer(streamEndpoint.Close)
 
-		client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+		client := NewSDKClient(t, WithStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
@@ -92,7 +92,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 
 		dataSystem := NewSDKDataSystem(t, dataV1)
 		client := NewSDKClient(t,
-			WithPrimaryStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+			WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 				InitialRetryDelayMS: o.Some(ldtime.UnixMillisecondTime(10000)),
 			}),
 			dataSystem,
@@ -101,7 +101,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get the request info for the first request
-		request1 := dataSystem.PrimarySync().Endpoint().RequireConnection(t, incomingConnectionTimeout)
+		request1 := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, incomingConnectionTimeout)
 
 		// Now cause the stream to close; this should trigger a reconnect
 		request1.Cancel()
@@ -117,20 +117,20 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		// since they set a very short retry delay and expect to see connections in much less
 		// than 500ms. So, the failure condition we're really checking for here is "the SDK does
 		// not do a delay at all, it retries immediately".
-		dataSystem.PrimarySync().Endpoint().RequireNoMoreConnections(t, noMoreConnectionsTimeout)
+		dataSystem.Synchronizers[0].Endpoint().RequireNoMoreConnections(t, noMoreConnectionsTimeout)
 	})
 
 	shouldRetryAfterErrorOnInitialConnect := func(t *ldtest.T, errorHandler http.Handler) {
 		dataSystem := NewSDKDataSystemWithoutEndpoints(t, dataV1)
 		handler := httphelpers.SequentialHandler(
-			errorHandler,                       // first request gets the error
-			errorHandler,                       // second request also gets the error
-			dataSystem.PrimarySync().streaming, // third request succeeds and gets the stream
+			errorHandler,                          // first request gets the error
+			errorHandler,                          // second request also gets the error
+			dataSystem.Synchronizers[0].streaming, // third request succeeds and gets the stream
 		)
 		streamEndpoint := makeStreamEndpoint(t, handler)
 		t.Defer(streamEndpoint.Close)
 
-		client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+		client := NewSDKClient(t, WithStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
@@ -158,15 +158,15 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		dataSystem2 := NewSDKDataSystemWithoutEndpoints(t, dataV2)
 
 		handler := httphelpers.SequentialHandler(
-			dataSystem1.PrimarySync().streaming, // first request gets the first stream data
-			errorHandler,                        // second request gets the error
-			errorHandler,                        // third request also gets the error
-			dataSystem2.PrimarySync().streaming, // fourth request gets the second stream data
+			dataSystem1.Synchronizers[0].streaming, // first request gets the first stream data
+			errorHandler,                           // second request gets the error
+			errorHandler,                           // third request also gets the error
+			dataSystem2.Synchronizers[0].streaming, // fourth request gets the second stream data
 		)
 		streamEndpoint := makeStreamEndpoint(t, handler)
 		t.Defer(streamEndpoint.Close)
 
-		client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+		client := NewSDKClient(t, WithStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
@@ -209,13 +209,13 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 					// first request gets the error
 					httphelpers.HandlerWithStatus(status),
 					// second request would succeed and get the stream, but shouldn't happen
-					dataSystem.PrimarySync().streaming,
+					dataSystem.Synchronizers[0].streaming,
 				)
 				streamEndpoint := makeStreamEndpoint(t, handler)
 				t.Defer(streamEndpoint.Close)
 
 				_ = NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{InitCanFail: true}),
-					WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+					WithStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 
 				_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 
@@ -230,16 +230,16 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 				dataSystem := NewSDKDataSystemWithoutEndpoints(t, dataV1)
 				handler := httphelpers.SequentialHandler(
 					// first request gets the stream data
-					dataSystem.PrimarySync().streaming,
+					dataSystem.Synchronizers[0].streaming,
 					// second request gets the error
 					httphelpers.HandlerWithStatus(status),
 					// third request would get the stream again, but shouldn't happen
-					dataSystem.PrimarySync().streaming,
+					dataSystem.Synchronizers[0].streaming,
 				)
 				streamEndpoint := makeStreamEndpoint(t, handler)
 				t.Defer(streamEndpoint.Close)
 
-				client := NewSDKClient(t, WithPrimaryStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+				client := NewSDKClient(t, WithStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
 				result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 				m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 

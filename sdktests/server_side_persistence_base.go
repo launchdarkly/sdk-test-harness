@@ -323,12 +323,12 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 					persistence.SetCache(cacheConfig)
 
 					closeWhenReady := make(chan bool)
-					endpoint := blockingEndpoint(closeWhenReady, dataSystem.PrimarySync().streaming)
+					endpoint := blockingEndpoint(closeWhenReady, dataSystem.Synchronizers[0].streaming)
 
 					client := NewSDKClient(t,
 						persistence,
 						WithWaitToStart(time.Millisecond, true),
-						WithPrimaryStreamingSynchronizer(baseStreamConfig(endpoint)))
+						WithStreamingSynchronizer(baseStreamConfig(endpoint)))
 
 					require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
 
@@ -379,7 +379,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 					persistence.SetCache(cacheConfig)
 
 					closeWhenReady := make(chan bool)
-					endpoint := blockingEndpoint(closeWhenReady, dataSystem.PrimarySync().streaming)
+					endpoint := blockingEndpoint(closeWhenReady, dataSystem.Synchronizers[0].streaming)
 
 					require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
 					require.NoError(t, s.persistentStore.Write(s.defaultPrefix, persistenceInitedKey, "1"))
@@ -387,7 +387,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 					client := NewSDKClient(t,
 						persistence,
 						WithWaitToStart(time.Millisecond, true),
-						WithPrimaryStreamingSynchronizer(baseStreamConfig(endpoint)))
+						WithStreamingSynchronizer(baseStreamConfig(endpoint)))
 
 					response := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
 						FlagKey:      "flag-key",
@@ -457,8 +457,8 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			})
 
 			updateData := s.makeFlagData("flag-key", 2, ldvalue.String("new-value"))
-			dataSystem.PrimarySync().streaming.PushUpdate("flag", "flag-key", 2, updateData)
-			dataSystem.PrimarySync().streaming.PushPayloadTransferred("updated", 2)
+			dataSystem.Synchronizers[0].streaming.PushUpdate("flag", "flag-key", 2, updateData)
+			dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 2)
 			s.eventuallyValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key": basicFlagValidationMatcher("flag-key", 2, "new-value"),
 			})
@@ -476,8 +476,8 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 
 			// Lower versioned updates are ignored
 			updateData := s.makeFlagData("flag-key", 1, ldvalue.String("new-value"))
-			dataSystem.PrimarySync().streaming.PushUpdate("flag", "flag-key", 1, updateData)
-			dataSystem.PrimarySync().streaming.PushPayloadTransferred("updated", 2)
+			dataSystem.Synchronizers[0].streaming.PushUpdate("flag", "flag-key", 1, updateData)
+			dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 2)
 			s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key":          basicFlagValidationMatcher("flag-key", 1, "new-value"),
 				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "value"),
@@ -485,8 +485,8 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 
 			// Same versioned updates are ignored
 			updateData = s.makeFlagData("flag-key", 100, ldvalue.String("new-value"))
-			dataSystem.PrimarySync().streaming.PushUpdate("flag", "flag-key", 100, updateData)
-			dataSystem.PrimarySync().streaming.PushPayloadTransferred("updated", 3)
+			dataSystem.Synchronizers[0].streaming.PushUpdate("flag", "flag-key", 100, updateData)
+			dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 3)
 			s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key":          basicFlagValidationMatcher("flag-key", 1, "new-value"),
 				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "value"),
@@ -494,8 +494,8 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 
 			// Higher versioned updates are applied
 			updateData = s.makeFlagData("flag-key", 200, ldvalue.String("new-value"))
-			dataSystem.PrimarySync().streaming.PushUpdate("flag", "flag-key", 200, updateData)
-			dataSystem.PrimarySync().streaming.PushPayloadTransferred("updated", 4)
+			dataSystem.Synchronizers[0].streaming.PushUpdate("flag", "flag-key", 200, updateData)
+			dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 4)
 			s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key":          basicFlagValidationMatcher("flag-key", 200, "new-value"),
 				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "value"),
@@ -513,16 +513,16 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
 
 			// Lower versioned deletes are ignored
-			dataSystem.PrimarySync().streaming.PushDelete("flag", "flag-key", 1)
-			dataSystem.PrimarySync().streaming.PushPayloadTransferred("updated", 2)
+			dataSystem.Synchronizers[0].streaming.PushDelete("flag", "flag-key", 1)
+			dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 2)
 			s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key":          basicDeletedFlagValidationMatcher("flag-key", 1),
 				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "fallthrough"),
 			})
 
 			// Higher versioned deletes are applied
-			dataSystem.PrimarySync().streaming.PushDelete("flag", "flag-key", 200)
-			dataSystem.PrimarySync().streaming.PushPayloadTransferred("updated", 3)
+			dataSystem.Synchronizers[0].streaming.PushDelete("flag", "flag-key", 200)
+			dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 3)
 			s.eventuallyValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key":          basicDeletedFlagValidationMatcher("flag-key", 200),
 				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "fallthrough"),

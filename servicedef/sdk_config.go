@@ -39,11 +39,11 @@ const (
 )
 
 type DataSystem struct {
-	Store         o.Maybe[DataStore]     `json:"store,omitempty"`
-	StoreMode     DataStoreMode          `json:"storeMode"`
-	Initializers  []DataInitializer      `json:"initializers"`
-	Synchronizers o.Maybe[Synchronizers] `json:"synchronizers,omitempty"`
-	PayloadFilter o.Maybe[string]        `json:"payloadFilter,omitempty"`
+	Store         o.Maybe[DataStore] `json:"store,omitempty"`
+	StoreMode     DataStoreMode      `json:"storeMode"`
+	Initializers  []DataInitializer  `json:"initializers"`
+	Synchronizers []DataSynchronizer `json:"synchronizers"`
+	PayloadFilter o.Maybe[string]    `json:"payloadFilter,omitempty"`
 }
 
 type DataStore struct {
@@ -54,12 +54,7 @@ type DataInitializer struct {
 	Polling o.Maybe[SDKConfigPollingParams] `json:"polling,omitempty"`
 }
 
-type Synchronizers struct {
-	Primary   Synchronizer          `json:"primary"`
-	Secondary o.Maybe[Synchronizer] `json:"secondary,omitempty"`
-}
-
-type Synchronizer struct {
+type DataSynchronizer struct {
 	Streaming o.Maybe[SDKConfigStreamingParams] `json:"streaming,omitempty"`
 	Polling   o.Maybe[SDKConfigPollingParams]   `json:"polling,omitempty"`
 }
