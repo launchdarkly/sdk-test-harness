@@ -11,7 +11,9 @@ import (
 
 const pollIntervalEpsilon = 2 * time.Second
 
-// pollIntervals returns the interval parameters for the polling interval tests (Default and Min). Uses server-side/client-side capabilities; uses sdkKind only for the browser (JSClientSDK) special case. Panics if no condition matches. Return type is an anonymous struct so it is not referenced from other files.
+// pollIntervals returns the interval parameters for the polling interval tests (Default and Min).
+// Uses server-side/client-side capabilities; uses sdkKind only for the browser (JSClientSDK) special case.
+// Panics if no condition matches. Return type is an anonymous struct so it is not referenced from other files.
 func (c CommonPollingTests) pollIntervals(t *ldtest.T) struct{ Default, Min time.Duration } {
 	if t.Capabilities().Has(servicedef.CapabilityServerSide) {
 		return struct{ Default, Min time.Duration }{Default: 30 * time.Second, Min: 30 * time.Second}
@@ -51,7 +53,8 @@ func (c CommonPollingTests) defaultPollingIntervalIsRespected(t *ldtest.T) {
 
 	// Do not set PollIntervalMS; SDK uses its default (30s server-side, 5min client-side including browser).
 	intervals := c.pollIntervals(t)
-	c.assertPollingIntervalBetweenRequests(t, dataSystem.Synchronizers[0].Endpoint(), intervals.Default, pollIntervalEpsilon)
+	c.assertPollingIntervalBetweenRequests(t, dataSystem.Synchronizers[0].Endpoint(),
+		intervals.Default, pollIntervalEpsilon)
 }
 
 func (c CommonPollingTests) pollingIntervalBelowMinimumIsClamped(t *ldtest.T) {
@@ -91,7 +94,8 @@ func (c CommonPollingTests) pollingIntervalAboveMinimumIsRespected(t *ldtest.T) 
 	elapsed := secondReceivedAt.Sub(firstReceivedAt)
 	minAllowed := customInterval - pollIntervalEpsilon
 	if elapsed < minAllowed {
-		t.Errorf("second polling request arrived after %v; expected at least %v (configured interval %v)", elapsed, minAllowed, customInterval)
+		t.Errorf("second polling request arrived after %v; expected at least %v (configured interval %v)",
+			elapsed, minAllowed, customInterval)
 	}
 }
 

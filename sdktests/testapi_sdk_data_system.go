@@ -15,9 +15,9 @@ import (
 )
 
 type sdkDataSystemConfig struct {
-	polling                  o.Maybe[bool] // true, false, or "undefined, use the default"
-	pollingInitializers      []mockld.FDv2SDKData
-	pollingSynchronizerOpts  []DataSynchronizerOption // applied to the default polling sync when created
+	polling                 o.Maybe[bool] // true, false, or "undefined, use the default"
+	pollingInitializers     []mockld.FDv2SDKData
+	pollingSynchronizerOpts []DataSynchronizerOption // applied to the default polling sync when created
 }
 
 // SDKDataSystemOption is the interface for options to NewSDKDataSystem.
