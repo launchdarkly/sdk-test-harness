@@ -28,7 +28,8 @@ func (c CommonPollingTests) pollIntervals(t *ldtest.T) struct{ Default, Min time
 	panic("pollIntervals: test service has neither server-side nor client-side capability")
 }
 
-// Requires -enable-long-running-tests. Only runs when client-side or server-side-polling capability is present.
+// PollingIntervalTests requires -enable-long-running-tests and only runs when client-side or
+// server-side-polling capability is present.
 func (c CommonPollingTests) PollingIntervalTests(t *ldtest.T) {
 	if t.Capabilities().HasAny(servicedef.CapabilityClientSide, servicedef.CapabilityServerSidePolling) {
 		t.LongRunning()
