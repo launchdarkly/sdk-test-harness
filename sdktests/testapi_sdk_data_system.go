@@ -3,7 +3,9 @@ package sdktests
 import (
 	"errors"
 	"net/http"
+	"time"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
@@ -13,8 +15,9 @@ import (
 )
 
 type sdkDataSystemConfig struct {
-	polling             o.Maybe[bool] // true, false, or "undefined, use the default"
-	pollingInitializers []mockld.FDv2SDKData
+	polling                  o.Maybe[bool] // true, false, or "undefined, use the default"
+	pollingInitializers      []mockld.FDv2SDKData
+	pollingSynchronizerOpts  []DataSynchronizerOption // applied to the default polling sync when created
 }
 
 // SDKDataSystemOption is the interface for options to NewSDKDataSystem.
@@ -40,6 +43,17 @@ func DataSystemOptionPolling() SDKDataSystemOption {
 func DataSystemOptionStreaming() SDKDataSystemOption {
 	return helpers.ConfigOptionFunc[sdkDataSystemConfig](func(c *sdkDataSystemConfig) error {
 		c.polling = o.Some(false)
+		return nil
+	})
+}
+
+// DataSystemOptionPollInterval sets the polling interval (pollIntervalMs) for the default polling
+// synchronizer. Only applies when the data system is in polling mode. Omit to use the SDK's default.
+// The interval is stored on the synchronizer (per-sync); this option applies to the single polling
+// sync created by NewSDKDataSystem/NewSDKDataSystemWithoutEndpoints.
+func DataSystemOptionPollInterval(interval time.Duration) SDKDataSystemOption {
+	return helpers.ConfigOptionFunc[sdkDataSystemConfig](func(c *sdkDataSystemConfig) error {
+		c.pollingSynchronizerOpts = append(c.pollingSynchronizerOpts, SynchronizerOptionPollInterval(interval))
 		return nil
 	})
 }
@@ -121,9 +135,11 @@ func (s *SDKDataSystem) Configure(config *servicedef.SDKConfigParams) error {
 							harness.MockEndpointDescription("polling synchronizer"))
 					s.t.Defer(sync.endpoint.Close)
 				}
-				synchronizers[i].Polling = o.Some(servicedef.SDKConfigPollingParams{
-					BaseURI: sync.endpoint.BaseURL(),
-				})
+				params := servicedef.SDKConfigPollingParams{BaseURI: sync.endpoint.BaseURL()}
+				if sync.pollIntervalMS.IsDefined() {
+					params.PollIntervalMS = o.Some(ldtime.UnixMillisecondTime(sync.pollIntervalMS.Value().Milliseconds()))
+				}
+				synchronizers[i].Polling = o.Some(params)
 			}
 		}
 
@@ -143,12 +159,24 @@ type DataInitializer struct {
 func (d *DataInitializer) Endpoint() *harness.MockEndpoint { return d.endpoint }
 
 type DataSynchronizer struct {
-	streaming *mockld.StreamingService
-	polling   *mockld.PollingService
-	endpoint  *harness.MockEndpoint
+	streaming      *mockld.StreamingService
+	polling        *mockld.PollingService
+	endpoint       *harness.MockEndpoint
+	pollIntervalMS o.Maybe[time.Duration] // if set, sent to SDK as pollIntervalMs for this sync
 }
 
 func (d *DataSynchronizer) Endpoint() *harness.MockEndpoint { return d.endpoint }
+
+// DataSynchronizerOption modifies a DataSynchronizer (e.g. poll interval for a polling sync).
+// Options are applied when a synchronizer is created; multiple polling syncs can each have their own options.
+type DataSynchronizerOption func(*DataSynchronizer)
+
+// SynchronizerOptionPollInterval sets pollIntervalMs for this synchronizer. Only meaningful for polling syncs.
+func SynchronizerOptionPollInterval(interval time.Duration) DataSynchronizerOption {
+	return func(d *DataSynchronizer) {
+		d.pollIntervalMS = o.Some(interval)
+	}
+}
 
 // NewSDKDataSystem creates a new SDKDataSystem with the specified initial data set.
 //
@@ -218,8 +246,7 @@ func NewSDKDataSystemWithoutEndpoints(
 	var config sdkDataSystemConfig
 	_ = helpers.ApplyOptions(&config, options...)
 
-	d := &SDKDataSystem{}
-	d.t = t
+	d := &SDKDataSystem{t: t}
 
 	for _, initializer := range config.pollingInitializers {
 		d.Initializers = append(d.Initializers, DataInitializer{
@@ -230,10 +257,14 @@ func NewSDKDataSystemWithoutEndpoints(
 
 	defaultIsPolling := sdkKind == mockld.JSClientSDK || sdkKind == mockld.PHPSDK
 	if config.polling.Value() || (!config.polling.IsDefined() && defaultIsPolling) {
-		d.AddDataSynchronizer(DataSynchronizer{
+		sync := DataSynchronizer{
 			polling: mockld.NewPollingService(data, sdkKind, t.DebugLogger()).
 				WithGzipCompression(t.Capabilities().Has(servicedef.CapabilityPollingGzip)),
-		})
+		}
+		for _, opt := range config.pollingSynchronizerOpts {
+			opt(&sync)
+		}
+		d.AddDataSynchronizer(sync)
 	} else {
 		d.AddDataSynchronizer(DataSynchronizer{
 			streaming: mockld.NewStreamingService(data, sdkKind, t.DebugLogger()),

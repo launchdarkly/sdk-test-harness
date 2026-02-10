@@ -13,6 +13,9 @@ func doServerSidePollTests(t *ldtest.T) {
 
 	t.Run("requests", doServerSidePollRequestTests)
 	t.Run("payload", doServerSidePollPayloadTests)
+	t.Run("interval", func(t *ldtest.T) {
+		doPollIntervalTests(t, WithCredential("my-sdk-key"))
+	})
 }
 
 func doServerSidePollRequestTests(t *ldtest.T) {

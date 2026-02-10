@@ -7,9 +7,9 @@ import (
 // CommonPollingTests groups together polling-related test methods that are shared between server-side
 // and client-side.
 //
-// Currently we do not have any tests that actually test *repeated* polling. This is because the SDKs
-// enforce minimum polling intervals that would cause the tests to take a very long time. Therefore,
-// the current tests only cover the behavior of the initial poll request.
+// Most tests only cover the behavior of the initial poll request. Long-running tests that verify
+// repeated polling at the configured interval (default 30s, minimum clamp, custom 60s) are in
+// common_tests_poll_interval.go and require -enable-long-running-tests.
 type CommonPollingTests struct {
 	commonTestsBase
 }
