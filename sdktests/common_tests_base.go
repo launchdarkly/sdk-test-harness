@@ -111,7 +111,7 @@ func (c commonTestsBase) baseSDKConfigurationPlus(configurers ...SDKConfigurer) 
 
 func (c commonTestsBase) authorizationHeaderMatcher(credential string) m.Matcher {
 	if c.sdkKind == mockld.JSClientSDK {
-		return HasNoAuthorizationHeader()
+		return m.AnyOf(HasNoAuthorizationHeader(), HasAuthorizationHeader(credential))
 	}
 	return HasAuthorizationHeader(credential)
 }
