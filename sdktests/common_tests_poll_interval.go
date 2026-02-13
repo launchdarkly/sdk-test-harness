@@ -7,6 +7,7 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	"github.com/stretchr/testify/require"
 )
 
 const pollIntervalEpsilon = 2 * time.Second
@@ -26,6 +27,7 @@ func (c CommonPollingTests) pollIntervals(t *ldtest.T) struct{ Default, Min time
 		return struct{ Default, Min time.Duration }{Default: 5 * time.Minute, Min: 5 * time.Minute}
 	}
 	require.Fail(t, "pollIntervals: test service has neither server-side nor client-side capability")
+	return struct{ Default, Min time.Duration }{} // unreachable; satisfy compiler
 }
 
 // PollingIntervalTests requires -enable-long-running-tests and only runs when client-side or
