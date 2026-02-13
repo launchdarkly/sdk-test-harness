@@ -11,7 +11,7 @@ import (
 
 const pollIntervalEpsilon = 2 * time.Second
 
-// pollIntervals returns the interval parameters for the polling interval tests (Default and Min).
+// pollIntervals returns the default and minimum values used for interval testing.
 // Uses server-side/client-side capabilities; uses sdkKind only for the browser (JSClientSDK) special case.
 // Panics if no condition matches. Return type is an anonymous struct so it is not referenced from other files.
 func (c CommonPollingTests) pollIntervals(t *ldtest.T) struct{ Default, Min time.Duration } {
