@@ -199,6 +199,17 @@ A test hook must:
       * `stage` (string, optional): If executing a stage, for example `beforeEvaluation`, this should be the stage.
   - Return data from the stages as specified via the `data` configuration. For instance the return value from the `beforeEvaluation` hook should be `data['beforeEvaluation']` merged with the input data for the stage.
 
+#### Capability `"flag-change-listeners"`
+
+This means that the SDK has support for flag change listeners and can notify the test harness when flags change.
+
+The SDK must support registering listeners that monitor for flag changes. When a flag changes, the SDK test service should POST notification data to the callback URI provided during listener registration.
+
+The test harness supports testing two types of listeners:
+- **General flag change listeners**: Notified when any flag's configuration changes
+- **Flag value change listeners**: Notified when a specific flag's evaluated value changes for a given context
+
+For details on the commands and callback payloads, see the `registerFlagChangeListener`, `registerFlagValueChangeListener`, and `unregisterListener` commands.
 
 #### Capability `"tls:verify-peer"`
 

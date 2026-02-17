@@ -40,6 +40,7 @@ const (
 	CapabilityAnonymousRedaction          = "anonymous-redaction"
 	CapabilityPollingGzip                 = "polling-gzip"
 	CapabilityEvaluationHooks             = "evaluation-hooks"
+	CapabilityFlagChangeListeners         = "flag-change-listeners"
 	CapabilityClientPrereqEvents          = "client-prereq-events"
 	CapabilityPersistentDataStoreRedis    = "persistent-data-store-redis"
 	CapabilityPersistentDataStoreConsul   = "persistent-data-store-consul"
