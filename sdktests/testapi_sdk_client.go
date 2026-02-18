@@ -415,6 +415,59 @@ func (c *SDKClient) ContextComparison(t *ldtest.T, params servicedef.ContextComp
 	return resp
 }
 
+// RegisterFlagChangeListener tells the SDK test service to register a general flag change listener
+// for the given flag key. The listener will POST a ListenerNotification to callbackURI whenever
+// the flag's configuration changes. Pass an empty flagKey to listen for changes to any flag.
+//
+// Any error from the test service causes the test to terminate immediately.
+func (c *SDKClient) RegisterFlagChangeListener(
+	t *ldtest.T,
+	params servicedef.RegisterFlagChangeListenerParams,
+) {
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:                    servicedef.CommandRegisterFlagChangeListener,
+			RegisterFlagChangeListener: o.Some(params),
+		},
+		t.DebugLogger(),
+		nil,
+	))
+}
+
+// RegisterFlagValueChangeListener tells the SDK test service to register a value change listener
+// for the given flag key and context. The listener will POST a ListenerNotification to callbackURI
+// whenever the evaluated value of the flag changes for that context.
+//
+// Any error from the test service causes the test to terminate immediately.
+func (c *SDKClient) RegisterFlagValueChangeListener(
+	t *ldtest.T,
+	params servicedef.RegisterFlagValueChangeListenerParams,
+) {
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:                         servicedef.CommandRegisterFlagValueChangeListener,
+			RegisterFlagValueChangeListener: o.Some(params),
+		},
+		t.DebugLogger(),
+		nil,
+	))
+}
+
+// UnregisterListener tells the SDK test service to unregister a previously registered listener
+// by its ID.
+//
+// Any error from the test service causes the test to terminate immediately.
+func (c *SDKClient) UnregisterListener(t *ldtest.T, params servicedef.UnregisterListenerParams) {
+	require.NoError(t, c.sdkClientEntity.SendCommandWithParams(
+		servicedef.CommandParams{
+			Command:            servicedef.CommandUnregisterListener,
+			UnregisterListener: o.Some(params),
+		},
+		t.DebugLogger(),
+		nil,
+	))
+}
+
 // GetSecureModeHash tells the SDK client to calculate a secure mode hash for a context. The test
 // harness will only call this method if the test service has the "secure-mode-hash" capability.
 func (c *SDKClient) GetSecureModeHash(t *ldtest.T, context ldcontext.Context) string {
