@@ -237,3 +237,14 @@ type RegisterFlagValueChangeListenerParams struct {
 type UnregisterListenerParams struct {
 	ListenerID string `json:"listenerId"`
 }
+
+// ListenerNotification is the JSON payload POSTed by the SDK test service to a callback URI
+// when a flag change listener fires. OldValue and NewValue are only present for value change
+// notifications (registerFlagValueChangeListener), not for general flag change notifications
+// (registerFlagChangeListener).
+type ListenerNotification struct {
+	ListenerID string                 `json:"listenerId"`
+	FlagKey    string                 `json:"flagKey"`
+	OldValue   o.Maybe[ldvalue.Value] `json:"oldValue,omitempty"`
+	NewValue   o.Maybe[ldvalue.Value] `json:"newValue,omitempty"`
+}
