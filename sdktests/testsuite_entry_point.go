@@ -96,6 +96,7 @@ func doAllServerSideTests(t *ldtest.T) {
 	t.Run("context type", doSDKContextTypeTests)
 	t.Run("migrations", doServerSideMigrationTests)
 	t.Run("hooks", doCommonHooksTests)
+	t.Run("flag change listeners", doCommonListenerTests)
 	t.Run("wrapper", doServerSideWrapperTests)
 	t.Run("persistent data store", doServerSidePersistentTests)
 }
