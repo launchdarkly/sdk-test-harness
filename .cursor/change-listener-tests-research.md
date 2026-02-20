@@ -12,6 +12,12 @@
   - [Cross-SDK Comparison](#cross-sdk-comparison)
   - [Universal Design Patterns](#universal-design-patterns)
   - [Implications for Test Harness](#implications-for-test-harness)
+- [Client-Side SDK Analysis](#client-side-sdk-analysis)
+  - [Client-Side Listener APIs](#client-side-listener-apis)
+  - [Key Differences: Client-Side vs Server-Side](#key-differences-client-side-vs-server-side)
+  - [Can the Callback Architecture Work for Client-Side?](#can-the-callback-architecture-work-for-client-side)
+  - [Streaming Data Format for Client-Side](#streaming-data-format-for-client-side)
+  - [Plan: Sharing Tests Between Server and Client Side](#plan-sharing-tests-between-server-and-client-side)
 - [Proposed Test Harness Design](#proposed-test-harness-design)
 - [Implementation Plan](#implementation-plan)
 - [Open Questions](#open-questions)
@@ -606,6 +612,178 @@ The test harness design must accommodate:
 
 ---
 
+## Client-Side SDK Analysis
+
+This section covers client-side SDK listener APIs and the plan for extending the test harness to cover them. SDKs surveyed: `js-core` (browser/React Native), `.NET` client SDK (`dotnet-core/pkgs/sdk/client`), and Android (`android-client-sdk`).
+
+### Client-Side Listener APIs
+
+#### JavaScript / React Native (`js-core`)
+
+**Key files**: `packages/shared/sdk-client/src/LDClientImpl.ts`, `packages/shared/sdk-client/src/LDEmitter.ts`
+
+API: event emitter pattern
+
+```typescript
+// All flags: fires with (context, flagKeys[]) whenever any flag's value changes
+client.on('change', (context, flagKeys) => { ... });
+
+// Specific flag: fires with (context) when that flag's value changes
+client.on('change:flag-key', (context) => { ... });
+```
+
+**Characteristics:**
+- Backed by `LDEmitter`, which is typed: event names are `'change'` or the template literal `` `change:${string}` ``
+- The `_flagManager.on(...)` callback (in `LDClientImpl`) emits both events whenever flags change, including after `Identify` when new flag values arrive
+- No explicit "unregister" method—listeners are removed with `client.off(eventName, listener)`
+- No `FlagValueChangeEvent` with old/new values; the listener must call `variation()` to get the current value
+
+#### .NET Client SDK (`dotnet-core`, `pkgs/sdk/client`)
+
+**Key file**: `pkgs/sdk/client/src/Interfaces/IFlagTracker.cs`
+
+API: C# event
+
+```csharp
+client.FlagTracker.FlagValueChanged += (sender, eventArgs) =>
+{
+    Console.WriteLine($"Flag '{eventArgs.Key}' changed from {eventArgs.OldValue} to {eventArgs.NewValue}");
+};
+```
+
+**Characteristics:**
+- A single `FlagValueChanged` event fires for **all** flags (no per-flag subscription at the SDK level)
+- `FlagValueChangeEvent` includes `Key`, `OldValue`, `NewValue`, and `Deleted`
+- Fires when `Identify` is called and any flag value changes for the new context
+- Does **not** fire on initial flag load—only on subsequent changes
+- Explicitly documented: does not fire when offline + Identify + stored data loaded (only fires for fresh data from LD)
+
+#### Android SDK (`android-client-sdk`)
+
+**Key files**:
+- `FeatureFlagChangeListener.java` — per-flag callback (`onFeatureFlagChange(String flagKey)`)
+- `LDAllFlagsListener.java` — all-flags callback (`onChange(List<String> flagKeys)`)
+- `LDClientInterface.java` — `registerFeatureFlagListener(key, listener)` / `unregisterFeatureFlagListener(key, listener)`
+
+Two distinct APIs:
+
+```java
+// Specific flag — listener receives only the key; must call variation() for new value
+client.registerFeatureFlagListener("flag-key", flagKey -> { ... });
+
+// All flags — listener receives the list of changed keys
+client.registerListener(allFlagsListener); // LDAllFlagsListener
+```
+
+**Characteristics:**
+- Per-flag listener: receives the flag key only (no old/new value in callback)
+- All-flags listener: receives `List<String>` of changed flag keys
+- Explicit register/unregister lifecycle (unlike JS `on`/`off`)
+- Fires when the flag value changes for the current evaluation context
+
+---
+
+### Key Differences: Client-Side vs Server-Side
+
+| Aspect | Server-Side | Client-Side |
+|---|---|---|
+| **Context** | Specified per listener call | Implicit: the client's current context |
+| **Data format (streaming)** | Full `FeatureFlag` model JSON | Evaluated results only (`ClientSDKFlagWithKey`) |
+| **Config vs value change** | Two listener types: general (config) + value | Value change only (client evaluates for one context) |
+| **All-flags listener** | Single listener registered with empty `FlagKey` | SDK-specific API: `on('change')`, `LDAllFlagsListener`, etc. |
+| **Old/new values in callback** | Yes (value listeners include `OldValue`/`NewValue`) | SDK-dependent: .NET yes; JS/Android no |
+| **Identify** | N/A | May fire listeners when `Identify` switches context and flag values differ |
+| **Targeting rules** | Evaluated server-side based on provided context | Pre-evaluated by LD; client receives the result |
+
+---
+
+### Can the Callback Architecture Work for Client-Side?
+
+**Yes.** The HTTP callback architecture is test-harness-level infrastructure—it sits between the test harness and the SDK test service. The test service (not the test harness) adapts to each SDK's native listener API. For client-side SDKs, the test service would:
+
+1. Register a `client.on('change:flag-key', ...)` (or platform-equivalent) listener internally
+2. When the listener fires, POST a `ListenerNotification` JSON body to the callback URL supplied in the `registerFlagChangeListener` or `registerFlagValueChangeListener` command
+3. The test harness receives the notification via `ListenerCallback.ExpectFlagChangeNotification()` or `ExpectValueChangeNotification()`
+
+The command wire protocol (`registerFlagChangeListener`, `registerFlagValueChangeListener`, `unregisterListener`) and the callback payload (`ListenerNotification`) remain **identical** between server-side and client-side. Only the test service implementation changes.
+
+**One important difference**: for client-side SDKs, the `Context` field in `RegisterFlagValueChangeListenerParams` is meaningless (the client has its own context). Test service implementers for client-side SDKs should ignore it. The test harness will either omit it or the test code should not send it for client-side tests.
+
+---
+
+### Streaming Data Format for Client-Side
+
+Client-side SDKs receive a different streaming payload from server-side SDKs. Instead of a full `FeatureFlag` model, they receive evaluated results:
+
+```json
+// Server-side patch: full FeatureFlag JSON
+{ "key": "flag-key", "version": 2, "on": false, "offVariation": 0, "variations": ["new-value", "other"], ... }
+
+// Client-side patch: evaluated result only (ClientSDKFlagWithKey)
+{ "key": "flag-key", "value": "new-value", "version": 2, "variation": 0 }
+```
+
+The existing `pushFlagUpdate` helper in listener tests uses `jsonhelpers.ToJSON(flag)` where `flag` is an `ldmodel.FeatureFlag`. For client-side tests, this must be replaced with `mockld.ClientSDKFlagWithKey` data.
+
+Additionally, JS-based client-side SDKs connect to the **polling** endpoint for initial data, and then SSE for streaming updates. The `CommonStreamingTests.setupDataSystems` method already handles this pattern with its switch on `c.sdkKind`.
+
+---
+
+### Plan: Sharing Tests Between Server and Client Side
+
+#### Approach: Refactor to `CommonListenerTests` Struct
+
+To support both SDK kinds, we should convert the standalone functions in `common_tests_listeners.go` to use the `commonTestsBase` struct pattern (the same approach as `CommonStreamingTests`, `CommonEventTests`, etc.). This enables SDK-kind-aware data setup, context handling, and streaming updates within the same test functions.
+
+The refactored type would look like:
+
+```go
+type CommonListenerTests struct {
+    commonTestsBase
+}
+
+func NewCommonListenerTests(t *ldtest.T) CommonListenerTests {
+    return CommonListenerTests{newCommonTestsBase(t, "CommonListenerTests")}
+}
+```
+
+Key helpers that need SDK-kind-aware variants:
+
+| Helper | Server-Side | Client-Side |
+|---|---|---|
+| `makeListenerFlag` | `ldmodel.FeatureFlag` | `mockld.ClientSDKFlagWithKey` |
+| `createClientForListeners` | `NewServerSDKDataBuilder()` | `NewClientSDKDataBuilder()` + polling endpoint for JS SDKs |
+| `pushFlagUpdate` | `jsonhelpers.ToJSON(featureFlag)` | `jsonhelpers.ToJSON(clientSDKFlagWithKey)` |
+| Context in register params | Provided explicitly | Omitted or use client's initial context |
+
+#### Tests That Can Be Shared (with SDK-kind-aware setup)
+
+| Test | Shareable? | Notes |
+|---|---|---|
+| `flagValueChangeListenerReceivesNotification` | ✅ Yes | Adjust data format and omit context for client-side |
+| `flagValueChangeListenerNoNotificationWhenUnchanged` | ✅ Yes | Same adjustments |
+| `multipleValueListenersBothNotified` | ✅ Yes | Same adjustments |
+| `flagChangeListenerReceivesNotification` | ✅ Yes | Works if SDKs support `FlagKey`-filtered general listeners |
+| `flagChangeListenerFiltersByFlagKey` | ✅ Yes | Android natively filters per key; JS uses `change:key` |
+| `flagChangeListenerEmptyKeyReceivesAllFlags` | ⚠️ Partial | API differs (JS: `on('change')`, Android: `LDAllFlagsListener`, .NET: single event always); may need SDK-kind-specific commands |
+| `flagChangeListenerFiresOnConfigChange` | ❌ Server-side only | Client-side only receives evaluated results; "config change without value change" is invisible to client |
+| `valueListenerIsContextSpecific` | ❌ Server-side only | Client-side has a single current context; cannot test per-context isolation this way |
+
+#### Tests That Need Client-Side-Specific Variants
+
+1. **Identify test** (already deferred from Phase 3): A test that calls `Identify` with a new context and verifies the listener fires when flag values differ for the new context. This is a client-side-only concern because server-side SDKs don't have an `Identify` operation.
+
+#### Implementation Steps for Client-Side Support
+
+The steps below are captured in the Implementation Plan under Phase 3B.
+
+1. **Refactor `common_tests_listeners.go`** to use a `CommonListenerTests` struct embedding `commonTestsBase`
+2. **Add SDK-kind-aware helpers**: `makeListenerFlagForSDK`, `createClientForListenerTests`, `pushListenerFlagUpdate` that branch on `c.isClientSide`
+3. **Update `testsuite_entry_point.go`** to call `doCommonListenerTests` from `doAllClientSideTests` once the refactoring is complete
+4. **Implement Identify test** for client-side (deferred)
+
+---
+
 ## Proposed Test Harness Design
 
 ### Design Decision: Command Structure
@@ -1151,20 +1329,52 @@ func (c CommonListenerTests) rapidFlagChanges(t *ldtest.T) {
 - Client API for listener management
 - Helper functions for common patterns
 
-### Phase 3: Test Implementation
+### Phase 3: Test Implementation (Server-Side) ✅ Complete
 
 **Tasks:**
-1. Create `common_tests_listeners.go`
-2. Implement core test scenarios:
-   - Basic value change
-   - Multiple listeners
-   - Unregister
-   - Context-specific
-3. Add tests to suite entry points
+1. Create `common_tests_listeners.go` with standalone test functions ✅
+2. Implement core test scenarios: ✅
+   - `flagChangeListenerReceivesNotification`
+   - `flagChangeListenerFiresOnConfigChange`
+   - `flagChangeListenerFiltersByFlagKey`
+   - `flagChangeListenerEmptyKeyReceivesAllFlags`
+   - `flagValueChangeListenerReceivesNotification`
+   - `flagValueChangeListenerNoNotificationWhenUnchanged`
+   - `multipleValueListenersBothNotified`
+   - `valueListenerIsContextSpecific`
+3. Register `doCommonListenerTests` in `doAllServerSideTests` ✅
 
-**Deliverables:**
-- Complete test suite
-- Integration with existing test structure
+**Status**: Complete and verified against Go Server SDK.
+
+### Phase 3B: Test Implementation (Client-Side)
+
+**Goal**: Extend existing listener tests to also run against client-side SDKs, where the test logic is similar but data setup, streaming format, and context handling differ.
+
+**Tasks:**
+1. **Refactor `common_tests_listeners.go`** to use a `CommonListenerTests` struct embedding `commonTestsBase` (same pattern as `CommonStreamingTests`)
+2. **Add SDK-kind-aware data helpers**:
+   - `makeListenerFlagForSDK(key, version, value)` — returns `ServerSDKData` or `ClientSDKData`
+   - `createClientForListenerTests(t)` — handles polling endpoint for JS SDKs
+   - `pushListenerFlagUpdate(dataSystem, key, version, value)` — sends `ClientSDKFlagWithKey` for client-side, `FeatureFlag` for server-side
+3. **Mark server-side-only tests** with `t.RequireCapability(servicedef.CapabilityServerSide)` or move to a separate `doServerSideListenerTests` group
+4. **Add Identify test** for client-side: verifies that a listener fires when `Identify` changes the context and flag values differ for the new context
+5. **Register `doCommonListenerTests` in `doAllClientSideTests`** once refactoring is complete
+
+**Tests that require refactoring to work for client-side:**
+
+| Test | Action needed |
+|---|---|
+| `flagValueChangeListenerReceivesNotification` | Omit context from register params for client-side; use client-side data format |
+| `flagValueChangeListenerNoNotificationWhenUnchanged` | Same |
+| `multipleValueListenersBothNotified` | Same |
+| `flagChangeListenerReceivesNotification` | Same; test service uses `on('change:key')` or equivalent |
+| `flagChangeListenerFiltersByFlagKey` | Same |
+| `flagChangeListenerEmptyKeyReceivesAllFlags` | Same; test service uses `on('change')` or `LDAllFlagsListener` |
+| `flagChangeListenerFiresOnConfigChange` | Server-side only (client-side sees evaluated results, not config) |
+| `valueListenerIsContextSpecific` | Server-side only (client-side has one context) |
+
+**New tests for client-side only:**
+- `listenerFiresOnIdentify`: call `Identify` with a new context; verify value change listener fires when the flag value differs for the new context
 
 ### Phase 4: SDK Implementation (Ongoing)
 
@@ -1572,26 +1782,217 @@ Priority should be based on SDK usage metrics to maximize impact. Suggested appr
 
 ### SDK-Specific Considerations
 
-1. **Go SDK**
-   - Uses channels, not callbacks
-   - Test service needs goroutine to consume channel
-   - How to handle channel buffer overflow?
+See [Client-Side SDK Analysis](#client-side-sdk-analysis) for a full breakdown of client-side listener APIs and the test sharing plan.
 
-2. **JavaScript/Node.js**
-   - Event emitter pattern
-   - May have different syntax for specific vs all flags
+1. **Go Server SDK** ✅ Implemented
+   - Uses channels, not callbacks; test service spins a goroutine per listener
+   - `FlagTracker.AddFlagChangeListener()` returns a channel; test service drains it and POSTs to callback URL
+   - Integrated and passing tests; see `go-server-sdk` test service implementation
 
-3. **Mobile SDKs**
-   - May have background/foreground behavior
-   - Listener registration during initialization
+2. **JavaScript / React Native (js-core)**
+   - Event emitter: `client.on('change:key', cb)` for specific flags, `client.on('change', cb)` for all flags
+   - No old/new values in callback; test service must use `variation()` to get current value for `ListenerNotification`
+   - For value change listeners: the test service re-evaluates the flag after receiving the event
+   - JS client-side SDKs need a polling endpoint alongside the streaming endpoint (initial data via polling)
 
-4. **Roku**
-   - Uses `observeField` - different pattern entirely
-   - May need special handling
+3. **.NET Client SDK (`dotnet-core`)**
+   - Single `FlagTracker.FlagValueChanged` event for all flags; event args include `Key`, `OldValue`, `NewValue`
+   - For `registerFlagChangeListener` (general): subscribe to the event, filter by `Key` if `FlagKey` is set
+   - For `registerFlagValueChangeListener`: subscribe and use the provided old/new values directly
+   - Fires on `Identify` when flag values change for the new context
+
+4. **Android SDK**
+   - `registerFeatureFlagListener(key, listener)` for per-flag (no values in callback; must call `variation()`)
+   - `LDAllFlagsListener` for all-flags changes
+   - For `registerFlagChangeListener` with empty `FlagKey`: use `LDAllFlagsListener`
+   - For `registerFlagValueChangeListener`: use per-flag listener + call `variation()` for old/new values
+
+5. **Mobile SDKs (general)**
+   - May have background/foreground behavior affecting streaming
+   - Streaming data format is `ClientSDKFlagWithKey` (evaluated result), not the full flag model
+
+6. **Roku**
+   - Uses `observeField` — a different event pattern
+   - May need special handling or suppression of listener tests
 
 ---
 
-## References
+## JS Test Service Implementation Guide
+
+This section is a self-contained reference for implementing `flag-change-listeners` support in the **`js-core`** test service. It is intended to be read in a fresh Cursor session scoped to the `js-core` repository.
+
+### Background
+
+The sdk-test-harness defines a contract between itself and each SDK's **test service** (a small HTTP server that wraps the SDK). The test harness sends commands to the test service; the test service calls the SDK and then POSTs a callback to a URL provided by the harness.
+
+For flag change listeners, the test service must:
+1. Advertise the `"flag-change-listeners"` capability in its `/` status response
+2. Handle three new commands: `registerFlagChangeListener`, `registerFlagValueChangeListener`, `unregisterListener`
+3. When a listener fires, HTTP POST a `ListenerNotification` JSON body to the `callbackUri` supplied in the command params
+
+### Reference Implementation
+
+The **hooks** feature in `js-core` is the closest existing analog and should be used as a pattern. Find the hooks test service implementation (search for `"evaluation-hooks"` or `HookExecutionPayload` in the test service code) to understand:
+- How a new capability is added to the status response
+- How a new command is dispatched in the command handler
+- How an HTTP callback is POSTed from the test service
+
+### New Commands
+
+#### `registerFlagChangeListener`
+
+Registers a general flag change listener. The listener fires whenever the flag's configuration changes (regardless of whether the evaluated value changes). If `flagKey` is empty, the listener fires for any flag.
+
+**JSON params** (field `registerFlagChangeListener` in the command body):
+```json
+{
+  "listenerId": "listener-1",
+  "flagKey": "my-flag",
+  "callbackUri": "http://test-harness-host/callback/123"
+}
+```
+
+**JS SDK mapping:**
+```typescript
+// Specific flag
+client.on(`change:${flagKey}`, handler);
+
+// All flags (flagKey is empty string)
+client.on('change', handler);
+```
+
+**When the listener fires**, POST to `callbackUri`:
+```json
+{
+  "listenerId": "listener-1",
+  "flagKey": "my-flag"
+}
+```
+
+> **Important:** For a general flag change listener, do NOT include `oldValue` or `newValue` in the notification. The test harness only checks `flagKey`.
+
+> **JS caveat:** The `'change:key'` event fires with the current context as argument; the `'change'` event fires with `(context, changedFlagKeys[])`. For the general listener, you only need to POST the notification — no flag evaluation needed.
+
+#### `registerFlagValueChangeListener`
+
+Registers a value change listener. The listener fires only when the flag's evaluated value actually changes.
+
+**JSON params** (field `registerFlagValueChangeListener` in the command body):
+```json
+{
+  "listenerId": "listener-1",
+  "flagKey": "my-flag",
+  "context": { "kind": "user", "key": "user-key" },
+  "defaultValue": "default",
+  "callbackUri": "http://test-harness-host/callback/123"
+}
+```
+
+> **JS caveat:** The `context` field should be **ignored** for client-side SDKs. The JS client evaluates for its own current context; the context sent by the harness is meaningless and should not be used.
+
+**JS SDK mapping:**
+```typescript
+// Must capture oldValue at registration time, then re-evaluate after each change
+let oldValue = client.variation(flagKey, defaultValue);
+
+const handler = (context) => {
+  const newValue = client.variation(flagKey, defaultValue);
+  if (/* newValue !== oldValue */) {
+    // POST notification
+    oldValue = newValue;
+  }
+};
+
+client.on(`change:${flagKey}`, handler);
+```
+
+> **Important note on value change detection:** The JS SDK's `'change:key'` event already fires only when the value changes, so the `oldValue !== newValue` check may be redundant. However, capturing `oldValue` at registration time and including both in the notification is required because the harness asserts on both `OldValue` and `NewValue` in `ExpectValueChangeNotification`.
+
+**When the listener fires**, POST to `callbackUri`:
+```json
+{
+  "listenerId": "listener-1",
+  "flagKey": "my-flag",
+  "oldValue": "value1",
+  "newValue": "new-value"
+}
+```
+
+#### `unregisterListener`
+
+Removes a previously registered listener (either kind).
+
+**JSON params** (field `unregisterListener` in the command body):
+```json
+{
+  "listenerId": "listener-1"
+}
+```
+
+**JS SDK mapping:**
+```typescript
+client.off(eventName, handler);
+```
+
+The test service must keep a map of `listenerId → { eventName, handler }` so it can call `client.off()` with the right arguments.
+
+### Callback HTTP Protocol
+
+- **Method**: POST
+- **URL**: the `callbackUri` from the command params
+- **Body**: JSON (`ListenerNotification` as shown above)
+- **Expected response**: any 2xx; ignore the body
+- **No retries**: fire-and-forget; if the POST fails, do not retry
+
+### Listener Map (Bookkeeping)
+
+The test service needs a map keyed by `listenerId` to:
+1. Retrieve the handler for `unregisterListener`
+2. Avoid memory leaks from orphaned listeners
+
+Suggested shape:
+```typescript
+interface ListenerEntry {
+  eventName: string;    // e.g. 'change:my-flag' or 'change'
+  handler: Function;
+}
+const listeners = new Map<string, ListenerEntry>();
+```
+
+### Capability Declaration
+
+In the `/` status response, add:
+```json
+"flag-change-listeners"
+```
+
+to the `capabilities` array.
+
+### Streaming Setup for Listener Tests
+
+The test harness listener tests always use **streaming** (not polling) to push flag updates. For JS-based SDKs, the test harness will set up two data sources:
+1. A **polling** endpoint (for initial data — JS SDKs always poll first)
+2. A **streaming/SSE** endpoint (for updates)
+
+The test service does not need to do anything special here — this is handled by the test harness side. The test service just needs to connect to whatever endpoints the harness configures.
+
+### Test Coverage
+
+The test harness will run these tests against your implementation (once `"flag-change-listeners"` is in the capabilities):
+
+**Flag change listener (general)**
+- `receives notification when flag changes` — specific key, value changes
+- `fires on config change even when value unchanged` — **SKIPPED** for client-side (server-side only)
+- `filters by flag key` — only fires for the subscribed flag, not others
+- `with empty flag key receives all flag changes` — `client.on('change', ...)` path
+
+**Flag value change listener**
+- `receives notification when value changes` — must include oldValue and newValue
+- `does not notify when value is unchanged` — same value pushed, no POST expected
+- `multiple listeners both receive notification` — two listeners for same flag, both fire
+- `is context specific` — **SKIPPED** for client-side (server-side only)
+
+---
 
 ### LaunchDarkly Documentation
 - [Flag Changes (General)](https://launchdarkly.com/docs/sdk/features/flag-changes)
@@ -1644,4 +2045,5 @@ Priority should be based on SDK usage metrics to maximize impact. Suggested appr
 | 2026-02-13 | Update | Analyzed "Async Callback Handling": confirmed 5-second timeout standard (matching hooks/events), confirmed SDKs don't batch listener notifications |
 | 2026-02-13 | Update | Analyzed "Error Cases" and "Thread Safety": documented existing test harness patterns from hooks and client independence tests; decided to follow these established patterns |
 | 2026-02-13 | Update | Analyzed all "Technical Questions" (HTTP semantics, ID format, cleanup): documented callback service patterns from hooks; all questions now decided using existing conventions |
+| 2026-02-19 | Update | Added Client-Side SDK Analysis section: surveyed JS/React Native, .NET Client, and Android listener APIs; concluded callback architecture works for client-side; documented key differences in data format and context handling; created Phase 3B plan for refactoring tests to support both SDK kinds |
 
