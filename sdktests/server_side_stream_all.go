@@ -23,6 +23,10 @@ func doServerSideStreamRequestTests(t *ldtest.T) {
 			Credential: sdkKey,
 		}))
 
+	if t.Capabilities().Has(servicedef.CapabilityHTTPProxy) {
+		streamTests.RequestViaHTTPProxy(t)
+	}
+
 	streamTests.RequestMethodAndHeaders(t, sdkKey)
 
 	streamTests.RequestURLPath(t, func(flagRequestMethod) m.Matcher {
