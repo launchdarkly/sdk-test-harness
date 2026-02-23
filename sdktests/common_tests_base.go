@@ -105,6 +105,7 @@ func newCommonTestsBase(t *ldtest.T, testName string, baseSDKConfigurers ...SDKC
 	}
 	return c
 }
+
 func (c commonTestsBase) baseSDKConfigurationPlus(configurers ...SDKConfigurer) []SDKConfigurer {
 	return append(c.sdkConfigurers, configurers...)
 }

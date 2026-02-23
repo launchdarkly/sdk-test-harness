@@ -25,6 +25,10 @@ func doServerSidePollRequestTests(t *ldtest.T) {
 
 	pollTests.RequestMethodAndHeaders(t, sdkKey)
 
+	if t.Capabilities().Has(servicedef.CapabilityHTTPProxy) {
+		pollTests.RequestViaHTTPProxy(t)
+	}
+
 	pollTests.RequestURLPath(t, func(flagRequestMethod) m.Matcher {
 		return m.Equal(mockld.PollingPathServerSide)
 	})
