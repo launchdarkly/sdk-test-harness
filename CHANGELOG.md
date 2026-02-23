@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.34.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.33.0...v2.34.0) (2026-02-23)
+
+
+### Features
+
+* Expand `http-proxy` capability to test server-side ([#318](https://github.com/launchdarkly/sdk-test-harness/issues/318)) ([2b75c1d](https://github.com/launchdarkly/sdk-test-harness/commit/2b75c1dca0620e05b28ec4586faf1036e2a32d72))
+
 ## [2.33.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.32.1...v2.33.0) (2025-10-31)
 
 
