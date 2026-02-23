@@ -114,6 +114,7 @@ func doAllClientSideTests(t *ldtest.T) {
 	t.Run("autoEnvAttributes", doClientSideAutoEnvAttributesTests)
 	t.Run("client independence", doClientSideClientIndependenceTests)
 	t.Run("hooks", doCommonHooksTests)
+	t.Run("flag change listeners", doCommonListenerTests)
 	t.Run("wrapper", doClientSideWrapperTests)
 }
 

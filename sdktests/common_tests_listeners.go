@@ -54,29 +54,96 @@ func (c CommonListenerTests) makeListenerFlag(key string, version int, value ldv
 		On(false).OffVariation(0).Variations(value, ldvalue.String("other")).Build()
 }
 
-// createClient sets up a client with two flags (flag1 and flag2) pre-loaded via streaming,
-// both initially evaluating to "value1". Use dataSystem.Synchronizers[0].streaming to push
-// flag updates and trigger listener notifications.
+// makeClientSideListenerFlag builds a client-side flag entry for listener tests.
+func (c CommonListenerTests) makeClientSideListenerFlag(key string, version int, value ldvalue.Value) mockld.ClientSDKFlagWithKey { //nolint:lll
+	return mockld.ClientSDKFlagWithKey{
+		Key:           key,
+		ClientSDKFlag: mockld.ClientSDKFlag{Version: version, Value: value},
+	}
+}
+
+// setupListenerDataSystems creates a streaming-capable data system for listener tests and returns
+// the configurers needed to wire it into the SDK client. Always uses streaming as the main
+// synchronizer so that tests can push flag updates at will via pushFlagUpdate.
+//
+// Configurer ordering is critical: SDKDataSystem.Configure overwrites DataSystem.Synchronizers
+// entirely, so only the last SDKDataSystem in the chain takes effect. For SDK kinds that need
+// both a polling endpoint AND a streaming endpoint (JS), we apply the streaming SDKDataSystem
+// first and then append the polling URL with WithPollingSynchronizer, which appends rather than
+// overwrites.
+func (c CommonListenerTests) setupListenerDataSystems(
+	t *ldtest.T, initialData mockld.SDKData,
+) (*SDKDataSystem, []SDKConfigurer) {
+	// The streaming data system is the one we push updates through and return as the primary handle.
+	dataSystem := NewSDKDataSystem(t, initialData, DataSystemOptionStreaming())
+
+	switch c.sdkKind {
+	case mockld.ServerSideSDK:
+		return dataSystem, []SDKConfigurer{dataSystem}
+
+	case mockld.RokuSDK:
+		fallthrough
+	case mockld.MobileSDK:
+		// Mobile SDKs require a polling endpoint to exist even when streaming is primary.
+		// The polling configurer runs before dataSystem so the streaming URL wins.
+		emptyPollingDataSource := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
+		return dataSystem, []SDKConfigurer{emptyPollingDataSource, dataSystem}
+
+	case mockld.JSClientSDK:
+		// JS-based SDKs always poll for initial data, then open an SSE connection for updates.
+		// Both URLs must reach the browser entity. We cannot use two SDKDataSystem configurers
+		// because the second overwrites the first's synchronizer list. Instead we apply
+		// dataSystem (streaming) first to set Synchronizers = [{Streaming: url}], then append
+		// the polling URL with WithPollingSynchronizer, which appends rather than overwrites,
+		// giving Synchronizers = [{Streaming: url}, {Polling: url}].
+		pollingDataSource := NewSDKDataSystem(t, initialData, DataSystemOptionPolling())
+		pollingURL := pollingDataSource.Synchronizers[0].Endpoint().BaseURL()
+		return dataSystem, []SDKConfigurer{
+			dataSystem,
+			WithPollingSynchronizer(servicedef.SDKConfigPollingParams{BaseURI: pollingURL}),
+		}
+
+	default:
+		panic("unknown SDK kind for listener tests")
+	}
+}
+
+// createClient sets up a client with two flags (flag1 and flag2) pre-loaded, both initially
+// evaluating to "value1". Call pushFlagUpdate to push changes and trigger listener notifications.
 func (c CommonListenerTests) createClient(t *ldtest.T) (*SDKClient, *SDKDataSystem) {
-	flag1 := c.makeListenerFlag("flag1", 1, ldvalue.String("value1"))
-	flag2 := c.makeListenerFlag("flag2", 1, ldvalue.String("value1"))
-	data := mockld.NewServerSDKDataBuilder().Flag(flag1, flag2).Build()
+	var initialData mockld.SDKData
+	if c.isClientSide {
+		initialData = mockld.NewClientSDKDataBuilder().
+			FlagWithValue("flag1", 1, ldvalue.String("value1"), 0).
+			FlagWithValue("flag2", 1, ldvalue.String("value1"), 0).
+			Build()
+	} else {
+		flag1 := c.makeListenerFlag("flag1", 1, ldvalue.String("value1"))
+		flag2 := c.makeListenerFlag("flag2", 1, ldvalue.String("value1"))
+		initialData = mockld.NewServerSDKDataBuilder().Flag(flag1, flag2).Build()
+	}
 
-	dataSystem := NewSDKDataSystem(t, data)
-	client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem)...)
-
+	dataSystem, configurers := c.setupListenerDataSystems(t, initialData)
+	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 	return client, dataSystem
 }
 
-// pushFlagUpdate pushes a flag update through the streaming service and signals that the payload
-// is complete. version must increase with each call; it is used as both the flag version and the
-// payload-transferred sequence number.
+// pushFlagUpdate pushes a flag update through the streaming service.
+//
+// Server-side SDKs use FDv2 streaming (put-object + payload-transferred).
+// Client-side SDKs (browser, mobile) use FDv1 streaming (patch), because the
+// client-side StreamingProcessor only listens for "put", "patch", and "delete"
+// events and silently ignores FDv2 event names.
 func (c CommonListenerTests) pushFlagUpdate(dataSystem *SDKDataSystem, key string, version int, value ldvalue.Value) {
-	flag := c.makeListenerFlag(key, version, value)
-
 	streaming := dataSystem.Synchronizers[0].streaming
-	streaming.PushUpdate("flag", key, version, jsonhelpers.ToJSON(flag))
-	streaming.PushPayloadTransferred("updated", version)
+	if c.isClientSide {
+		clientFlag := c.makeClientSideListenerFlag(key, version, value)
+		streaming.PushEvent("patch", clientFlag)
+	} else {
+		flag := c.makeListenerFlag(key, version, value)
+		streaming.PushUpdate("flag", key, version, jsonhelpers.ToJSON(flag))
+		streaming.PushPayloadTransferred("updated", version)
+	}
 }
 
 // --- Flag change listener tests ---
@@ -99,6 +166,11 @@ func (c CommonListenerTests) flagChangeListenerReceivesNotification(t *ldtest.T)
 }
 
 func (c CommonListenerTests) flagChangeListenerFiresOnConfigChange(t *ldtest.T) {
+	// General flag change listeners track configuration changes, not just value changes.
+	// Client-side SDKs only receive pre-evaluated values and have no concept of "config change
+	// without value change", so this test applies to server-side SDKs only.
+	t.RequireCapability(servicedef.CapabilityServerSide)
+
 	client, dataSystem := c.createClient(t)
 
 	callback := NewListenerCallback(requireContext(t).harness, t.DebugLogger())
@@ -247,6 +319,10 @@ func (c CommonListenerTests) multipleValueListenersBothNotified(t *ldtest.T) {
 }
 
 func (c CommonListenerTests) valueListenerIsContextSpecific(t *ldtest.T) {
+	// Client-side SDKs evaluate flags for a single, fixed context set at initialization.
+	// Registering listeners for multiple independent contexts is a server-side-only concept.
+	t.RequireCapability(servicedef.CapabilityServerSide)
+
 	context1 := ldcontext.New("user-1")
 	context2 := ldcontext.New("user-2")
 	defaultValue := ldvalue.String("default")
