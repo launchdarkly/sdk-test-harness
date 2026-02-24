@@ -234,9 +234,16 @@ func NewSDKDataSystemWithoutEndpoints(
 		data = mockld.EmptyData(sdkKind)
 	}
 
+	// Client-side polling services must serve FDv1 format (flat flag map), because
+	// client-side SDKs parse the polling response through their streaming "put" handler
+	// which expects {flagKey: {value, version, ...}}, not the FDv2 PollingPayload envelope.
+	// Keep the original data for polling; only use FDv2 for streaming.
+	pollingData := data
+
 	switch v := data.(type) {
 	case mockld.ServerSDKData:
 		data = v.ConvertToFDv2SDKData(t)
+		pollingData = data
 	case mockld.ClientSDKData:
 		data = v.ConvertToFDv2SDKClientData(t, "initial")
 	default:
@@ -258,7 +265,7 @@ func NewSDKDataSystemWithoutEndpoints(
 	defaultIsPolling := sdkKind == mockld.JSClientSDK || sdkKind == mockld.PHPSDK
 	if config.polling.Value() || (!config.polling.IsDefined() && defaultIsPolling) {
 		sync := DataSynchronizer{
-			polling: mockld.NewPollingService(data, sdkKind, t.DebugLogger()).
+			polling: mockld.NewPollingService(pollingData, sdkKind, t.DebugLogger()).
 				WithGzipCompression(t.Capabilities().Has(servicedef.CapabilityPollingGzip)),
 		}
 		for _, opt := range config.pollingSynchronizerOpts {

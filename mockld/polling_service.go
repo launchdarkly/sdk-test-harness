@@ -137,6 +137,16 @@ func (p *PollingService) pollingHandler(getDataFn func(*PollingService, *http.Re
 
 func (p *PollingService) standardPollingHandler() http.Handler {
 	return p.pollingHandler(func(p *PollingService, r *http.Request) []byte {
+		// Client-side SDKs expect FDv1 format: a flat map of flag keys to evaluated flag objects.
+		if clientData, ok := p.currentData.(ClientSDKData); ok {
+			data, err := json.Marshal(clientData)
+			if err != nil {
+				p.debugLogger.Printf("failed to marshal client SDK data: %v", err)
+				return nil
+			}
+			return data
+		}
+
 		fdv2SdkData, ok := p.currentData.(FDv2SDKData)
 		if !ok {
 			p.debugLogger.Println("poller cannot handle non-fdv2 sdk data at this time")

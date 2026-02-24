@@ -14,62 +14,142 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 )
 
+// CommonListenerTests groups together flag change listener tests that are shared between
+// server-side and client-side SDKs. Embed commonTestsBase to gain SDK-kind awareness so
+// that later commits can branch on isClientSide for data format and context handling.
+type CommonListenerTests struct {
+	commonTestsBase
+}
+
+// NewCommonListenerTests constructs a CommonListenerTests for the current test scope.
+func NewCommonListenerTests(t *ldtest.T) CommonListenerTests {
+	return CommonListenerTests{newCommonTestsBase(t, "CommonListenerTests")}
+}
+
 func doCommonListenerTests(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityFlagChangeListeners)
-	t.Run("flag change listener", doFlagChangeListenerTests)
-	t.Run("flag value change listener", doFlagValueChangeListenerTests)
+	c := NewCommonListenerTests(t)
+	t.Run("flag change listener", c.doFlagChangeListenerTests)
+	t.Run("flag value change listener", c.doFlagValueChangeListenerTests)
 }
 
-func doFlagChangeListenerTests(t *ldtest.T) {
-	t.Run("receives notification when flag changes", flagChangeListenerReceivesNotification)
-	t.Run("fires on config change even when value unchanged", flagChangeListenerFiresOnConfigChange)
-	t.Run("filters by flag key", flagChangeListenerFiltersByFlagKey)
-	t.Run("with empty flag key receives all flag changes", flagChangeListenerEmptyKeyReceivesAllFlags)
+func (c CommonListenerTests) doFlagChangeListenerTests(t *ldtest.T) {
+	t.Run("receives notification when flag changes", c.flagChangeListenerReceivesNotification)
+	t.Run("fires on config change even when value unchanged", c.flagChangeListenerFiresOnConfigChange)
+	t.Run("filters by flag key", c.flagChangeListenerFiltersByFlagKey)
+	t.Run("with empty flag key receives all flag changes", c.flagChangeListenerEmptyKeyReceivesAllFlags)
 }
 
-func doFlagValueChangeListenerTests(t *ldtest.T) {
-	t.Run("receives notification when value changes", flagValueChangeListenerReceivesNotification)
-	t.Run("does not notify when value is unchanged", flagValueChangeListenerNoNotificationWhenUnchanged)
-	t.Run("multiple listeners both receive notification", multipleValueListenersBothNotified)
-	t.Run("is context specific", valueListenerIsContextSpecific)
+func (c CommonListenerTests) doFlagValueChangeListenerTests(t *ldtest.T) {
+	t.Run("receives notification when value changes", c.flagValueChangeListenerReceivesNotification)
+	t.Run("does not notify when value is unchanged", c.flagValueChangeListenerNoNotificationWhenUnchanged)
+	t.Run("multiple listeners both receive notification", c.multipleValueListenersBothNotified)
+	t.Run("is context specific", c.valueListenerIsContextSpecific)
 }
 
 // makeListenerFlag builds a server-side feature flag for listener tests. The flag evaluates to
 // value as its off-variation, so any context will receive that value.
-func makeListenerFlag(key string, version int, value ldvalue.Value) ldmodel.FeatureFlag {
+func (c CommonListenerTests) makeListenerFlag(key string, version int, value ldvalue.Value) ldmodel.FeatureFlag {
 	return ldbuilders.NewFlagBuilder(key).Version(version).
 		On(false).OffVariation(0).Variations(value, ldvalue.String("other")).Build()
 }
 
-// createClientForListeners sets up a client with two flags (flag1 and flag2) pre-loaded via
-// streaming, both initially evaluating to "value1". Use dataSystem.Synchronizers[0].streaming
-// to push flag updates and trigger listener notifications.
-func createClientForListeners(t *ldtest.T) (*SDKClient, *SDKDataSystem) {
-	flag1 := makeListenerFlag("flag1", 1, ldvalue.String("value1"))
-	flag2 := makeListenerFlag("flag2", 1, ldvalue.String("value1"))
-	data := mockld.NewServerSDKDataBuilder().Flag(flag1, flag2).Build()
+// makeClientSideListenerFlag builds a client-side flag entry for listener tests.
+func (c CommonListenerTests) makeClientSideListenerFlag(key string, version int, value ldvalue.Value) mockld.ClientSDKFlagWithKey { //nolint:lll
+	return mockld.ClientSDKFlagWithKey{
+		Key:           key,
+		ClientSDKFlag: mockld.ClientSDKFlag{Version: version, Value: value},
+	}
+}
 
-	dataSystem := NewSDKDataSystem(t, data)
-	client := NewSDKClient(t, dataSystem)
+// setupListenerDataSystems creates a streaming-capable data system for listener tests and returns
+// the configurers needed to wire it into the SDK client. Always uses streaming as the main
+// synchronizer so that tests can push flag updates at will via pushFlagUpdate.
+//
+// Configurer ordering is critical: SDKDataSystem.Configure overwrites DataSystem.Synchronizers
+// entirely, so only the last SDKDataSystem in the chain takes effect. For SDK kinds that need
+// both a polling endpoint AND a streaming endpoint (JS), we apply the streaming SDKDataSystem
+// first and then append the polling URL with WithPollingSynchronizer, which appends rather than
+// overwrites.
+func (c CommonListenerTests) setupListenerDataSystems(
+	t *ldtest.T, initialData mockld.SDKData,
+) (*SDKDataSystem, []SDKConfigurer) {
+	// The streaming data system is the one we push updates through and return as the primary handle.
+	dataSystem := NewSDKDataSystem(t, initialData, DataSystemOptionStreaming())
 
+	switch c.sdkKind {
+	case mockld.ServerSideSDK:
+		return dataSystem, []SDKConfigurer{dataSystem}
+
+	case mockld.RokuSDK:
+		fallthrough
+	case mockld.MobileSDK:
+		// Mobile SDKs require a polling endpoint to exist even when streaming is primary.
+		// The polling configurer runs before dataSystem so the streaming URL wins.
+		emptyPollingDataSource := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
+		return dataSystem, []SDKConfigurer{emptyPollingDataSource, dataSystem}
+
+	case mockld.JSClientSDK:
+		// JS-based SDKs always poll for initial data, then open an SSE connection for updates.
+		// Both URLs must reach the browser entity. We cannot use two SDKDataSystem configurers
+		// because the second overwrites the first's synchronizer list. Instead we apply
+		// dataSystem (streaming) first to set Synchronizers = [{Streaming: url}], then append
+		// the polling URL with WithPollingSynchronizer, which appends rather than overwrites,
+		// giving Synchronizers = [{Streaming: url}, {Polling: url}].
+		pollingDataSource := NewSDKDataSystem(t, initialData, DataSystemOptionPolling())
+		pollingURL := pollingDataSource.Synchronizers[0].Endpoint().BaseURL()
+		return dataSystem, []SDKConfigurer{
+			dataSystem,
+			WithPollingSynchronizer(servicedef.SDKConfigPollingParams{BaseURI: pollingURL}),
+		}
+
+	default:
+		panic("unknown SDK kind for listener tests")
+	}
+}
+
+// createClient sets up a client with two flags (flag1 and flag2) pre-loaded, both initially
+// evaluating to "value1". Call pushFlagUpdate to push changes and trigger listener notifications.
+func (c CommonListenerTests) createClient(t *ldtest.T) (*SDKClient, *SDKDataSystem) {
+	var initialData mockld.SDKData
+	if c.isClientSide {
+		initialData = mockld.NewClientSDKDataBuilder().
+			FlagWithValue("flag1", 1, ldvalue.String("value1"), 0).
+			FlagWithValue("flag2", 1, ldvalue.String("value1"), 0).
+			Build()
+	} else {
+		flag1 := c.makeListenerFlag("flag1", 1, ldvalue.String("value1"))
+		flag2 := c.makeListenerFlag("flag2", 1, ldvalue.String("value1"))
+		initialData = mockld.NewServerSDKDataBuilder().Flag(flag1, flag2).Build()
+	}
+
+	dataSystem, configurers := c.setupListenerDataSystems(t, initialData)
+	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 	return client, dataSystem
 }
 
-// pushFlagUpdate pushes a flag update through the streaming service and signals that the payload
-// is complete. version must increase with each call; it is used as both the flag version and the
-// payload-transferred sequence number.
-func pushFlagUpdate(dataSystem *SDKDataSystem, key string, version int, value ldvalue.Value) {
-	flag := makeListenerFlag(key, version, value)
-
+// pushFlagUpdate pushes a flag update through the streaming service.
+//
+// Server-side SDKs use FDv2 streaming (put-object + payload-transferred).
+// Client-side SDKs (browser, mobile) use FDv1 streaming (patch), because the
+// client-side StreamingProcessor only listens for "put", "patch", and "delete"
+// events and silently ignores FDv2 event names.
+func (c CommonListenerTests) pushFlagUpdate(dataSystem *SDKDataSystem, key string, version int, value ldvalue.Value) {
 	streaming := dataSystem.Synchronizers[0].streaming
-	streaming.PushUpdate("flag", key, version, jsonhelpers.ToJSON(flag))
-	streaming.PushPayloadTransferred("updated", version)
+	if c.isClientSide {
+		clientFlag := c.makeClientSideListenerFlag(key, version, value)
+		streaming.PushEvent("patch", clientFlag)
+	} else {
+		flag := c.makeListenerFlag(key, version, value)
+		streaming.PushUpdate("flag", key, version, jsonhelpers.ToJSON(flag))
+		streaming.PushPayloadTransferred("updated", version)
+	}
 }
 
 // --- Flag change listener tests ---
 
-func flagChangeListenerReceivesNotification(t *ldtest.T) {
-	client, dataSystem := createClientForListeners(t)
+func (c CommonListenerTests) flagChangeListenerReceivesNotification(t *ldtest.T) {
+	client, dataSystem := c.createClient(t)
 
 	callback := NewListenerCallback(requireContext(t).harness, t.DebugLogger())
 	defer callback.Close()
@@ -80,13 +160,18 @@ func flagChangeListenerReceivesNotification(t *ldtest.T) {
 		CallbackURI: callback.GetURL(),
 	})
 
-	pushFlagUpdate(dataSystem, "flag1", 2, ldvalue.String("new-value"))
+	c.pushFlagUpdate(dataSystem, "flag1", 2, ldvalue.String("new-value"))
 
 	callback.ExpectFlagChangeNotification(t, "flag1")
 }
 
-func flagChangeListenerFiresOnConfigChange(t *ldtest.T) {
-	client, dataSystem := createClientForListeners(t)
+func (c CommonListenerTests) flagChangeListenerFiresOnConfigChange(t *ldtest.T) {
+	// General flag change listeners track configuration changes, not just value changes.
+	// Client-side SDKs only receive pre-evaluated values and have no concept of "config change
+	// without value change", so this test applies to server-side SDKs only.
+	t.RequireCapability(servicedef.CapabilityServerSide)
+
+	client, dataSystem := c.createClient(t)
 
 	callback := NewListenerCallback(requireContext(t).harness, t.DebugLogger())
 	defer callback.Close()
@@ -100,13 +185,13 @@ func flagChangeListenerFiresOnConfigChange(t *ldtest.T) {
 	// Push an update that changes the flag's version but not its evaluated value.
 	// The general flag change listener must fire regardless of value changes, because
 	// it tracks configuration changes (e.g. targeting rule edits), not just value changes.
-	pushFlagUpdate(dataSystem, "flag1", 2, ldvalue.String("value1"))
+	c.pushFlagUpdate(dataSystem, "flag1", 2, ldvalue.String("value1"))
 
 	callback.ExpectFlagChangeNotification(t, "flag1")
 }
 
-func flagChangeListenerEmptyKeyReceivesAllFlags(t *ldtest.T) {
-	client, dataSystem := createClientForListeners(t)
+func (c CommonListenerTests) flagChangeListenerEmptyKeyReceivesAllFlags(t *ldtest.T) {
+	client, dataSystem := c.createClient(t)
 
 	callback := NewListenerCallback(requireContext(t).harness, t.DebugLogger())
 	defer callback.Close()
@@ -119,17 +204,17 @@ func flagChangeListenerEmptyKeyReceivesAllFlags(t *ldtest.T) {
 	})
 
 	// Update flag1 — listener should fire.
-	pushFlagUpdate(dataSystem, "flag1", 2, ldvalue.String("new-value"))
+	c.pushFlagUpdate(dataSystem, "flag1", 2, ldvalue.String("new-value"))
 	callback.ExpectFlagChangeNotification(t, "flag1")
 
 	// Update flag2 — listener should fire again.
 	// Use version 3 so the payload-transferred sequence number also increments.
-	pushFlagUpdate(dataSystem, "flag2", 3, ldvalue.String("new-value"))
+	c.pushFlagUpdate(dataSystem, "flag2", 3, ldvalue.String("new-value"))
 	callback.ExpectFlagChangeNotification(t, "flag2")
 }
 
-func flagChangeListenerFiltersByFlagKey(t *ldtest.T) {
-	client, dataSystem := createClientForListeners(t)
+func (c CommonListenerTests) flagChangeListenerFiltersByFlagKey(t *ldtest.T) {
+	client, dataSystem := c.createClient(t)
 
 	callback := NewListenerCallback(requireContext(t).harness, t.DebugLogger())
 	defer callback.Close()
@@ -142,18 +227,18 @@ func flagChangeListenerFiltersByFlagKey(t *ldtest.T) {
 	})
 
 	// Update flag2 — should NOT trigger the listener.
-	pushFlagUpdate(dataSystem, "flag2", 2, ldvalue.String("new-value"))
+	c.pushFlagUpdate(dataSystem, "flag2", 2, ldvalue.String("new-value"))
 	callback.ExpectNoNotification(t, "flag1")
 
 	// Update flag1 — SHOULD trigger the listener.
-	pushFlagUpdate(dataSystem, "flag1", 2, ldvalue.String("another-value"))
+	c.pushFlagUpdate(dataSystem, "flag1", 2, ldvalue.String("another-value"))
 	callback.ExpectFlagChangeNotification(t, "flag1")
 }
 
 // --- Flag value change listener tests ---
 
-func flagValueChangeListenerReceivesNotification(t *ldtest.T) {
-	client, dataSystem := createClientForListeners(t)
+func (c CommonListenerTests) flagValueChangeListenerReceivesNotification(t *ldtest.T) {
+	client, dataSystem := c.createClient(t)
 
 	context := ldcontext.New("user-key")
 	oldValue := ldvalue.String("value1")
@@ -171,13 +256,13 @@ func flagValueChangeListenerReceivesNotification(t *ldtest.T) {
 		CallbackURI:  callback.GetURL(),
 	})
 
-	pushFlagUpdate(dataSystem, "flag1", 2, newValue)
+	c.pushFlagUpdate(dataSystem, "flag1", 2, newValue)
 
 	callback.ExpectValueChangeNotification(t, "flag1", oldValue, newValue)
 }
 
-func flagValueChangeListenerNoNotificationWhenUnchanged(t *ldtest.T) {
-	client, dataSystem := createClientForListeners(t)
+func (c CommonListenerTests) flagValueChangeListenerNoNotificationWhenUnchanged(t *ldtest.T) {
+	client, dataSystem := c.createClient(t)
 
 	context := ldcontext.New("user-key")
 
@@ -193,12 +278,12 @@ func flagValueChangeListenerNoNotificationWhenUnchanged(t *ldtest.T) {
 	})
 
 	// Update flag1 with a new version but the same evaluated value — should NOT trigger notification.
-	pushFlagUpdate(dataSystem, "flag1", 2, ldvalue.String("value1"))
+	c.pushFlagUpdate(dataSystem, "flag1", 2, ldvalue.String("value1"))
 	callback.ExpectNoNotification(t, "flag1")
 }
 
-func multipleValueListenersBothNotified(t *ldtest.T) {
-	client, dataSystem := createClientForListeners(t)
+func (c CommonListenerTests) multipleValueListenersBothNotified(t *ldtest.T) {
+	client, dataSystem := c.createClient(t)
 
 	context := ldcontext.New("user-key")
 	oldValue := ldvalue.String("value1")
@@ -226,23 +311,27 @@ func multipleValueListenersBothNotified(t *ldtest.T) {
 		CallbackURI:  callback2.GetURL(),
 	})
 
-	pushFlagUpdate(dataSystem, "flag1", 2, newValue)
+	c.pushFlagUpdate(dataSystem, "flag1", 2, newValue)
 
 	// Both listeners must receive the notification independently.
 	callback1.ExpectValueChangeNotification(t, "flag1", oldValue, newValue)
 	callback2.ExpectValueChangeNotification(t, "flag1", oldValue, newValue)
 }
 
-func valueListenerIsContextSpecific(t *ldtest.T) {
+func (c CommonListenerTests) valueListenerIsContextSpecific(t *ldtest.T) {
+	// Client-side SDKs evaluate flags for a single, fixed context set at initialization.
+	// Registering listeners for multiple independent contexts is a server-side-only concept.
+	t.RequireCapability(servicedef.CapabilityServerSide)
+
 	context1 := ldcontext.New("user-1")
 	context2 := ldcontext.New("user-2")
 	defaultValue := ldvalue.String("default")
 
 	// Initially both contexts see "value1" (flag is off, returns the same off-variation for all).
-	flag1 := makeListenerFlag("flag1", 1, ldvalue.String("value1"))
+	flag1 := c.makeListenerFlag("flag1", 1, ldvalue.String("value1"))
 	data := mockld.NewServerSDKDataBuilder().Flag(flag1).Build()
 	dataSystem := NewSDKDataSystem(t, data)
-	client := NewSDKClient(t, dataSystem)
+	client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem)...)
 
 	callback1 := NewListenerCallback(requireContext(t).harness, t.DebugLogger())
 	defer callback1.Close()
