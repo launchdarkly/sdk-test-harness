@@ -38,6 +38,7 @@ func (c CommonStreamingTests) FDv2(t *ldtest.T) {
 	t.Run("handles multiple updates", c.HandlesMultipleUpdates)
 	t.Run("ignores model version", c.IgnoresModelVersion)
 	t.Run("ignores heart beat", c.IgnoresHeartBeat)
+	t.Run("ignores unknown event", c.IgnoresUnknownEvent)
 	t.Run("can discard partial events on errors", c.CanDiscardPartialEventsOnError)
 	t.Run("can discard full events on errors", c.CanDiscardFullEventsOnError)
 	t.Run("disconnects on goodbye", c.DisconnectsOnGoodbye)
@@ -551,6 +552,56 @@ func (c CommonStreamingTests) IgnoresHeartBeat(t *ldtest.T) {
 	dataSystem.Synchronizers[0].streaming.PushUpdate(
 		"flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
 	dataSystem.Synchronizers[0].streaming.PushHeartbeat()
+	dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 2)
+
+	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
+}
+
+func (c CommonStreamingTests) IgnoresUnknownEvent(t *ldtest.T) {
+	t.Run("unknown event in the middle of a payload", c.IgnoresUnknownEventMiddleOfPayload)
+	t.Run("unknown event at the start of a payload", c.IgnoresUnknownEventStartOfPayload)
+}
+
+func (c CommonStreamingTests) IgnoresUnknownEventMiddleOfPayload(t *ldtest.T) {
+	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
+	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
+
+	_, err := dataSystem.Synchronizers[0].endpoint.AwaitConnection(time.Second)
+	require.NoError(t, err)
+
+	context := ldcontext.New("context-key")
+	flagKeyValue := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
+	m.In(t).Assert(flagKeyValue, m.JSONEqual(initialValue))
+
+	dataSystem.Synchronizers[0].streaming.PushUpdate(
+		"flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
+	dataSystem.Synchronizers[0].streaming.PushEvent("unknown-event-type", map[string]interface{}{
+		"some": "data",
+	})
+	dataSystem.Synchronizers[0].streaming.PushUpdate(
+		"flag", "new-flag-key", 1, c.makeFlagData("new-flag-key", 1, newInitialValue))
+	dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 2)
+
+	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
+	pollUntilFlagValueUpdated(t, client, "new-flag-key", context, defaultValue, newInitialValue, defaultValue)
+}
+
+func (c CommonStreamingTests) IgnoresUnknownEventStartOfPayload(t *ldtest.T) {
+	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
+	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
+
+	_, err := dataSystem.Synchronizers[0].endpoint.AwaitConnection(time.Second)
+	require.NoError(t, err)
+
+	context := ldcontext.New("context-key")
+	flagKeyValue := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
+	m.In(t).Assert(flagKeyValue, m.JSONEqual(initialValue))
+
+	dataSystem.Synchronizers[0].streaming.PushEvent("unknown-event-type", map[string]interface{}{
+		"some": "data",
+	})
+	dataSystem.Synchronizers[0].streaming.PushUpdate(
+		"flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
 	dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 2)
 
 	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
