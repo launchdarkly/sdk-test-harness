@@ -201,15 +201,15 @@ A test hook must:
 
 #### Capability `"flag-change-listeners"`
 
-This means that the SDK has support for flag change listeners and can notify the test harness when flags change.
+This means that the SDK has support for general flag change listeners — listeners that are notified when any flag's configuration changes. When a flag changes, the SDK test service should POST notification data to the callback URI provided during listener registration.
 
-The SDK must support registering listeners that monitor for flag changes. When a flag changes, the SDK test service should POST notification data to the callback URI provided during listener registration.
+For details on the commands and callback payloads, see the `registerFlagChangeListener` and `unregisterListener` commands.
 
-The test harness supports testing two types of listeners:
-- **General flag change listeners**: Notified when any flag's configuration changes
-- **Flag value change listeners**: Notified when a specific flag's evaluated value changes for a given context
+#### Capability `"flag-value-change-listeners"`
 
-For details on the commands and callback payloads, see the `registerFlagChangeListener`, `registerFlagValueChangeListener`, and `unregisterListener` commands.
+This means that the SDK has a native API for flag *value* change listeners — listeners that are notified when a specific flag's evaluated value changes for a given context. Not all SDKs provide this API; for example, the Node.js server SDK only supports general flag change listeners.
+
+For details on the commands and callback payloads, see the `registerFlagValueChangeListener` and `unregisterListener` commands.
 
 #### Capability `"tls:verify-peer"`
 

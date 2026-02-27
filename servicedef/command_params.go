@@ -219,7 +219,6 @@ type HookExecutionPayload struct {
 // The listener will be notified whenever any flag's configuration changes.
 type RegisterFlagChangeListenerParams struct {
 	ListenerID  string `json:"listenerId"`
-	FlagKey     string `json:"flagKey"`
 	CallbackURI string `json:"callbackUri"`
 }
 

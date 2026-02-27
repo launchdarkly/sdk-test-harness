@@ -415,9 +415,9 @@ func (c *SDKClient) ContextComparison(t *ldtest.T, params servicedef.ContextComp
 	return resp
 }
 
-// RegisterFlagChangeListener tells the SDK test service to register a general flag change listener
-// for the given flag key. The listener will POST a ListenerNotification to callbackURI whenever
-// the flag's configuration changes. Pass an empty flagKey to listen for changes to any flag.
+// RegisterFlagChangeListener tells the SDK test service to register a general flag change listener.
+// The listener will POST a ListenerNotification to callbackURI whenever any flag's configuration
+// changes.
 //
 // Any error from the test service causes the test to terminate immediately.
 func (c *SDKClient) RegisterFlagChangeListener(
