@@ -32,6 +32,7 @@ func doFlagValueChangeListenerTests(t *ldtest.T) {
 	t.Run("does not notify when value is unchanged", flagValueChangeListenerNoNotificationWhenUnchanged)
 	t.Run("multiple listeners both receive notification", flagValueChangeListenerMultipleBothNotified)
 	t.Run("is context specific", flagValueChangeListenerIsContextSpecific)
+	t.Run("reports correct old and new JSON values", flagValueChangeListenerJSONValues)
 }
 
 // makeFlagForFlagChangeListenerTests builds a server-side feature flag for listener tests. The flag
@@ -257,4 +258,30 @@ func flagValueChangeListenerIsContextSpecific(t *ldtest.T) {
 
 	// context2 (user-2): value unchanged ("value1" → "value1") → no notification expected.
 	callback2.ExpectNoNotification(t, "flag1")
+}
+
+func flagValueChangeListenerJSONValues(t *ldtest.T) {
+	oldValue := ldvalue.ObjectBuild().Set("color", ldvalue.String("red")).Set("count", ldvalue.Int(1)).Build()
+	newValue := ldvalue.ObjectBuild().Set("color", ldvalue.String("blue")).Set("count", ldvalue.Int(2)).Build()
+	defaultValue := ldvalue.ObjectBuild().Build()
+
+	flag := makeFlagForFlagChangeListenerTests("flag1", 1, oldValue)
+	data := mockld.NewServerSDKDataBuilder().Flag(flag).Build()
+	dataSystem := NewSDKDataSystem(t, data)
+	client := NewSDKClient(t, dataSystem)
+
+	callback := NewListenerCallback(requireContext(t).harness, t.DebugLogger())
+	defer callback.Close()
+
+	client.RegisterFlagValueChangeListener(t, servicedef.RegisterFlagValueChangeListenerParams{
+		ListenerID:   "listener-1",
+		FlagKey:      "flag1",
+		Context:      ldcontext.New("user-key"),
+		DefaultValue: defaultValue,
+		CallbackURI:  callback.GetURL(),
+	})
+
+	pushFlagUpdateForFlagChangeListenerTests(dataSystem, "flag1", 2, newValue)
+
+	callback.ExpectValueChangeNotification(t, "flag1", oldValue, newValue)
 }
