@@ -199,6 +199,17 @@ A test hook must:
       * `stage` (string, optional): If executing a stage, for example `beforeEvaluation`, this should be the stage.
   - Return data from the stages as specified via the `data` configuration. For instance the return value from the `beforeEvaluation` hook should be `data['beforeEvaluation']` merged with the input data for the stage.
 
+#### Capability `"flag-change-listeners"`
+
+This means that the SDK has support for general flag change listeners — listeners that are notified when any flag's configuration changes. When a flag changes, the SDK test service should POST notification data to the callback URI provided during listener registration.
+
+For details on the commands and callback payloads, see the `registerFlagChangeListener` and `unregisterListener` commands.
+
+#### Capability `"flag-value-change-listeners"`
+
+This means that the SDK has a native API for flag *value* change listeners — listeners that are notified when a specific flag's evaluated value changes for a given context. Not all SDKs provide this API; for example, the Node.js server SDK only supports general flag change listeners.
+
+For details on the commands and callback payloads, see the `registerFlagValueChangeListener` and `unregisterListener` commands.
 
 #### Capability `"tls:verify-peer"`
 

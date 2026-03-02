@@ -12,19 +12,22 @@ import (
 )
 
 const (
-	CommandEvaluateFlag             = "evaluate"
-	CommandEvaluateAllFlags         = "evaluateAll"
-	CommandIdentifyEvent            = "identifyEvent"
-	CommandCustomEvent              = "customEvent"
-	CommandAliasEvent               = "aliasEvent"
-	CommandFlushEvents              = "flushEvents"
-	CommandGetBigSegmentStoreStatus = "getBigSegmentStoreStatus"
-	CommandContextBuild             = "contextBuild"
-	CommandContextConvert           = "contextConvert"
-	CommandContextComparison        = "contextComparison"
-	CommandSecureModeHash           = "secureModeHash"
-	CommandMigrationVariation       = "migrationVariation"
-	CommandMigrationOperation       = "migrationOperation"
+	CommandEvaluateFlag                    = "evaluate"
+	CommandEvaluateAllFlags                = "evaluateAll"
+	CommandIdentifyEvent                   = "identifyEvent"
+	CommandCustomEvent                     = "customEvent"
+	CommandAliasEvent                      = "aliasEvent"
+	CommandFlushEvents                     = "flushEvents"
+	CommandGetBigSegmentStoreStatus        = "getBigSegmentStoreStatus"
+	CommandContextBuild                    = "contextBuild"
+	CommandContextConvert                  = "contextConvert"
+	CommandContextComparison               = "contextComparison"
+	CommandSecureModeHash                  = "secureModeHash"
+	CommandMigrationVariation              = "migrationVariation"
+	CommandMigrationOperation              = "migrationOperation"
+	CommandRegisterFlagChangeListener      = "registerFlagChangeListener"
+	CommandRegisterFlagValueChangeListener = "registerFlagValueChangeListener"
+	CommandUnregisterListener              = "unregisterListener"
 )
 
 type ValueType string
@@ -38,17 +41,20 @@ const (
 )
 
 type CommandParams struct {
-	Command            string                               `json:"command"`
-	Evaluate           o.Maybe[EvaluateFlagParams]          `json:"evaluate,omitempty"`
-	EvaluateAll        o.Maybe[EvaluateAllFlagsParams]      `json:"evaluateAll,omitempty"`
-	CustomEvent        o.Maybe[CustomEventParams]           `json:"customEvent,omitempty"`
-	IdentifyEvent      o.Maybe[IdentifyEventParams]         `json:"identifyEvent,omitempty"`
-	ContextBuild       o.Maybe[ContextBuildParams]          `json:"contextBuild,omitempty"`
-	ContextConvert     o.Maybe[ContextConvertParams]        `json:"contextConvert,omitempty"`
-	ContextComparison  o.Maybe[ContextComparisonPairParams] `json:"contextComparison,omitempty"`
-	SecureModeHash     o.Maybe[SecureModeHashParams]        `json:"secureModeHash,omitempty"`
-	MigrationVariation o.Maybe[MigrationVariationParams]    `json:"migrationVariation,omitempty"`
-	MigrationOperation o.Maybe[MigrationOperationParams]    `json:"migrationOperation,omitempty"`
+	Command                         string                                         `json:"command"`
+	Evaluate                        o.Maybe[EvaluateFlagParams]                    `json:"evaluate,omitempty"`
+	EvaluateAll                     o.Maybe[EvaluateAllFlagsParams]                `json:"evaluateAll,omitempty"`
+	CustomEvent                     o.Maybe[CustomEventParams]                     `json:"customEvent,omitempty"`
+	IdentifyEvent                   o.Maybe[IdentifyEventParams]                   `json:"identifyEvent,omitempty"`
+	ContextBuild                    o.Maybe[ContextBuildParams]                    `json:"contextBuild,omitempty"`
+	ContextConvert                  o.Maybe[ContextConvertParams]                  `json:"contextConvert,omitempty"`
+	ContextComparison               o.Maybe[ContextComparisonPairParams]           `json:"contextComparison,omitempty"`
+	SecureModeHash                  o.Maybe[SecureModeHashParams]                  `json:"secureModeHash,omitempty"`
+	MigrationVariation              o.Maybe[MigrationVariationParams]              `json:"migrationVariation,omitempty"`
+	MigrationOperation              o.Maybe[MigrationOperationParams]              `json:"migrationOperation,omitempty"`
+	RegisterFlagChangeListener      o.Maybe[RegisterFlagChangeListenerParams]      `json:"registerFlagChangeListener,omitempty"`      //nolint:lll
+	RegisterFlagValueChangeListener o.Maybe[RegisterFlagValueChangeListenerParams] `json:"registerFlagValueChangeListener,omitempty"` //nolint:lll
+	UnregisterListener              o.Maybe[UnregisterListenerParams]              `json:"unregisterListener,omitempty"`
 }
 
 type EvaluateFlagParams struct {
@@ -207,4 +213,37 @@ type HookExecutionPayload struct {
 	EvaluationSeriesData    o.Maybe[map[string]ldvalue.Value] `json:"evaluationSeriesData"`
 	EvaluationDetail        o.Maybe[EvaluateFlagResponse]     `json:"evaluationDetail"`
 	Stage                   o.Maybe[HookStage]                `json:"stage"`
+}
+
+// RegisterFlagChangeListenerParams defines parameters for registering a general flag change listener.
+// The listener will be notified whenever any flag's configuration changes.
+type RegisterFlagChangeListenerParams struct {
+	ListenerID  string `json:"listenerId"`
+	CallbackURI string `json:"callbackUri"`
+}
+
+// RegisterFlagValueChangeListenerParams defines parameters for registering a flag value change listener.
+// The listener will be notified when the evaluated value of the specified flag changes for the given context.
+type RegisterFlagValueChangeListenerParams struct {
+	ListenerID   string            `json:"listenerId"`
+	FlagKey      string            `json:"flagKey"`
+	Context      ldcontext.Context `json:"context"`
+	DefaultValue ldvalue.Value     `json:"defaultValue"`
+	CallbackURI  string            `json:"callbackUri"`
+}
+
+// UnregisterListenerParams defines parameters for unregistering a previously registered listener.
+type UnregisterListenerParams struct {
+	ListenerID string `json:"listenerId"`
+}
+
+// ListenerNotification is the JSON payload POSTed by the SDK test service to a callback URI
+// when a flag change listener fires. OldValue and NewValue are only present for value change
+// notifications (registerFlagValueChangeListener), not for general flag change notifications
+// (registerFlagChangeListener).
+type ListenerNotification struct {
+	ListenerID string                 `json:"listenerId"`
+	FlagKey    string                 `json:"flagKey"`
+	OldValue   o.Maybe[ldvalue.Value] `json:"oldValue,omitempty"`
+	NewValue   o.Maybe[ldvalue.Value] `json:"newValue,omitempty"`
 }
