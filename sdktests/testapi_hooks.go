@@ -15,6 +15,7 @@ import (
 )
 
 const hookReceiveTimeout = time.Second * 5
+const hookWaitForNoCallTimeout = time.Second * 1
 
 type HookInstance struct {
 	name        string
@@ -83,6 +84,11 @@ func (h *Hooks) ExpectCall(t *ldtest.T, hookName string,
 			break
 		}
 	}
+}
+
+func (h *Hooks) ExpectNoCall(t *ldtest.T, hookName string) {
+	maybeValue := helpers.TryReceive(h.instances[hookName].hookService.CallChannel, hookWaitForNoCallTimeout)
+	assert.False(t, maybeValue.IsDefined(), "Expected 0 hook calls, got 1")
 }
 
 // ExpectAtLeastOneCallForEachHook waits for a single call from N hooks. If there are fewer calls recorded,

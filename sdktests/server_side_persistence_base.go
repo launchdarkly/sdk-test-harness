@@ -178,7 +178,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 
 		client := NewSDKClient(t, persistence)
 
-		require.Never(
+		h.RequireNever(
 			t,
 			checkForUpdatedValue(t, client, "flag-key", ldcontext.New("user-key"),
 				ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default")),
