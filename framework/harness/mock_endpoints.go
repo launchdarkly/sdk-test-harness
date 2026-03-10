@@ -187,6 +187,7 @@ func (m *mockEndpointsManager) serveHTTP(w http.ResponseWriter, r *http.Request)
 		body = data
 	}
 
+	//nolint:gosec // canceller is stored and called via MockEndpoint.Close()
 	ctx, canceller := context.WithCancel(r.Context())
 	if e.contextFn != nil {
 		ctx = e.contextFn(ctx)
