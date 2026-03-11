@@ -2,6 +2,41 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.34.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.33.0...v2.34.0) (2026-02-23)
+
+
+### Features
+
+* Expand `http-proxy` capability to test server-side ([#318](https://github.com/launchdarkly/sdk-test-harness/issues/318)) ([2b75c1d](https://github.com/launchdarkly/sdk-test-harness/commit/2b75c1dca0620e05b28ec4586faf1036e2a32d72))
+
+## [2.33.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.32.1...v2.33.0) (2025-10-31)
+
+
+### Features
+
+* Add test count summary to display total and skipped tests ([#307](https://github.com/launchdarkly/sdk-test-harness/issues/307)) ([7662be6](https://github.com/launchdarkly/sdk-test-harness/commit/7662be6e1ccf7102f1478a8a912dfcad740246f1))
+
+## [2.32.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.32.0...v2.32.1) (2025-10-17)
+
+
+### Bug Fixes
+
+* Only use h.RequireNever, not require.Never. ([#305](https://github.com/launchdarkly/sdk-test-harness/issues/305)) ([8b95fa5](https://github.com/launchdarkly/sdk-test-harness/commit/8b95fa5d446417d6cb2c159a7ecf628a68645832))
+
+## [2.32.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.31.0...v2.32.0) (2025-04-25)
+
+
+### Features
+
+* Add `track-hooks` capability ([#299](https://github.com/launchdarkly/sdk-test-harness/issues/299)) ([dfd6ed6](https://github.com/launchdarkly/sdk-test-harness/commit/dfd6ed6f7bf197692660025262ef18d3fbdfccf0))
+
+## [2.31.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.30.2...v2.31.0) (2025-04-22)
+
+
+### Features
+
+* Add support for client-side per-context summary events. ([#294](https://github.com/launchdarkly/sdk-test-harness/issues/294)) ([0a225b3](https://github.com/launchdarkly/sdk-test-harness/commit/0a225b36c7082a87aeab04a5d207fc555df1c14a))
+
 ## [2.30.2](https://github.com/launchdarkly/sdk-test-harness/compare/v2.30.1...v2.30.2) (2025-04-15)
 
 

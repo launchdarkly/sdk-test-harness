@@ -1,7 +1,8 @@
 module github.com/launchdarkly/sdk-test-harness/v2
 
-go 1.22
-toolchain go1.23.1
+go 1.23.0
+
+toolchain go1.24.1
 
 require (
 	github.com/aws/aws-sdk-go v1.55.5
@@ -13,7 +14,7 @@ require (
 	github.com/launchdarkly/go-sdk-common/v3 v3.1.0
 	github.com/launchdarkly/go-server-sdk-evaluation/v3 v3.0.0
 	github.com/launchdarkly/go-test-helpers/v2 v2.3.2
-	github.com/redis/go-redis/v9 v9.6.1
+	github.com/redis/go-redis/v9 v9.6.3
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
 	gopkg.in/yaml.v3 v3.0.1
@@ -43,8 +44,8 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
-	golang.org/x/net v0.36.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/net v0.38.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 )

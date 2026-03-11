@@ -35,7 +35,11 @@ esac
 
 RELEASES_API_URL=https://api.github.com/repos/launchdarkly/sdk-test-harness/releases
 RELEASES_SITE_URL=https://github.com/launchdarkly/sdk-test-harness/releases
-EXECUTABLE_ARCHIVE_NAME="sdk-test-harness_${OS_TYPE}_$(uname -m).${EXTENSION}"
+ARCH=$(uname -m)
+if [ "${ARCH}" = "aarch64" ]; then
+  ARCH="arm64"
+fi
+EXECUTABLE_ARCHIVE_NAME="sdk-test-harness_${OS_TYPE}_${ARCH}.${EXTENSION}"
 
 # Github rate-limits requests to its APIs. The effect is that sometimes the contract test step in CI
 # will fail spuriously when trying to find the list of releases.

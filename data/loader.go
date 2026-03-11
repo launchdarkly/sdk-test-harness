@@ -121,7 +121,7 @@ func LoadAndParseAllTestSuites[V any](t *ldtest.T, dirName string) []V {
 func GroupTestSuitesByName[V HasName](suites []V) [][]V {
 	ret := [][]V{}
 	var curName string
-	curGroup := []V{}
+	curGroup := make([]V, 0, len(suites))
 	for _, suite := range suites {
 		if suite.GetName() != curName {
 			if curName != "" {

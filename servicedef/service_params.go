@@ -42,6 +42,7 @@ const (
 	CapabilityEvaluationHooks             = "evaluation-hooks"
 	CapabilityFlagChangeListeners         = "flag-change-listeners"
 	CapabilityFlagValueChangeListeners    = "flag-value-change-listeners"
+	CapabilityTrackHooks                  = "track-hooks"
 	CapabilityClientPrereqEvents          = "client-prereq-events"
 	CapabilityPersistentDataStoreRedis    = "persistent-data-store-redis"
 	CapabilityPersistentDataStoreConsul   = "persistent-data-store-consul"
