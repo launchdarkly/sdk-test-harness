@@ -557,7 +557,8 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 
 					require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
 
-					if cacheConfig.Mode == servicedef.CacheModeInfinite {
+					switch cacheConfig.Mode {
+					case servicedef.CacheModeInfinite:
 						// This key was already cached, so it shouldn't see the change above.
 						h.RequireNever(t,
 							checkForUpdatedValue(t, client, "flag-key", context,
@@ -570,7 +571,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 							checkForUpdatedValue(t, client, "uncached-flag-key", context,
 								ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default")),
 							time.Millisecond*500, time.Millisecond*20, "uncached-flag-key was incorrectly cached")
-					} else if cacheConfig.Mode == servicedef.CacheModeTTL {
+					case servicedef.CacheModeTTL:
 						// This key was already cached, so it shouldn't see the change above.
 						h.RequireNever(t,
 							checkForUpdatedValue(t, client, "flag-key", context,

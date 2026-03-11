@@ -245,7 +245,7 @@ func (s *StreamingService) logEvent(e eventsource.Event) {
 }
 
 func (e eventImpl) Event() string { return e.name }
-func (e eventImpl) Id() string    { return "" } //nolint:stylecheck
+func (e eventImpl) Id() string    { return "" } //nolint:revive // required by interface
 func (e eventImpl) Data() string {
 	if raw, ok := e.data.(json.RawMessage); ok {
 		return string(raw) // this allows us to pass malformed data that json.Marshal wouldn't allow

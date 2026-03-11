@@ -93,7 +93,7 @@ func doSDKContextBuildTests(t *ldtest.T) {
 			params   servicedef.ContextBuildParams
 			expected string
 		}
-		var testCases []testCase
+		testCases := make([]testCase, 0, len(singleKindTestCases)+len(multiKindTestCases))
 		for _, c := range singleKindTestCases {
 			params := c.params
 			testCases = append(testCases, testCase{servicedef.ContextBuildParams{Single: &params}, c.expected})
@@ -124,8 +124,6 @@ func doSDKContextConvertTests(t *ldtest.T) {
 	}
 
 	t.Run("valid, no changes", func(t *ldtest.T) {
-		var inputs []string
-
 		singleKindProps := []string{
 			``,
 			`"name": "b"`,
@@ -144,6 +142,7 @@ func doSDKContextConvertTests(t *ldtest.T) {
 			singleKindProps = append(singleKindProps, fmt.Sprintf(`"attr1": %s`, v.JSONString()))
 		}
 
+		inputs := make([]string, 0, len(singleKindProps)+3)
 		for _, extraProps := range singleKindProps {
 			inputs = append(inputs, basicInputPlusProps(extraProps))
 		}
@@ -193,27 +192,29 @@ func doSDKContextConvertTests(t *ldtest.T) {
 			in, out string // out only needs to be set if it's different from in
 		}
 
-		params := []contextConversionParams{
-			{`{"key": ""}`, `{"kind": "user", "key": ""}`}, // empty key *is* allowed for old user format only
-			{`{"key": "a"}`, `{"kind": "user", "key": "a"}`},
-			{`{"key": "a"}`, `{"kind": "user", "key": "a"}`},
-			{`{"key": "a", "custom": {"b": true}}`, `{"kind": "user", "key": "a", "b": true}`},
-			{`{"key": "a", "custom": {"b": 1}}`, `{"kind": "user", "key": "a", "b": 1}`},
-			{`{"key": "a", "custom": {"b": "c"}}`, `{"kind": "user", "key": "a", "b": "c"}`},
-			{`{"key": "a", "custom": {"b": [1, 2]}}`, `{"kind": "user", "key": "a", "b": [1, 2]}`},
-			{`{"key": "a", "custom": {"b": {"c": 1}}}`, `{"kind": "user", "key": "a", "b": {"c": 1}}`},
-			{`{"key": "a", "custom": {"b": 1, "c": 2}}`, `{"kind": "user", "key": "a", "b": 1, "c": 2}`},
-			{`{"key": "a", "custom": {"b": 1, "c": null}}`, `{"kind": "user", "key": "a", "b": 1}`},
-			{`{"key": "a", "custom": {}}`, `{"kind": "user", "key": "a"}`},
-			{`{"key": "a", "custom": null}`, `{"kind": "user", "key": "a"}`},
-			{`{"key": "a", "anonymous": true}`, `{"kind": "user", "key": "a", "anonymous": true}`},
-			{`{"key": "a", "anonymous": false}`, `{"kind": "user", "key": "a"}`},
-			{`{"key": "a", "anonymous": null}`, `{"kind": "user", "key": "a"}`},
-			{`{"key": "a", "privateAttributeNames": ["b"]}`,
+		params := make([]contextConversionParams, 0, 32)
+		params = append(params,
+			// empty key *is* allowed for old user format only
+			contextConversionParams{`{"key": ""}`, `{"kind": "user", "key": ""}`},
+			contextConversionParams{`{"key": "a"}`, `{"kind": "user", "key": "a"}`},
+			contextConversionParams{`{"key": "a"}`, `{"kind": "user", "key": "a"}`},
+			contextConversionParams{`{"key": "a", "custom": {"b": true}}`, `{"kind": "user", "key": "a", "b": true}`},
+			contextConversionParams{`{"key": "a", "custom": {"b": 1}}`, `{"kind": "user", "key": "a", "b": 1}`},
+			contextConversionParams{`{"key": "a", "custom": {"b": "c"}}`, `{"kind": "user", "key": "a", "b": "c"}`},
+			contextConversionParams{`{"key": "a", "custom": {"b": [1, 2]}}`, `{"kind": "user", "key": "a", "b": [1, 2]}`},
+			contextConversionParams{`{"key": "a", "custom": {"b": {"c": 1}}}`, `{"kind": "user", "key": "a", "b": {"c": 1}}`},
+			contextConversionParams{`{"key": "a", "custom": {"b": 1, "c": 2}}`, `{"kind": "user", "key": "a", "b": 1, "c": 2}`},
+			contextConversionParams{`{"key": "a", "custom": {"b": 1, "c": null}}`, `{"kind": "user", "key": "a", "b": 1}`},
+			contextConversionParams{`{"key": "a", "custom": {}}`, `{"kind": "user", "key": "a"}`},
+			contextConversionParams{`{"key": "a", "custom": null}`, `{"kind": "user", "key": "a"}`},
+			contextConversionParams{`{"key": "a", "anonymous": true}`, `{"kind": "user", "key": "a", "anonymous": true}`},
+			contextConversionParams{`{"key": "a", "anonymous": false}`, `{"kind": "user", "key": "a"}`},
+			contextConversionParams{`{"key": "a", "anonymous": null}`, `{"kind": "user", "key": "a"}`},
+			contextConversionParams{`{"key": "a", "privateAttributeNames": ["b"]}`,
 				`{"kind": "user", "key": "a", "_meta": {"privateAttributes": ["b"]}}`},
-			{`{"key": "a", "privateAttributeNames": []}`, `{"kind": "user", "key": "a"}`},
-			{`{"key": "a", "privateAttributeNames": null}`, `{"kind": "user", "key": "a"}`},
-		}
+			contextConversionParams{`{"key": "a", "privateAttributeNames": []}`, `{"kind": "user", "key": "a"}`},
+			contextConversionParams{`{"key": "a", "privateAttributeNames": null}`, `{"kind": "user", "key": "a"}`},
+		)
 		for _, stringAttrName := range []string{"name", "firstName", "lastName", "email", "country", "avatar", "ip"} {
 			params = append(params,
 				contextConversionParams{
@@ -299,13 +300,14 @@ func doSDKContextConvertTests(t *ldtest.T) {
 
 	t.Run("invalid old user", func(t *ldtest.T) {
 		t.RequireCapability(servicedef.CapabilityUserType)
-		inputs := []string{
+		inputs := make([]string, 0, 12)
+		inputs = append(inputs,
 			`{}`,
 			`{"key": true}`,
 			`{"key": "a", "custom": 3}`,
 			`{"key": "a", "anonymous": 3}`,
 			`{"key": "a", "privateAttributeNames": 3"}`,
-		}
+		)
 		for _, stringAttrName := range []string{"name", "firstName", "lastName", "email", "country", "avatar", "ip"} {
 			inputs = append(inputs, fmt.Sprintf(`{"key": "a", "%s": 3}`, stringAttrName))
 		}

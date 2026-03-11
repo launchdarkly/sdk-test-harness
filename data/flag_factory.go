@@ -100,7 +100,7 @@ func FlagShouldProduceThisEvalReason(
 	matchContexts ...ldcontext.Context,
 ) func(*ldbuilders.FlagBuilder) {
 	getContextKindAndKeys := func() (ldcontext.Kind, []string) {
-		var keys []string
+		keys := make([]string, 0, len(matchContexts))
 		kind := ldcontext.DefaultKind
 		for _, context := range matchContexts {
 			keys = append(keys, context.Key())
