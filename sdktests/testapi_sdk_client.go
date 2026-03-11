@@ -71,7 +71,8 @@ func WithClientSideInitialContext(context ldcontext.Context) SDKConfigurer {
 // WithWaitToStart is used to control the start wait time and whether the SDK is allowed to fail to start.
 func WithWaitToStart(duration time.Duration, canFail bool) SDKConfigurer {
 	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
-		configOut.StartWaitTimeMS = o.Some(ldtime.UnixMillisecondTime(duration.Milliseconds()))
+		ms := uint64(duration.Milliseconds()) //nolint:gosec
+		configOut.StartWaitTimeMS = o.Some(ldtime.UnixMillisecondTime(ms))
 		configOut.InitCanFail = canFail
 		return nil
 	})
