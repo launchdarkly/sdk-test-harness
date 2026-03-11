@@ -436,8 +436,9 @@ func runServerSideEvalBucketingTests(t *ldtest.T) {
 					}
 					return b.Build()
 				}
-				params := []bucketingTestParams{}
-				for _, p := range makeBucketingTestParams() {
+				allParams := makeBucketingTestParams()
+				params := make([]bucketingTestParams, 0, len(allParams))
+				for _, p := range allParams {
 					p1 := p
 					p1.overrideExpectedValue = o.Some(0)
 					params = append(params, p1)

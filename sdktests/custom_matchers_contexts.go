@@ -34,8 +34,8 @@ func jsonMatchesContext(
 ) m.Matcher {
 	matchSingleKind := func(c ldcontext.Context, kindIsKnown bool) m.Matcher {
 		var kind = c.Kind()
-		var keys []string
-		var ms []m.Matcher
+		keys := make([]string, 0, 10)
+		ms := make([]m.Matcher, 0, 10)
 		if !kindIsKnown {
 			keys = append(keys, "kind")
 			ms = append(ms, m.JSONProperty("kind").Should(m.Equal(string(c.Kind()))))
@@ -91,11 +91,12 @@ func jsonMatchesContext(
 	}
 
 	if topLevelContext.Multiple() {
-		var ms []m.Matcher
-		keys := make([]string, 0)
+		allContexts := topLevelContext.GetAllIndividualContexts(nil)
+		ms := make([]m.Matcher, 0, len(allContexts)+2)
+		keys := make([]string, 0, len(allContexts)+1)
 		keys = append(keys, "kind")
 		ms = append(ms, m.JSONProperty("kind").Should(m.Equal("multi")))
-		for _, mc := range topLevelContext.GetAllIndividualContexts(nil) {
+		for _, mc := range allContexts {
 			ms = append(ms, m.JSONProperty(string(mc.Kind())).Should(matchSingleKind(mc, true)))
 			keys = append(keys, string(mc.Kind()))
 		}
