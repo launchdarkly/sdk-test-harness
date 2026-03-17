@@ -42,13 +42,11 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 
 		case mockld.JSClientSDK:
 			jsGetPathPrefix := strings.TrimSuffix(
-				strings.ReplaceAll(mockld.StreamingPathJSClientGet, mockld.StreamingPathEnvIDParam, envIDOrMobileKey),
+				mockld.StreamingPathFDv2ClientGet,
 				mockld.StreamingPathContextBase64Param, // details of base64-encoded context data are tested separately
 			)
-			jsReportPath := strings.ReplaceAll(mockld.StreamingPathJSClientReport,
-				mockld.StreamingPathEnvIDParam, envIDOrMobileKey)
 			return h.IfElse(method == flagRequestREPORT,
-				m.Equal(jsReportPath),
+				m.Equal(mockld.StreamingPathFDv2ClientPost),
 				m.StringHasPrefix(jsGetPathPrefix))
 
 		default:
@@ -59,6 +57,6 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 
 	getPath := h.IfElse(sdkKind == mockld.MobileSDK || sdkKind == mockld.RokuSDK,
 		mockld.StreamingPathMobileGet,
-		strings.ReplaceAll(mockld.StreamingPathJSClientGet, mockld.PollingPathEnvIDParam, envIDOrMobileKey))
+		mockld.StreamingPathFDv2ClientGet)
 	streamTests.RequestContextProperties(t, getPath)
 }

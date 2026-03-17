@@ -123,7 +123,7 @@ func (d ClientSDKData) ConvertToFDv2SDKClientData(t *ldtest.T, state string) FDv
 		}
 
 		payloadObjects = append(payloadObjects, framework.BaseObject{
-			Kind:    "flag",
+			Kind:    "flag-eval",
 			Version: item.Version,
 			Key:     key,
 			Object:  json,

@@ -77,12 +77,20 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 									streamURI += "/"
 								}
 
+								var uriConfigurer SDKConfigurer
+								if c.isClientSide {
+									uriConfigurer = WithConnectionModeSynchronizer("streaming", servicedef.DataSynchronizer{
+										Streaming: o.Some(servicedef.SDKConfigStreamingParams{BaseURI: streamURI}),
+									})
+								} else {
+									uriConfigurer = WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+										BaseURI: streamURI,
+									})
+								}
 								_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 									append(configurers,
 										WithPayloadFilter(filter),
-										WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
-											BaseURI: streamURI,
-										}),
+										uriConfigurer,
 										c.withFlagRequestMethod(method),
 									)...)...)
 
@@ -207,11 +215,20 @@ func (c CommonStreamingTests) RequestViaHTTPProxy(t *ldtest.T) {
 		}
 		u.Path = ""
 
+		var uriConfigurer SDKConfigurer
+		if c.isClientSide {
+			uriConfigurer = WithConnectionModeSynchronizer("streaming", servicedef.DataSynchronizer{
+				Streaming: o.Some(servicedef.SDKConfigStreamingParams{BaseURI: streamURI}),
+			})
+		} else {
+			uriConfigurer = WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+				BaseURI: streamURI,
+			})
+		}
+
 		_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 			append(configurers,
-				WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
-					BaseURI: streamURI,
-				}),
+				uriConfigurer,
 				c.withHTTPProxy(u.String()),
 			)...)...)
 

@@ -20,6 +20,9 @@ const (
 	PollingPathJSClientGet    = "/sdk/evalx/{env}/contexts/{context}"
 	PollingPathJSClientReport = "/sdk/evalx/{env}/context"
 
+	PollingPathFDv2ClientGet  = "/sdk/poll/eval/{context}"
+	PollingPathFDv2ClientPost = "/sdk/poll/eval"
+
 	PollingPathPHPAllFlags = "/sdk/flags"
 	PollingPathPHPFlag     = "/sdk/flags/{key}"
 	PollingPathPHPSegment  = "/sdk/segments/{key}"
@@ -59,10 +62,13 @@ func NewPollingService(
 	case MobileSDK:
 		router.Handle(PollingPathMobileGet, pollHandler).Methods("GET")
 		router.Handle(PollingPathMobileReport, pollHandler).Methods("REPORT")
-		// Note that we only support the "evalx", not the older "eval" which is used only by old unsupported SDKs
+		router.Handle(PollingPathFDv2ClientGet, pollHandler).Methods("GET")
+		router.Handle(PollingPathFDv2ClientPost, pollHandler).Methods("POST")
 	case JSClientSDK:
 		router.Handle(PollingPathJSClientGet, pollHandler).Methods("GET")
 		router.Handle(PollingPathJSClientReport, pollHandler).Methods("REPORT")
+		router.Handle(PollingPathFDv2ClientGet, pollHandler).Methods("GET")
+		router.Handle(PollingPathFDv2ClientPost, pollHandler).Methods("POST")
 	case PHPSDK:
 		router.Handle(PollingPathPHPFlag, p.phpFlagHandler()).Methods("GET")
 		router.Handle(PollingPathPHPSegment, p.phpSegmentHandler()).Methods("GET")

@@ -21,6 +21,8 @@ const (
 	StreamingPathRokuEvaluate       = "/mevalalternate"
 	StreamingPathJSClientGet        = "/eval/{env}/{context}"
 	StreamingPathJSClientReport     = "/eval/{env}"
+	StreamingPathFDv2ClientGet      = "/sdk/stream/eval/{context}"
+	StreamingPathFDv2ClientPost     = "/sdk/stream/eval"
 	StreamingPathContextBase64Param = "{context}"
 	StreamingPathEnvIDParam         = "{env}"
 )
@@ -91,9 +93,13 @@ func NewStreamingService(
 	case MobileSDK:
 		router.HandleFunc(StreamingPathMobileGet, streamHandler).Methods("GET")
 		router.HandleFunc(StreamingPathMobileReport, streamHandler).Methods("REPORT")
+		router.HandleFunc(StreamingPathFDv2ClientGet, streamHandler).Methods("GET")
+		router.HandleFunc(StreamingPathFDv2ClientPost, streamHandler).Methods("POST")
 	case JSClientSDK:
 		router.HandleFunc(StreamingPathJSClientGet, streamHandler).Methods("GET")
 		router.HandleFunc(StreamingPathJSClientReport, streamHandler).Methods("REPORT")
+		router.HandleFunc(StreamingPathFDv2ClientGet, streamHandler).Methods("GET")
+		router.HandleFunc(StreamingPathFDv2ClientPost, streamHandler).Methods("POST")
 	}
 	s.handler = router
 

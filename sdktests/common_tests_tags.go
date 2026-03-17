@@ -58,15 +58,9 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 			t.Run(p.description, func(t *ldtest.T) {
 				tags := p.tags
 				dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionStreaming())
-				configurers := c.baseSDKConfigurationPlus(
+				_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 					withTagsConfig(tags),
-					dataSystem)
-				if c.isClientSide {
-					// client-side SDKs in streaming mode may *also* need a polling data source
-					configurers = append(configurers,
-						NewSDKDataSystem(t, nil, DataSystemOptionPolling()))
-				}
-				_ = NewSDKClient(t, configurers...)
+					dataSystem)...)
 				verifyRequestHeader(t, p, dataSystem.Synchronizers[0].Endpoint())
 			})
 		}

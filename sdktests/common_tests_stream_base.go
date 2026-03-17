@@ -38,26 +38,28 @@ func (c CommonStreamingTests) setupDataSystems(
 		initialData = d.ConvertToFDv2SDKData(t)
 	}
 
-	var configurers []SDKConfigurer
-	dataSystem := NewSDKDataSystem(t, initialData)
+	var dsOptions []SDKDataSystemOption
 
 	switch c.sdkKind {
 	case mockld.ServerSideSDK:
-		break
+		// No connection modes; uses top-level initializers/synchronizers.
 
-	case mockld.RokuSDK:
-		fallthrough
-	case mockld.MobileSDK:
-		emptyPollingDataSource := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
-		configurers = append(configurers, emptyPollingDataSource)
+	case mockld.RokuSDK, mockld.MobileSDK:
+		dsOptions = append(dsOptions,
+			DataSystemOptionConnectionMode("streaming", DataSystemOptionStreaming()),
+			DataSystemOptionConnectionMode("polling", DataSystemOptionPolling()),
+			DataSystemOptionInitialConnectionMode("streaming"),
+		)
 
 	case mockld.JSClientSDK:
-		pollingDataSourceWithInitialData := NewSDKDataSystem(t, initialData, DataSystemOptionPolling())
-		configurers = append(configurers, pollingDataSourceWithInitialData)
+		// Defaults from NewSDKDataSystem provide a "streaming" connection mode with a
+		// polling initializer and streaming synchronizer, with initialConnectionMode
+		// set to "streaming". No explicit options needed.
 
 	default:
 		panic("unknown SDK kind")
 	}
 
-	return dataSystem, append(configurers, dataSystem)
+	dataSystem := NewSDKDataSystem(t, initialData, dsOptions...)
+	return dataSystem, []SDKConfigurer{dataSystem}
 }

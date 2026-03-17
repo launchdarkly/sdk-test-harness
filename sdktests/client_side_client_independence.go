@@ -80,7 +80,7 @@ func doClientSideClientIndependenceTestsSameEnvironment(t *ldtest.T) {
 
 	// change data from data source
 	dataBuilderFlag1Result2 := mockld.NewClientSDKDataBuilder().Flag(flag1Key, flag1Result2).Build()
-	dataSystem.Synchronizers[0].streaming.SetInitialData(dataBuilderFlag1Result2)
+	dataSystem.SetData(dataBuilderFlag1Result2)
 	clientA.SendIdentifyEvent(t, contextA1)
 	clientB.SendIdentifyEvent(t, contextB1)
 
@@ -249,7 +249,7 @@ func doClientSideClientIndependenceTestsClientAManipulatedClientBUnaffected(t *l
 
 	// now identify on A and verify event from A, but no event from B
 	dataBuilderFlag1Result2 := mockld.NewClientSDKDataBuilder().Flag(flag1Key, flag1Result2).Build()
-	dataSystemA.Synchronizers[0].streaming.SetInitialData(dataBuilderFlag1Result2)
+	dataSystemA.SetData(dataBuilderFlag1Result2)
 	clientA.SendIdentifyEvent(t, contextA2)
 
 	// check that client A evaluates to a new value

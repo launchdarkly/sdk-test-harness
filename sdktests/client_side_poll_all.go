@@ -47,12 +47,11 @@ func doClientSidePollRequestTest(t *ldtest.T) {
 
 		case mockld.JSClientSDK:
 			jsGetPathPrefix := strings.TrimSuffix(
-				strings.ReplaceAll(mockld.PollingPathJSClientGet, mockld.PollingPathEnvIDParam, envIDOrMobileKey),
+				mockld.PollingPathFDv2ClientGet,
 				mockld.PollingPathContextBase64Param, // details of base64-encoded context data are tested separately
 			)
-			jsReportPath := strings.ReplaceAll(mockld.PollingPathJSClientReport, mockld.PollingPathEnvIDParam, envIDOrMobileKey)
 			return h.IfElse(method == flagRequestREPORT,
-				m.Equal(jsReportPath),
+				m.Equal(mockld.PollingPathFDv2ClientPost),
 				m.StringHasPrefix(jsGetPathPrefix))
 
 		default:
@@ -63,6 +62,6 @@ func doClientSidePollRequestTest(t *ldtest.T) {
 
 	getPath := h.IfElse(sdkKind == mockld.MobileSDK || sdkKind == mockld.RokuSDK,
 		mockld.PollingPathMobileGet,
-		strings.ReplaceAll(mockld.PollingPathJSClientGet, mockld.PollingPathEnvIDParam, envIDOrMobileKey))
+		mockld.PollingPathFDv2ClientGet)
 	pollTests.RequestContextProperties(t, getPath)
 }

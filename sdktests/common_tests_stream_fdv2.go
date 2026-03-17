@@ -71,7 +71,9 @@ func (c CommonStreamingTests) InitializeFromEmptyState(t *ldtest.T) {
 func (c CommonStreamingTests) InitializeFromPollingInitializer(t *ldtest.T) {
 	dataBefore := mockld.NewServerSDKDataBuilder().Flag(c.makeServerSideFlag("flag-key", 1, initialValue)).Build()
 	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("none").IntentReason("up-to-date").Build()
-	dataSystem := NewSDKDataSystem(t, dataAfter, DataSystemOptionPollingInitializer(dataBefore))
+	dataSystem := NewSDKDataSystemCustom(t, dataAfter,
+		DataSystemOptionPollingInitializer(dataBefore), DataSystemOptionStreaming())
+	dataSystem.CreateEndpoints()
 
 	client := NewSDKClient(t, dataSystem)
 
@@ -91,7 +93,9 @@ func (c CommonStreamingTests) InitializeFromPollingInitializerWithStreamingUpdat
 		IntentReason("stale").
 		Flag(c.makeServerSideFlag("new-flag-key", 1, newInitialValue)).
 		Build()
-	dataSystem := NewSDKDataSystem(t, dataBefore, DataSystemOptionPollingInitializer(dataBefore))
+	dataSystem := NewSDKDataSystemCustom(t, dataBefore,
+		DataSystemOptionPollingInitializer(dataBefore), DataSystemOptionStreaming())
+	dataSystem.CreateEndpoints()
 	dataSystem.Synchronizers[0].streaming.SetInitialData(dataAfter)
 
 	client := NewSDKClient(t, dataSystem)
@@ -117,8 +121,10 @@ func (c CommonStreamingTests) InitializeFromTwoPollingInitializers(t *ldtest.T) 
 		IntentReason("up-to-date").
 		State("expected-state").
 		Build()
-	dataSystem := NewSDKDataSystem(t, streamingData,
-		DataSystemOptionPollingInitializer(emptyPayload), DataSystemOptionPollingInitializer(initialStatefulData))
+	dataSystem := NewSDKDataSystemCustom(t, streamingData,
+		DataSystemOptionPollingInitializer(emptyPayload), DataSystemOptionPollingInitializer(initialStatefulData),
+		DataSystemOptionStreaming())
+	dataSystem.CreateEndpoints()
 
 	// Force the first endpoint to fail
 	dataSystem.Initializers[0].Endpoint().Close()
