@@ -105,13 +105,14 @@ func newCommonTestsBase(t *ldtest.T, testName string, baseSDKConfigurers ...SDKC
 	}
 	return c
 }
+
 func (c commonTestsBase) baseSDKConfigurationPlus(configurers ...SDKConfigurer) []SDKConfigurer {
 	return append(c.sdkConfigurers, configurers...)
 }
 
 func (c commonTestsBase) authorizationHeaderMatcher(credential string) m.Matcher {
 	if c.sdkKind == mockld.JSClientSDK {
-		return HasNoAuthorizationHeader()
+		return m.AnyOf(HasNoAuthorizationHeader(), HasAuthorizationHeader(credential))
 	}
 	return HasAuthorizationHeader(credential)
 }

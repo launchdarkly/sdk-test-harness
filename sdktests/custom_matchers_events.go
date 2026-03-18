@@ -27,8 +27,9 @@ func EventHasKind(kind string) m.Matcher {
 }
 
 func HasContextKeys(context ldcontext.Context) m.Matcher {
-	kvs := []m.KeyValueMatcher{}
-	for _, mc := range context.GetAllIndividualContexts(nil) {
+	contexts := context.GetAllIndividualContexts(nil)
+	kvs := make([]m.KeyValueMatcher, 0, len(contexts))
+	for _, mc := range contexts {
 		kvs = append(kvs, m.KV(string(mc.Kind()), m.Equal(mc.Key())))
 	}
 	return m.JSONProperty("contextKeys").Should(m.MapOf(kvs...))
@@ -40,10 +41,10 @@ func HasAnyCreationDate() m.Matcher {
 
 func HasContextObjectWithMatchingKeys(context ldcontext.Context) m.Matcher {
 	if context.Multiple() {
-		kvs := []m.KeyValueMatcher{
-			m.KV("kind", m.Equal("multi")),
-		}
-		for _, mc := range context.GetAllIndividualContexts(nil) {
+		allContexts := context.GetAllIndividualContexts(nil)
+		kvs := make([]m.KeyValueMatcher, 0, len(allContexts)+1)
+		kvs = append(kvs, m.KV("kind", m.Equal("multi")))
+		for _, mc := range allContexts {
 			kvs = append(kvs, m.KV(string(mc.Kind()),
 				m.JSONProperty("key").Should(m.Equal(mc.Key()))))
 		}

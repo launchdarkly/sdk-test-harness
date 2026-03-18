@@ -204,7 +204,6 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 }
 
 func (c CommonTagsTests) makeValidTagsTestParams(t *ldtest.T) []tagsTestParams {
-	ret := make([]tagsTestParams, 0)
 	values := make([]o.Maybe[string], 0)
 
 	// The auto env spec does not allow for specifying only an ID or a version.
@@ -231,6 +230,7 @@ func (c CommonTagsTests) makeValidTagsTestParams(t *ldtest.T) []tagsTestParams {
 	// Ensure we test the maximum length
 	values = append(values, o.Some(strings.Repeat(allAllowedTagChars[1:2], maxTagValueLength)))
 
+	ret := make([]tagsTestParams, 0, len(values)*len(values))
 	for _, appID := range values {
 		for _, appVersion := range values {
 			tags := servicedef.SDKConfigTagsParams{ApplicationID: appID, ApplicationVersion: appVersion}

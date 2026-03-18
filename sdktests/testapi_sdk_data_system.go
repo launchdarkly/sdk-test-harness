@@ -180,7 +180,8 @@ func (s *SDKDataSystem) buildServiceDefComponents(
 				}
 				params := servicedef.SDKConfigPollingParams{BaseURI: sync.endpoint.BaseURL()}
 				if sync.pollIntervalMS.IsDefined() {
-					params.PollIntervalMS = o.Some(ldtime.UnixMillisecondTime(sync.pollIntervalMS.Value().Milliseconds()))
+					ms := uint64(sync.pollIntervalMS.Value().Milliseconds()) //nolint:gosec
+					params.PollIntervalMS = o.Some(ldtime.UnixMillisecondTime(ms))
 				}
 				sdSynchronizers[i].Polling = o.Some(params)
 			}

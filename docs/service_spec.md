@@ -211,6 +211,24 @@ This means that the SDK has a native API for flag *value* change listeners — l
 
 For details on the commands and callback payloads, see the `registerFlagValueChangeListener` and `unregisterListener` commands.
 
+#### Capability `"track-hooks"`
+
+This means that the SDK has support for hooks and has the ability to register track hooks.
+
+For a test service to support hooks testing it must support a `test-hook`. The configuration will specify registering one or more `test-hooks`.
+
+A test hook must:
+  - Implement the SDK hook interface.
+  - Whenever an evaluation stage is called POST information about that call to the `callbackUrl` of the hook.
+  - The POST should not take place if the hook was configured to return/throw an error for that stage (`errors` object in the configuration).
+    - The payload is an object with the following properties:
+      * `trackSeriesContext` (object, optional): If a track stage was executed, then this should be the associated context.
+        * `key` (string, required): The key for the event being tracked.
+        * `context` (object, required): The context associated with the track operation.
+        * `data` (any): The data associated with the track operation.
+        * `metricValue` (number, optional): The metric value associated with the track operation.
+      * `stage` (string, optional): If executing a stage, for example `afterTrack`, this should be the stage.
+
 #### Capability `"tls:verify-peer"`
 
 This means the SDK is capable of verifying its TLS peer, which is generally a standard capability of all SDKs that talk

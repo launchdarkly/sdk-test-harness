@@ -48,7 +48,7 @@ func doPHPFeatureEventTests(t *ldtest.T) {
 			h.IfElse(fs.withDebug, "debug", "nodebug"),
 			h.IfElse(fs.malformed, "malformed", "valid"))
 	}
-	var allFlagSelectors []flagSelectors
+	allFlagSelectors := make([]flagSelectors, 0, 8)
 	for _, tracked := range []bool{false, true} {
 		for _, withDebug := range []bool{false, true} {
 			for _, malformed := range []bool{false, true} {

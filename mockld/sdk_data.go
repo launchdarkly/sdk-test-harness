@@ -87,7 +87,7 @@ func (b blockingUnavailableSDKData) Serialize() []byte { return nil }
 type ServerSDKData map[DataItemKind]map[string]json.RawMessage
 
 func (d ServerSDKData) ConvertToFDv2SDKData(t *ldtest.T) FDv2SDKData {
-	payloadObjects := make([]framework.BaseObject, 0)
+	payloadObjects := make([]framework.BaseObject, 0, len(d))
 
 	for kind, items := range d {
 		for key, item := range items {
@@ -114,7 +114,7 @@ func (d ServerSDKData) ConvertToFDv2SDKData(t *ldtest.T) FDv2SDKData {
 type ClientSDKData map[string]ClientSDKFlag
 
 func (d ClientSDKData) ConvertToFDv2SDKClientData(t *ldtest.T, state string) FDv2SDKData {
-	payloadObjects := make([]framework.BaseObject, 0)
+	payloadObjects := make([]framework.BaseObject, 0, len(d))
 
 	for key, item := range d {
 		json, err := json.Marshal(item)

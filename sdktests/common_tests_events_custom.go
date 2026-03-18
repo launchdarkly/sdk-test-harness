@@ -183,7 +183,7 @@ func (c CommonEventTests) customEventsParameterizedTests(t *ldtest.T) {
 
 	// Generate many permutations of 1. data types that can be used for the data parameter, if any, and
 	// 2. metric value parameter, if any.
-	allParams := make([]servicedef.CustomEventParams, 0)
+	allParams := make([]servicedef.CustomEventParams, 0, (len(data.MakeStandardTestValues())+1)*4)
 	omitMetricValue := float64(-999999) // magic value that we'll change to null
 	for _, metricValue := range []float64{
 		omitMetricValue,
