@@ -184,20 +184,13 @@ func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagReq
 
 							request := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
 
-							var queryMatcher m.Matcher
+							withReasonsParam := request.URL.Query().Get("withReasons")
 							if withReasons.Value() {
-								queryMatcher = m.MapOf(
-									m.KV("withReasons", m.Items(m.Equal("true"))),
-								)
+								m.In(t).For("withReasons query parameter").Assert(withReasonsParam, m.Equal("true"))
 							} else {
-								queryMatcher = m.AnyOf(
-									m.MapOf(
-										m.KV("withReasons", m.Items(m.Equal("false"))),
-									),
-									m.MapOf(),
-								)
+								m.In(t).For("withReasons query parameter").Assert(withReasonsParam,
+									m.AnyOf(m.Equal("false"), m.Equal("")))
 							}
-							m.In(t).For("query string").Assert(request.URL.Query(), queryMatcher)
 						})
 					}
 				})
