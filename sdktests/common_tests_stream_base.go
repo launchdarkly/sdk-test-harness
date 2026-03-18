@@ -42,7 +42,12 @@ func (c CommonStreamingTests) setupDataSystems(
 
 	switch c.sdkKind {
 	case mockld.ServerSideSDK:
-		// No connection modes; uses top-level initializers/synchronizers.
+		// Streaming tests need only a streaming synchronizer (no polling initializer)
+		// so the SDK connects to streaming with an empty basis. Tests that need a
+		// polling initializer create their own data system via NewSDKDataSystemCustom.
+		dataSystem := NewSDKDataSystemCustom(t, initialData, DataSystemOptionStreaming())
+		dataSystem.CreateEndpoints()
+		return dataSystem, []SDKConfigurer{dataSystem}
 
 	case mockld.RokuSDK, mockld.MobileSDK:
 		dsOptions = append(dsOptions,
