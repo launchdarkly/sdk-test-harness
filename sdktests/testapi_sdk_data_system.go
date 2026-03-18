@@ -326,8 +326,10 @@ func NewSDKDataSystemWithoutEndpoints(
 	t *ldtest.T, data mockld.SDKData, options ...SDKDataSystemOption) *SDKDataSystem {
 	data = convertData(t, data)
 	defaults := defaultDataSystemOptions(t, data)
-	allOptions := append(defaults, options...)
-	return buildDataSystem(t, data, allOptions)
+	combined := make([]SDKDataSystemOption, 0, len(defaults)+len(options))
+	combined = append(combined, defaults...)
+	combined = append(combined, options...)
+	return buildDataSystem(t, data, combined)
 }
 
 // NewSDKDataSystemCustom creates an SDKDataSystem with no implicit defaults. The caller
@@ -485,7 +487,9 @@ func setDataOnServices(initializers []DataInitializer, synchronizers []DataSynch
 	}
 }
 
-func buildMode(t *ldtest.T, data mockld.SDKData, sdkKind mockld.SDKKind, options []SDKDataSystemOption) *dataSystemMode {
+func buildMode(
+	t *ldtest.T, data mockld.SDKData, sdkKind mockld.SDKKind, options []SDKDataSystemOption,
+) *dataSystemMode {
 	var modeConfig sdkDataSystemConfig
 	_ = helpers.ApplyOptions(&modeConfig, options...)
 
