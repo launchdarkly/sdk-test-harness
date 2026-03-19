@@ -470,7 +470,7 @@ func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent
 	dataSystem.Synchronizers[0].streaming.PushUpdate(
 		"flag", "new-flag-key", 1, c.makeFlagData("new-flag-key", 1, newInitialValue))
 
-	require.Never(
+	h.RequireNever(
 		t,
 		checkForUpdatedValue(t, client, "flag-key", context, initialValue, defaultValue, defaultValue),
 		time.Millisecond*100,
@@ -478,7 +478,7 @@ func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent
 		"flag value was updated, but it should not have been",
 	)
 
-	require.Never(
+	h.RequireNever(
 		t,
 		checkForUpdatedValue(t, client, "new-flag-key", context, defaultValue, newInitialValue, defaultValue),
 		time.Millisecond*100,
@@ -624,7 +624,7 @@ func (c CommonStreamingTests) CanDiscardPartialEventsOnError(t *ldtest.T) {
 	dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 2)
 
 	context := ldcontext.New("context-key")
-	require.Never(
+	h.RequireNever(
 		t,
 		checkForUpdatedValue(t, client, "flag-key", context, initialValue, updatedValue, defaultValue),
 		time.Millisecond*100,
@@ -681,7 +681,7 @@ func (c CommonStreamingTests) DisconnectsOnGoodbye(t *ldtest.T) {
 	_ = streamEndpoint.RequireConnection(t, time.Second)
 
 	context := ldcontext.New("context-key")
-	require.Never(
+	h.RequireNever(
 		t,
 		checkForUpdatedValue(t, client, "flag-key", context, initialValue, updatedValue, defaultValue),
 		time.Millisecond*100,
