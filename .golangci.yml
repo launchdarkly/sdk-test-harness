@@ -22,6 +22,13 @@ linters:
     - unconvert
     - unparam
     - whitespace
+    - forbidigo
+  settings:
+    forbidigo:
+      analyze-types: true
+      forbid:
+        - pattern: ^require\.Never$
+          msg: "use h.RequireNever instead — require.Never spawns goroutines that cause race conditions"
   exclusions:
     presets: []
     generated: lax
