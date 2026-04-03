@@ -14,6 +14,7 @@ import (
 
 func doClientSideStreamTests(t *ldtest.T) {
 	t.Run("requests", doClientSideStreamRequestTest)
+	t.Run("fdv2", doClientSideFDv2StreamTests)
 }
 
 func doClientSideStreamRequestTest(t *ldtest.T) {
@@ -59,4 +60,8 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 		mockld.StreamingPathMobileGet,
 		mockld.StreamingPathFDv2ClientGet)
 	streamTests.RequestContextProperties(t, getPath)
+}
+
+func doClientSideFDv2StreamTests(t *ldtest.T) {
+	NewCommonStreamingTests(t, "doClientSideFDv2StreamTests").FDv2(t)
 }

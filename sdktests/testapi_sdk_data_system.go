@@ -426,7 +426,7 @@ func buildDataSystem(t *ldtest.T, data mockld.SDKData, options []SDKDataSystemOp
 	} else {
 		for _, initializer := range config.pollingInitializers {
 			d.Initializers = append(d.Initializers, DataInitializer{
-				pollingService: mockld.NewPollingService(initializer, sdkKind, t.DebugLogger()).
+				pollingService: mockld.NewPollingService(convertData(t, initializer), sdkKind, t.DebugLogger()).
 					WithGzipCompression(t.Capabilities().Has(servicedef.CapabilityPollingGzip)),
 			})
 		}
@@ -498,7 +498,7 @@ func buildMode(
 
 	for _, initData := range modeConfig.pollingInitializers {
 		mode.initializers = append(mode.initializers, DataInitializer{
-			pollingService: mockld.NewPollingService(initData, sdkKind, t.DebugLogger()).
+			pollingService: mockld.NewPollingService(convertData(t, initData), sdkKind, t.DebugLogger()).
 				WithGzipCompression(t.Capabilities().Has(servicedef.CapabilityPollingGzip)),
 		})
 	}
