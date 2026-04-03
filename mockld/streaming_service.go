@@ -240,7 +240,14 @@ func (s *StreamingService) PushUpdate(namespace, key string, version int, data j
 		if namespace != "flag" {
 			panic(errClientSideStreamCanOnlyUseFlags)
 		}
-		eventData = data
+		// Client FDv2 put-object must use the same envelope as initial payload events
+		// (see ClientSDKDataToFDv2Events): kind "flag-eval" plus key/version/object.
+		eventData = framework.BaseObject{
+			Version: version,
+			Kind:    "flag-eval",
+			Key:     key,
+			Object:  data,
+		}
 	}
 	s.PushEvent("put-object", eventData)
 }
@@ -284,12 +291,10 @@ func (s *StreamingService) PushDelete(namespace, key string, version int) {
 		if namespace != "flag" {
 			panic(errClientSideStreamCanOnlyUseFlags)
 		}
-
-		//nolint:godox
-		// TODO: Update this to match whatever the client fdv2 format should look like
-		eventData = map[string]interface{}{
-			"key":     key,
-			"version": version,
+		eventData = framework.BaseObject{
+			Version: version,
+			Kind:    "flag-eval",
+			Key:     key,
 		}
 	}
 	s.PushEvent("delete-object", eventData)
