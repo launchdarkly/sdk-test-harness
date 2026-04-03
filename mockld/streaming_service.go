@@ -94,12 +94,13 @@ func NewStreamingService(
 		router.HandleFunc(StreamingPathMobileGet, streamHandler).Methods("GET")
 		router.HandleFunc(StreamingPathMobileReport, streamHandler).Methods("REPORT")
 		router.HandleFunc(StreamingPathFDv2ClientGet, streamHandler).Methods("GET")
-		router.HandleFunc(StreamingPathFDv2ClientPost, streamHandler).Methods("POST")
+		// FDv2 stream: mobile client may use REPORT (useReport) on the same path as POST.
+		router.HandleFunc(StreamingPathFDv2ClientPost, streamHandler).Methods("POST", "REPORT")
 	case JSClientSDK:
 		router.HandleFunc(StreamingPathJSClientGet, streamHandler).Methods("GET")
 		router.HandleFunc(StreamingPathJSClientReport, streamHandler).Methods("REPORT")
 		router.HandleFunc(StreamingPathFDv2ClientGet, streamHandler).Methods("GET")
-		router.HandleFunc(StreamingPathFDv2ClientPost, streamHandler).Methods("POST")
+		router.HandleFunc(StreamingPathFDv2ClientPost, streamHandler).Methods("POST", "REPORT")
 	}
 	s.handler = router
 

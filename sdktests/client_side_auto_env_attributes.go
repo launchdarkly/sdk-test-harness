@@ -273,17 +273,10 @@ func doClientSideAutoEnvAttributesHeaderTests(t *ldtest.T) {
 	}
 
 	t.Run("stream requests", func(t *ldtest.T) {
-		dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionStreaming())
-		configurers := base.baseSDKConfigurationPlus(
+		dataSystem := NewSDKDataSystem(t, nil)
+		_ = NewSDKClient(t, base.baseSDKConfigurationPlus(
 			WithClientSideConfig(servicedef.SDKConfigClientSideParams{IncludeEnvironmentAttributes: opt.Some(true)}),
-			dataSystem)
-
-		if base.isClientSide {
-			// client-side SDKs in streaming mode may *also* need a polling data source
-			configurers = append(configurers,
-				NewSDKDataSystem(t, nil, DataSystemOptionPolling()))
-		}
-		_ = NewSDKClient(t, configurers...)
+			dataSystem)...)
 		verifyRequestHeader(t, dataSystem.Synchronizers[0].Endpoint())
 	})
 
