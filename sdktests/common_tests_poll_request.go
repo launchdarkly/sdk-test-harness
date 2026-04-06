@@ -123,7 +123,7 @@ func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagReq
 						"base URI has no trailing slash"), func(t *ldtest.T) {
 						for _, method := range c.availableFlagRequestMethods() {
 							t.Run(string(method), func(t *ldtest.T) {
-								dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
+								dataSystem := NewSDKDataSystem(t, nil, c.pollingDataSystemOptions()...)
 
 								pollURI := strings.TrimSuffix(dataSystem.Synchronizers[0].Endpoint().BaseURL(), "/")
 								if trailingSlash {
@@ -413,7 +413,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 
 func (c CommonPollingTests) RequestViaHTTPProxy(t *ldtest.T) {
 	t.Run("http proxy", func(t *ldtest.T) {
-		dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
+		dataSystem := NewSDKDataSystem(t, nil, c.pollingDataSystemOptions()...)
 
 		// The idea here is that we'll configure the SDK's service endpoints with an arbitrary host, but with the
 		// correct path that the test harness expects (like /endpoints/1). Then, we'll inject the actual test harness's

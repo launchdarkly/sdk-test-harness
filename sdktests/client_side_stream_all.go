@@ -32,31 +32,23 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 
 	requestPathMatcher := func(method flagRequestMethod) m.Matcher {
 		switch sdkKind {
-		case mockld.RokuSDK:
-			panic("invalid SDK kind")
-		case mockld.MobileSDK:
-			mobileGetPathPrefix := strings.TrimSuffix(mockld.StreamingPathMobileGet, mockld.StreamingPathContextBase64Param)
-			return h.IfElse(method == flagRequestREPORT,
-				m.Equal("/meval"),
-				m.StringHasPrefix(mobileGetPathPrefix))
-			// details of base64-encoded context data are tested separately
-
-		case mockld.JSClientSDK:
-			jsGetPathPrefix := strings.TrimSuffix(
+		case mockld.MobileSDK, mockld.JSClientSDK:
+			getPathPrefix := strings.TrimSuffix(
 				mockld.StreamingPathFDv2ClientGet,
 				mockld.StreamingPathContextBase64Param, // details of base64-encoded context data are tested separately
 			)
 			return h.IfElse(method == flagRequestREPORT,
 				m.Equal(mockld.StreamingPathFDv2ClientPost),
-				m.StringHasPrefix(jsGetPathPrefix))
-
+				m.StringHasPrefix(getPathPrefix))
+		case mockld.RokuSDK:
+			panic("invalid SDK kind")
 		default:
 			panic("invalid SDK kind")
 		}
 	}
 	streamTests.RequestURLPath(t, requestPathMatcher)
 
-	getPath := h.IfElse(sdkKind == mockld.MobileSDK || sdkKind == mockld.RokuSDK,
+	getPath := h.IfElse(sdkKind == mockld.RokuSDK,
 		mockld.StreamingPathMobileGet,
 		mockld.StreamingPathFDv2ClientGet)
 	streamTests.RequestContextProperties(t, getPath)

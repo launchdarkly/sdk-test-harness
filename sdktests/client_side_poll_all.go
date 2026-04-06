@@ -36,23 +36,20 @@ func doClientSidePollRequestTest(t *ldtest.T) {
 
 	requestPathMatcher := func(method flagRequestMethod) m.Matcher {
 		switch sdkKind {
-		case mockld.RokuSDK:
-			fallthrough
-		case mockld.MobileSDK:
-			mobileGetPathPrefix := strings.TrimSuffix(mockld.PollingPathMobileGet, mockld.PollingPathContextBase64Param)
-			return h.IfElse(method == flagRequestREPORT,
-				m.Equal(mockld.PollingPathMobileReport),
-				m.StringHasPrefix(mobileGetPathPrefix))
-			// details of base64-encoded context data are tested separately
-
-		case mockld.JSClientSDK:
-			jsGetPathPrefix := strings.TrimSuffix(
+		case mockld.MobileSDK, mockld.JSClientSDK:
+			getPathPrefix := strings.TrimSuffix(
 				mockld.PollingPathFDv2ClientGet,
 				mockld.PollingPathContextBase64Param, // details of base64-encoded context data are tested separately
 			)
 			return h.IfElse(method == flagRequestREPORT,
 				m.Equal(mockld.PollingPathFDv2ClientPost),
-				m.StringHasPrefix(jsGetPathPrefix))
+				m.StringHasPrefix(getPathPrefix))
+
+		case mockld.RokuSDK:
+			rokuGetPathPrefix := strings.TrimSuffix(mockld.PollingPathMobileGet, mockld.PollingPathContextBase64Param)
+			return h.IfElse(method == flagRequestREPORT,
+				m.Equal(mockld.PollingPathMobileReport),
+				m.StringHasPrefix(rokuGetPathPrefix))
 
 		default:
 			panic("invalid SDK kind")
@@ -60,7 +57,7 @@ func doClientSidePollRequestTest(t *ldtest.T) {
 	}
 	pollTests.RequestURLPath(t, requestPathMatcher)
 
-	getPath := h.IfElse(sdkKind == mockld.MobileSDK || sdkKind == mockld.RokuSDK,
+	getPath := h.IfElse(sdkKind == mockld.RokuSDK,
 		mockld.PollingPathMobileGet,
 		mockld.PollingPathFDv2ClientGet)
 	pollTests.RequestContextProperties(t, getPath)

@@ -60,15 +60,17 @@ func NewPollingService(
 	case RokuSDK:
 		fallthrough
 	case MobileSDK:
+		router.Handle(PollingPathFDv2ClientGet, pollHandler).Methods("GET")
+		router.Handle(PollingPathFDv2ClientPost, pollHandler).Methods("POST", "REPORT")
+		// Legacy poll paths (retained for FDv1 fallback contract tests).
 		router.Handle(PollingPathMobileGet, pollHandler).Methods("GET")
 		router.Handle(PollingPathMobileReport, pollHandler).Methods("REPORT")
+	case JSClientSDK:
 		router.Handle(PollingPathFDv2ClientGet, pollHandler).Methods("GET")
 		router.Handle(PollingPathFDv2ClientPost, pollHandler).Methods("POST", "REPORT")
-	case JSClientSDK:
+		// Legacy poll paths (retained for FDv1 fallback contract tests).
 		router.Handle(PollingPathJSClientGet, pollHandler).Methods("GET")
 		router.Handle(PollingPathJSClientReport, pollHandler).Methods("REPORT")
-		router.Handle(PollingPathFDv2ClientGet, pollHandler).Methods("GET")
-		router.Handle(PollingPathFDv2ClientPost, pollHandler).Methods("POST", "REPORT")
 	case PHPSDK:
 		router.Handle(PollingPathPHPFlag, p.phpFlagHandler()).Methods("GET")
 		router.Handle(PollingPathPHPSegment, p.phpSegmentHandler()).Methods("GET")

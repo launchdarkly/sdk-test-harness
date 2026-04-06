@@ -15,16 +15,13 @@ import (
 
 const (
 	StreamingPathServerSide         = "/sdk/stream"
-	StreamingPathMobileGet          = "/meval/{context}"
-	StreamingPathMobileReport       = "/meval"
 	StreamingPathRokuHandshake      = "/handshake"
 	StreamingPathRokuEvaluate       = "/mevalalternate"
-	StreamingPathJSClientGet        = "/eval/{env}/{context}"
-	StreamingPathJSClientReport     = "/eval/{env}"
+	StreamingPathMobileGet          = "/meval/{context}"
+	StreamingPathMobileReport       = "/meval"
 	StreamingPathFDv2ClientGet      = "/sdk/stream/eval/{context}"
 	StreamingPathFDv2ClientPost     = "/sdk/stream/eval"
 	StreamingPathContextBase64Param = "{context}"
-	StreamingPathEnvIDParam         = "{env}"
 )
 
 const errClientSideStreamCanOnlyUseFlags = `A client-side test attempted to reference a namespace other than` +
@@ -86,19 +83,13 @@ func NewStreamingService(
 		router.HandleFunc(StreamingPathServerSide, streamHandler).Methods("GET")
 	case RokuSDK:
 		rokuHandler := RokuServer{}
-
 		router.Path(StreamingPathRokuHandshake).Methods("POST").HandlerFunc(rokuHandler.ServeHandshake)
 		router.Path(StreamingPathRokuEvaluate).Methods("POST").Handler(rokuHandler.Wrap(s))
-		fallthrough
-	case MobileSDK:
 		router.HandleFunc(StreamingPathMobileGet, streamHandler).Methods("GET")
 		router.HandleFunc(StreamingPathMobileReport, streamHandler).Methods("REPORT")
 		router.HandleFunc(StreamingPathFDv2ClientGet, streamHandler).Methods("GET")
-		// FDv2 stream: mobile client may use REPORT (useReport) on the same path as POST.
 		router.HandleFunc(StreamingPathFDv2ClientPost, streamHandler).Methods("POST", "REPORT")
-	case JSClientSDK:
-		router.HandleFunc(StreamingPathJSClientGet, streamHandler).Methods("GET")
-		router.HandleFunc(StreamingPathJSClientReport, streamHandler).Methods("REPORT")
+	case MobileSDK, JSClientSDK:
 		router.HandleFunc(StreamingPathFDv2ClientGet, streamHandler).Methods("GET")
 		router.HandleFunc(StreamingPathFDv2ClientPost, streamHandler).Methods("POST", "REPORT")
 	}
