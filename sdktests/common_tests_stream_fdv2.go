@@ -210,7 +210,9 @@ func (c CommonStreamingTests) RecoverableFallbackToSecondarySynchronizer(t *ldte
 }
 
 func (c CommonStreamingTests) PermanentFallbackToSecondarySynchronizer(t *ldtest.T) {
-	t.RequireCapability(servicedef.CapabilityEventSourceHTTPErrors)
+	if c.isClientSide {
+		t.RequireCapability(servicedef.CapabilityClientEventSourceHTTPErrors)
+	}
 
 	// First synchronizer returns 401 Unauthorized, which is a non-recoverable error.
 	// Non-recoverable 4xx errors (all except 400, 408, 429) cause the synchronizer to be
@@ -406,7 +408,9 @@ func (c CommonStreamingTests) PermanentFallbackWithRecovery(t *ldtest.T) {
 }
 
 func (c CommonStreamingTests) FallbackFromFDv2ToFDv1(t *ldtest.T) {
-	t.RequireCapability(servicedef.CapabilityEventSourceHTTPErrors)
+	if c.isClientSide {
+		t.RequireCapability(servicedef.CapabilityClientEventSourceHTTPErrors)
+	}
 
 	handler, channel := httphelpers.RecordingHandler(httphelpers.HandlerWithResponse(
 		403, http.Header{"X-LD-FD-Fallback": []string{"true"}}, nil))

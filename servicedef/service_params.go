@@ -65,10 +65,12 @@ const (
 	// path as the only CA cert in its trust store (rather than adding it to an existing trust store.)
 	CapabilityTLSCustomCA = "tls:custom-ca"
 
-	// CapabilityEventSourceHTTPErrors indicates the SDK's EventSource implementation can detect
-	// HTTP error status codes (e.g. 401) and response headers. Browser-native EventSource does
-	// not expose this information, so browser SDKs typically lack this capability.
-	CapabilityEventSourceHTTPErrors = "event-source-http-errors"
+	// CapabilityClientEventSourceHTTPErrors indicates a client-side SDK's EventSource
+	// implementation can detect HTTP error status codes (e.g. 401) and response headers.
+	// Browser-native EventSource does not expose this information, so browser SDKs
+	// typically lack this capability. Only checked for client-side SDKs; server-side
+	// SDKs do not need to declare it.
+	CapabilityClientEventSourceHTTPErrors = "client-event-source-http-errors"
 
 	CapabilityOmitAnonymousContexts = "omit-anonymous-contexts"
 

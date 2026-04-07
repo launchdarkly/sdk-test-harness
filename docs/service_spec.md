@@ -90,11 +90,11 @@ This means that the SDK supports disabling gzip compression. This capability exp
 
 When this capability is set a subset of tests will set the "enableGzip" of the events configuration to false.
 
-#### Capability `"event-source-http-errors"`
+#### Capability `"client-event-source-http-errors"`
 
-This means that the SDK's EventSource implementation can detect HTTP error status codes (e.g. 401, 403) and response headers from failed streaming connections. This is required for tests that verify synchronizer fallback behavior on non-recoverable HTTP errors, and for FDv1 fallback detection via the `X-LD-FD-Fallback` response header.
+For client-side SDKs only. This means the SDK's EventSource implementation can detect HTTP error status codes (e.g. 401, 403) and response headers from failed streaming connections. This is required for tests that verify synchronizer fallback behavior on non-recoverable HTTP errors, and for FDv1 fallback detection via the `X-LD-FD-Fallback` response header.
 
-Browser-native `EventSource` does not expose HTTP status codes or response headers, so browser-based SDKs typically lack this capability. SDKs using custom or polyfilled EventSource implementations that provide this information should include it.
+Browser-native `EventSource` does not expose HTTP status codes or response headers, so browser-based SDKs typically lack this capability. Client-side SDKs using custom or polyfilled EventSource implementations that provide this information should include it. Server-side SDKs do not need to declare this capability.
 
 #### Capability `"event-sampling"`
 
