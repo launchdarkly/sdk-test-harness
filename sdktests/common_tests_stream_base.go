@@ -57,9 +57,13 @@ func (c CommonStreamingTests) setupDataSystems(
 		)
 
 	case mockld.JSClientSDK:
-		// Defaults from NewSDKDataSystem provide a "streaming" connection mode with a
-		// polling initializer and streaming synchronizer, with initialConnectionMode
-		// set to "streaming". No explicit options needed.
+		// JS client-side SDKs use connection modes. Streaming-only (no polling
+		// initializer) so the SDK connects to streaming with an empty basis,
+		// matching the server-side behavior for these tests.
+		dsOptions = append(dsOptions,
+			DataSystemOptionConnectionMode("streaming", DataSystemOptionStreaming()),
+			DataSystemOptionInitialConnectionMode("streaming"),
+		)
 
 	default:
 		panic("unknown SDK kind")
