@@ -2,6 +2,7 @@ package sdktests
 
 import (
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
@@ -32,6 +33,11 @@ var (
 	// fdv2StreamingTestContext is the evaluation context for the CommonStreamingTests FDv2 suite: client
 	// initial context and explicit EvaluateFlag calls must use the same context.
 	fdv2StreamingTestContext = ldcontext.New("context-key") //nolint:gochecknoglobals
+
+	// FDv1 polling paths expected after FDv2 stream fallback (see mockld.PollingPath*).
+	fdV1FallbackPathServerSide = regexp.MustCompile(`^/sdk/latest-all$`)               //nolint:gochecknoglobals
+	fdV1FallbackPathMobile     = regexp.MustCompile(`^/msdk/evalx/contexts/.+`)       //nolint:gochecknoglobals
+	fdV1FallbackPathJSClient   = regexp.MustCompile(`^/sdk/evalx/[^/]+/contexts/.+`) //nolint:gochecknoglobals
 )
 
 func (c CommonStreamingTests) FDv2(t *ldtest.T) {
@@ -410,6 +416,7 @@ func (c CommonStreamingTests) PermanentFallbackWithRecovery(t *ldtest.T) {
 func (c CommonStreamingTests) FallbackFromFDv2ToFDv1(t *ldtest.T) {
 	if c.isClientSide {
 		t.RequireCapability(servicedef.CapabilityClientEventSourceHTTPErrors)
+		t.RequireCapability(servicedef.CapabilityServiceEndpoints)
 	}
 
 	handler, channel := httphelpers.RecordingHandler(httphelpers.HandlerWithResponse(
@@ -418,25 +425,37 @@ func (c CommonStreamingTests) FallbackFromFDv2ToFDv1(t *ldtest.T) {
 		harness.MockEndpointDescription("streaming service"))
 	t.Defer(endpoint.Close)
 
-	_ = NewSDKClient(t,
-		WithConfig(servicedef.SDKConfigParams{
-			InitCanFail:     true,
-			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(1)),
+	baseURI := endpoint.BaseURL()
+	_ = c.newFDv2SDKClient(t,
+		WithWaitToStart(time.Millisecond, true),
+		WithServiceEndpoints(servicedef.SDKConfigServiceEndpointsParams{
+			Streaming: baseURI,
+			Polling:   baseURI,
 		}),
-		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
-			BaseURI: endpoint.BaseURL(),
-		}),
-		WithPollingSynchronizer(servicedef.SDKConfigPollingParams{
-			BaseURI: endpoint.BaseURL(),
-		}))
+		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{}),
+		WithPollingSynchronizer(servicedef.SDKConfigPollingParams{}))
 
 	h.RequireEventually(t, func() bool {
 		_, _ = endpoint.AwaitConnection(time.Second * 1)
 
 		select {
 		case resp := <-channel:
-			if resp.Request.URL.Path == "/sdk/latest-all" {
-				return true
+			path := resp.Request.URL.Path
+			switch c.sdkKind {
+			case mockld.ServerSideSDK, mockld.PHPSDK:
+				if fdV1FallbackPathServerSide.MatchString(path) {
+					return true
+				}
+			case mockld.MobileSDK:
+				if fdV1FallbackPathMobile.MatchString(path) {
+					return true
+				}
+			case mockld.JSClientSDK:
+				if fdV1FallbackPathJSClient.MatchString(path) {
+					return true
+				}
+			default:
+				// no-op
 			}
 		default:
 			// no-op
