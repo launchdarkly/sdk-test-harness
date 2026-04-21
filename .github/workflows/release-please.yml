@@ -49,6 +49,8 @@ jobs:
   release-sdk-test-harness:
     needs: ['release-please', 'create-tag']
     if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    permissions:
+      contents: write
     uses: ./.github/workflows/release.yml
     with:
       tag: ${{ needs.release-please.outputs.tag_name }}
