@@ -127,6 +127,7 @@ func doAllPHPTests(t *ldtest.T) {
 	t.Run("instance id", func(t *ldtest.T) {
 		NewCommonInstanceIDTests(t, "doPHPInstanceIdTests").RunPHP(t)
 	})
+	t.Run("hooks", doCommonHooksTests)
 }
 
 func allImportantServerSideCapabilities() framework.Capabilities {
