@@ -2,7 +2,6 @@
   "packages": {
     ".": {
       "draft": true,
-      "force-tag-creation": true,
       "release-type": "go",
       "bump-minor-pre-major": true,
       "versioning": "default",

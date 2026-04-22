@@ -15,25 +15,22 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-      - uses: google-github-actions/release-please-action@e4dc86ba9405554aeba3c6bb2d169500e7d3b4ee # v4
+      # Create any releases in release, then create tags, and then optionally create any new PRs.
+      - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4.4.0
         id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          target-branch: v2
+          skip-github-pull-request: true
+          target-branch: ${{ github.ref_name }}
 
-  create-tag:
-    needs: release-please
-    if: ${{ needs.release-please.outputs.release_created == 'true' }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
+      # Need the repository content to be able to create and push a tag.
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+
       - name: Create release tag
+        if: ${{ steps.release.outputs.release_created == 'true' }}
         env:
-          TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
+          TAG_NAME: ${{ steps.release.outputs.tag_name }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if gh api "repos/${{ github.repository }}/git/ref/tags/${TAG_NAME}" >/dev/null 2>&1; then
@@ -46,14 +43,31 @@ jobs:
             git push origin "${TAG_NAME}"
           fi
 
+      - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4.4.0
+        if: ${{ steps.release.outputs.release_created != 'true' }}
+        id: release-prs
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          skip-github-release: true
+          target-branch: ${{ github.ref_name }}
+
   release-sdk-test-harness:
-    needs: ['release-please', 'create-tag']
+    needs: release-please
     if: ${{ needs.release-please.outputs.release_created == 'true' }}
     permissions:
       contents: write
-    uses: ./.github/workflows/release.yml
-    with:
-      tag: ${{ needs.release-please.outputs.tag_name }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Needed for goreleaser to inspect tags.
+      - uses: ./.github/actions/ci
+        with:
+          run_linter: 'false'
+      - uses: ./.github/actions/publish
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ needs.release-please.outputs.tag_name }}
 
   publish-release:
     needs: ['release-please', 'release-sdk-test-harness']
