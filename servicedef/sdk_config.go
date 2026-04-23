@@ -39,11 +39,12 @@ const (
 )
 
 type DataSystem struct {
-	Store         o.Maybe[DataStore] `json:"store,omitempty"`
-	StoreMode     DataStoreMode      `json:"storeMode"`
-	Initializers  []DataInitializer  `json:"initializers"`
-	Synchronizers []DataSynchronizer `json:"synchronizers"`
-	PayloadFilter o.Maybe[string]    `json:"payloadFilter,omitempty"`
+	Store         o.Maybe[DataStore]                `json:"store,omitempty"`
+	StoreMode     DataStoreMode                     `json:"storeMode"`
+	Initializers  []DataInitializer                 `json:"initializers"`
+	Synchronizers []DataSynchronizer                `json:"synchronizers"`
+	FDv1Fallback  o.Maybe[FDv1FallbackSynchronizer] `json:"fdv1Fallback,omitempty"`
+	PayloadFilter o.Maybe[string]                   `json:"payloadFilter,omitempty"`
 }
 
 type DataStore struct {
@@ -55,6 +56,18 @@ type DataInitializer struct {
 }
 
 type DataSynchronizer struct {
+	Streaming o.Maybe[SDKConfigStreamingParams] `json:"streaming,omitempty"`
+	Polling   o.Maybe[SDKConfigPollingParams]   `json:"polling,omitempty"`
+}
+
+// FDv1FallbackSynchronizer configures the SDK's FDv1 Fallback Synchronizer, which is
+// engaged only in response to a server-directed FDv1 Fallback Directive (section 1.6
+// of the Data System spec). It is architecturally distinct from the Primary/Fallback
+// FDv2 synchronizers listed in DataSystem.Synchronizers — those are used for the
+// ordinary heuristic failover described in section 1.2, whereas this field is used
+// only on directed fallback and, once engaged, becomes the SDK's sole data source
+// for the remainder of its lifetime.
+type FDv1FallbackSynchronizer struct {
 	Streaming o.Maybe[SDKConfigStreamingParams] `json:"streaming,omitempty"`
 	Polling   o.Maybe[SDKConfigPollingParams]   `json:"polling,omitempty"`
 }
