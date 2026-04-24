@@ -122,31 +122,16 @@ func WithStreamingSynchronizer(streamingConfig servicedef.SDKConfigStreamingPara
 	})
 }
 
-// WithFDv1FallbackPollingSynchronizer configures the SDK's FDv1 Fallback Synchronizer as a
-// polling data source. The FDv1 Fallback Synchronizer is architecturally distinct from the
-// FDv2 Primary/Fallback synchronizers (spec section 1.5); it is only engaged in response to
-// a server-directed FDv1 Fallback Directive and is not part of the ordinary heuristic
-// failover chain, so it must not be configured by appending to DataSystem.Synchronizers.
-func WithFDv1FallbackPollingSynchronizer(pollingConfig servicedef.SDKConfigPollingParams) SDKConfigurer {
+// WithFDv1Fallback configures the SDK's FDv1 Fallback Synchronizer. The FDv1
+// Fallback Synchronizer is architecturally distinct from the FDv2 Primary/Fallback
+// synchronizers (spec section 1.5): it is only engaged in response to a
+// server-directed FDv1 Fallback Directive, and it is not part of the ordinary
+// heuristic failover chain — so it must not be configured by appending to
+// DataSystem.Synchronizers. FDv1 fallback is polling-only.
+func WithFDv1Fallback(pollingConfig servicedef.SDKConfigPollingParams) SDKConfigurer {
 	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
 		dataSystem := configOut.DataSystem.OrElse(servicedef.DataSystem{})
-		dataSystem.FDv1Fallback = o.Some(servicedef.FDv1FallbackSynchronizer{
-			Polling: o.Some(pollingConfig),
-		})
-		configOut.DataSystem = o.Some(dataSystem)
-		return nil
-	})
-}
-
-// WithFDv1FallbackStreamingSynchronizer configures the SDK's FDv1 Fallback Synchronizer as a
-// streaming data source. See WithFDv1FallbackPollingSynchronizer for the architectural
-// distinction between the FDv1 Fallback Synchronizer and the ordinary FDv2 synchronizer list.
-func WithFDv1FallbackStreamingSynchronizer(streamingConfig servicedef.SDKConfigStreamingParams) SDKConfigurer {
-	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
-		dataSystem := configOut.DataSystem.OrElse(servicedef.DataSystem{})
-		dataSystem.FDv1Fallback = o.Some(servicedef.FDv1FallbackSynchronizer{
-			Streaming: o.Some(streamingConfig),
-		})
+		dataSystem.FDv1Fallback = o.Some(pollingConfig)
 		configOut.DataSystem = o.Some(dataSystem)
 		return nil
 	})

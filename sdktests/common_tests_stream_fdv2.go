@@ -446,7 +446,7 @@ func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) 
 		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 			BaseURI: streamEndpoint.BaseURL(),
 		}),
-		WithFDv1FallbackPollingSynchronizer(servicedef.SDKConfigPollingParams{
+		WithFDv1Fallback(servicedef.SDKConfigPollingParams{
 			BaseURI: fdv1Endpoint.BaseURL(),
 		}))
 
@@ -510,7 +510,7 @@ func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtes
 		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 			BaseURI: streamingEndpoint.BaseURL(),
 		}),
-		WithFDv1FallbackPollingSynchronizer(servicedef.SDKConfigPollingParams{
+		WithFDv1Fallback(servicedef.SDKConfigPollingParams{
 			BaseURI: fdv1Endpoint.BaseURL(),
 		}))
 
@@ -593,10 +593,8 @@ func (c CommonStreamingTests) DirectiveOnPollingInitializerSkipsSynchronizers(t 
 						}),
 					},
 				},
-				FDv1Fallback: o.Some(servicedef.FDv1FallbackSynchronizer{
-					Polling: o.Some(servicedef.SDKConfigPollingParams{
-						BaseURI: fdv1Endpoint.BaseURL(),
-					}),
+				FDv1Fallback: o.Some(servicedef.SDKConfigPollingParams{
+					BaseURI: fdv1Endpoint.BaseURL(),
 				}),
 			}),
 		}))
@@ -735,7 +733,7 @@ func (c CommonStreamingTests) DirectedFallbackIsTerminal(t *ldtest.T) {
 		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 			BaseURI: streamEndpoint.BaseURL(),
 		}),
-		WithFDv1FallbackPollingSynchronizer(servicedef.SDKConfigPollingParams{
+		WithFDv1Fallback(servicedef.SDKConfigPollingParams{
 			BaseURI: fdv1Endpoint.BaseURL(),
 		}))
 
