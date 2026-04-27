@@ -477,12 +477,20 @@ func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) 
 // the directive and transitioning to the FDv1 Fallback Synchronizer.
 //
 // The streaming endpoint serves a distinctive value (streamingValue). The FDv1
-// fallback endpoint responds with 304 Not Modified for every request, i.e. "your
-// cache is still good" — which means it delivers no data of its own. If 1.6.2 is
-// honored, the streaming payload is already applied when the SDK transitions and
-// evaluations return streamingValue. If 1.6.2 is violated — the payload was
-// dropped before the transition — evaluations fall through to the default, because
-// FDv1's 304 never supplied any data to replace it.
+// fallback endpoint responds with HTTP 400 — a transport-level error that delivers
+// no body the SDK can install as a Basis. The RecordingHandler still publishes the
+// request to the channel so the test can assert the directive was honored, but
+// because no payload arrives via FDv1, any flag value observed in evaluations can
+// only have come from the streaming payload: seeing streamingValue proves 1.6.2
+// was honored, while seeing defaultValue proves the payload was dropped before
+// the transition.
+//
+// 400 is chosen because it is a protocol-valid response that the SDK must handle
+// uniformly across runtimes. An earlier iteration of this test used an
+// unconditional HTTP 304, but 304 is only valid in response to a conditional
+// request whose validators match (RFC 9111 §4.3.4); browser-based runtimes in
+// particular translate an unsolicited 304 into a 200 against their cache, which
+// would defeat the "FDv1 supplies no fresh data" property this test relies on.
 func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtest.T) {
 	streamingValue := ldvalue.String("value-from-streaming-payload")
 	streamingData := c.makeSDKDataWithFlag(1, streamingValue)
@@ -495,12 +503,13 @@ func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtes
 		harness.MockEndpointDescription("streaming service with FDv1 directive"))
 	t.Defer(streamingEndpoint.Close)
 
-	// FDv1 fallback endpoint: 304 Not Modified on every request. This tells the SDK
-	// "nothing new" so it keeps whatever data it already has — which, if 1.6.2 is
-	// honored, is the streaming payload.
-	fdv1Handler, fdv1Channel := httphelpers.RecordingHandler(httphelpers.HandlerWithStatus(304))
+	// FDv1 fallback endpoint: returns HTTP 400 on every request. The directive has
+	// already steered the SDK here (which is what we want to verify), but the 400
+	// response delivers no payload the SDK can install — leaving the streaming
+	// basis as the sole source of flag data in the Memory Store.
+	fdv1Handler, fdv1Channel := httphelpers.RecordingHandler(httphelpers.HandlerWithStatus(400))
 	fdv1Endpoint := requireContext(t).harness.NewMockEndpoint(fdv1Handler, t.DebugLogger(),
-		harness.MockEndpointDescription("FDv1 polling service (304 Not Modified)"))
+		harness.MockEndpointDescription("FDv1 polling service (HTTP 400)"))
 	t.Defer(fdv1Endpoint.Close)
 
 	client := NewSDKClient(t,
@@ -515,7 +524,7 @@ func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtes
 		}))
 
 	// The streaming handshake must happen before the directive can take effect.
-	_, err := streamingEndpoint.AwaitConnection(time.Second)
+	streamingRequest, err := streamingEndpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
 	// The directive must drive the SDK to the FDv1 polling path.
@@ -529,10 +538,11 @@ func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtes
 	}, time.Second*3, time.Millisecond*10,
 		"FDv1 fallback endpoint was never contacted after successful directive")
 
-	// The streaming payload must be the active data. FDv1's 304 delivers nothing of
-	// its own, so seeing streamingValue here proves the SDK applied the streaming
-	// basis before transitioning (1.6.2). Seeing defaultValue would mean the SDK
-	// dropped the payload somewhere along the handoff.
+	// The streaming payload must be the active data. FDv1 returns 400 and so
+	// delivers no payload of its own, so seeing streamingValue here proves the SDK
+	// applied the streaming basis before transitioning (1.6.2). Seeing
+	// defaultValue would mean the SDK dropped the payload somewhere along the
+	// handoff.
 	context := ldcontext.New("context-key")
 	h.RequireEventually(t, func() bool {
 		value := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
@@ -540,6 +550,26 @@ func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtes
 	}, time.Second*3, time.Millisecond*20,
 		"flag-key should have been served from the streaming payload after the directive was honored — "+
 			"seeing the default value indicates the payload was dropped rather than applied per 1.6.2")
+
+	// The SDK must also have Stopped the FDv2 Primary Synchronizer (1.6.3(2)) when
+	// it transitioned. The request context on the streaming connection is tied to
+	// the underlying TCP connection; if the SDK correctly closed the stream, the
+	// context will have been cancelled. Observing an open stream here would mean
+	// the FDv2 data source is still running concurrently with the FDv1 fallback,
+	// which the spec forbids. We also assert no reconnection attempts arrive on
+	// the streaming endpoint — if the SDK closed the stream but kept the
+	// synchronizer running, it would try to reopen.
+	h.RequireEventually(t, func() bool {
+		select {
+		case <-streamingRequest.Context.Done():
+			return true
+		default:
+			return false
+		}
+	}, time.Second*3, time.Millisecond*20,
+		"SDK did not close the FDv2 streaming connection after the directive — "+
+			"the Primary Synchronizer must be stopped when Directed Fallback engages")
+	streamingEndpoint.RequireNoMoreConnections(t, time.Millisecond*500)
 }
 
 // DirectiveOnPollingInitializerSkipsSynchronizers verifies Requirement 1.6.3(2):
@@ -737,12 +767,21 @@ func (c CommonStreamingTests) DirectedFallbackIsTerminal(t *ldtest.T) {
 			BaseURI: fdv1Endpoint.BaseURL(),
 		}))
 
-	// Wait for the initial streaming connection that surfaces the directive, and drain it.
+	// Wait for the initial streaming connection that surfaces the directive, and drain
+	// any recorded requests from the channel. AwaitConnection unblocks as soon as the
+	// mock endpoint accepts the connection, which races with the RecordingHandler
+	// publishing the request record — a non-blocking select here would leave the
+	// initial request in the channel and trip the RequireNever assertion below after
+	// the 5-minute sleep. A bounded drain loop gives the recording goroutine time to
+	// flush any requests that have already arrived.
 	_, err := streamEndpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
-	select {
-	case <-streamChannel:
-	default:
+	drainDeadline := time.Now().Add(time.Millisecond * 500)
+	for time.Now().Before(drainDeadline) {
+		select {
+		case <-streamChannel:
+		case <-time.After(time.Millisecond * 50):
+		}
 	}
 
 	// Confirm FDv1 is actually serving data before we start waiting — otherwise a
@@ -812,7 +851,8 @@ func (c CommonStreamingTests) ReplacesPreviouslyKnownState(t *ldtest.T) {
 
 	expectedEvaluations = map[string]ldvalue.Value{
 		"flag-key":     defaultValue,
-		"new-flag-key": ldvalue.String("replacement value")}
+		"new-flag-key": ldvalue.String("replacement value"),
+	}
 	validatePayloadReceived(t, streamEndpoint, client, "initial", expectedEvaluations)
 }
 
@@ -1072,7 +1112,8 @@ func (c CommonStreamingTests) DisconnectsOnGoodbye(t *ldtest.T) {
 }
 
 func makeSequentialStreamHandler(t *ldtest.T, dataSources ...mockld.SDKData) (
-	*harness.MockEndpoint, []*SDKDataSystem) {
+	*harness.MockEndpoint, []*SDKDataSystem,
+) {
 	handlers := make([]http.Handler, len(dataSources))
 	dataSystems := make([]*SDKDataSystem, len(dataSources))
 
@@ -1090,7 +1131,8 @@ func makeSequentialStreamHandler(t *ldtest.T, dataSources ...mockld.SDKData) (
 
 func validatePayloadReceived(t *ldtest.T,
 	streamEndpoint *harness.MockEndpoint, client *SDKClient,
-	state string, evaluations map[string]ldvalue.Value) harness.IncomingRequestInfo {
+	state string, evaluations map[string]ldvalue.Value,
+) harness.IncomingRequestInfo {
 	request, err := streamEndpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
