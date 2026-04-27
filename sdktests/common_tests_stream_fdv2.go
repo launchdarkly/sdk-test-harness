@@ -26,7 +26,11 @@ import (
 // The FDv1 wire format is a single JSON object with `"flags"` and `"segments"` keys, distinct
 // from the FDv2 polling wire format. Tests use this to stand up a realistic FDv1 Fallback
 // Synchronizer endpoint.
-func serverSideFDv1AllData(t *ldtest.T, c CommonStreamingTests, flagKey string, version int, value ldvalue.Value) []byte {
+func serverSideFDv1AllData(
+	t *ldtest.T, c CommonStreamingTests, flagKey string,
+	version int,
+	value ldvalue.Value,
+) []byte {
 	t.Helper()
 	body := map[string]any{
 		"flags": map[string]json.RawMessage{
