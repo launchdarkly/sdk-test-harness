@@ -122,6 +122,21 @@ func WithStreamingSynchronizer(streamingConfig servicedef.SDKConfigStreamingPara
 	})
 }
 
+// WithFDv1Fallback configures the SDK's FDv1 Fallback Synchronizer. The FDv1
+// Fallback Synchronizer is architecturally distinct from the FDv2 Primary/Fallback
+// synchronizers (spec section 1.5): it is only engaged in response to a
+// server-directed FDv1 Fallback Directive, and it is not part of the ordinary
+// heuristic failover chain — so it must not be configured by appending to
+// DataSystem.Synchronizers. FDv1 fallback is polling-only.
+func WithFDv1Fallback(pollingConfig servicedef.SDKConfigPollingParams) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		dataSystem := configOut.DataSystem.OrElse(servicedef.DataSystem{})
+		dataSystem.FDv1Fallback = o.Some(pollingConfig)
+		configOut.DataSystem = o.Some(dataSystem)
+		return nil
+	})
+}
+
 // SDKClient represents an SDK client instance in the test service which can be controlled by test logic.
 type SDKClient struct {
 	sdkConfig       servicedef.SDKConfigParams

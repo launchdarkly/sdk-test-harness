@@ -38,12 +38,23 @@ const (
 	DataStoreModeReadWrite = 1
 )
 
+// DataSystem describes the SDK's data acquisition configuration.
+//
+// FDv1Fallback configures the SDK's FDv1 Fallback Synchronizer — a polling-only
+// data source engaged only in response to a server-directed FDv1 Fallback
+// Directive (section 1.6 of the Data System spec). It is architecturally distinct
+// from the Primary/Fallback FDv2 synchronizers listed in Synchronizers: those
+// handle the heuristic failover described in section 1.2, whereas FDv1Fallback is
+// used only on directed fallback and, once engaged, becomes the SDK's sole data
+// source for the remainder of its lifetime. Streaming is not a valid transport
+// for the FDv1 fallback.
 type DataSystem struct {
-	Store         o.Maybe[DataStore] `json:"store,omitempty"`
-	StoreMode     DataStoreMode      `json:"storeMode"`
-	Initializers  []DataInitializer  `json:"initializers"`
-	Synchronizers []DataSynchronizer `json:"synchronizers"`
-	PayloadFilter o.Maybe[string]    `json:"payloadFilter,omitempty"`
+	Store         o.Maybe[DataStore]              `json:"store,omitempty"`
+	StoreMode     DataStoreMode                   `json:"storeMode"`
+	Initializers  []DataInitializer               `json:"initializers"`
+	Synchronizers []DataSynchronizer              `json:"synchronizers"`
+	FDv1Fallback  o.Maybe[SDKConfigPollingParams] `json:"fdv1Fallback,omitempty"`
+	PayloadFilter o.Maybe[string]                 `json:"payloadFilter,omitempty"`
 }
 
 type DataStore struct {
