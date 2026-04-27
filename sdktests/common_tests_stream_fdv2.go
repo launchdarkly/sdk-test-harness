@@ -450,6 +450,11 @@ func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) 
 			BaseURI: fdv1Endpoint.BaseURL(),
 		}))
 
+	// Drain the initial FDv2 connection so the quiescence check below has a
+	// stable baseline.
+	_, err := streamEndpoint.AwaitConnection(time.Second)
+	require.NoError(t, err)
+
 	// FDv1 endpoint must be contacted at /sdk/latest-all.
 	h.RequireEventually(t, func() bool {
 		select {
@@ -469,6 +474,15 @@ func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) 
 		return m.In(t).Assert(value, m.JSONEqual(fdv1Value))
 	}, time.Second*3, time.Millisecond*20,
 		"flag-key should have been served from the FDv1 fallback after directive on streaming error")
+
+	// FDv2 streaming must be quiet — no concurrent retries against the (now
+	// halted) Primary Synchronizer. Per 1.6.3(2), the FDv2 chain must be stopped
+	// once the directive engages the FDv1 fallback, so observing a second
+	// connection here would mean the SDK is running both data sources in
+	// parallel. 403 alone would already have caused permanent removal, so this
+	// check is defensive — it catches the case where the SDK permanently removes
+	// one synchronizer but still has a background loop dialing the endpoint.
+	streamEndpoint.RequireNoMoreConnections(t, time.Millisecond*500)
 }
 
 // DirectiveOnStreamingSuccessAppliesPayload verifies Requirement 1.6.2: when the
