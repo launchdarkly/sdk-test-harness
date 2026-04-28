@@ -2,6 +2,18 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.35.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.34.0...v2.35.0) (2026-04-22)
+
+
+### Features
+
+* Include hook coverage for PHP tests ([#331](https://github.com/launchdarkly/sdk-test-harness/issues/331)) ([78e9a56](https://github.com/launchdarkly/sdk-test-harness/commit/78e9a56583ca1e3b5e71a95d3780a8365126baaa))
+
+
+### Bug Fixes
+
+* js client sdk header tests can match auth headers ([#316](https://github.com/launchdarkly/sdk-test-harness/issues/316)) ([01f2610](https://github.com/launchdarkly/sdk-test-harness/commit/01f26104ea3742ca5d994f6a52f597b64470ccc4))
+
 ## [2.34.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.33.0...v2.34.0) (2026-02-23)
 
 

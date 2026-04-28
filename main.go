@@ -17,8 +17,10 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/sdktests"
 )
 
-const defaultPort = 8111
-const versionString string = "3.0.0-alpha.4" // {{ x-release-please-version }}
+const (
+	defaultPort          = 8111
+	versionString string = "3.0.0-alpha.4" // {{ x-release-please-version }}
+)
 
 func main() {
 	fmt.Printf("sdk-test-harness v%s\n", strings.TrimSpace(versionString))
@@ -60,7 +62,6 @@ func run(params commandParams) (*ldtest.Results, error) {
 		mainDebugLogger,
 		os.Stdout,
 	)
-
 	if err != nil {
 		return nil, err
 	}

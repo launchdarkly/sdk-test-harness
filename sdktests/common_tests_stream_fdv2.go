@@ -1,6 +1,8 @@
 package sdktests
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"regexp"
 	"time"
@@ -21,6 +23,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// serverSideFDv1AllData builds an FDv1-format polling response body containing a single flag.
+// The FDv1 wire format is a single JSON object with `"flags"` and `"segments"` keys, distinct
+// from the FDv2 polling wire format. Tests use this to stand up a realistic FDv1 Fallback
+// Synchronizer endpoint.
+func serverSideFDv1AllData(
+	t *ldtest.T, c CommonStreamingTests, flagKey string,
+	version int,
+	value ldvalue.Value,
+) []byte {
+	t.Helper()
+	body := map[string]any{
+		"flags": map[string]json.RawMessage{
+			flagKey: c.makeFlagData(flagKey, version, value),
+		},
+		"segments": map[string]json.RawMessage{},
+	}
+	bytes, err := json.Marshal(body)
+	if err != nil {
+		panic(fmt.Errorf("failed to marshal FDv1 polling body: %w", err))
+	}
+	return bytes
+}
+
 var (
 	initialValue = ldvalue.String("initial value") //nolint:gochecknoglobals
 	updatedValue = ldvalue.String("updated value") //nolint:gochecknoglobals
@@ -35,8 +60,8 @@ var (
 	fdv2StreamingTestContext = ldcontext.New("context-key") //nolint:gochecknoglobals
 
 	// FDv1 polling paths expected after FDv2 stream fallback (see mockld.PollingPath*).
-	fdV1FallbackPathServerSide = regexp.MustCompile(`^/sdk/latest-all$`)               //nolint:gochecknoglobals
-	fdV1FallbackPathMobile     = regexp.MustCompile(`^/msdk/evalx/contexts/.+`)       //nolint:gochecknoglobals
+	fdV1FallbackPathServerSide = regexp.MustCompile(`^/sdk/latest-all$`)             //nolint:gochecknoglobals
+	fdV1FallbackPathMobile     = regexp.MustCompile(`^/msdk/evalx/contexts/.+`)      //nolint:gochecknoglobals
 	fdV1FallbackPathJSClient   = regexp.MustCompile(`^/sdk/evalx/[^/]+/contexts/.+`) //nolint:gochecknoglobals
 )
 
@@ -56,7 +81,7 @@ func (c CommonStreamingTests) FDv2(t *ldtest.T) {
 	t.Run("permanent fallback to secondary synchronizer", c.PermanentFallbackToSecondarySynchronizer)
 	t.Run("recoverable fallback with recovery", c.RecoverableFallbackWithRecovery)
 	t.Run("permanent fallback with recovery", c.PermanentFallbackWithRecovery)
-	t.Run("fallback to FDv1 handling", c.FallbackFromFDv2ToFDv1)
+	t.Run("FDv1 fallback directive", c.FDv1FallbackDirective)
 }
 
 func (c CommonStreamingTests) StateTransitions(t *ldtest.T) {
@@ -413,33 +438,82 @@ func (c CommonStreamingTests) PermanentFallbackWithRecovery(t *ldtest.T) {
 	validatePayloadReceived(t, secondEndpoint, client, "", expectedEvaluations)
 }
 
-func (c CommonStreamingTests) FallbackFromFDv2ToFDv1(t *ldtest.T) {
-	if c.isClientSide {
-		t.RequireCapability(servicedef.CapabilityClientEventSourceHTTPErrors)
-		t.RequireCapability(servicedef.CapabilityServiceEndpoints)
-	}
+// fdv1PollingPath is the FDv1 polling URL path. When the FDv1 Fallback Synchronizer
+// is engaged, the SDK must request this path — not the FDv2 /sdk/poll path — so tests
+// can distinguish between an FDv2-level fallback and a directed FDv1 fallback by URL
+// inspection alone.
+const fdv1PollingPath = "/sdk/latest-all"
 
-	handler, channel := httphelpers.RecordingHandler(httphelpers.HandlerWithResponse(
+// FDv1FallbackDirective groups the server-directed FDv1 fallback tests defined by
+// section 1.6 of the Data System spec. See:
+// specs/DATASYSTEM-data-system/v2/README.md#16-fdv1-fallback-directive
+//
+// These tests are gated on the "fdv1-fallback" capability so SDKs that have not yet
+// implemented the directive can opt out. Once the behavior is ubiquitous across SDKs,
+// dropping the capability from every test service decommissions the suite cleanly.
+func (c CommonStreamingTests) FDv1FallbackDirective(t *ldtest.T) {
+	t.RequireCapability(servicedef.CapabilityFDv1Fallback)
+
+	t.Run("directive on streaming error engages FDv1 fallback",
+		c.DirectiveOnStreamingErrorEngagesFDv1)
+	t.Run("directive on streaming success applies payload then engages FDv1",
+		c.DirectiveOnStreamingSuccessAppliesPayload)
+	t.Run("directive on polling initializer skips FDv2 synchronizers",
+		c.DirectiveOnPollingInitializerSkipsSynchronizers)
+	t.Run("directive without FDv1 fallback configured halts the data system",
+		c.DirectiveWithoutFDv1ConfiguredHaltsDataSystem)
+	t.Run("directed fallback is terminal and does not revisit FDv2 sources",
+		c.DirectedFallbackIsTerminal)
+}
+
+// DirectiveOnStreamingErrorEngagesFDv1 verifies Requirement 1.6.1 and 1.6.3 for the
+// error path: an `X-LD-FD-Fallback: true` header accompanying an error response on the
+// streaming synchronizer MUST engage the FDv1 Fallback Synchronizer. The directive is
+// honored regardless of status code.
+//
+// The error response carries no payload, so the SDK will have no data until FDv1
+// serves it. The FDv1 endpoint therefore delivers a distinctive flag value, and the
+// test asserts evaluations return that value — proving FDv1 actually became the
+// active data source, not just that its URL was hit.
+func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) {
+	streamHandler, _ := httphelpers.RecordingHandler(httphelpers.HandlerWithResponse(
 		403, http.Header{"X-LD-FD-Fallback": []string{"true"}}, nil))
-	endpoint := requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
-		harness.MockEndpointDescription("streaming service"))
-	t.Defer(endpoint.Close)
+	streamEndpoint := requireContext(t).harness.NewMockEndpoint(streamHandler, t.DebugLogger(),
+		harness.MockEndpointDescription("FDv2 streaming service (403 + directive)"))
+	t.Defer(streamEndpoint.Close)
 
-	baseURI := endpoint.BaseURL()
-	_ = c.newFDv2SDKClient(t,
-		WithWaitToStart(time.Millisecond, true),
-		WithServiceEndpoints(servicedef.SDKConfigServiceEndpointsParams{
-			Streaming: baseURI,
-			Polling:   baseURI,
+	fdv1Value := ldvalue.String("value-from-fdv1")
+	fdv1Handler, fdv1Channel := httphelpers.RecordingHandler(
+		httphelpers.HandlerWithResponse(200, http.Header{"Content-Type": []string{"application/json"}},
+			serverSideFDv1AllData(t, c, "flag-key", 1, fdv1Value)))
+	fdv1Endpoint := requireContext(t).harness.NewMockEndpoint(fdv1Handler, t.DebugLogger(),
+		harness.MockEndpointDescription("FDv1 polling service"))
+	t.Defer(fdv1Endpoint.Close)
+
+	client := c.newFDv2SDKClient(t,
+		WithConfig(servicedef.SDKConfigParams{
+			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(5 * time.Second / time.Millisecond)),
 		}),
-		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{}),
-		WithPollingSynchronizer(servicedef.SDKConfigPollingParams{}))
+		WithServiceEndpoints(servicedef.SDKConfigServiceEndpointsParams{
+			Streaming: streamEndpoint.BaseURL(),
+			Polling:   fdv1Endpoint.BaseURL(),
+		}),
+		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+			BaseURI: streamEndpoint.BaseURL(),
+		}),
+		WithFDv1Fallback(servicedef.SDKConfigPollingParams{
+			BaseURI: fdv1Endpoint.BaseURL(),
+		}))
 
+	// Drain the initial FDv2 connection so the quiescence check below has a
+	// stable baseline.
+	_, err := streamEndpoint.AwaitConnection(time.Second)
+	require.NoError(t, err)
+
+	// FDv1 endpoint must be contacted at /sdk/latest-all.
 	h.RequireEventually(t, func() bool {
-		_, _ = endpoint.AwaitConnection(time.Second * 1)
-
 		select {
-		case resp := <-channel:
+		case resp := <-fdv1Channel:
 			path := resp.Request.URL.Path
 			switch c.sdkKind {
 			case mockld.ServerSideSDK, mockld.PHPSDK:
@@ -455,13 +529,381 @@ func (c CommonStreamingTests) FallbackFromFDv2ToFDv1(t *ldtest.T) {
 					return true
 				}
 			default:
-				// no-op
+				return false
 			}
+			return false
 		default:
-			// no-op
+			return false
 		}
-		return false
-	}, time.Second, time.Millisecond*10, "failed to get call to fallback endpoint")
+	}, time.Second*3, time.Millisecond*10,
+		"FDv1 fallback endpoint was never contacted after directive on streaming error")
+
+	// Evaluation must reflect FDv1's payload. If we saw the default here, the SDK
+	// routed to FDv1 but never finished wiring FDv1's data into the Memory Store.
+	context := ldcontext.New("context-key")
+	h.RequireEventually(t, func() bool {
+		value := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
+		return m.In(t).Assert(value, m.JSONEqual(fdv1Value))
+	}, time.Second*3, time.Millisecond*20,
+		"flag-key should have been served from the FDv1 fallback after directive on streaming error")
+
+	// FDv2 streaming must be quiet — no concurrent retries against the (now
+	// halted) Primary Synchronizer. Per 1.6.3(2), the FDv2 chain must be stopped
+	// once the directive engages the FDv1 fallback, so observing a second
+	// connection here would mean the SDK is running both data sources in
+	// parallel. 403 alone would already have caused permanent removal, so this
+	// check is defensive — it catches the case where the SDK permanently removes
+	// one synchronizer but still has a background loop dialing the endpoint.
+	streamEndpoint.RequireNoMoreConnections(t, time.Millisecond*500)
+}
+
+// DirectiveOnStreamingSuccessAppliesPayload verifies Requirement 1.6.2: when the
+// directive arrives alongside a valid payload (here, a 200 SSE handshake that delivers
+// a full basis), the SDK MUST apply that payload to the Memory Store before surfacing
+// the directive and transitioning to the FDv1 Fallback Synchronizer.
+//
+// The streaming endpoint serves a distinctive value (streamingValue). The FDv1
+// fallback endpoint responds with HTTP 400 — a transport-level error that delivers
+// no body the SDK can install as a Basis. The RecordingHandler still publishes the
+// request to the channel so the test can assert the directive was honored, but
+// because no payload arrives via FDv1, any flag value observed in evaluations can
+// only have come from the streaming payload: seeing streamingValue proves 1.6.2
+// was honored, while seeing defaultValue proves the payload was dropped before
+// the transition.
+//
+// 400 is chosen because it is a protocol-valid response that the SDK must handle
+// uniformly across runtimes. An earlier iteration of this test used an
+// unconditional HTTP 304, but 304 is only valid in response to a conditional
+// request whose validators match (RFC 9111 §4.3.4); browser-based runtimes in
+// particular translate an unsolicited 304 into a 200 against their cache, which
+// would defeat the "FDv1 supplies no fresh data" property this test relies on.
+func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtest.T) {
+	streamingValue := ldvalue.String("value-from-streaming-payload")
+	streamingData := c.makeSDKDataWithFlag(1, streamingValue)
+	streamingService := mockld.NewStreamingService(streamingData, requireContext(t).sdkKind, t.DebugLogger())
+	streamingHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-LD-FD-Fallback", "true")
+		streamingService.ServeHTTP(w, r)
+	})
+	streamingEndpoint := requireContext(t).harness.NewMockEndpoint(streamingHandler, t.DebugLogger(),
+		harness.MockEndpointDescription("streaming service with FDv1 directive"))
+	t.Defer(streamingEndpoint.Close)
+
+	// FDv1 fallback endpoint: returns HTTP 400 on every request. The directive has
+	// already steered the SDK here (which is what we want to verify), but the 400
+	// response delivers no payload the SDK can install — leaving the streaming
+	// basis as the sole source of flag data in the Memory Store.
+	fdv1Handler, fdv1Channel := httphelpers.RecordingHandler(httphelpers.HandlerWithStatus(400))
+	fdv1Endpoint := requireContext(t).harness.NewMockEndpoint(fdv1Handler, t.DebugLogger(),
+		harness.MockEndpointDescription("FDv1 polling service (HTTP 400)"))
+	t.Defer(fdv1Endpoint.Close)
+
+	client := c.newFDv2SDKClient(t,
+		WithConfig(servicedef.SDKConfigParams{
+			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(5 * time.Second / time.Millisecond)),
+		}),
+		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+			BaseURI: streamingEndpoint.BaseURL(),
+		}),
+		WithFDv1Fallback(servicedef.SDKConfigPollingParams{
+			BaseURI: fdv1Endpoint.BaseURL(),
+		}))
+
+	// The streaming handshake must happen before the directive can take effect.
+	streamingRequest, err := streamingEndpoint.AwaitConnection(time.Second)
+	require.NoError(t, err)
+
+	// The directive must drive the SDK to the FDv1 polling path.
+	h.RequireEventually(t, func() bool {
+		select {
+		case resp := <-fdv1Channel:
+			return resp.Request.URL.Path == fdv1PollingPath
+		default:
+			return false
+		}
+	}, time.Second*3, time.Millisecond*10,
+		"FDv1 fallback endpoint was never contacted after successful directive")
+
+	// The streaming payload must be the active data. FDv1 returns 400 and so
+	// delivers no payload of its own, so seeing streamingValue here proves the SDK
+	// applied the streaming basis before transitioning (1.6.2). Seeing
+	// defaultValue would mean the SDK dropped the payload somewhere along the
+	// handoff.
+	context := ldcontext.New("context-key")
+	h.RequireEventually(t, func() bool {
+		value := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
+		return m.In(t).Assert(value, m.JSONEqual(streamingValue))
+	}, time.Second*3, time.Millisecond*20,
+		"flag-key should have been served from the streaming payload after the directive was honored — "+
+			"seeing the default value indicates the payload was dropped rather than applied per 1.6.2")
+
+	// The SDK must also have Stopped the FDv2 Primary Synchronizer (1.6.3(2)) when
+	// it transitioned. The request context on the streaming connection is tied to
+	// the underlying TCP connection; if the SDK correctly closed the stream, the
+	// context will have been cancelled. Observing an open stream here would mean
+	// the FDv2 data source is still running concurrently with the FDv1 fallback,
+	// which the spec forbids. We also assert no reconnection attempts arrive on
+	// the streaming endpoint — if the SDK closed the stream but kept the
+	// synchronizer running, it would try to reopen.
+	h.RequireEventually(t, func() bool {
+		select {
+		case <-streamingRequest.Context.Done():
+			return true
+		default:
+			return false
+		}
+	}, time.Second*3, time.Millisecond*20,
+		"SDK did not close the FDv2 streaming connection after the directive — "+
+			"the Primary Synchronizer must be stopped when Directed Fallback engages")
+	streamingEndpoint.RequireNoMoreConnections(t, time.Millisecond*500)
+}
+
+// DirectiveOnPollingInitializerSkipsSynchronizers verifies Requirement 1.6.3(2):
+// when an Initializer surfaces the FDv1 directive, the SDK MUST halt the ordinary
+// initializer-then-synchronizer flow. In particular, the configured FDv2 Primary
+// Synchronizer must never be started; the SDK transitions directly to the FDv1
+// Fallback Synchronizer.
+func (c CommonStreamingTests) DirectiveOnPollingInitializerSkipsSynchronizers(t *ldtest.T) {
+	// Initializer endpoint: 500 + directive. No payload accompanies the directive in
+	// this variant, so there is nothing to apply beforehand (1.6.2 is a no-op here).
+	initHandler, _ := httphelpers.RecordingHandler(httphelpers.HandlerWithResponse(
+		500, http.Header{"X-LD-FD-Fallback": []string{"true"}}, nil))
+	initEndpoint := requireContext(t).harness.NewMockEndpoint(initHandler, t.DebugLogger(),
+		harness.MockEndpointDescription("polling initializer"))
+	t.Defer(initEndpoint.Close)
+
+	// Streaming synchronizer endpoint: if the SDK ever contacts this, the directive
+	// was not honored — per 1.6.3, no further FDv2 synchronizer may be started.
+	streamHandler, streamChannel := httphelpers.RecordingHandler(
+		httphelpers.HandlerWithStatus(500))
+	streamEndpoint := requireContext(t).harness.NewMockEndpoint(streamHandler, t.DebugLogger(),
+		harness.MockEndpointDescription("streaming synchronizer (must not be contacted)"))
+	t.Defer(streamEndpoint.Close)
+
+	// FDv1 polling endpoint: receives traffic via /sdk/latest-all once the directive
+	// takes effect, and serves a distinctive flag value so we can tell the data
+	// actually flowed through the FDv1 path into the Memory Store.
+	fdv1Value := ldvalue.String("value-from-fdv1")
+	fdv1Handler, fdv1Channel := httphelpers.RecordingHandler(
+		httphelpers.HandlerWithResponse(200, http.Header{"Content-Type": []string{"application/json"}},
+			serverSideFDv1AllData(t, c, "flag-key", 1, fdv1Value)))
+	fdv1Endpoint := requireContext(t).harness.NewMockEndpoint(fdv1Handler, t.DebugLogger(),
+		harness.MockEndpointDescription("FDv1 polling service"))
+	t.Defer(fdv1Endpoint.Close)
+
+	client := c.newFDv2SDKClient(t,
+		WithConfig(servicedef.SDKConfigParams{
+			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(5 * time.Second / time.Millisecond)),
+			DataSystem: o.Some(servicedef.DataSystem{
+				Initializers: []servicedef.DataInitializer{
+					{
+						Polling: o.Some(servicedef.SDKConfigPollingParams{
+							BaseURI: initEndpoint.BaseURL(),
+						}),
+					},
+				},
+				Synchronizers: []servicedef.DataSynchronizer{
+					{
+						Streaming: o.Some(servicedef.SDKConfigStreamingParams{
+							BaseURI: streamEndpoint.BaseURL(),
+						}),
+					},
+				},
+				FDv1Fallback: o.Some(servicedef.SDKConfigPollingParams{
+					BaseURI: fdv1Endpoint.BaseURL(),
+				}),
+			}),
+		}))
+
+	// The FDv1 fallback endpoint must see traffic at /sdk/latest-all.
+	h.RequireEventually(t, func() bool {
+		select {
+		case resp := <-fdv1Channel:
+			return resp.Request.URL.Path == fdv1PollingPath
+		default:
+			return false
+		}
+	}, time.Second*3, time.Millisecond*10, "FDv1 fallback endpoint was never contacted after init directive")
+
+	// The FDv2 streaming synchronizer must never have been contacted. Any entry in
+	// streamChannel means the SDK started the streaming synchronizer despite the
+	// directive, which violates 1.6.3(2).
+	h.RequireNever(t, func() bool {
+		select {
+		case <-streamChannel:
+			return true
+		default:
+			return false
+		}
+	}, time.Millisecond*500, time.Millisecond*10,
+		"FDv2 streaming synchronizer was contacted after initializer directive was received")
+
+	// Evaluation must return FDv1's value. Simply having the FDv1 endpoint hit is
+	// not enough — the directive path must also install FDv1's payload as the active
+	// data, or evaluations would fall through to the default.
+	context := ldcontext.New("context-key")
+	h.RequireEventually(t, func() bool {
+		value := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
+		return m.In(t).Assert(value, m.JSONEqual(fdv1Value))
+	}, time.Second*3, time.Millisecond*20,
+		"flag-key should have been served from the FDv1 fallback after initializer directive")
+}
+
+// DirectiveWithoutFDv1ConfiguredHaltsDataSystem verifies Requirement 1.6.3(4): when
+// the directive is received but no FDv1 Fallback Synchronizer is configured, the Data
+// System MUST halt — it must not continue attempting FDv2 synchronizers. We use a 500
+// status (normally a recoverable error that drives retries) so that if the SDK
+// *ignored* the directive, we would see retries on the streaming endpoint; absence of
+// those retries is the positive signal that the directive caused a halt rather than
+// ordinary permanent removal (which would fire on a 4xx instead).
+func (c CommonStreamingTests) DirectiveWithoutFDv1ConfiguredHaltsDataSystem(t *ldtest.T) {
+	handler, channel := httphelpers.RecordingHandler(httphelpers.HandlerWithResponse(
+		500, http.Header{"X-LD-FD-Fallback": []string{"true"}}, nil))
+	endpoint := requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
+		harness.MockEndpointDescription("streaming service"))
+	t.Defer(endpoint.Close)
+
+	// Only a streaming synchronizer is configured; FDv1Fallback is intentionally
+	// left unset, which is the "no FDv1 Fallback Synchronizer configured" branch
+	// of Requirement 1.6.3(4).
+	//
+	// A very short retry delay ensures that an SDK that *ignored* the directive
+	// would re-contact the streaming endpoint within our observation window —
+	// otherwise ordinary backoff could hide a misbehavior.
+	_ = c.newFDv2SDKClient(t,
+		WithConfig(servicedef.SDKConfigParams{
+			InitCanFail:     true,
+			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(1)),
+		}),
+		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+			BaseURI:             endpoint.BaseURL(),
+			InitialRetryDelayMS: o.Some(briefDelay),
+		}))
+
+	// Wait for the first connection so we know the SDK has seen the directive.
+	_, err := endpoint.AwaitConnection(time.Second)
+	require.NoError(t, err)
+	// Drain that first request.
+	select {
+	case <-channel:
+	default:
+	}
+
+	// Drain any retry attempts made in the brief window between the directive
+	// being observed and the data system actually halting. After that grace period,
+	// no further attempts should arrive — if they do, the SDK is still running its
+	// ordinary retry/fallback loop instead of halting.
+	drainDeadline := time.Now().Add(time.Millisecond * 500)
+	for time.Now().Before(drainDeadline) {
+		select {
+		case <-channel:
+		case <-time.After(time.Millisecond * 50):
+		}
+	}
+
+	h.RequireNever(t, func() bool {
+		select {
+		case <-channel:
+			return true
+		default:
+			return false
+		}
+	}, time.Second, time.Millisecond*20,
+		"SDK continued making connections after directive with no FDv1 fallback configured — "+
+			"expected the data system to halt per Requirement 1.6.3(4)")
+}
+
+// DirectedFallbackIsTerminal verifies Requirement 1.6.4: once the Data System has
+// engaged the FDv1 Fallback Synchronizer, it MUST NOT return to the configured FDv2
+// synchronizers for the remainder of the SDK's lifetime — no Recovery Condition
+// applies. We prove this by keeping the FDv1 endpoint healthy and watching a long
+// enough window that the FDv2 Recovery Condition (5 minutes in the default config)
+// would normally fire if the SDK were still treating this as a heuristic fallback.
+func (c CommonStreamingTests) DirectedFallbackIsTerminal(t *ldtest.T) {
+	t.LongRunning()
+
+	// FDv2 streaming endpoint: 500 + directive on every request. 500 is normally a
+	// recoverable error; using it (instead of a 4xx that would permanently remove the
+	// sync on its own) means any re-contact we observe must have come from an attempt
+	// to *recover* to FDv2 — which 1.6.4 forbids.
+	streamHandler, streamChannel := httphelpers.RecordingHandler(httphelpers.HandlerWithResponse(
+		500, http.Header{"X-LD-FD-Fallback": []string{"true"}}, nil))
+	streamEndpoint := requireContext(t).harness.NewMockEndpoint(streamHandler, t.DebugLogger(),
+		harness.MockEndpointDescription("FDv2 streaming service"))
+	t.Defer(streamEndpoint.Close)
+
+	// FDv1 fallback endpoint: healthy, serves a distinctive value so we can confirm
+	// the SDK is evaluating against FDv1 data (not stale FDv2 data or defaults).
+	fdv1Value := ldvalue.String("value-from-fdv1")
+	fdv1Handler, _ := httphelpers.RecordingHandler(
+		httphelpers.HandlerWithResponse(200, http.Header{"Content-Type": []string{"application/json"}},
+			serverSideFDv1AllData(t, c, "flag-key", 1, fdv1Value)))
+	fdv1Endpoint := requireContext(t).harness.NewMockEndpoint(fdv1Handler, t.DebugLogger(),
+		harness.MockEndpointDescription("FDv1 polling service"))
+	t.Defer(fdv1Endpoint.Close)
+
+	client := c.newFDv2SDKClient(t,
+		WithConfig(servicedef.SDKConfigParams{
+			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(5 * time.Second / time.Millisecond)),
+		}),
+		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+			BaseURI: streamEndpoint.BaseURL(),
+		}),
+		WithFDv1Fallback(servicedef.SDKConfigPollingParams{
+			BaseURI: fdv1Endpoint.BaseURL(),
+		}))
+
+	// Wait for the initial streaming connection that surfaces the directive, and drain
+	// any recorded requests from the channel. AwaitConnection unblocks as soon as the
+	// mock endpoint accepts the connection, which races with the RecordingHandler
+	// publishing the request record — a non-blocking select here would leave the
+	// initial request in the channel and trip the RequireNever assertion below after
+	// the 5-minute sleep. A bounded drain loop gives the recording goroutine time to
+	// flush any requests that have already arrived.
+	_, err := streamEndpoint.AwaitConnection(time.Second)
+	require.NoError(t, err)
+	drainDeadline := time.Now().Add(time.Millisecond * 500)
+	for time.Now().Before(drainDeadline) {
+		select {
+		case <-streamChannel:
+		case <-time.After(time.Millisecond * 50):
+		}
+	}
+
+	// Confirm FDv1 is actually serving data before we start waiting — otherwise a
+	// later "no FDv2 re-contact" assertion could pass simply because the SDK had
+	// already given up on everything.
+	context := ldcontext.New("context-key")
+	h.RequireEventually(t, func() bool {
+		value := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
+		return m.In(t).Assert(value, m.JSONEqual(fdv1Value))
+	}, time.Second*3, time.Millisecond*20,
+		"flag-key should have been served from the FDv1 fallback before the recovery window begins")
+
+	// Wait past the default Recovery Condition window (5 minutes). Directed Fallback
+	// is terminal, so no matter how long we wait the FDv2 streaming endpoint must
+	// remain untouched.
+	time.Sleep(5*time.Minute + 15*time.Second)
+
+	h.RequireNever(t, func() bool {
+		select {
+		case <-streamChannel:
+			return true
+		default:
+			return false
+		}
+	}, time.Millisecond*500, time.Millisecond*20,
+		"FDv2 streaming synchronizer was re-contacted after Directed Fallback — "+
+			"Directed Fallback must be terminal per Requirement 1.6.4")
+
+	// The FDv1 data must still be the active data after the recovery window —
+	// proving the SDK is still operating on FDv1 rather than having silently
+	// regressed to defaults or a stale state.
+	h.RequireEventually(t, func() bool {
+		value := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
+		return m.In(t).Assert(value, m.JSONEqual(fdv1Value))
+	}, time.Second*3, time.Millisecond*20,
+		"flag-key should still be served from the FDv1 fallback after the recovery window elapses")
 }
 
 func (c CommonStreamingTests) SavesPreviouslyKnownState(t *ldtest.T) {
@@ -504,7 +946,8 @@ func (c CommonStreamingTests) ReplacesPreviouslyKnownState(t *ldtest.T) {
 
 	expectedEvaluations = map[string]ldvalue.Value{
 		"flag-key":     defaultValue,
-		"new-flag-key": ldvalue.String("replacement value")}
+		"new-flag-key": ldvalue.String("replacement value"),
+	}
 	validatePayloadReceived(t, streamEndpoint, client, "initial", expectedEvaluations)
 }
 
@@ -763,7 +1206,8 @@ func (c CommonStreamingTests) DisconnectsOnGoodbye(t *ldtest.T) {
 }
 
 func makeSequentialStreamHandler(t *ldtest.T, dataSources ...mockld.SDKData) (
-	*harness.MockEndpoint, []*SDKDataSystem) {
+	*harness.MockEndpoint, []*SDKDataSystem,
+) {
 	handlers := make([]http.Handler, len(dataSources))
 	dataSystems := make([]*SDKDataSystem, len(dataSources))
 
@@ -781,7 +1225,8 @@ func makeSequentialStreamHandler(t *ldtest.T, dataSources ...mockld.SDKData) (
 
 func validatePayloadReceived(t *ldtest.T,
 	streamEndpoint *harness.MockEndpoint, client *SDKClient,
-	state string, evaluations map[string]ldvalue.Value) harness.IncomingRequestInfo {
+	state string, evaluations map[string]ldvalue.Value,
+) harness.IncomingRequestInfo {
 	request, err := streamEndpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 

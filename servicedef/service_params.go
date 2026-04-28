@@ -81,6 +81,16 @@ const (
 	// CapabilityHTTPProxy indicates that the SDK supports setting an HTTP proxy, through which the SDK will
 	// make all requests.
 	CapabilityHTTPProxy = "http-proxy"
+
+	// CapabilityFDv1Fallback indicates that the SDK honors the server-directed FDv1 Fallback Directive
+	// described in section 1.6 of the Data System spec. When an FDv2 endpoint returns an
+	// `X-LD-FD-Fallback: true` response header, an SDK with this capability halts its configured FDv2
+	// data sources and switches to its FDv1 Fallback Synchronizer for the remainder of its lifetime.
+	//
+	// This capability gates the "FDv1 fallback directive" subtests so that SDKs which do not yet
+	// implement the behavior can opt out, and so the tests can be decommissioned by dropping the
+	// capability from all SDK test services once it is ubiquitous.
+	CapabilityFDv1Fallback = "fdv1-fallback"
 )
 
 type StatusRep struct {
