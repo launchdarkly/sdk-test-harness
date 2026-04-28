@@ -42,9 +42,6 @@ func (c CommonStreamingTests) fdv2ClientData(intentCode, intentReason, state str
 }
 
 func (c CommonStreamingTests) newFDv2SDKClient(t *ldtest.T, configurers ...SDKConfigurer) *SDKClient {
-	if c.isClientSide {
-		return NewSDKClient(t, append([]SDKConfigurer{WithClientSideInitialContext(fdv2StreamingTestContext)}, configurers...)...)
-	}
 	return NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 }
 

@@ -12,7 +12,11 @@ type CommonStreamingTests struct {
 }
 
 func NewCommonStreamingTests(t *ldtest.T, testName string, baseSDKConfigurers ...SDKConfigurer) CommonStreamingTests {
-	return CommonStreamingTests{newCommonTestsBase(t, testName, baseSDKConfigurers...)}
+	base := newCommonTestsBase(t, testName, baseSDKConfigurers...)
+	if !base.isClientSide {
+		base.flagEvaluationContext = base.contextFactory.NextUniqueContext()
+	}
+	return CommonStreamingTests{base}
 }
 
 // Create a data system that can be used to push updates, and return the necessary configuration actions for

@@ -25,12 +25,13 @@ import (
 // configuration for a client-side SDK (that is, an initial user). For this to work, the test
 // logic should always use baseSDKConfigurationPlus() when creating a client.
 type commonTestsBase struct {
-	sdkKind        mockld.SDKKind
-	isClientSide   bool
-	isMobile       bool
-	isPHP          bool
-	sdkConfigurers []SDKConfigurer
-	contextFactory *data.ContextFactory
+	sdkKind               mockld.SDKKind
+	isClientSide          bool
+	isMobile              bool
+	isPHP                 bool
+	sdkConfigurers        []SDKConfigurer
+	contextFactory        *data.ContextFactory
+	flagEvaluationContext ldcontext.Context
 }
 
 type flagRequestMethod string
@@ -94,10 +95,10 @@ func newCommonTestsBase(t *ldtest.T, testName string, baseSDKConfigurers ...SDKC
 	c.isMobile = t.Capabilities().Has(servicedef.CapabilityMobile)
 	c.isPHP = c.sdkKind == mockld.PHPSDK
 	if c.isClientSide {
+		ctx := c.contextFactory.NextUniqueContext()
+		c.flagEvaluationContext = ctx
 		c.sdkConfigurers = append(
-			[]SDKConfigurer{
-				WithClientSideInitialContext(c.contextFactory.NextUniqueContext()),
-			},
+			[]SDKConfigurer{WithClientSideInitialContext(ctx)},
 			baseSDKConfigurers...,
 		)
 	} else {
