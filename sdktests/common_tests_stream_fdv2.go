@@ -61,6 +61,21 @@ var (
 	fdV1FallbackPathJSClient   = regexp.MustCompile(`^/sdk/evalx/[^/]+/contexts/.+`) //nolint:gochecknoglobals
 )
 
+// fdv1FallbackPollPathMatches reports whether path is the FDv1 (non-FDv2) polling URL for
+// sdkKind once the directed FDv1 fallback synchronizer is engaged.
+func fdv1FallbackPollPathMatches(sdkKind mockld.SDKKind, path string) bool {
+	switch sdkKind {
+	case mockld.ServerSideSDK, mockld.PHPSDK:
+		return fdV1FallbackPathServerSide.MatchString(path)
+	case mockld.MobileSDK, mockld.RokuSDK:
+		return fdV1FallbackPathMobile.MatchString(path)
+	case mockld.JSClientSDK:
+		return fdV1FallbackPathJSClient.MatchString(path)
+	default:
+		return false
+	}
+}
+
 func (c CommonStreamingTests) FDv2(t *ldtest.T) {
 	t.Run("reconnection state management", c.StateTransitions)
 	t.Run(
@@ -434,12 +449,6 @@ func (c CommonStreamingTests) PermanentFallbackWithRecovery(t *ldtest.T) {
 	validatePayloadReceived(t, secondEndpoint, client, c.flagEvaluationContext, "", expectedEvaluations)
 }
 
-// fdv1PollingPath is the FDv1 polling URL path. When the FDv1 Fallback Synchronizer
-// is engaged, the SDK must request this path — not the FDv2 /sdk/poll path — so tests
-// can distinguish between an FDv2-level fallback and a directed FDv1 fallback by URL
-// inspection alone.
-const fdv1PollingPath = "/sdk/latest-all"
-
 // FDv1FallbackDirective groups the server-directed FDv1 fallback tests defined by
 // section 1.6 of the Data System spec. See:
 // specs/DATASYSTEM-data-system/v2/README.md#16-fdv1-fallback-directive
@@ -472,6 +481,10 @@ func (c CommonStreamingTests) FDv1FallbackDirective(t *ldtest.T) {
 // test asserts evaluations return that value — proving FDv1 actually became the
 // active data source, not just that its URL was hit.
 func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) {
+	if c.isClientSide {
+		t.RequireCapability(servicedef.CapabilityClientEventSourceHTTPErrors)
+	}
+
 	streamHandler, _ := httphelpers.RecordingHandler(httphelpers.HandlerWithResponse(
 		403, http.Header{"X-LD-FD-Fallback": []string{"true"}}, nil))
 	streamEndpoint := requireContext(t).harness.NewMockEndpoint(streamHandler, t.DebugLogger(),
@@ -506,28 +519,10 @@ func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) 
 	_, err := streamEndpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
-	// FDv1 endpoint must be contacted at /sdk/latest-all.
 	h.RequireEventually(t, func() bool {
 		select {
 		case resp := <-fdv1Channel:
-			path := resp.Request.URL.Path
-			switch c.sdkKind {
-			case mockld.ServerSideSDK, mockld.PHPSDK:
-				if fdV1FallbackPathServerSide.MatchString(path) {
-					return true
-				}
-			case mockld.MobileSDK:
-				if fdV1FallbackPathMobile.MatchString(path) {
-					return true
-				}
-			case mockld.JSClientSDK:
-				if fdV1FallbackPathJSClient.MatchString(path) {
-					return true
-				}
-			default:
-				return false
-			}
-			return false
+			return fdv1FallbackPollPathMatches(c.sdkKind, resp.Request.URL.Path)
 		default:
 			return false
 		}
@@ -609,11 +604,11 @@ func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtes
 	streamingRequest, err := streamingEndpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
-	// The directive must drive the SDK to the FDv1 polling path.
+	// The directive must drive the SDK to the FDv1 polling path for this SDK kind.
 	h.RequireEventually(t, func() bool {
 		select {
 		case resp := <-fdv1Channel:
-			return resp.Request.URL.Path == fdv1PollingPath
+			return fdv1FallbackPollPathMatches(c.sdkKind, resp.Request.URL.Path)
 		default:
 			return false
 		}
@@ -676,9 +671,8 @@ func (c CommonStreamingTests) DirectiveOnPollingInitializerSkipsSynchronizers(t 
 		harness.MockEndpointDescription("streaming synchronizer (must not be contacted)"))
 	t.Defer(streamEndpoint.Close)
 
-	// FDv1 polling endpoint: receives traffic via /sdk/latest-all once the directive
-	// takes effect, and serves a distinctive flag value so we can tell the data
-	// actually flowed through the FDv1 path into the Memory Store.
+	// FDv1 polling endpoint: once the directive takes effect, traffic must use this
+	// SDK's FDv1 polling path (see fdv1FallbackPollPathMatches), not FDv2 poll paths.
 	fdv1Value := ldvalue.String("value-from-fdv1")
 	fdv1Handler, fdv1Channel := httphelpers.RecordingHandler(
 		httphelpers.HandlerWithResponse(200, http.Header{"Content-Type": []string{"application/json"}},
@@ -711,11 +705,11 @@ func (c CommonStreamingTests) DirectiveOnPollingInitializerSkipsSynchronizers(t 
 			}),
 		}))
 
-	// The FDv1 fallback endpoint must see traffic at /sdk/latest-all.
+	// The FDv1 fallback endpoint must see traffic on the FDv1 polling path for this SDK kind.
 	h.RequireEventually(t, func() bool {
 		select {
 		case resp := <-fdv1Channel:
-			return resp.Request.URL.Path == fdv1PollingPath
+			return fdv1FallbackPollPathMatches(c.sdkKind, resp.Request.URL.Path)
 		default:
 			return false
 		}
@@ -753,6 +747,10 @@ func (c CommonStreamingTests) DirectiveOnPollingInitializerSkipsSynchronizers(t 
 // those retries is the positive signal that the directive caused a halt rather than
 // ordinary permanent removal (which would fire on a 4xx instead).
 func (c CommonStreamingTests) DirectiveWithoutFDv1ConfiguredHaltsDataSystem(t *ldtest.T) {
+	if c.isClientSide {
+		t.RequireCapability(servicedef.CapabilityClientEventSourceHTTPErrors)
+	}
+
 	handler, channel := httphelpers.RecordingHandler(httphelpers.HandlerWithResponse(
 		500, http.Header{"X-LD-FD-Fallback": []string{"true"}}, nil))
 	endpoint := requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
@@ -817,6 +815,10 @@ func (c CommonStreamingTests) DirectiveWithoutFDv1ConfiguredHaltsDataSystem(t *l
 // would normally fire if the SDK were still treating this as a heuristic fallback.
 func (c CommonStreamingTests) DirectedFallbackIsTerminal(t *ldtest.T) {
 	t.LongRunning()
+
+	if c.isClientSide {
+		t.RequireCapability(servicedef.CapabilityClientEventSourceHTTPErrors)
+	}
 
 	// FDv2 streaming endpoint: 500 + directive on every request. 500 is normally a
 	// recoverable error; using it (instead of a 4xx that would permanently remove the
