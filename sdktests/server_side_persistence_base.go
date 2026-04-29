@@ -275,8 +275,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 
 			s.runWithEmptyStore(t, "infinite cache - shows changes never", func(t *ldtest.T) {
 				persistence.SetCache(servicedef.SDKConfigPersistentCache{
-					Mode: servicedef.CacheModeTTL,
-					TTL:  o.Some(1),
+					Mode: servicedef.CacheModeInfinite,
 				})
 
 				client := NewSDKClient(t, persistence)
@@ -291,10 +290,10 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 				m.In(t).Assert(response.Value, m.Equal(ldvalue.String("fallthrough")))
 
 				require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", updatedFlags))
-				h.RequireEventually(t,
+				h.RequireNever(t,
 					checkForUpdatedValue(t, client, "flag-key", context,
 						ldvalue.String("fallthrough"), ldvalue.String("updated"), ldvalue.String("default")),
-					time.Millisecond*1_250, time.Millisecond*20, "flag was not updated after ttl expired")
+					time.Millisecond*1_250, time.Millisecond*20, "flag was updated despite infinite cache")
 			})
 		})
 
@@ -503,7 +502,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 2)
 			s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key":          basicFlagValidationMatcher("flag-key", 1, "new-value"),
-				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "value"),
+				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "uncached-fallthrough"),
 			})
 
 			// Same versioned updates are ignored
@@ -512,16 +511,16 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 3)
 			s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key":          basicFlagValidationMatcher("flag-key", 1, "new-value"),
-				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "value"),
+				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "uncached-fallthrough"),
 			})
 
 			// Higher versioned updates are applied
 			updateData = s.makeFlagData("flag-key", 200, ldvalue.String("new-value"))
 			dataSystem.Synchronizers[0].streaming.PushUpdate("flag", "flag-key", 200, updateData)
 			dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 4)
-			s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
+			s.eventuallyValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key":          basicFlagValidationMatcher("flag-key", 200, "new-value"),
-				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "value"),
+				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "uncached-fallthrough"),
 			})
 		})
 
