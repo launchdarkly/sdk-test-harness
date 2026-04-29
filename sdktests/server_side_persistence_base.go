@@ -129,7 +129,7 @@ func newServerSidePersistentTests(
 
 	uncachedFlagKeyBytes, err :=
 		ldbuilders.NewFlagBuilder("uncached-flag-key").Version(100).
-			On(true).Variations(ldvalue.String("fallthrough"), ldvalue.String("other")).
+			On(true).Variations(ldvalue.String("uncached-fallthrough"), ldvalue.String("other")).
 			OffVariation(1).
 			FallthroughVariation(0).
 			Build().MarshalJSON()
@@ -464,6 +464,29 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			})
 		})
 
+		// Companion to "applies updates to store": that test verifies the SDK writes
+		// updates through to the persistent store; this one verifies the SDK serves
+		// the new value from its in-memory state on subsequent evaluations.
+		s.runWithEmptyStore(t, "evaluation reflects streaming updates", func(t *ldtest.T) {
+			sdkData := s.makeSDKDataWithFlag(1, ldvalue.String("value"))
+			dataSystem, configurers := s.setupDataSystems(t, sdkData)
+			configurers = append(configurers, persistence)
+
+			client := NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
+			context := ldcontext.New("user-key")
+			s.eventuallyRequireDataStoreInit(t, s.defaultPrefix)
+
+			pollUntilFlagValueUpdated(t, client, "flag-key", context,
+				ldvalue.String("default"), ldvalue.String("value"), ldvalue.String("default"))
+
+			updateData := s.makeFlagData("flag-key", 2, ldvalue.String("new-value"))
+			dataSystem.Synchronizers[0].streaming.PushUpdate("flag", "flag-key", 2, updateData)
+			dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 2)
+
+			pollUntilFlagValueUpdated(t, client, "flag-key", context,
+				ldvalue.String("value"), ldvalue.String("new-value"), ldvalue.String("default"))
+		})
+
 		s.runWithEmptyStore(t, "data source updates respect versioning", func(t *ldtest.T) {
 			sdkData := s.makeSDKDataWithFlag(1, ldvalue.String("value"))
 			dataSystem, configurers := s.setupDataSystems(t, sdkData)
@@ -517,7 +540,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 2)
 			s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key":          basicDeletedFlagValidationMatcher("flag-key", 1),
-				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "fallthrough"),
+				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "uncached-fallthrough"),
 			})
 
 			// Higher versioned deletes are applied
@@ -525,7 +548,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 3)
 			s.eventuallyValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key":          basicDeletedFlagValidationMatcher("flag-key", 200),
-				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "fallthrough"),
+				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "uncached-fallthrough"),
 			})
 		})
 
@@ -552,13 +575,13 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 
 			h.RequireNever(t,
 				checkForUpdatedValue(t, client, "flag-key", context,
-					ldvalue.String("value"), ldvalue.String("new-value"), ldvalue.String("default")),
+					ldvalue.String("value"), ldvalue.String("fallthrough"), ldvalue.String("default")),
 				time.Millisecond*500, time.Millisecond*20,
 				"flag-key reflected a direct database modification")
 
 			h.RequireNever(t,
 				checkForUpdatedValue(t, client, "uncached-flag-key", context,
-					ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default")),
+					ldvalue.String("default"), ldvalue.String("uncached-fallthrough"), ldvalue.String("default")),
 				time.Millisecond*500, time.Millisecond*20,
 				"uncached-flag-key surfaced from a direct database write")
 		})
