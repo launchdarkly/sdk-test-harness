@@ -529,166 +529,60 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			})
 		})
 
-		cacheConfigs := []servicedef.SDKConfigPersistentCache{
-			{Mode: servicedef.CacheModeInfinite},
-			{Mode: servicedef.CacheModeTTL, TTL: o.Some(1)},
-		}
+		// Once a synchronizer has delivered a basis, the in-memory store is the
+		// authoritative source for read-write FDv2 evaluations; the persistent store
+		// is write-through only. These tests verify that direct activity against the
+		// persistent store has no effect on what evaluations return, regardless of
+		// whether a key was previously evaluated.
+		s.runWithEmptyStore(t, "ignores direct database modifications", func(t *ldtest.T) {
+			sdkData := s.makeSDKDataWithFlag(1, ldvalue.String("value"))
+			_, configurers := s.setupDataSystems(t, sdkData)
+			configurers = append(configurers, persistence)
 
-		for _, cacheConfig := range cacheConfigs {
-			t.Run(fmt.Sprintf("cache mode %s", cacheConfig.Mode), func(t *ldtest.T) {
-				s.runWithEmptyStore(t, "does not cache flag miss", func(t *ldtest.T) {
-					persistence := NewPersistence()
-					persistence.SetStore(servicedef.SDKConfigPersistentStore{
-						Type: s.persistentStore.Type(),
-						DSN:  s.persistentStore.DSN(),
-					})
-					persistence.SetCache(cacheConfig)
+			client := NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
+			context := ldcontext.New("user-key")
+			s.eventuallyRequireDataStoreInit(t, s.defaultPrefix)
 
-					dataSystem, configurers := s.setupDataSystems(t, mockld.NewServerSDKDataBuilder().Build())
-					configurers = append(configurers, persistence)
+			pollUntilFlagValueUpdated(t, client, "flag-key", context,
+				ldvalue.String("default"), ldvalue.String("value"), ldvalue.String("default"))
 
-					client := NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
-					context := ldcontext.New("user-key")
-					s.eventuallyRequireDataStoreInit(t, s.defaultPrefix)
+			// initialFlags overwrites flag-key (already evaluated) and adds
+			// uncached-flag-key (never evaluated). Both should be invisible to reads.
+			require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
 
-					response := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
-						FlagKey:      "flag-key",
-						Context:      o.Some(context),
-						ValueType:    servicedef.ValueTypeAny,
-						DefaultValue: ldvalue.String("default"),
-					})
+			h.RequireNever(t,
+				checkForUpdatedValue(t, client, "flag-key", context,
+					ldvalue.String("value"), ldvalue.String("new-value"), ldvalue.String("default")),
+				time.Millisecond*500, time.Millisecond*20,
+				"flag-key reflected a direct database modification")
 
-					m.In(t).Assert(response.Value, m.Equal(ldvalue.String("default")))
+			h.RequireNever(t,
+				checkForUpdatedValue(t, client, "uncached-flag-key", context,
+					ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default")),
+				time.Millisecond*500, time.Millisecond*20,
+				"uncached-flag-key surfaced from a direct database write")
+		})
 
-					updateData := s.makeFlagData("flag-key", 2, ldvalue.String("new-value"))
-					dataSystem.Synchronizers[0].streaming.PushUpdate("flag", "flag-key", 2, updateData)
-					dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 2)
+		s.runWithEmptyStore(t, "ignores dropped flags", func(t *ldtest.T) {
+			sdkData := s.makeSDKDataWithFlag(1, ldvalue.String("value"))
+			_, configurers := s.setupDataSystems(t, sdkData)
+			configurers = append(configurers, persistence)
 
-					h.RequireEventually(t,
-						checkForUpdatedValue(t, client, "flag-key", context,
-							ldvalue.String("default"), ldvalue.String("new-value"), ldvalue.String("default")),
-						time.Millisecond*500, time.Millisecond*20, "flag was never updated")
-				})
-				s.runWithEmptyStore(t, "sdk reflects data source updates even with cache", func(t *ldtest.T) {
-					persistence := NewPersistence()
-					persistence.SetStore(servicedef.SDKConfigPersistentStore{
-						Type: s.persistentStore.Type(),
-						DSN:  s.persistentStore.DSN(),
-					})
-					persistence.SetCache(cacheConfig)
+			client := NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
+			context := ldcontext.New("user-key")
+			s.eventuallyRequireDataStoreInit(t, s.defaultPrefix)
 
-					sdkData := s.makeSDKDataWithFlag(1, ldvalue.String("value"))
-					dataSystem, configurers := s.setupDataSystems(t, sdkData)
-					configurers = append(configurers, persistence)
+			pollUntilFlagValueUpdated(t, client, "flag-key", context,
+				ldvalue.String("default"), ldvalue.String("value"), ldvalue.String("default"))
 
-					client := NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
-					context := ldcontext.New("user-key")
-					s.eventuallyRequireDataStoreInit(t, s.defaultPrefix)
+			require.NoError(t, s.persistentStore.Reset())
 
-					pollUntilFlagValueUpdated(t, client, "flag-key", context,
-						ldvalue.String("default"), ldvalue.String("value"), ldvalue.String("default"))
-
-					updateData := s.makeFlagData("flag-key", 2, ldvalue.String("new-value"))
-					dataSystem.Synchronizers[0].streaming.PushUpdate("flag", "flag-key", 2, updateData)
-					dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 2)
-
-					// This change is reflected in less time than the cache TTL. This should
-					// prove it isn't caching that value.
-					h.RequireEventually(t,
-						checkForUpdatedValue(t, client, "flag-key", context,
-							ldvalue.String("value"), ldvalue.String("new-value"), ldvalue.String("default")),
-						time.Millisecond*500, time.Millisecond*20, "flag was updated")
-				})
-				s.runWithEmptyStore(t, "ignores direct database modifications", func(t *ldtest.T) {
-					persistence := NewPersistence()
-					persistence.SetStore(servicedef.SDKConfigPersistentStore{
-						Type: s.persistentStore.Type(),
-						DSN:  s.persistentStore.DSN(),
-					})
-					persistence.SetCache(cacheConfig)
-
-					sdkData := s.makeSDKDataWithFlag(1, ldvalue.String("value"))
-					_, configurers := s.setupDataSystems(t, sdkData)
-					configurers = append(configurers, persistence)
-
-					client := NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
-					context := ldcontext.New("user-key")
-					s.eventuallyRequireDataStoreInit(t, s.defaultPrefix)
-
-					pollUntilFlagValueUpdated(t, client, "flag-key", context,
-						ldvalue.String("default"), ldvalue.String("value"), ldvalue.String("default"))
-
-					require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
-
-					switch cacheConfig.Mode {
-					case servicedef.CacheModeInfinite:
-						// This key was already cached, so it shouldn't see the change above.
-						h.RequireNever(t,
-							checkForUpdatedValue(t, client, "flag-key", context,
-								ldvalue.String("value"), ldvalue.String("new-value"), ldvalue.String("default")),
-							time.Millisecond*500, time.Millisecond*20, "flag-key was incorrectly updated")
-
-						// But since we didn't evaluate this flag, this should actually be
-						// reflected by directly changing the database.
-						h.RequireEventually(t,
-							checkForUpdatedValue(t, client, "uncached-flag-key", context,
-								ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default")),
-							time.Millisecond*500, time.Millisecond*20, "uncached-flag-key was incorrectly cached")
-					case servicedef.CacheModeTTL:
-						// This key was already cached, so it shouldn't see the change above.
-						h.RequireNever(t,
-							checkForUpdatedValue(t, client, "flag-key", context,
-								ldvalue.String("value"), ldvalue.String("new-value"), ldvalue.String("default")),
-							time.Duration(
-								int(time.Second)*cacheConfig.TTL.Value()/2),
-							time.Millisecond*20,
-							"flag-key was incorrectly updated")
-
-						// But eventually, it will expire and then we will fetch it from the database.
-						h.RequireEventually(t,
-							checkForUpdatedValue(t, client, "flag-key", context,
-								ldvalue.String("value"), ldvalue.String("fallthrough"), ldvalue.String("default")),
-							time.Duration(int(time.Second)*cacheConfig.TTL.Value()), time.Millisecond*20, "flag-key was incorrectly cached")
-					}
-				})
-
-				s.runWithEmptyStore(t, "ignores dropped flags", func(t *ldtest.T) {
-					persistence := NewPersistence()
-					persistence.SetStore(servicedef.SDKConfigPersistentStore{
-						Type: s.persistentStore.Type(),
-						DSN:  s.persistentStore.DSN(),
-					})
-					persistence.SetCache(cacheConfig)
-
-					sdkData := s.makeSDKDataWithFlag(1, ldvalue.String("value"))
-					_, configurers := s.setupDataSystems(t, sdkData)
-					configurers = append(configurers, persistence)
-
-					client := NewSDKClient(t, s.baseSDKConfigurationPlus(configurers...)...)
-					context := ldcontext.New("user-key")
-					s.eventuallyRequireDataStoreInit(t, s.defaultPrefix)
-
-					pollUntilFlagValueUpdated(t, client, "flag-key", context,
-						ldvalue.String("default"), ldvalue.String("value"), ldvalue.String("default"))
-
-					require.NoError(t, s.persistentStore.Reset())
-
-					// This key was already cached, so it shouldn't see the change above.
-					h.RequireNever(t,
-						checkForUpdatedValue(t, client, "flag-key", context,
-							ldvalue.String("value"), ldvalue.String("default"), ldvalue.String("default")),
-						time.Millisecond*500, time.Millisecond*20, "flag was never updated")
-
-					if cacheConfig.Mode == servicedef.CacheModeTTL {
-						// But eventually, it will expire and then we will fetch it from the database.
-						h.RequireEventually(t,
-							checkForUpdatedValue(t, client, "flag-key", context,
-								ldvalue.String("value"), ldvalue.String("default"), ldvalue.String("default")),
-							time.Second, time.Millisecond*20, "flag-key was incorrectly cached")
-					}
-				})
-			})
-		}
+			h.RequireNever(t,
+				checkForUpdatedValue(t, client, "flag-key", context,
+					ldvalue.String("value"), ldvalue.String("default"), ldvalue.String("default")),
+				time.Millisecond*500, time.Millisecond*20,
+				"flag-key was dropped from the in-memory store after a database reset")
+		})
 	})
 }
 
