@@ -29,11 +29,6 @@ func NewCommonInstanceIDTests(t *ldtest.T, testName string, baseSDKConfigurers .
 func (c CommonInstanceIDTests) Run(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityInstanceID)
 
-	verifyRequestHeader := func(t *ldtest.T, endpoint *harness.MockEndpoint) {
-		request := endpoint.RequireConnection(t, time.Second)
-		assert.NotEmpty(t, request.Headers.Get("X-LaunchDarkly-Instance-Id"))
-	}
-
 	t.Run("stream requests", func(t *ldtest.T) {
 		dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionStreaming())
 		configurers := c.baseSDKConfigurationPlus(dataSystem)
@@ -43,14 +38,16 @@ func (c CommonInstanceIDTests) Run(t *ldtest.T) {
 				NewSDKDataSystem(t, nil, DataSystemOptionPolling()))
 		}
 		_ = NewSDKClient(t, configurers...)
-		verifyRequestHeader(t, dataSystem.Synchronizers[0].Endpoint())
+		check := newInstanceIDChecker(t)
+		check(dataSystem.Synchronizers[0].Endpoint())
 	})
 
 	if t.Capabilities().HasAny(servicedef.CapabilityClientSide, servicedef.CapabilityServerSidePolling) {
 		t.Run("poll requests", func(t *ldtest.T) {
 			dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
 			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem)...)
-			verifyRequestHeader(t, dataSystem.Synchronizers[0].Endpoint())
+			check := newInstanceIDChecker(t)
+			check(dataSystem.Synchronizers[0].Endpoint())
 		})
 	}
 
@@ -64,7 +61,12 @@ func (c CommonInstanceIDTests) Run(t *ldtest.T) {
 		c.sendArbitraryEvent(t, client)
 		client.FlushEvents(t)
 
-		verifyRequestHeader(t, events.Endpoint())
+		// The SDK contacts the data source during init and the events endpoint
+		// on flush; both must carry the same instance-id since they originate
+		// from the same client.
+		check := newInstanceIDChecker(t)
+		check(dataSystem.Synchronizers[0].Endpoint())
+		check(events.Endpoint())
 	})
 
 	// FDv2 introduces request shapes that are not exercised by the streaming
@@ -81,7 +83,9 @@ func (c CommonInstanceIDTests) Run(t *ldtest.T) {
 			dataSystem := NewSDKDataSystem(t, synchronizerData,
 				DataSystemOptionPollingInitializer(initializerData))
 			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem)...)
-			verifyRequestHeader(t, dataSystem.Initializers[0].Endpoint())
+			check := newInstanceIDChecker(t)
+			check(dataSystem.Initializers[0].Endpoint())
+			check(dataSystem.Synchronizers[0].Endpoint())
 		})
 
 		t.Run("secondary synchronizer requests after permanent fallback", func(t *ldtest.T) {
@@ -109,7 +113,9 @@ func (c CommonInstanceIDTests) Run(t *ldtest.T) {
 					BaseURI: secondaryEndpoint.BaseURL(),
 				}))...)
 
-			verifyRequestHeader(t, secondaryEndpoint)
+			check := newInstanceIDChecker(t)
+			check(primaryEndpoint)
+			check(secondaryEndpoint)
 		})
 	}
 
@@ -146,18 +152,40 @@ func (c CommonInstanceIDTests) Run(t *ldtest.T) {
 					BaseURI: fdv1Endpoint.BaseURL(),
 				}))...)
 
-			verifyRequestHeader(t, fdv1Endpoint)
+			check := newInstanceIDChecker(t)
+			check(streamEndpoint)
+			check(fdv1Endpoint)
 		})
+	}
+}
+
+// newInstanceIDChecker returns a function that asserts every observed request
+// carries a non-empty X-LaunchDarkly-Instance-Id header AND that the value is
+// identical across every endpoint observed by the returned checker. The
+// instance-id identifies the SDK client instance, so it must be stable for the
+// client's lifetime no matter which request shape carries it. Each subtest
+// creates its own SDK client and so should create its own checker -- the
+// latched value is per-client.
+func newInstanceIDChecker(t *ldtest.T) func(*harness.MockEndpoint) {
+	var observed string
+	return func(endpoint *harness.MockEndpoint) {
+		t.Helper()
+		request := endpoint.RequireConnection(t, time.Second)
+		v := request.Headers.Get("X-LaunchDarkly-Instance-Id")
+		if !assert.NotEmpty(t, v, "X-LaunchDarkly-Instance-Id missing from request") {
+			return
+		}
+		if observed == "" {
+			observed = v
+			return
+		}
+		assert.Equal(t, observed, v,
+			"X-LaunchDarkly-Instance-Id differs across requests from the same SDK client")
 	}
 }
 
 func (c CommonInstanceIDTests) RunPHP(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityInstanceID)
-
-	verifyRequestHeader := func(t *ldtest.T, endpoint *harness.MockEndpoint) {
-		request := endpoint.RequireConnection(t, time.Second)
-		assert.NotEmpty(t, request.Headers.Get("X-LaunchDarkly-Instance-Id"))
-	}
 
 	t.Run("poll requests", func(t *ldtest.T) {
 		dataSystem := NewSDKDataSystem(t, nil)
@@ -170,7 +198,8 @@ func (c CommonInstanceIDTests) RunPHP(t *ldtest.T) {
 			Detail:       false,
 		})
 
-		verifyRequestHeader(t, dataSystem.Synchronizers[0].Endpoint())
+		check := newInstanceIDChecker(t)
+		check(dataSystem.Synchronizers[0].Endpoint())
 	})
 
 	t.Run("event posts", func(t *ldtest.T) {
@@ -183,6 +212,7 @@ func (c CommonInstanceIDTests) RunPHP(t *ldtest.T) {
 		c.sendArbitraryEvent(t, client)
 		client.FlushEvents(t)
 
-		verifyRequestHeader(t, events.Endpoint())
+		check := newInstanceIDChecker(t)
+		check(events.Endpoint())
 	})
 }
