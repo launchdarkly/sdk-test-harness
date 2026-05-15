@@ -1,6 +1,7 @@
 package sdktests
 
 import (
+	"slices"
 	"sort"
 	"strconv"
 
@@ -515,14 +516,6 @@ func observedHookOrder(t *ldtest.T, hooks *Hooks, names []string, stage serviced
 	return out
 }
 
-func reverseStrings(in []string) []string {
-	out := make([]string, len(in))
-	for i, v := range in {
-		out[len(in)-1-i] = v
-	}
-	return out
-}
-
 // afterTrack must execute in the order of hook registration (forward),
 // unlike afterEvaluation/afterIdentify which run in reverse-registration order.
 func executesAfterTrackHooksInRegistrationOrder(t *ldtest.T) {
@@ -599,7 +592,9 @@ func executesAfterEvaluationHooksInReverseRegistrationOrder(t *ldtest.T) {
 		DefaultValue: ldvalue.Bool(false),
 	})
 
-	assert.Equal(t, reverseStrings(names), observedHookOrder(t, hooks, names, servicedef.AfterEvaluation),
+	expected := slices.Clone(names)
+	slices.Reverse(expected)
+	assert.Equal(t, expected, observedHookOrder(t, hooks, names, servicedef.AfterEvaluation),
 		"afterEvaluation hooks must execute in the reverse of the order of hook registration")
 }
 
