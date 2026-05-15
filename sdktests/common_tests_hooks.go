@@ -30,8 +30,10 @@ func doEvaluationSeriesTests(t *ldtest.T) {
 	t.Run("executes beforeEvaluation stage", executesBeforeEvaluationStage)
 	t.Run("executes afterEvaluation stage", executesAfterEvaluationStage)
 	t.Run("an error in before stage does not affect after stage", errorInBeforeStageDoesNotAffectAfterStage)
-	t.Run("executes beforeEvaluation hooks in registration order", executesBeforeEvaluationHooksInRegistrationOrder)
-	t.Run("executes afterEvaluation hooks in reverse registration order", executesAfterEvaluationHooksInReverseRegistrationOrder)
+	t.Run("executes beforeEvaluation hooks in registration order",
+		executesBeforeEvaluationHooksInRegistrationOrder)
+	t.Run("executes afterEvaluation hooks in reverse registration order",
+		executesAfterEvaluationHooksInReverseRegistrationOrder)
 
 	t.Run("data propagates from before to after", beforeEvaluationDataPropagatesToAfter)
 	t.RequireCapability(servicedef.CapabilityMigrations)
