@@ -1,8 +1,8 @@
 package sdktests
 
 import (
+	"cmp"
 	"slices"
-	"sort"
 	"strconv"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
@@ -508,7 +508,7 @@ func observedHookOrder(t *ldtest.T, hooks *Hooks, names []string, stage serviced
 			return true
 		})
 	}
-	sort.Slice(calls, func(i, j int) bool { return calls[i].sequence < calls[j].sequence })
+	slices.SortFunc(calls, func(a, b observedCall) int { return cmp.Compare(a.sequence, b.sequence) })
 	out := make([]string, 0, len(calls))
 	for _, c := range calls {
 		out = append(out, c.name)
