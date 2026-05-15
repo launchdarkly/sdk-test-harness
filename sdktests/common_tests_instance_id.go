@@ -69,6 +69,38 @@ func (c CommonInstanceIDTests) Run(t *ldtest.T) {
 		check(events.Endpoint())
 	})
 
+	// instance-id identifies an SDK client instance; two distinct clients
+	// living in the same process must never share a value, or telemetry can't
+	// disambiguate them. Stand up two independent clients back to back and
+	// assert their instance-ids differ. Gated on !CapabilitySingleton since
+	// the test requires creating a second client while the first still exists.
+	if !t.Capabilities().Has(servicedef.CapabilitySingleton) {
+		t.Run("instance id differs between client instances", func(t *ldtest.T) {
+			captureInstanceID := func() string {
+				dataSystem := NewSDKDataSystem(t, nil, DataSystemOptionStreaming())
+				configurers := c.baseSDKConfigurationPlus(dataSystem)
+				if c.isClientSide {
+					// client-side SDKs in streaming mode may *also* need a
+					// polling data source
+					configurers = append(configurers,
+						NewSDKDataSystem(t, nil, DataSystemOptionPolling()))
+				}
+				_ = NewSDKClient(t, configurers...)
+				request := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
+				v := request.Headers.Get("X-LaunchDarkly-Instance-Id")
+				assert.NotEmpty(t, v, "X-LaunchDarkly-Instance-Id missing from request")
+				return v
+			}
+
+			first := captureInstanceID()
+			second := captureInstanceID()
+
+			assert.NotEqual(t, first, second,
+				"two distinct SDK client instances must have distinct "+
+					"X-LaunchDarkly-Instance-Id values")
+		})
+	}
+
 	// FDv2 introduces request shapes that are not exercised by the streaming
 	// or polling synchronizer subtests above: an Initializer request that
 	// precedes the synchronizer, a Secondary Synchronizer that is only
