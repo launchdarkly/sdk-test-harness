@@ -27,6 +27,10 @@ type HookInstance struct {
 
 type Hooks struct {
 	instances map[string]HookInstance
+	// order preserves the registration order of hook names so Configure can
+	// send hooks to the SDK deterministically. Map iteration in Go is
+	// randomized, so we cannot derive this from `instances` alone.
+	order []string
 	// sequence is a per-Hooks counter shared by every HookCallbackService so
 	// that arrival order across hooks (which each have their own callback URL)
 	// can be reconstructed in tests.
@@ -42,6 +46,7 @@ func NewHooks(
 ) *Hooks {
 	hooks := &Hooks{
 		instances: make(map[string]HookInstance),
+		order:     make([]string, 0, len(instances)),
 		sequence:  &atomic.Int64{},
 	}
 	for _, instance := range instances {
@@ -51,6 +56,7 @@ func NewHooks(
 			data:        data,
 			errors:      errors,
 		}
+		hooks.order = append(hooks.order, instance)
 	}
 
 	return hooks
@@ -58,7 +64,8 @@ func NewHooks(
 
 func (h *Hooks) Configure(config *servicedef.SDKConfigParams) error {
 	hookConfig := config.Hooks.Value()
-	for _, instance := range h.instances {
+	for _, name := range h.order {
+		instance := h.instances[name]
 		hookConfig.Hooks = append(hookConfig.Hooks, servicedef.SDKConfigHookInstance{
 			Name:        instance.name,
 			CallbackURI: instance.hookService.GetURL(),
