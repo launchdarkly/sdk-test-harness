@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.36.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.35.0...v2.36.0) (2026-05-15)
+
+
+### Features
+
+* Assert hook execution order for evaluation and track stages ([#341](https://github.com/launchdarkly/sdk-test-harness/issues/341)) ([ecea002](https://github.com/launchdarkly/sdk-test-harness/commit/ecea00274a72ea91132e7c4b5bd9486d4943b472))
+
 ## [2.35.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.34.0...v2.35.0) (2026-04-22)
 
 
