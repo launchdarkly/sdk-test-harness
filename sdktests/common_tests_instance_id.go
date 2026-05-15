@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
-	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
@@ -174,9 +173,7 @@ func (c CommonInstanceIDTests) Run(t *ldtest.T) {
 			t.Defer(fdv1Endpoint.Close)
 
 			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
-				WithConfig(servicedef.SDKConfigParams{
-					StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(5000)),
-				}),
+				WithWaitToStart(5*time.Second, false),
 				WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 					BaseURI: streamEndpoint.BaseURL(),
 				}),

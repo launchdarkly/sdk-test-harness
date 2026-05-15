@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
@@ -137,6 +136,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 				withTagsConfig(fdv2TagParams.tags),
 				dataSystem)...)
 			verifyRequestHeader(t, fdv2TagParams, dataSystem.Initializers[0].Endpoint())
+			verifyRequestHeader(t, fdv2TagParams, dataSystem.Synchronizers[0].Endpoint())
 		})
 
 		t.Run("secondary synchronizer requests after permanent fallback", func(t *ldtest.T) {
@@ -165,6 +165,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 					BaseURI: secondaryEndpoint.BaseURL(),
 				}))...)
 
+			verifyRequestHeader(t, fdv2TagParams, primaryEndpoint)
 			verifyRequestHeader(t, fdv2TagParams, secondaryEndpoint)
 		})
 	}
@@ -193,9 +194,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 
 			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 				withTagsConfig(fdv2TagParams.tags),
-				WithConfig(servicedef.SDKConfigParams{
-					StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(5000)),
-				}),
+				WithWaitToStart(5*time.Second, false),
 				WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 					BaseURI: streamEndpoint.BaseURL(),
 				}),
@@ -203,6 +202,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 					BaseURI: fdv1Endpoint.BaseURL(),
 				}))...)
 
+			verifyRequestHeader(t, fdv2TagParams, streamEndpoint)
 			verifyRequestHeader(t, fdv2TagParams, fdv1Endpoint)
 		})
 	}
