@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"sync/atomic"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
@@ -24,9 +25,14 @@ func (h *HookCallbackService) Close() {
 	h.payloadEndpoint.Close()
 }
 
+// NewHookCallbackService creates an HTTP endpoint that records incoming hook
+// callbacks. If sequence is non-nil it is incremented per received call and
+// stamped onto the payload so tests can establish ordering across hooks that
+// share the same counter.
 func NewHookCallbackService(
 	testHarness *harness.TestHarness,
 	logger framework.Logger,
+	sequence *atomic.Int64,
 ) *HookCallbackService {
 	h := &HookCallbackService{
 		CallChannel: make(chan servicedef.HookExecutionPayload),
@@ -47,6 +53,10 @@ func NewHookCallbackService(
 			logger.Printf("Could not unmarshal hook payload.")
 			w.WriteHeader(http.StatusBadRequest)
 			return
+		}
+
+		if sequence != nil {
+			response.Sequence = sequence.Add(1)
 		}
 
 		go func() {

@@ -218,4 +218,9 @@ type HookExecutionPayload struct {
 	EvaluationDetail        o.Maybe[EvaluateFlagResponse]     `json:"evaluationDetail"`
 	TrackSeriesContext      o.Maybe[TrackSeriesContext]       `json:"trackSeriesContext"`
 	Stage                   o.Maybe[HookStage]                `json:"stage"`
+
+	// Sequence is stamped by the test harness in the order callbacks arrive.
+	// Shared across all hook instances of a single Hooks group so tests can
+	// assert cross-hook ordering. Not part of the SDK contract.
+	Sequence int64 `json:"-"`
 }

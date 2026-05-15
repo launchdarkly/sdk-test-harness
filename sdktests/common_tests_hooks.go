@@ -1,6 +1,7 @@
 package sdktests
 
 import (
+	"sort"
 	"strconv"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
@@ -39,6 +40,7 @@ func doTrackSeriesTests(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityTrackHooks)
 	t.Run("executes afterTrack stage", executesAfterTrackStage)
 	t.Run("a hook error prevents afterTrack stage", errorInHookPreventsAfterTrackStage)
+	t.Run("executes afterTrack hooks in registration order", executesAfterTrackHooksInRegistrationOrder)
 }
 
 func executesBeforeEvaluationStage(t *ldtest.T) {
@@ -470,6 +472,57 @@ func errorInHookPreventsAfterTrackStage(t *ldtest.T) {
 	})
 	client.FlushEvents(t)
 	hooks.ExpectNoCall(t, hookName)
+}
+
+// afterTrack must execute in the order of hook registration (forward),
+// unlike afterEvaluation/afterIdentify which run in reverse-registration order.
+func executesAfterTrackHooksInRegistrationOrder(t *ldtest.T) {
+	const numHooks = 3
+	names := make([]string, 0, numHooks)
+	for i := 0; i < numHooks; i++ {
+		names = append(names, "afterTrackOrderHook-"+strconv.Itoa(i))
+	}
+
+	context := ldcontext.New("user-key")
+	eventContext := o.Some(context)
+	configurers := []SDKConfigurer{}
+
+	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
+		configurers = append(configurers, WithClientSideInitialContext(context))
+		eventContext = o.None[ldcontext.Context]()
+	}
+
+	client, hooks := createClientForHooks(t, names, nil, configurers...)
+	defer hooks.Close()
+
+	client.SendCustomEvent(t, servicedef.CustomEventParams{
+		EventKey: "custom-event",
+		Context:  eventContext,
+	})
+
+	type observedCall struct {
+		name     string
+		sequence int64
+	}
+	observed := make([]observedCall, 0, numHooks)
+	for _, name := range names {
+		hooks.ExpectCall(t, name, func(payload servicedef.HookExecutionPayload) bool {
+			if payload.Stage.Value() != servicedef.AfterTrack {
+				return false
+			}
+			observed = append(observed, observedCall{name: name, sequence: payload.Sequence})
+			return true
+		})
+	}
+
+	sort.Slice(observed, func(i, j int) bool { return observed[i].sequence < observed[j].sequence })
+
+	actualOrder := make([]string, 0, len(observed))
+	for _, c := range observed {
+		actualOrder = append(actualOrder, c.name)
+	}
+	assert.Equal(t, names, actualOrder,
+		"afterTrack hooks must execute in the order of hook registration")
 }
 
 func createClientForHooks(t *ldtest.T, instances []string,

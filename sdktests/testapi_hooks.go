@@ -1,6 +1,7 @@
 package sdktests
 
 import (
+	"sync/atomic"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -26,6 +27,10 @@ type HookInstance struct {
 
 type Hooks struct {
 	instances map[string]HookInstance
+	// sequence is a per-Hooks counter shared by every HookCallbackService so
+	// that arrival order across hooks (which each have their own callback URL)
+	// can be reconstructed in tests.
+	sequence *atomic.Int64
 }
 
 func NewHooks(
@@ -37,11 +42,12 @@ func NewHooks(
 ) *Hooks {
 	hooks := &Hooks{
 		instances: make(map[string]HookInstance),
+		sequence:  &atomic.Int64{},
 	}
 	for _, instance := range instances {
 		hooks.instances[instance] = HookInstance{
 			name:        instance,
-			hookService: mockld.NewHookCallbackService(testHarness, logger),
+			hookService: mockld.NewHookCallbackService(testHarness, logger, hooks.sequence),
 			data:        data,
 			errors:      errors,
 		}
