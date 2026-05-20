@@ -406,6 +406,8 @@ func doServerSideAllFlagsCompactRepresentationsTest(t *ldtest.T) {
 	m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedMetadata))
 }
 
+// CSPE 1.1.1: $flagsState includes prerequisites field for flags with prerequisite evaluations
+// CSPE 1.1.1.2: prerequisites is an ordered list of evaluated direct prerequisites
 func doServerSideAllFlagsIncludesToplevelPreqrequisitesTest(t *ldtest.T) {
 	topLevel := ldbuilders.NewFlagBuilder("topLevel").Version(100).
 		Variations(ldvalue.String("value1")).On(true).FallthroughVariation(0).
@@ -459,6 +461,8 @@ func doServerSideAllFlagsIncludesToplevelPreqrequisitesTest(t *ldtest.T) {
 	m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedJSON))
 }
 
+// CSPE 1.1.1.1: prerequisites field omitted when flag is off or not evaluated
+// CSPE 1.1.1.2: only evaluated prerequisites included; short-circuits on failure
 func doServerSideAllFlagsIgnoresPrereqsIfNotEvaluatedTest(t *ldtest.T) {
 	flagOn := ldbuilders.NewFlagBuilder("flagOn").Version(100).
 		Variations(ldvalue.String("value1")).On(true).FallthroughVariation(0).
@@ -528,6 +532,7 @@ func doServerSideAllFlagsIgnoresPrereqsIfNotEvaluatedTest(t *ldtest.T) {
 	m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedJSON))
 }
 
+// CSPE 1.1.1: prerequisites listed regardless of client-side visibility (Note 1.1.1)
 func doServerSideAllFlagsIgnoresClientSideOnlyForPrereqKeys(t *ldtest.T) {
 	flag := ldbuilders.NewFlagBuilder("flag").Version(100).
 		ClientSideUsingEnvironmentID(true).

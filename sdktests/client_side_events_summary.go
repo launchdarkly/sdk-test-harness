@@ -34,6 +34,8 @@ func doClientSideSummaryEventTests(t *ldtest.T) {
 	})
 }
 
+// CSSE 2.1.2.1: counters group evaluations by flag key, variation, and version
+// CSSE 2.1.1: accumulator tracks default value, count, and resulting value per counter
 func doClientSideSummaryEventBasicTest(t *ldtest.T) {
 	flag1Key := "flag1"
 	flag1Result1 := mockld.ClientSDKFlag{
@@ -112,6 +114,8 @@ func doClientSideSummaryEventBasicTest(t *ldtest.T) {
 	)
 }
 
+// CSSE 1.1.1.2: unique accumulator per unique context produces separate summary events
+// CSSE 2.1.3.1: getSummary populates context on per-context summary events
 func doClientSidePerContextSummaryEventBasicTest(t *ldtest.T) {
 	flag1Key := "flag1"
 	flag1Result1 := mockld.ClientSDKFlag{
@@ -198,6 +202,7 @@ func doClientSidePerContextSummaryEventBasicTest(t *ldtest.T) {
 	)
 }
 
+// CSSE 2.1.3.1: features include contextKinds from all evaluating context kinds
 func doClientSideSummaryEventContextKindsTest(t *ldtest.T) {
 	flag1Key := "flag1"
 	flag1Result := mockld.ClientSDKFlag{
@@ -270,6 +275,8 @@ func doClientSideSummaryEventContextKindsTest(t *ldtest.T) {
 	)
 }
 
+// CSSE 1.1.1.2: unique accumulator per unique multi-kind context
+// CSSE 2.1.3.1: contextKinds populated for per-context summary events
 func doClientSidePerContxtSummaryEventContextKindsTest(t *ldtest.T) {
 	flag1Key := "flag1"
 	flag1Result := mockld.ClientSDKFlag{
@@ -345,6 +352,7 @@ func doClientSidePerContxtSummaryEventContextKindsTest(t *ldtest.T) {
 	)
 }
 
+// CSSE 2.1.3.1: unknown flag counter sets unknown=true with no version or variation
 func doClientSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 	unknownKey := "flag-x"
 	context := ldcontext.New("user-key")
@@ -380,6 +388,8 @@ func doClientSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 	)
 }
 
+// CSSE 1.1.2.1: accumulators cleared after getSummaries; new flush has fresh counts
+// CSSE 3.1.1: summaries included in flushed event batch
 func doClientSideSummaryEventResetTest(t *ldtest.T) {
 	flagKey := "flag1"
 	flag1Result1 := mockld.ClientSDKFlag{
@@ -454,6 +464,9 @@ func doClientSideSummaryEventResetTest(t *ldtest.T) {
 	)
 }
 
+// CSPE 1.2.2: summary counters updated equivalent to direct evaluation of prerequisites
+// CSPE 1.2.4: recursive prerequisites generate correct summary counts
+// CSSE 2.1.2.1: prerequisite evaluations increment counters in summary event
 func doClientSideSummaryBasicPrereqTest(t *ldtest.T) {
 	topLevelKey := "flag1"
 	topLevelResult := mockld.ClientSDKFlag{
@@ -551,6 +564,8 @@ func doClientSideSummaryBasicPrereqTest(t *ldtest.T) {
 	)
 }
 
+// CSPE 1.2.1: unknown prerequisites generate unknown flag summary events (Note 1.2.1)
+// CSSE 2.1.3.1: unknown prerequisite flag sets unknown=true in counter
 func doClientSideSummaryPrereqUnknownFlagTest(t *ldtest.T) {
 	topLevelKey := "flag1"
 	topLevelResult := mockld.ClientSDKFlag{

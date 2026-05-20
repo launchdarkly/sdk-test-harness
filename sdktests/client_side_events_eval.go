@@ -254,6 +254,9 @@ func doClientSideFeatureEventTests(t *ldtest.T) {
 	})
 }
 
+// CSPE 1.2.1: prerequisite events emitted equivalent to direct evaluation
+// CSPE 1.2.3: prerequisites processed in order before the dependent flag's event
+// CSPE 1.2.4: recursive prerequisites are handled (prereq1 depends on prereq2)
 func doClientSideInOrderPrereqEventTests(t *ldtest.T) {
 	dataBuilder := mockld.NewClientSDKDataBuilder()
 	dataBuilder.
