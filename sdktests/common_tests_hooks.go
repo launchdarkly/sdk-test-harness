@@ -157,6 +157,8 @@ func trackTestParams(context o.Maybe[ldcontext.Context]) []TrackParameters {
 	}
 }
 
+// HOOK 1.2.1: beforeEvaluation stage accepts EvaluationSeriesContext and returns EvaluationSeriesData
+// HOOK 1.2.1.2: beforeEvaluation executes before the flag value has been determined
 func executesBeforeEvaluationStageDetail(t *ldtest.T, detail bool) {
 	testParams := variationTestParams(detail)
 
@@ -197,6 +199,7 @@ func executesBeforeEvaluationStageDetail(t *ldtest.T, detail bool) {
 	}
 }
 
+// HOOK 1.2.1: beforeEvaluation stage fires for migration variations
 func executesBeforeEvaluationStageMigration(t *ldtest.T) {
 	hookName := "executesBeforeEvaluationStageMigration"
 	client, hooks := createClientForHooks(t, []string{hookName}, nil)
@@ -222,6 +225,8 @@ func executesBeforeEvaluationStageMigration(t *ldtest.T) {
 	})
 }
 
+// HOOK 1.2.2: afterEvaluation stage accepts EvaluationSeriesContext, EvaluationSeriesData, and EvaluationDetail
+// HOOK 1.2.2.2: afterEvaluation executes after the flag detail has been determined
 func executesAfterEvaluationStageDetail(t *ldtest.T, detail bool) {
 	testParams := variationTestParams(detail)
 
@@ -269,6 +274,7 @@ func executesAfterEvaluationStageDetail(t *ldtest.T, detail bool) {
 	}
 }
 
+// HOOK 1.2.2: afterEvaluation stage fires for migration variations with correct EvaluationDetail
 func executesAfterEvaluationStageMigration(t *ldtest.T) {
 	hookName := "executesBeforeEvaluationStageMigration"
 	client, hooks := createClientForHooks(t, []string{hookName}, nil)
@@ -296,6 +302,8 @@ func executesAfterEvaluationStageMigration(t *ldtest.T) {
 	})
 }
 
+// HOOK 1.2.2.3: afterEvaluation receives the EvaluationSeriesData returned by beforeEvaluation
+// HOOK 1.3.6: series data propagates between stages on a per-hook basis
 func beforeEvaluationDataPropagatesToAfterDetail(t *ldtest.T, detail bool) {
 	testParams := variationTestParams(detail)
 
@@ -339,6 +347,7 @@ func beforeEvaluationDataPropagatesToAfterDetail(t *ldtest.T, detail bool) {
 	}
 }
 
+// HOOK 1.2.2.3, 1.3.6: series data propagation also works for migration variations
 func beforeEvaluationDataPropagatesToAfterMigration(t *ldtest.T) {
 	hookName := "beforeEvaluationDataPropagatesToAfterDetail"
 	hookData := make(map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData)
@@ -367,9 +376,8 @@ func beforeEvaluationDataPropagatesToAfterMigration(t *ldtest.T) {
 	})
 }
 
-// This test is meant to check Requirement HOOKS:1.3.7:
-// The client MUST handle exceptions which are thrown (or errors returned, if idiomatic for the language)
-// during the execution of a stage or handler allowing operations to complete unaffected.
+// HOOK 1.3.7: client handles stage exceptions without affecting operations
+// HOOK 1.3.7.1: when error prevents stage from returning data, use empty data
 func errorInBeforeStageDoesNotAffectAfterStage(t *ldtest.T) {
 	const numHooks = 3
 
@@ -420,6 +428,8 @@ func errorInBeforeStageDoesNotAffectAfterStage(t *ldtest.T) {
 	}
 }
 
+// HOOK 1.6.1: afterTrack stage accepts TrackSeriesContext (key, context, metricValue, data)
+// HOOK 1.6.2: afterTrack executes after the custom event has been enqueued
 func executesAfterTrackStage(t *ldtest.T) {
 	hookName := "executesAfterTrackStage"
 	context := ldcontext.New("user-key")
@@ -455,6 +465,7 @@ func executesAfterTrackStage(t *ldtest.T) {
 	}
 }
 
+// HOOK 1.3.7: client handles hook errors without crashing; afterTrack not called on error
 func errorInHookPreventsAfterTrackStage(t *ldtest.T) {
 	hookName := "doesNotExecuteAfterTrackStage"
 	context := ldcontext.New("user-key")
@@ -516,8 +527,7 @@ func observedHookOrder(t *ldtest.T, hooks *Hooks, names []string, stage serviced
 	return out
 }
 
-// afterTrack must execute in the order of hook registration (forward),
-// unlike afterEvaluation/afterIdentify which run in reverse-registration order.
+// HOOK 1.6.3: afterTrack executes hooks in registration order (not reversed)
 func executesAfterTrackHooksInRegistrationOrder(t *ldtest.T) {
 	names := hookOrderTestNames("afterTrackOrderHook", 3)
 
@@ -542,7 +552,7 @@ func executesAfterTrackHooksInRegistrationOrder(t *ldtest.T) {
 		"afterTrack hooks must execute in the order of hook registration")
 }
 
-// beforeEvaluation must execute in the order of hook registration.
+// HOOK 1.3.2: beforeEvaluation executes hooks in registration order
 func executesBeforeEvaluationHooksInRegistrationOrder(t *ldtest.T) {
 	names := hookOrderTestNames("beforeEvalOrderHook", 3)
 
@@ -569,7 +579,7 @@ func executesBeforeEvaluationHooksInRegistrationOrder(t *ldtest.T) {
 		"beforeEvaluation hooks must execute in the order of hook registration")
 }
 
-// afterEvaluation must execute in the reverse of the order of hook registration.
+// HOOK 1.3.3: afterEvaluation executes hooks in reverse registration order
 func executesAfterEvaluationHooksInReverseRegistrationOrder(t *ldtest.T) {
 	names := hookOrderTestNames("afterEvalOrderHook", 3)
 
