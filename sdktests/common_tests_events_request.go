@@ -1,3 +1,19 @@
+// EVENTS spec traceability (EVENTS-event-payloads v4.0)
+//
+// The EVENTS spec defines 8 requirements (1.1.1–1.7.2.1), each stating that a
+// particular event type "MUST pass validation against" its JSON schema. The
+// harness does not run JSON Schema validators; instead it tests event shapes
+// behaviorally in other files (common_tests_events_*.go). This file validates
+// the HTTP request envelope — method, headers, URL path, payload IDs, gzip,
+// TLS, and proxy — which are prerequisites for event delivery but are not
+// individually called out by EVENTS requirement IDs.
+//
+// The currentEventSchema constant below corresponds to the spec version
+// directory (v4.0) and is used in schema-version header assertions elsewhere.
+//
+// Coverage model: indirect/behavioral. Individual event-type schema conformance
+// is tested across multiple files rather than by a JSON schema validator.
+
 package sdktests
 
 import (
@@ -19,6 +35,8 @@ import (
 const currentEventSchema = "4"
 const phpLegacyEventSchema = "2"
 
+// EVENTS (all): validates POST method, auth header, content-type, and gzip
+// encoding — transport-level prerequisites for delivering schema-conformant payloads.
 func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string, headersMatcher m.Matcher) {
 	t.Run("method and headers", func(t *ldtest.T) {
 		for _, transport := range c.withAvailableTransports(t) {
@@ -66,6 +84,8 @@ func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string
 	})
 }
 
+// EVENTS (all): validates correct URL path construction for the /bulk endpoint,
+// ensuring events reach the schema-validated ingestion path.
 func (c CommonEventTests) RequestURLPath(t *ldtest.T, pathMatcher m.Matcher) {
 	t.Run("URL path is computed correctly", func(t *ldtest.T) {
 		for _, trailingSlash := range []bool{false, true} {
@@ -94,6 +114,8 @@ func (c CommonEventTests) RequestURLPath(t *ldtest.T, pathMatcher m.Matcher) {
 	})
 }
 
+// EVENTS (all): validates unique X-LaunchDarkly-Payload-Id header per flush,
+// supporting deduplication of schema-conformant event payloads.
 func (c CommonEventTests) UniquePayloadIDs(t *ldtest.T) {
 	t.Run("new payload ID for each post", func(t *ldtest.T) {
 		dataSystem := NewSDKDataSystem(t, nil)
@@ -121,6 +143,8 @@ func (c CommonEventTests) UniquePayloadIDs(t *ldtest.T) {
 	})
 }
 
+// EVENTS (all): validates event delivery through an HTTP proxy, ensuring
+// schema-conformant payloads are transmitted correctly in proxied environments.
 func (c CommonEventTests) HTTPProxy(t *ldtest.T) {
 	t.Run("http proxy", func(t *ldtest.T) {
 		events := NewSDKEventSink(t)

@@ -53,6 +53,10 @@ func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, credential st
 	})
 }
 
+// ENVFILTER 1.2.1: request URL joins base URI with filter query parameter
+// ENVFILTER 1.2.2: exactly one filter parameter is included
+// ENVFILTER 1.2.3: filter parameter value is URL encoded
+// ENVFILTER 1.3.1: filter parameter omitted for invalid filter key
 func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagRequestMethod) m.Matcher) {
 	t.Run("URL path is computed correctly", func(t *ldtest.T) {
 		for _, filter := range c.environmentFilters() {
