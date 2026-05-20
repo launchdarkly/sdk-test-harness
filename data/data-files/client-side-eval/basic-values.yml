@@ -1,4 +1,6 @@
 ---
+# Covers FLGEA 1.1.2: client-side SDKs surface pre-evaluated outputs (value, variationIndex, reason)
+# Covers FLGEA 1.6.3: post-evaluation returns correct variation value or default
 name: basic values - <TYPE_NAME>
 
 parameters:

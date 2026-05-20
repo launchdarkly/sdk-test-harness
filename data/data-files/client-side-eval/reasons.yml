@@ -1,4 +1,5 @@
 ---
+# Covers FLGEA 1.3: all evaluation reason kinds (OFF, FALLTHROUGH, TARGET_MATCH, RULE_MATCH, PREREQUISITE_FAILED, ERROR)
 name: evaluation reasons - <NAME>
 
 parameters:

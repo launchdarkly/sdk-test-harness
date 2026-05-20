@@ -1,4 +1,6 @@
 ---
+# Covers FLGEA 1.6.3: post-evaluation type mismatch returns WRONG_TYPE error and default value
+# Covers FLGEA 1.3: evaluation reason ERROR with errorKind WRONG_TYPE
 name: wrong type errors
 
 # These test are only relevant for SDKs that have variation methods for specific types

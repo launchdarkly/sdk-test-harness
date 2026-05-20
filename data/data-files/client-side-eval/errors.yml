@@ -1,4 +1,5 @@
 ---
+# Covers FLGEA 1.6.1: flag not found returns ERROR with errorKind FLAG_NOT_FOUND
 name: errors - <TYPE_NAME>
 
 skipEvaluateAllFlags: true
