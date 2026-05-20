@@ -37,6 +37,13 @@ func doServerSideBigSegmentsTests(t *ldtest.T) {
 	t.Run("error handling", doBigSegmentsErrorHandlingTests)
 }
 
+// BIGSEG 1.3.1: context keys hashed as base64(sha256(key)) before store query
+// BIGSEG 1.9.2.1: included/excluded/includedContexts/excludedContexts fields ignored for big segments
+// BIGSEG 1.9.2.2: store queried when unbounded=true and generation has a value
+// BIGSEG 1.9.2.5: membership tested using "<segmentKey>.g<generation>" reference format
+// BIGSEG 1.9.2.6: true→match, false→non-match, absent→fall through to rules
+// BIGSEG 1.9.1.3: no query if context kind doesn't match unboundedContextKind
+// BIGSEG 1.9.4.1: bigSegmentsStatus added to evaluation reason
 func doBigSegmentsEvaluateSegment(t *ldtest.T) {
 	otherContext := ldcontext.New("other-user-key")
 	otherKind := ldcontext.Kind("other")
@@ -179,6 +186,13 @@ func doBigSegmentsEvaluateSegment(t *ldtest.T) {
 	})
 }
 
+// BIGSEG 1.9.5.1: store queried at most once per context key within a single evaluation
+// BIGSEG 1.9.1.2: individual context extracted by unboundedContextKind
+// BIGSEG 1.9.1.4: store query uses context key alone, not (kind, key) pair
+// BIGSEG 1.5.2, 1.6.1: wrapper checks LRU cache before querying store
+// BIGSEG 1.6.2: cache keyed by unhashed context key
+// BIGSEG 1.6.3, 1.4.2: cache holds at most configured max entries (LRU eviction)
+// BIGSEG 1.6.4, 1.4.3: cache entries expire after configured TTL
 func doBigSegmentsMembershipCachingTests(t *ldtest.T) {
 	user1, user2, user3 := ldcontext.New("user1"), ldcontext.New("user2"), ldcontext.New("user3")
 	otherKind := ldcontext.Kind("other")
@@ -404,6 +418,10 @@ func doBigSegmentsMembershipCachingTests(t *ldtest.T) {
 	})
 }
 
+// BIGSEG 1.8.4, 1.4.5: background task polls store metadata at configured interval
+// BIGSEG 1.8.5: polling calls GetMetadata and updates status (available + stale)
+// BIGSEG 1.8.6: listeners notified only when status actually changes
+// BIGSEG 1.8.9: evaluations do not trigger additional metadata polls
 func doBigSegmentsStatusPollingTests(t *ldtest.T) {
 	dataSystem := NewSDKDataSystem(t, mockld.EmptyServerSDKData())
 
@@ -519,6 +537,9 @@ func doBigSegmentsStatusPollingTests(t *ldtest.T) {
 	}
 }
 
+// BIGSEG 1.9.2.4, 1.5.4: no store configured → NOT_CONFIGURED status, segment is non-match
+// BIGSEG 1.9.2.3: unbounded=true but no generation → NOT_CONFIGURED, segment is non-match
+// BIGSEG 1.5.5, 1.9.3.1, 1.9.3.3: store error → STORE_ERROR status, segment is non-match, eval doesn't fail
 func doBigSegmentsErrorHandlingTests(t *ldtest.T) {
 	t.Run("big segment store was not configured", func(t *ldtest.T) {
 		segment := ldbuilders.NewSegmentBuilder("segment-key").Version(1).
