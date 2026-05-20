@@ -1,4 +1,5 @@
 ---
+  # FLGEA 1.6: evaluation algorithm across variation value types
   name: variation value types (<TYPE_NAME>)
   
   parameters:

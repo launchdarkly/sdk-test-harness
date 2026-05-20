@@ -2,6 +2,7 @@
 # Covers ATREF 1.1.1: non-conforming strings are not valid attribute references
 # Each parameter tests a different invalid reference: missing attribute, empty path
 # component, invalid escape sequences. All must produce MALFORMED_FLAG errors.
+# Also covers FLGEA 1.6.2.3: clause returns MALFORMED_FLAG for invalid attribute reference
 name: bad attribute reference errors - <NAME>
 
 parameters:

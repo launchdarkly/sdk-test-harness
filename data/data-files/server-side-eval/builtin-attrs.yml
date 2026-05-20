@@ -1,4 +1,5 @@
 ---
+# FLGEA 1.2: context attribute lookup for built-in attributes
 name: built-in attributes other than kind
 
 constants:

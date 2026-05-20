@@ -82,6 +82,7 @@ sdkData:
       variations: [ "<TYPE_VALUE>" ]
 
 evaluations:
+  # FLGEA 1.6.1: FLAG_NOT_FOUND error
   - name: flag not found
     flagKey: no-such-flag
     context: <CONTEXT>
@@ -91,6 +92,7 @@ evaluations:
       value: <TYPE_DEFAULT>
       reason: { "kind": "ERROR", "errorKind": "FLAG_NOT_FOUND" }
 
+  # FLGEA 1.6.2: MALFORMED_FLAG for invalid off variation index
   - name: off variation too low
     flagKey: off-variation-too-low-<TYPE_NAME>
     context: <CONTEXT>
@@ -105,6 +107,7 @@ evaluations:
     default: <TYPE_DEFAULT>
     expect: <MALFORMED_FLAG_RESULT>
 
+  # FLGEA 1.6.2: off with undefined offVariation returns default
   - name: flag is off but has no off variation
     flagKey: no-off-variation-<TYPE_NAME>
     context: <CONTEXT>
@@ -114,6 +117,7 @@ evaluations:
       value: <TYPE_DEFAULT>
       reason: { kind: "OFF" }  # this is *not* considered a "malformed flag" condition even though it returns the default
 
+  # FLGEA 1.6.2: MALFORMED_FLAG for invalid fallthrough variation index
   - name: fallthrough variation too low
     flagKey: fallthrough-variation-too-low-<TYPE_NAME>
     context: <CONTEXT>
@@ -128,6 +132,7 @@ evaluations:
     default: <TYPE_DEFAULT>
     expect: <MALFORMED_FLAG_RESULT>
 
+  # FLGEA 1.6.2: MALFORMED_FLAG for invalid target variation index
   - name: target variation too low
     flagKey: target-match-variation-too-low-<TYPE_NAME>
     context: <CONTEXT>
@@ -142,6 +147,7 @@ evaluations:
     default: <TYPE_DEFAULT>
     expect: <MALFORMED_FLAG_RESULT>
 
+  # FLGEA 1.6.2: MALFORMED_FLAG for invalid rule variation index
   - name: rule variation too low
     flagKey: rule-match-variation-too-low-<TYPE_NAME>
     context: <CONTEXT>

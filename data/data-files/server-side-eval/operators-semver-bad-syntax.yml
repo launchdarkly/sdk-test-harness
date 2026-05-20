@@ -1,4 +1,5 @@
 ---
+# FLGEA 1.6.2.4.4: semantic version invalid syntax
 name: operators - semver - bad syntax
 
 constants:

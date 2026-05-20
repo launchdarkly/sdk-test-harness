@@ -3,6 +3,7 @@
 # Covers ATREF 1.2.2: ~1 escape sequence interpreted as /
 # Covers ATREF 1.2.3: ~0 escape sequence interpreted as ~
 # Also tests nested attribute traversal via pointer-style references
+# Also covers FLGEA 1.2: context attribute lookup in clause evaluation
 name: attribute references
 
 constants:

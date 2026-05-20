@@ -1,4 +1,5 @@
 ---
+# FLGEA 1.1.2: evaluation outputs with JSON variation values
 name: JSON variations
 
 constants:
