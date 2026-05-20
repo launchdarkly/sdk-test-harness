@@ -61,6 +61,8 @@ func withExecutionOrders(test func(*ldtest.T, ldmigration.ExecutionOrder)) func(
 	}
 }
 
+// MIGRATIONS 1.1.1: MigrationVariation returns current stage for a migration flag key
+// MIGRATIONS 1.1.1.1: returns one of off/dualwrite/shadow/live/rampdown/complete
 func identifyCorrectStageFromStringFlag(t *ldtest.T) {
 	stages := []ldmigration.Stage{ldmigration.Off, ldmigration.DualWrite, ldmigration.Shadow, ldmigration.Live, ldmigration.RampDown, ldmigration.Complete}
 
@@ -82,6 +84,8 @@ func identifyCorrectStageFromStringFlag(t *ldtest.T) {
 	}
 }
 
+// MIGRATIONS 1.1.1.2: invalid default stage falls back to off
+// MIGRATIONS 1.1.1.3: invalid eval result returns default stage with WRONG_TYPE reason
 func usesDefaultWhenAppropriate(t *ldtest.T) {
 	stages := []ldmigration.Stage{ldmigration.Off, ldmigration.DualWrite, ldmigration.Shadow, ldmigration.Live, ldmigration.RampDown, ldmigration.Complete}
 	scenarios := []struct {
@@ -114,6 +118,7 @@ func usesDefaultWhenAppropriate(t *ldtest.T) {
 	}
 }
 
+// MIGRATIONS 1.3.2.2: write operations execute origins in table-specified order, not parallel
 func executesOriginsInCorrectOrder(t *ldtest.T) {
 	testParams := []struct {
 		Operation        ldmigration.Operation
@@ -184,6 +189,7 @@ func executesOriginsInCorrectOrder(t *ldtest.T) {
 	}
 }
 
+// MIGRATIONS 1.3.1.3: read operations invoke old/new/both origins per stage table
 func executesReads(t *ldtest.T) {
 	testParams := []struct {
 		Operation        ldmigration.Operation
@@ -254,6 +260,7 @@ func executesReads(t *ldtest.T) {
 	}
 }
 
+// MIGRATIONS 1.3.1.5, 1.3.2.4: payload parameter forwarded to read and write methods
 func payloadsArePassedThrough(t *ldtest.T) {
 	testParams := []struct {
 		Operation   ldmigration.Operation
@@ -338,6 +345,8 @@ func payloadsArePassedThrough(t *ldtest.T) {
 	}
 }
 
+// MIGRATIONS 1.1.3.3: tracker records which origins were invoked
+// MIGRATIONS 1.1.3.1: tracker event includes evaluation detail from MigrationVariation
 func tracksInvoked(t *ldtest.T, order ldmigration.ExecutionOrder) {
 	onlyOld := []m.Matcher{m.JSONOptProperty("old").Should(m.Not(m.BeNil())), m.JSONOptProperty("new").Should(m.BeNil())}
 	both := []m.Matcher{m.JSONOptProperty("old").Should(m.Not(m.BeNil())), m.JSONOptProperty("new").Should(m.Not(m.BeNil()))}
@@ -430,6 +439,9 @@ func tracksInvoked(t *ldtest.T, order ldmigration.ExecutionOrder) {
 	}
 }
 
+// MIGRATIONS 1.1.3.5: tracker records latency measurements per origin
+// MIGRATIONS 1.2.3: latency tracking is opt-in
+//
 //nolint:dupl // Invokes and latency happen to share the same setup, but should be tested independently.
 func tracksLatency(t *ldtest.T, order ldmigration.ExecutionOrder) {
 	onlyOld := []m.Matcher{m.JSONOptProperty("old").Should(m.Not(m.BeNil())), m.JSONOptProperty("new").Should(m.BeNil())}
@@ -543,6 +555,9 @@ func tracksLatency(t *ldtest.T, order ldmigration.ExecutionOrder) {
 	}
 }
 
+// MIGRATIONS 1.1.3.4: tracker records error occurrences per origin
+// MIGRATIONS 1.2.4: error tracking is opt-in
+// MIGRATIONS 1.3.2.3: execution halts on first error
 func writeFailuresShouldGenerateErrorMetrics(t *ldtest.T, order ldmigration.ExecutionOrder) {
 	hasError := func(label string) m.Matcher { return m.JSONOptProperty(label).Should(m.Equal(true)) }
 	isMissingOrNoError := func(label string) m.Matcher { return JSONPropertyNullOrAbsentOrEqualTo(label, false) }
@@ -639,6 +654,7 @@ func writeFailuresShouldGenerateErrorMetrics(t *ldtest.T, order ldmigration.Exec
 	}
 }
 
+// MIGRATIONS 1.2.4: no error measurement emitted when all handlers succeed
 func successfulHandlersShouldNotGenerateErrorMetrics(t *ldtest.T, order ldmigration.ExecutionOrder) {
 	successfulHandler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
 
@@ -715,6 +731,7 @@ func successfulHandlersShouldNotGenerateErrorMetrics(t *ldtest.T, order ldmigrat
 	}
 }
 
+// MIGRATIONS 1.1.3.8: validation — missing flag generates error event with FLAG_NOT_FOUND
 func itHandlesMigrationEventsForMissingFlags(t *ldtest.T) {
 	successfulHandler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
 
@@ -794,6 +811,7 @@ func itHandlesMigrationEventsForMissingFlags(t *ldtest.T) {
 	}
 }
 
+// MIGRATIONS 1.1.3.1: migration op event includes context (redacted when anonymous)
 func itRedactsAnonymousContextAttributes(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityAnonymousRedaction)
 	successfulHandler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
@@ -860,6 +878,7 @@ func itRedactsAnonymousContextAttributes(t *ldtest.T) {
 	)
 }
 
+// MIGRATIONS 1.1.1.3: non-migration flag returns default stage with WRONG_TYPE reason
 func itHandlesNonMigrationFlags(t *ldtest.T) {
 	successfulHandler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
 
@@ -938,12 +957,15 @@ func itHandlesNonMigrationFlags(t *ldtest.T) {
 	}
 }
 
+// MIGRATIONS 1.1.3.6: tracker records consistency check results
+// MIGRATIONS 1.3.1.4: consistency tracked only for shadow/live stages when both reads succeed
 func trackConsistency(t *ldtest.T) {
 	t.Run("checks for correct stage", withExecutionOrders(tracksConsistencyCorrectlyBasedOnStage))
 	t.Run("check ratio can disable", withExecutionOrders(tracksConsistencyIsDisabledByCheckRatio))
 	t.Run("unless callbacks fail", withExecutionOrders(tracksConsistencyIsDisabledIfCallbackFails))
 }
 
+// MIGRATIONS 1.5: samplingRatio of 0 suppresses op event emission
 func disableOpEventWithSamplingRatio(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityEventSampling)
 
@@ -1005,6 +1027,7 @@ func disableOpEventWithSamplingRatio(t *ldtest.T) {
 	}
 }
 
+// MIGRATIONS 1.3.1.4: consistency checked only for shadow/live read stages
 func tracksConsistencyCorrectlyBasedOnStage(t *ldtest.T, order ldmigration.ExecutionOrder) {
 	handler := func(response string) func(w http.ResponseWriter, req *http.Request) {
 		return func(w http.ResponseWriter, req *http.Request) {
@@ -1117,6 +1140,7 @@ func tracksConsistencyCorrectlyBasedOnStage(t *ldtest.T, order ldmigration.Execu
 	}
 }
 
+// MIGRATIONS 1.1.3.6: checkRatio of 0 disables consistency check invocation
 func tracksConsistencyIsDisabledByCheckRatio(t *ldtest.T, order ldmigration.ExecutionOrder) {
 	handler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
 
@@ -1193,6 +1217,7 @@ func tracksConsistencyIsDisabledByCheckRatio(t *ldtest.T, order ldmigration.Exec
 	}
 }
 
+// MIGRATIONS 1.3.1.4: consistency not tracked when read callbacks fail
 func tracksConsistencyIsDisabledIfCallbackFails(t *ldtest.T, order ldmigration.ExecutionOrder) {
 	handler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusConflict) }
 
