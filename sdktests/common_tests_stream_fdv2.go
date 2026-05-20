@@ -85,6 +85,7 @@ func (c CommonStreamingTests) StateTransitions(t *ldtest.T) {
 	t.Run("updates previously known state", c.UpdatesPreviouslyKnownState)
 }
 
+// DATASYSTEM 1.1.1: SDK initializes from a single synchronizer with a full basis
 func (c CommonStreamingTests) InitializeFromEmptyState(t *ldtest.T) {
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
 	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
@@ -93,6 +94,7 @@ func (c CommonStreamingTests) InitializeFromEmptyState(t *ldtest.T) {
 	validatePayloadReceived(t, dataSystem.Synchronizers[0].endpoint, client, "", expectedEvaluations)
 }
 
+// DATASYSTEM 1.1.2: initializers run in order; synchronizer receives basis state
 func (c CommonStreamingTests) InitializeFromPollingInitializer(t *ldtest.T) {
 	dataBefore := mockld.NewServerSDKDataBuilder().Flag(c.makeServerSideFlag("flag-key", 1, initialValue)).Build()
 	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("none").IntentReason("up-to-date").Build()
@@ -107,6 +109,7 @@ func (c CommonStreamingTests) InitializeFromPollingInitializer(t *ldtest.T) {
 	validatePayloadReceived(t, dataSystem.Synchronizers[0].Endpoint(), client, "initial", expectedEvaluations)
 }
 
+// DATASYSTEM 1.1.5: initializer basis + synchronizer xfer-changes merged at startup
 func (c CommonStreamingTests) InitializeFromPollingInitializerWithStreamingUpdates(t *ldtest.T) {
 	dataBefore := mockld.NewServerSDKDataBuilder().
 		Flag(c.makeServerSideFlag("flag-key", 1, initialValue)).
@@ -128,6 +131,7 @@ func (c CommonStreamingTests) InitializeFromPollingInitializerWithStreamingUpdat
 	validatePayloadReceived(t, dataSystem.Synchronizers[0].Endpoint(), client, "initial", expectedEvaluations)
 }
 
+// DATASYSTEM 1.1.2, 1.1.3: first initializer failure falls through to next initializer
 func (c CommonStreamingTests) InitializeFromTwoPollingInitializers(t *ldtest.T) {
 	emptyPayload := mockld.NewServerSDKDataBuilder().
 		Build()
@@ -158,6 +162,7 @@ func (c CommonStreamingTests) InitializeFromTwoPollingInitializers(t *ldtest.T) 
 	validatePayloadReceived(t, dataSystem.Synchronizers[0].Endpoint(), client, "expected-state", expectedEvaluations)
 }
 
+// DATASYSTEM 1.2.7: recoverable error triggers fallback to next synchronizer
 func (c CommonStreamingTests) RecoverableFallbackToSecondarySynchronizer(t *ldtest.T) {
 	t.LongRunning()
 
@@ -197,6 +202,7 @@ func (c CommonStreamingTests) RecoverableFallbackToSecondarySynchronizer(t *ldte
 	validatePayloadReceived(t, secondaryEndpoint, client, "", expectedEvaluations)
 }
 
+// DATASYSTEM 1.2.7: non-recoverable 4xx error permanently removes synchronizer, falls back immediately
 func (c CommonStreamingTests) PermanentFallbackToSecondarySynchronizer(t *ldtest.T) {
 	// First synchronizer returns 401 Unauthorized, which is a non-recoverable error.
 	// Non-recoverable 4xx errors (all except 400, 408, 429) cause the synchronizer to be
@@ -226,6 +232,7 @@ func (c CommonStreamingTests) PermanentFallbackToSecondarySynchronizer(t *ldtest
 	validatePayloadReceived(t, secondaryEndpoint, client, "", expectedEvaluations)
 }
 
+// DATASYSTEM 1.2.8: after recovery period, SDK attempts reconnection to earlier synchronizers
 func (c CommonStreamingTests) RecoverableFallbackWithRecovery(t *ldtest.T) {
 	t.LongRunning()
 
@@ -309,6 +316,7 @@ func (c CommonStreamingTests) RecoverableFallbackWithRecovery(t *ldtest.T) {
 	validatePayloadReceived(t, firstEndpoint, client, "", expectedEvaluations)
 }
 
+// DATASYSTEM 1.2.8: permanently removed synchronizers excluded from recovery; recoverable ones revisited
 func (c CommonStreamingTests) PermanentFallbackWithRecovery(t *ldtest.T) {
 	t.LongRunning()
 
@@ -428,6 +436,9 @@ func (c CommonStreamingTests) FDv1FallbackDirective(t *ldtest.T) {
 // serves it. The FDv1 endpoint therefore delivers a distinctive flag value, and the
 // test asserts evaluations return that value — proving FDv1 actually became the
 // active data source, not just that its URL was hit.
+//
+// DATASYSTEM 1.6.1: X-LD-FD-Fallback header on error engages FDv1 Fallback Synchronizer
+// DATASYSTEM 1.6.3: FDv2 synchronizer chain halted when directive engages FDv1
 func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) {
 	streamHandler, _ := httphelpers.RecordingHandler(httphelpers.HandlerWithResponse(
 		403, http.Header{"X-LD-FD-Fallback": []string{"true"}}, nil))
@@ -509,6 +520,9 @@ func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) 
 // request whose validators match (RFC 9111 §4.3.4); browser-based runtimes in
 // particular translate an unsolicited 304 into a 200 against their cache, which
 // would defeat the "FDv1 supplies no fresh data" property this test relies on.
+//
+// DATASYSTEM 1.6.2: payload applied to Memory Store before transitioning to FDv1
+// DATASYSTEM 1.6.3: FDv2 Primary Synchronizer stopped when directive engages FDv1
 func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtest.T) {
 	streamingValue := ldvalue.String("value-from-streaming-payload")
 	streamingData := c.makeSDKDataWithFlag(1, streamingValue)
@@ -595,6 +609,8 @@ func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtes
 // initializer-then-synchronizer flow. In particular, the configured FDv2 Primary
 // Synchronizer must never be started; the SDK transitions directly to the FDv1
 // Fallback Synchronizer.
+//
+// DATASYSTEM 1.6.3: initializer directive skips FDv2 synchronizers entirely
 func (c CommonStreamingTests) DirectiveOnPollingInitializerSkipsSynchronizers(t *ldtest.T) {
 	// Initializer endpoint: 500 + directive. No payload accompanies the directive in
 	// this variant, so there is nothing to apply beforehand (1.6.2 is a no-op here).
@@ -688,6 +704,8 @@ func (c CommonStreamingTests) DirectiveOnPollingInitializerSkipsSynchronizers(t 
 // *ignored* the directive, we would see retries on the streaming endpoint; absence of
 // those retries is the positive signal that the directive caused a halt rather than
 // ordinary permanent removal (which would fire on a 4xx instead).
+//
+// DATASYSTEM 1.6.3: directive without FDv1 configured halts data system entirely
 func (c CommonStreamingTests) DirectiveWithoutFDv1ConfiguredHaltsDataSystem(t *ldtest.T) {
 	handler, channel := httphelpers.RecordingHandler(httphelpers.HandlerWithResponse(
 		500, http.Header{"X-LD-FD-Fallback": []string{"true"}}, nil))
@@ -751,6 +769,8 @@ func (c CommonStreamingTests) DirectiveWithoutFDv1ConfiguredHaltsDataSystem(t *l
 // applies. We prove this by keeping the FDv1 endpoint healthy and watching a long
 // enough window that the FDv2 Recovery Condition (5 minutes in the default config)
 // would normally fire if the SDK were still treating this as a heuristic fallback.
+//
+// DATASYSTEM 1.6.4: directed fallback is terminal; SDK never returns to FDv2 synchronizers
 func (c CommonStreamingTests) DirectedFallbackIsTerminal(t *ldtest.T) {
 	t.LongRunning()
 
@@ -838,6 +858,7 @@ func (c CommonStreamingTests) DirectedFallbackIsTerminal(t *ldtest.T) {
 		"flag-key should still be served from the FDv1 fallback after the recovery window elapses")
 }
 
+// DATASYSTEM 1.2.1: synchronizer reconnects with previously known state (basis query param)
 func (c CommonStreamingTests) SavesPreviouslyKnownState(t *ldtest.T) {
 	dataBefore := c.makeSDKDataWithFlag(1, initialValue)
 	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("none").IntentReason("up-to-date").Build()
@@ -852,6 +873,7 @@ func (c CommonStreamingTests) SavesPreviouslyKnownState(t *ldtest.T) {
 	validatePayloadReceived(t, streamEndpoint, client, "initial", expectedEvaluations)
 }
 
+// DATASYSTEM 1.2.1: xfer-full intent replaces entire store contents on reconnect
 func (c CommonStreamingTests) ReplacesPreviouslyKnownState(t *ldtest.T) {
 	dataBefore := c.makeSDKDataWithFlag(1, initialValue)
 	dataAfter := mockld.NewServerSDKDataBuilder().
@@ -874,6 +896,7 @@ func (c CommonStreamingTests) ReplacesPreviouslyKnownState(t *ldtest.T) {
 	validatePayloadReceived(t, streamEndpoint, client, "initial", expectedEvaluations)
 }
 
+// DATASYSTEM 1.2.1: xfer-changes intent applies deltas to existing store on reconnect
 func (c CommonStreamingTests) UpdatesPreviouslyKnownState(t *ldtest.T) {
 	dataBefore := c.makeSDKDataWithFlag(1, initialValue)
 	dataAfter := mockld.NewServerSDKDataBuilder().
@@ -894,6 +917,7 @@ func (c CommonStreamingTests) UpdatesPreviouslyKnownState(t *ldtest.T) {
 	validatePayloadReceived(t, streamEndpoint, client, "initial", expectedEvaluations)
 }
 
+// DATASYSTEM 1.2.10: updates buffered until payload-transferred event confirms completion
 func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent(t *ldtest.T) {
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
 	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
@@ -931,6 +955,7 @@ func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent
 	pollUntilFlagValueUpdated(t, client, "new-flag-key", context, defaultValue, newInitialValue, defaultValue)
 }
 
+// DATASYSTEM 1.2.10: multiple sequential payloads each applied after payload-transferred
 func (c CommonStreamingTests) HandlesMultipleUpdates(t *ldtest.T) {
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
 	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
@@ -957,6 +982,7 @@ func (c CommonStreamingTests) HandlesMultipleUpdates(t *ldtest.T) {
 	pollUntilFlagValueUpdated(t, client, "new-flag-key", context, newInitialValue, defaultValue, defaultValue)
 }
 
+// DATASYSTEM 1.2.10: SDK trusts aggregate state version, ignores individual model version
 func (c CommonStreamingTests) IgnoresModelVersion(t *ldtest.T) {
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(100, initialValue))
 	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
@@ -976,6 +1002,7 @@ func (c CommonStreamingTests) IgnoresModelVersion(t *ldtest.T) {
 	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
 }
 
+// DATASYSTEM 1.2.2: heartbeat events ignored, do not affect payload processing
 func (c CommonStreamingTests) IgnoresHeartBeat(t *ldtest.T) {
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
 	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
@@ -1046,6 +1073,7 @@ func (c CommonStreamingTests) IgnoresUnknownEventStartOfPayload(t *ldtest.T) {
 	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
 }
 
+// DATASYSTEM 1.2.3: error event discards preceding buffered updates; subsequent payload applied
 func (c CommonStreamingTests) CanDiscardPartialEventsOnError(t *ldtest.T) {
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
 	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
@@ -1078,6 +1106,7 @@ func (c CommonStreamingTests) CanDiscardPartialEventsOnError(t *ldtest.T) {
 	require.Equal(t, initialValue, value)
 }
 
+// DATASYSTEM 1.2.3: error event discards updates; xfer-full intent replaces store entirely
 func (c CommonStreamingTests) CanDiscardFullEventsOnError(t *ldtest.T) {
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
 	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
@@ -1102,6 +1131,7 @@ func (c CommonStreamingTests) CanDiscardFullEventsOnError(t *ldtest.T) {
 	pollUntilFlagValueUpdated(t, client, "new-flag-key", context, defaultValue, newInitialValue, defaultValue)
 }
 
+// DATASYSTEM 1.2.2: goodbye event causes SDK to disconnect and discard pending updates
 func (c CommonStreamingTests) DisconnectsOnGoodbye(t *ldtest.T) {
 	dataBefore := c.makeSDKDataWithFlag(1, initialValue)
 	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("none").IntentReason("up-to-date").Build()
