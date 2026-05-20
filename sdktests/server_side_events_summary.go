@@ -28,6 +28,8 @@ func doServerSideSummaryEventTests(t *ldtest.T) {
 	t.Run("flag versions", doServerSideSummaryEventVersionTest)
 }
 
+// CSSE 2.1.2.1: counters group evaluations by flag key, variation, and version
+// CSSE 2.1.1: accumulator tracks default value, count, and resulting value per counter
 func doServerSideSummaryEventBasicTest(t *ldtest.T) {
 	flag1 := ldbuilders.NewFlagBuilder("flag1").Version(100).
 		Variations(ldvalue.String("value1a"), ldvalue.String("value1b")).
@@ -99,6 +101,7 @@ func doServerSideSummarySamplingRatioTests(t *ldtest.T) {
 	t.Run("prereq can be excluded", flagPreqIsExcludedFromSummaries)
 }
 
+// CSSE 1.1.1.2.1: excludeFromSummaries=true causes flag to be omitted from summary
 func flagIsExcludedFromSummaries(t *ldtest.T) {
 	flag1 := ldbuilders.NewFlagBuilder("flag1").
 		On(true).
@@ -155,6 +158,7 @@ func flagIsExcludedFromSummaries(t *ldtest.T) {
 	)
 }
 
+// CSSE 1.1.1.2.1: prerequisite with excludeFromSummaries=true omitted from summary
 func flagPreqIsExcludedFromSummaries(t *ldtest.T) {
 	flag1 := ldbuilders.NewFlagBuilder("flag1").
 		On(true).
@@ -199,6 +203,7 @@ func flagPreqIsExcludedFromSummaries(t *ldtest.T) {
 	)
 }
 
+// CSSE 2.1.3.1: features include contextKinds from all evaluating context kinds
 func doServerSideSummaryEventContextKindsTest(t *ldtest.T) {
 	flag1 := ldbuilders.NewFlagBuilder("flag1").Version(100).
 		Variations(ldvalue.String("value1a"), ldvalue.String("value1b")).
@@ -266,6 +271,7 @@ func doServerSideSummaryEventContextKindsTest(t *ldtest.T) {
 	)
 }
 
+// CSSE 2.1.3.1: unknown flag counter sets unknown=true with no version or variation
 func doServerSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 	unknownKey := "flag-x"
 	context := ldcontext.New("user-key")
@@ -301,6 +307,8 @@ func doServerSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 	)
 }
 
+// CSSE 1.1.2.1: accumulators cleared after getSummaries; new flush has fresh counts
+// CSSE 3.1.1: summaries included in flushed event batch
 func doServerSideSummaryEventResetTest(t *ldtest.T) {
 	flag := ldbuilders.NewFlagBuilder("flag1").Version(100).
 		Variations(ldvalue.String("value-a"), ldvalue.String("value-b")).
@@ -370,6 +378,7 @@ func doServerSideSummaryEventResetTest(t *ldtest.T) {
 		)))
 }
 
+// CSSE 2.1.2.1: prerequisite evaluations increment counters in summary event
 func doServerSideSummaryEventPrerequisitesTest(t *ldtest.T) {
 	context := ldcontext.New("user-key")
 	expectedValue1 := ldvalue.String("value1")
@@ -436,6 +445,7 @@ func doServerSideSummaryEventPrerequisitesTest(t *ldtest.T) {
 		)))
 }
 
+// CSSE 2.1.2.1: different flag versions tracked separately in counters
 func doServerSideSummaryEventVersionTest(t *ldtest.T) {
 	// This test verifies that if the version of a flag changes within the timespan of one event payload,
 	// evaluations for each version are tracked separately. We do this by evaluating the flag in its
