@@ -233,6 +233,7 @@ func (c CommonStreamingTests) PermanentFallbackToSecondarySynchronizer(t *ldtest
 }
 
 // DATASYSTEM 1.2.8: after recovery period, SDK attempts reconnection to earlier synchronizers
+// CSFDV2 8.2.1: client-side recovery timeout default is 300 seconds (VALID condition)
 func (c CommonStreamingTests) RecoverableFallbackWithRecovery(t *ldtest.T) {
 	t.LongRunning()
 
@@ -317,6 +318,7 @@ func (c CommonStreamingTests) RecoverableFallbackWithRecovery(t *ldtest.T) {
 }
 
 // DATASYSTEM 1.2.8: permanently removed synchronizers excluded from recovery; recoverable ones revisited
+// CSFDV2 8.2.1: client-side recovery timeout default is 300 seconds (VALID condition)
 func (c CommonStreamingTests) PermanentFallbackWithRecovery(t *ldtest.T) {
 	t.LongRunning()
 
@@ -439,6 +441,8 @@ func (c CommonStreamingTests) FDv1FallbackDirective(t *ldtest.T) {
 //
 // DATASYSTEM 1.6.1: X-LD-FD-Fallback header on error engages FDv1 Fallback Synchronizer
 // DATASYSTEM 1.6.3: FDv2 synchronizer chain halted when directive engages FDv1
+// CSFDV2 8.1.1: x-ld-fd-fallback header triggers client-side FDv1 fallback
+// CSFDV2 8.1.3: FDv2 synchronizers disabled, not removed
 func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) {
 	streamHandler, _ := httphelpers.RecordingHandler(httphelpers.HandlerWithResponse(
 		403, http.Header{"X-LD-FD-Fallback": []string{"true"}}, nil))
@@ -523,6 +527,8 @@ func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) 
 //
 // DATASYSTEM 1.6.2: payload applied to Memory Store before transitioning to FDv1
 // DATASYSTEM 1.6.3: FDv2 Primary Synchronizer stopped when directive engages FDv1
+// CSFDV2 8.1.1: x-ld-fd-fallback header triggers client-side FDv1 fallback
+// CSFDV2 8.1.3: FDv2 synchronizers disabled, not removed
 func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtest.T) {
 	streamingValue := ldvalue.String("value-from-streaming-payload")
 	streamingData := c.makeSDKDataWithFlag(1, streamingValue)
@@ -611,6 +617,8 @@ func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtes
 // Fallback Synchronizer.
 //
 // DATASYSTEM 1.6.3: initializer directive skips FDv2 synchronizers entirely
+// CSFDV2 8.1.1: x-ld-fd-fallback header triggers client-side FDv1 fallback
+// CSFDV2 8.1.3: FDv2 synchronizers never started after directive
 func (c CommonStreamingTests) DirectiveOnPollingInitializerSkipsSynchronizers(t *ldtest.T) {
 	// Initializer endpoint: 500 + directive. No payload accompanies the directive in
 	// this variant, so there is nothing to apply beforehand (1.6.2 is a no-op here).
@@ -706,6 +714,7 @@ func (c CommonStreamingTests) DirectiveOnPollingInitializerSkipsSynchronizers(t 
 // ordinary permanent removal (which would fire on a 4xx instead).
 //
 // DATASYSTEM 1.6.3: directive without FDv1 configured halts data system entirely
+// CSFDV2 8.1.1: x-ld-fd-fallback header recognized on client-side
 func (c CommonStreamingTests) DirectiveWithoutFDv1ConfiguredHaltsDataSystem(t *ldtest.T) {
 	handler, channel := httphelpers.RecordingHandler(httphelpers.HandlerWithResponse(
 		500, http.Header{"X-LD-FD-Fallback": []string{"true"}}, nil))
@@ -771,6 +780,8 @@ func (c CommonStreamingTests) DirectiveWithoutFDv1ConfiguredHaltsDataSystem(t *l
 // would normally fire if the SDK were still treating this as a heuristic fallback.
 //
 // DATASYSTEM 1.6.4: directed fallback is terminal; SDK never returns to FDv2 synchronizers
+// CSFDV2 8.1.1: x-ld-fd-fallback triggers client-side FDv1 fallback
+// CSFDV2 8.1.3: FDv2 synchronizers remain disabled indefinitely
 func (c CommonStreamingTests) DirectedFallbackIsTerminal(t *ldtest.T) {
 	t.LongRunning()
 
