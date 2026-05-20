@@ -1,4 +1,7 @@
 ---
+# Covers ATREF 1.1.1: non-conforming strings are not valid attribute references
+# Each parameter tests a different invalid reference: missing attribute, empty path
+# component, invalid escape sequences. All must produce MALFORMED_FLAG errors.
 name: bad attribute reference errors - <NAME>
 
 parameters:

@@ -1,4 +1,8 @@
 ---
+# Covers ATREF 1.2.1: plain references (no leading slash) treated as literal attribute name
+# Covers ATREF 1.2.2: ~1 escape sequence interpreted as /
+# Covers ATREF 1.2.3: ~0 escape sequence interpreted as ~
+# Also tests nested attribute traversal via pointer-style references
 name: attribute references
 
 constants:
