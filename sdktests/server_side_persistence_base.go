@@ -41,6 +41,7 @@ const (
 	persistenceInitedKey = "$inited"
 )
 
+// PS 1.3, 1.4: dispatches persistence tests across Redis, Consul, and DynamoDB backends
 func doServerSidePersistentTests(t *ldtest.T) {
 	ranAtLeastOnce := false
 
@@ -145,6 +146,14 @@ func newServerSidePersistentTests(
 	}
 }
 
+// PS 1.1.2: cache TTL modes (off, positive, infinite)
+// PS 1.1.3: store initialized with Init() containing all flag data
+// PS 1.1.4: Get retrieves items from persistence when not cached
+// PS 1.1.6: Upsert writes items to persistent store with version checking
+// PS 1.1.6.1: successful upsert updates item cache (non-infinite TTL)
+// PS 1.1.6.5: successful upsert updates item and all-items cache (infinite TTL)
+// PS 1.1.7: IsInitialized gates reads until store is initialized
+// PS 1.2.1: cached items expire after TTL elapses
 func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 	s.runWithEmptyStore(t, "uses default prefix", func(t *ldtest.T) {
 		require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
@@ -615,6 +624,7 @@ func (s *ServerSidePersistentTests) runWithEmptyStore(t *ldtest.T, testName stri
 	})
 }
 
+// PS 1.1.7: validates the $inited key is set in the persistent store
 func (s *ServerSidePersistentTests) eventuallyRequireDataStoreInit(t *ldtest.T, prefix string) {
 	h.RequireEventually(t, func() bool {
 		value, _ := s.persistentStore.Get(prefix, persistenceInitedKey)
@@ -622,6 +632,7 @@ func (s *ServerSidePersistentTests) eventuallyRequireDataStoreInit(t *ldtest.T, 
 	}, time.Second, time.Millisecond*20, persistenceInitedKey+" key was not set")
 }
 
+// PS 1.1.3, 1.1.6: validates flag data written to persistent store matches expectations
 func (s *ServerSidePersistentTests) eventuallyValidateFlagData(
 	t *ldtest.T, prefix string, matchers map[string]m.Matcher) {
 	h.RequireEventually(t, func() bool {
@@ -634,6 +645,7 @@ func (s *ServerSidePersistentTests) eventuallyValidateFlagData(
 	}, time.Second, time.Millisecond*20, "flag data did not match")
 }
 
+// PS 1.1.6: validates flag data is NOT written when version check rejects update
 func (s *ServerSidePersistentTests) neverValidateFlagData(t *ldtest.T, prefix string, matchers map[string]m.Matcher) {
 	h.RequireNever(t, func() bool {
 		data, err := s.persistentStore.GetMap(prefix, "features")
@@ -645,6 +657,7 @@ func (s *ServerSidePersistentTests) neverValidateFlagData(t *ldtest.T, prefix st
 	}, time.Second, time.Millisecond*20, "flag data did not match")
 }
 
+// PS 1.1.3: builds matcher for flag key, version, and variations in store
 func basicFlagValidationMatcher(key string, version int, value string) m.Matcher {
 	return m.AllOf(
 		m.JSONProperty("key").Should(m.Equal(key)),
@@ -653,6 +666,7 @@ func basicFlagValidationMatcher(key string, version int, value string) m.Matcher
 	)
 }
 
+// PS 1.1.6: builds matcher for deleted flag tombstone in store
 func basicDeletedFlagValidationMatcher(key string, version int) m.Matcher {
 	return m.AllOf(
 		m.AnyOf(
