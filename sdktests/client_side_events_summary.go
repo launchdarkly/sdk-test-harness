@@ -35,6 +35,9 @@ func doClientSideSummaryEventTests(t *ldtest.T) {
 }
 
 func doClientSideSummaryEventBasicTest(t *ldtest.T) {
+	t.Specification("CSSE", "2.1.2.1", "counters group evaluations by flag key, variation, and version")
+	t.Specification("CSSE", "2.1.1", "accumulator tracks default value, count, and resulting value per counter")
+
 	flag1Key := "flag1"
 	flag1Result1 := mockld.ClientSDKFlag{
 		Value:       ldvalue.String("value1-a"),
@@ -113,6 +116,9 @@ func doClientSideSummaryEventBasicTest(t *ldtest.T) {
 }
 
 func doClientSidePerContextSummaryEventBasicTest(t *ldtest.T) {
+	t.Specification("CSSE", "1.1.1.2", "unique accumulator per unique context produces separate summary events")
+	t.Specification("CSSE", "2.1.3.1", "getSummary populates context on per-context summary events")
+
 	flag1Key := "flag1"
 	flag1Result1 := mockld.ClientSDKFlag{
 		Value:       ldvalue.String("value1-a"),
@@ -199,6 +205,8 @@ func doClientSidePerContextSummaryEventBasicTest(t *ldtest.T) {
 }
 
 func doClientSideSummaryEventContextKindsTest(t *ldtest.T) {
+	t.Specification("CSSE", "2.1.3.1", "features include contextKinds from all evaluating context kinds")
+
 	flag1Key := "flag1"
 	flag1Result := mockld.ClientSDKFlag{
 		Value:     ldvalue.String("value1-a"),
@@ -271,6 +279,9 @@ func doClientSideSummaryEventContextKindsTest(t *ldtest.T) {
 }
 
 func doClientSidePerContxtSummaryEventContextKindsTest(t *ldtest.T) {
+	t.Specification("CSSE", "1.1.1.2", "unique accumulator per unique multi-kind context")
+	t.Specification("CSSE", "2.1.3.1", "contextKinds populated for per-context summary events")
+
 	flag1Key := "flag1"
 	flag1Result := mockld.ClientSDKFlag{
 		Value:     ldvalue.String("value1-a"),
@@ -346,6 +357,8 @@ func doClientSidePerContxtSummaryEventContextKindsTest(t *ldtest.T) {
 }
 
 func doClientSideSummaryEventUnknownFlagTest(t *ldtest.T) {
+	t.Specification("CSSE", "2.1.3.1", "unknown flag counter sets unknown=true with no version or variation")
+
 	unknownKey := "flag-x"
 	context := ldcontext.New("user-key")
 	default1 := ldvalue.String("default1")
@@ -381,6 +394,9 @@ func doClientSideSummaryEventUnknownFlagTest(t *ldtest.T) {
 }
 
 func doClientSideSummaryEventResetTest(t *ldtest.T) {
+	t.Specification("CSSE", "1.1.2.1", "accumulators cleared after getSummaries; new flush has fresh counts")
+	t.Specification("CSSE", "3.1.1", "summaries included in flushed event batch")
+
 	flagKey := "flag1"
 	flag1Result1 := mockld.ClientSDKFlag{
 		Value:     ldvalue.String("value-a"),
@@ -455,6 +471,10 @@ func doClientSideSummaryEventResetTest(t *ldtest.T) {
 }
 
 func doClientSideSummaryBasicPrereqTest(t *ldtest.T) {
+	t.Specification("CSPE", "1.2.2", "summary counters updated equivalent to direct evaluation of prerequisites")
+	t.Specification("CSPE", "1.2.4", "recursive prerequisites generate correct summary counts")
+	t.Specification("CSSE", "2.1.2.1", "prerequisite evaluations increment counters in summary event")
+
 	topLevelKey := "flag1"
 	topLevelResult := mockld.ClientSDKFlag{
 		Value:         ldvalue.String("value1-a"),
@@ -552,6 +572,9 @@ func doClientSideSummaryBasicPrereqTest(t *ldtest.T) {
 }
 
 func doClientSideSummaryPrereqUnknownFlagTest(t *ldtest.T) {
+	t.Specification("CSPE", "1.2.1", "unknown prerequisites generate unknown flag summary events (Note 1.2.1)")
+	t.Specification("CSSE", "2.1.3.1", "unknown prerequisite flag sets unknown=true in counter")
+
 	topLevelKey := "flag1"
 	topLevelResult := mockld.ClientSDKFlag{
 		Value:         ldvalue.String("value1-a"),
