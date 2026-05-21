@@ -23,6 +23,9 @@ func doClientSideEvalTests(t *ldtest.T) {
 	t.Run("parameterized", runParameterizedClientSideEvalTests)
 }
 
+// FLGEDETAIL 1.1.7.1: client-side reason field may be absent when not requested
+// FLGEDETAIL 1.4.4.1: client-side *variationDetail accepts (flagKey, defaultValue)
+// FLGEDETAIL 1.4.4.2: client-side *variationDetail returns synchronously
 func runParameterizedClientSideEvalTests(t *ldtest.T) {
 	// For client-side SDKs, you have to tell the SDK at initialization time whether we'll be using evaluation
 	// reasons or not. The main effect of that is the client will add a withReasons query string parameter to

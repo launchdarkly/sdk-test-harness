@@ -21,6 +21,8 @@ func doServerSideEvalTests(t *ldtest.T) {
 	t.Run("client not ready", runParameterizedServerSideClientNotReadyEvalTests)
 }
 
+// FLGEDETAIL 1.1.6.1: server-side reason field is always present and non-null
+// FLGEDETAIL 1.4.3.1: server-side *variationDetail accepts (flagKey, context, defaultValue)
 func runParameterizedServerSideEvalTests(t *ldtest.T) {
 	parameterizedTests := CommonEvalParameterizedTestRunner[mockld.ServerSDKData]{
 		SDKConfigurers:       func(testSuite testmodel.EvalTestSuite[mockld.ServerSDKData]) []SDKConfigurer { return nil },
@@ -30,6 +32,8 @@ func runParameterizedServerSideEvalTests(t *ldtest.T) {
 	parameterizedTests.RunAll(t, "server-side-eval")
 }
 
+// FLGEDETAIL 1.3.1: errorKind CLIENT_NOT_READY when SDK not initialized
+// FLGEDETAIL 1.1.3: variationIndex absent when default value returned
 func runParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
 	defaultValues := data.MakeValueFactoryBySDKValueType()
 	flagKey := "some-flag"

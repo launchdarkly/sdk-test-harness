@@ -99,6 +99,12 @@ func (c CommonEvalParameterizedTestRunner[SDKDataType]) runTestSuite(
 	}
 }
 
+// FLGEDETAIL 1.1.1: EvaluationDetail returned by *variationDetail methods
+// FLGEDETAIL 1.1.2: EvaluationDetail carries value field
+// FLGEDETAIL 1.1.3: EvaluationDetail carries variationIndex field
+// FLGEDETAIL 1.1.5: EvaluationDetail carries reason field
+// FLGEDETAIL 1.2.1: EvaluationReason type describing evaluation result
+// FLGEDETAIL 1.4.1: typed *variationDetail methods for bool, string, int, double, JSON
 func (c CommonEvalParameterizedTestRunner[SDKDataType]) runTestEval(
 	t *ldtest.T,
 	suite testmodel.EvalTestSuite[SDKDataType],
