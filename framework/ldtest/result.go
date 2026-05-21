@@ -12,10 +12,11 @@ type Results struct {
 }
 
 type TestResult struct {
-	TestID      TestID
-	Errors      []error
-	NonCritical bool
-	Explanation string
+	TestID         TestID
+	Errors         []error
+	NonCritical    bool
+	Explanation    string
+	Specifications []SpecReference
 }
 
 func (r Results) OK() bool {

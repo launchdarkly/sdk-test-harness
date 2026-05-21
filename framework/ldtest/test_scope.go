@@ -85,6 +85,7 @@ func (t *T) run(action func(*T)) (result TestResult) {
 			}
 		}
 		result.Errors = t.errors
+		result.Specifications = t.specifications
 		if t.failed {
 			if t.nonCritical == "" {
 				t.env.results.Failures = append(t.env.results.Failures, result)
