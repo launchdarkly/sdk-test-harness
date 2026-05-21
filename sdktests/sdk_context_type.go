@@ -374,7 +374,8 @@ func doSDKContextConvertTests(t *ldtest.T) {
 }
 
 func doSDKContextComparisonTests(t *ldtest.T) {
-	t.Specification("CTXBLD", "1.8.4", "equal contexts have same kinds, keys, names, anonymous, custom attrs, private attrs")
+	t.Specification("CTXBLD", "1.8.4",
+		"equal contexts have same kinds, keys, names, anonymous, custom attrs, private attrs")
 	t.Specification("CONTEXT", "1.10.1.4", "order of privateAttributes entries is not significant")
 	dataSystem := NewSDKDataSystem(t, nil)
 	client := NewSDKClient(t, dataSystem)

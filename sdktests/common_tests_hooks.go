@@ -158,7 +158,8 @@ func trackTestParams(context o.Maybe[ldcontext.Context]) []TrackParameters {
 }
 
 func executesBeforeEvaluationStageDetail(t *ldtest.T, detail bool) {
-	t.Specification("HOOK", "1.2.1", "beforeEvaluation stage accepts EvaluationSeriesContext and returns EvaluationSeriesData")
+	t.Specification("HOOK", "1.2.1",
+		"beforeEvaluation stage accepts EvaluationSeriesContext and returns EvaluationSeriesData")
 	t.Specification("HOOK", "1.2.1.1", "beforeEvaluation executes before the flag value has been determined")
 	testParams := variationTestParams(detail)
 
@@ -226,7 +227,8 @@ func executesBeforeEvaluationStageMigration(t *ldtest.T) {
 }
 
 func executesAfterEvaluationStageDetail(t *ldtest.T, detail bool) {
-	t.Specification("HOOK", "1.2.2", "afterEvaluation stage accepts EvaluationSeriesContext, EvaluationSeriesData, and EvaluationDetail")
+	t.Specification("HOOK", "1.2.2",
+		"afterEvaluation accepts EvaluationSeriesContext, EvaluationSeriesData, and EvaluationDetail")
 	t.Specification("HOOK", "1.2.2.1", "afterEvaluation executes after the flag detail has been determined")
 	testParams := variationTestParams(detail)
 

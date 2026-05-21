@@ -318,7 +318,8 @@ func doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityAllFlagsDetailsOnlyForTrackedFlags)
 	t.Specification("FLGEDETAIL", "1.1.3", "variationIndex always present even when reason/version omitted")
 	t.Specification("FLGEDETAIL", "1.2.2", "reason kind OFF included only for tracked flags")
-	t.Specification("FLGMES", "1.3.2.8", "Reason and version omitted for untracked flags when details-only-for-tracked is true")
+	t.Specification("FLGMES", "1.3.2.8",
+		"Reason and version omitted for untracked flags when details-only-for-tracked is true")
 
 	// flag1 will have details removed because it's not in any of the other categories below
 	flag1 := ldbuilders.NewFlagBuilder("flag1").Version(100).

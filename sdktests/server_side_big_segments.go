@@ -39,7 +39,8 @@ func doServerSideBigSegmentsTests(t *ldtest.T) {
 
 func doBigSegmentsEvaluateSegment(t *ldtest.T) {
 	t.Specification("BIGSEG", "1.3.1", "context keys hashed as base64(sha256(key)) before store query")
-	t.Specification("BIGSEG", "1.9.2.1", "included/excluded/includedContexts/excludedContexts fields ignored for big segments")
+	t.Specification("BIGSEG", "1.9.2.1",
+		"included/excluded/includedContexts/excludedContexts fields ignored for big segments")
 	t.Specification("BIGSEG", "1.9.2.2", "store queried when unbounded=true and generation has a value")
 	t.Specification("BIGSEG", "1.9.2.5", "membership tested using \"<segmentKey>.g<generation>\" reference format")
 	t.Specification("BIGSEG", "1.9.2.6", "true→match, false→non-match, absent→fall through to rules")
