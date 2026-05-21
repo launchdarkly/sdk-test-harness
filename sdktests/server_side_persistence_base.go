@@ -42,6 +42,9 @@ const (
 )
 
 func doServerSidePersistentTests(t *ldtest.T) {
+	t.Specification("PS", "1.3", "dispatches persistence tests across Redis, Consul, and DynamoDB backends")
+	t.Specification("PS", "1.4", "dispatches persistence tests across Redis, Consul, and DynamoDB backends")
+
 	ranAtLeastOnce := false
 
 	if t.Capabilities().Has(servicedef.CapabilityPersistentDataStoreRedis) {
@@ -146,6 +149,15 @@ func newServerSidePersistentTests(
 }
 
 func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
+	t.Specification("PS", "1.1.2", "cache TTL modes (off, positive, infinite)")
+	t.Specification("PS", "1.1.3", "store initialized with Init() containing all flag data")
+	t.Specification("PS", "1.1.4", "Get retrieves items from persistence when not cached")
+	t.Specification("PS", "1.1.6", "Upsert writes items to persistent store with version checking")
+	t.Specification("PS", "1.1.6.1", "successful upsert updates item cache (non-infinite TTL)")
+	t.Specification("PS", "1.1.6.5", "successful upsert updates item and all-items cache (infinite TTL)")
+	t.Specification("PS", "1.1.7", "IsInitialized gates reads until store is initialized")
+	t.Specification("PS", "1.2.1", "cached items expire after TTL elapses")
+
 	s.runWithEmptyStore(t, "uses default prefix", func(t *ldtest.T) {
 		require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
 
@@ -616,6 +628,8 @@ func (s *ServerSidePersistentTests) runWithEmptyStore(t *ldtest.T, testName stri
 }
 
 func (s *ServerSidePersistentTests) eventuallyRequireDataStoreInit(t *ldtest.T, prefix string) {
+	t.Specification("PS", "1.1.7", "validates the $inited key is set in the persistent store")
+
 	h.RequireEventually(t, func() bool {
 		value, _ := s.persistentStore.Get(prefix, persistenceInitedKey)
 		return value.IsDefined()
@@ -624,6 +638,9 @@ func (s *ServerSidePersistentTests) eventuallyRequireDataStoreInit(t *ldtest.T, 
 
 func (s *ServerSidePersistentTests) eventuallyValidateFlagData(
 	t *ldtest.T, prefix string, matchers map[string]m.Matcher) {
+	t.Specification("PS", "1.1.3", "validates flag data written to persistent store matches expectations")
+	t.Specification("PS", "1.1.6", "validates flag data written to persistent store matches expectations")
+
 	h.RequireEventually(t, func() bool {
 		data, err := s.persistentStore.GetMap(prefix, "features")
 		if err != nil {
@@ -635,6 +652,8 @@ func (s *ServerSidePersistentTests) eventuallyValidateFlagData(
 }
 
 func (s *ServerSidePersistentTests) neverValidateFlagData(t *ldtest.T, prefix string, matchers map[string]m.Matcher) {
+	t.Specification("PS", "1.1.6", "validates flag data is NOT written when version check rejects update")
+
 	h.RequireNever(t, func() bool {
 		data, err := s.persistentStore.GetMap(prefix, "features")
 		if err != nil {
