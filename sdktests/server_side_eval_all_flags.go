@@ -40,6 +40,14 @@ func runServerSideEvalAllFlagsTests(t *ldtest.T) {
 	})
 }
 
+// FLGMES 1.1.1: AllFlagsState returns evaluation results for all flags for a context
+// FLGMES 1.3.1.5: Flags state has valid=true when evaluation succeeds
+// FLGMES 1.3.2.5: Flag version set to the flag's version property
+// FLGMES 1.3.2.6: Flag value set to the value returned by the evaluation algorithm
+// FLGMES 1.3.2.7: Variation index set to the evaluation result variation index
+// FLGMES 1.3.2.9: Track events true when flag's trackEvents property is true
+// FLGMES 1.3.2.11: Debug events until date set from flag's debugEventsUntilDate property
+// FLGMES 1.4.1: Omits null/false properties in bootstrapping JSON
 func doServerSideAllFlagsBasicTest(t *ldtest.T) {
 	flag1 := ldbuilders.NewFlagBuilder("flag1").Version(100).
 		Variations(dummyValue0, ldvalue.String("value1")).
@@ -104,6 +112,8 @@ func doServerSideAllFlagsBasicTest(t *ldtest.T) {
 	m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedJSON))
 }
 
+// FLGEDETAIL 1.2.2: reason kind OFF and FALLTHROUGH returned in all-flags state
+// FLGMES 1.3.2.8: Reason included when with-reasons option is true
 func doServerSideAllFlagsWithReasonsTest(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityAllFlagsWithReasons)
 
@@ -147,6 +157,10 @@ func doServerSideAllFlagsWithReasonsTest(t *ldtest.T) {
 	m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedJSON))
 }
 
+// FLGEDETAIL 1.2.3: inExperiment field present when kind is FALLTHROUGH or RULE_MATCH
+// FLGMES 1.3.2.8: Reason included when evaluation involves an experiment
+// FLGMES 1.3.2.9: Track events true when evaluation involves an experiment
+// FLGMES 1.3.2.10: Track reason true when evaluation involves an experiment
 func doServerSideAllFlagsExperimentationTest(t *ldtest.T) {
 	// flag1 has experiment behavior because it's a fallthrough and has trackEventsFallthrough=true
 	flag1 := ldbuilders.NewFlagBuilder("flag1").Version(100).
@@ -191,6 +205,10 @@ func doServerSideAllFlagsExperimentationTest(t *ldtest.T) {
 	m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedJSON))
 }
 
+// FLGEDETAIL 1.2.2: reason kind ERROR with errorKind in all-flags state
+// FLGEDETAIL 1.3.1: errorKind MALFORMED_FLAG for invalid flag data
+// FLGMES 1.6.1.1: Failed flag still included with null value and no variation
+// FLGMES 1.3.2.8: Error reason included when with-reasons is true
 func doServerSideAllFlagsErrorInFlagTest(t *ldtest.T) {
 	// This test verifies that 1. an error in evaluation of one flag does not prevent evaluation
 	// of the rest of the flags, and 2. the failed flag is still included in the results, with a
@@ -262,6 +280,7 @@ func doServerSideAllFlagsErrorInFlagTest(t *ldtest.T) {
 	})
 }
 
+// FLGMES 1.3.2.1: Flags skipped when client-side only and usingEnvironmentId is false
 func doServerSideAllFlagsClientSideOnlyTest(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityAllFlagsClientSideOnly)
 
@@ -289,6 +308,9 @@ func doServerSideAllFlagsClientSideOnlyTest(t *ldtest.T) {
 	assert.NotContains(t, result.State, flag2.Key)
 }
 
+// FLGEDETAIL 1.1.3: variationIndex always present even when reason/version omitted
+// FLGEDETAIL 1.2.2: reason kind OFF included only for tracked flags
+// FLGMES 1.3.2.8: Reason and version omitted for untracked flags when details-only-for-tracked is true
 func doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest(t *ldtest.T) {
 	// Note that it's only "version" and "reason" that are omitted for untracked flags in this mode.
 	// The variation index always must be included, because it's necessary for summary events. The
@@ -353,6 +375,8 @@ func doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest(t *ldtest.T) {
 	m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedJSON))
 }
 
+// FLGEDETAIL 1.3.1: errorKind CLIENT_NOT_READY in all-flags when SDK not initialized
+// FLGMES 1.3.1.1: Uninitialized SDK returns empty flags state with valid=false
 func doServerSideAllFlagsClientNotReadyTest(t *ldtest.T) {
 	dataSystem := NewSDKDataSystem(t, mockld.BlockingUnavailableSDKData(mockld.ServerSideSDK))
 	client := NewSDKClient(t,
@@ -372,6 +396,7 @@ func doServerSideAllFlagsClientNotReadyTest(t *ldtest.T) {
 	m.In(t).Assert(resultJSON, m.JSONStrEqual(expectedJSON))
 }
 
+// FLGMES 1.4.1: SDKs must omit null/false properties in bootstrapping JSON
 func doServerSideAllFlagsCompactRepresentationsTest(t *ldtest.T) {
 	t.NonCritical(`If this failed but the other 'all flags' tests passed, the SDK is including null-valued` +
 		` properties within the $flagsState part of the representation. To save bandwidth, it's desirable` +
