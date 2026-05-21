@@ -1,5 +1,9 @@
 ---
 name: bad attribute reference errors - <NAME>
+specifications:
+  - spec: "ATREF"
+    number: "1.1.1"
+    summary: "non-conforming strings are not valid attribute references"
 
 parameters:
   - NAME: clause with no attribute

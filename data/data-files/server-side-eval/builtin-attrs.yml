@@ -1,5 +1,9 @@
 ---
 name: built-in attributes other than kind
+specifications:
+  - spec: "FLGEA"
+    number: "1.2"
+    summary: "context attribute lookup for built-in attributes"
 
 constants:
   IS_MATCH:

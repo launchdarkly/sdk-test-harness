@@ -1,5 +1,9 @@
 ---
   name: variation value types (<TYPE_NAME>)
+  specifications:
+    - spec: "FLGEA"
+      number: "1.6"
+      summary: "evaluation algorithm across variation value types"
   
   parameters:
     - TYPE_NAME: bool

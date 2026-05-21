@@ -1,5 +1,9 @@
 ---
 name: rule match (<TYPE_NAME>)
+specifications:
+  - spec: "FLGEA"
+    number: "1.6.2.6"
+    summary: "flag rule evaluation"
 
 constants:
   VALUE_OFF: "off"

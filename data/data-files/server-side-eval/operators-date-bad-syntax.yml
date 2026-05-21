@@ -1,5 +1,9 @@
 ---
 name: operators - date - bad syntax
+specifications:
+  - spec: "FLGEA"
+    number: "1.6.2.7.3"
+    summary: "date-time operators with invalid syntax"
 
 constants:
   IS_NOT_MATCH:

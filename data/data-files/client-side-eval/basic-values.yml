@@ -1,5 +1,12 @@
 ---
 name: basic values - <TYPE_NAME>
+specifications:
+  - spec: "FLGEA"
+    number: "1.1.2"
+    summary: "client-side SDKs surface pre-evaluated outputs (value, variationIndex, reason)"
+  - spec: "FLGEA"
+    number: "1.6.3"
+    summary: "post-evaluation returns correct variation value or default"
 
 parameters:
   - TYPE_NAME: bool

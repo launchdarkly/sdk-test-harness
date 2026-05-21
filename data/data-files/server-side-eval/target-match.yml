@@ -1,5 +1,9 @@
 ---
 name: target match
+specifications:
+  - spec: "FLGEA"
+    number: "1.6.2.5"
+    summary: "individual targeting (targets and contextTargets)"
 
 constants:
   VALUE_OFF: "off"

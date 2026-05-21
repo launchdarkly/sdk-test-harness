@@ -1,5 +1,15 @@
 ---
 name: attribute references
+specifications:
+  - spec: "ATREF"
+    number: "1.2.1"
+    summary: "plain references (no leading slash) treated as literal attribute name"
+  - spec: "ATREF"
+    number: "1.2.2"
+    summary: "~1 escape sequence interpreted as /"
+  - spec: "ATREF"
+    number: "1.2.3"
+    summary: "~0 escape sequence interpreted as ~"
 
 constants:
   IS_MATCH:

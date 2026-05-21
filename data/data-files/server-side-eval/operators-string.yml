@@ -1,5 +1,9 @@
 ---
 name: operators - string
+specifications:
+  - spec: "FLGEA"
+    number: "1.6.2.7"
+    summary: "string operators (startsWith, endsWith, contains, matches)"
 
 constants:
   IS_MATCH:

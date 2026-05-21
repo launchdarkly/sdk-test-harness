@@ -1,5 +1,9 @@
 ---
 name: JSON variations
+specifications:
+  - spec: "FLGEA"
+    number: "1.1.2"
+    summary: "evaluation outputs with JSON variation values"
 
 constants:
   CONTEXT: { kind: "user", key: "x"}

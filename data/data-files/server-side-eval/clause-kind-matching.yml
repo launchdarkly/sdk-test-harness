@@ -1,5 +1,9 @@
 ---
 name: clause kind matching
+specifications:
+  - spec: "FLGEA"
+    number: "1.6.2.6"
+    summary: "clause evaluation for kind attribute"
 
 constants:
   IS_MATCH:

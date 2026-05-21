@@ -1,5 +1,9 @@
 ---
 name: clause negation and value iteration
+specifications:
+  - spec: "FLGEA"
+    number: "1.6.2.6"
+    summary: "clause negation and value iteration"
 
 constants:
   IS_MATCH:

@@ -1,5 +1,9 @@
 ---
 name: rollout or experiment - <NAME>
+specifications:
+  - spec: "FLGEA"
+    number: "1.6.2.9"
+    summary: "rollouts and experiments"
 
 constants:
   MATCH_FALLTHROUGH_VARIATION_A:

@@ -136,10 +136,7 @@ func makeEventContextTestParams() []eventContextTestParams {
 	}
 	return ret
 }
-<<<<<<< HEAD
-=======
 
->>>>>>> 311520a (chore: convert CONTEXT and CTXBLD spec comments to t.Specification() calls)
 func (c CommonEventTests) EventContexts(t *ldtest.T) {
 	t.Specification("CONTEXT", "1.4.2", "custom attribute value types in event context output")
 	t.Specification("CONTEXT", "1.7.1", "private attributes do not affect flag evaluations")
