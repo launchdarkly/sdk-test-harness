@@ -32,6 +32,22 @@ func doSDKContextTypeTests(t *ldtest.T) {
 // a context object-- the current test harness architecture requires all test service commands to be directed
 // at a client instance.
 
+// CTXBLD 1.2.3: kind operation takes kind string and optional key, returns LDAttributesBuilder
+// CTXBLD 1.2.6: build operation returns LDContext
+// CTXBLD 1.2.7: one kind = individual context, more than one = multi-context
+// CTXBLD 1.4.1: dedicated name operation accepts string
+// CTXBLD 1.4.2: dedicated anonymous operation accepts boolean
+// CTXBLD 1.4.3: unset anonymous behaves as false
+// CTXBLD 1.5.1: generic attribute setter stores custom attributes
+// CTXBLD 1.5.3: null value removes custom attribute
+// CTXBLD 1.5.4: non-null value stores custom attribute
+// CTXBLD 1.6.4: add private attribute reference strings
+// CONTEXT 1.2.3.2: anonymous false treated as absent
+// CONTEXT 1.4.2: custom attribute value types (boolean, number, string, array, object)
+// CONTEXT 1.5.6: null attribute value treated as absent
+// CONTEXT 1.10.1.1: single-kind JSON includes kind and key
+// CONTEXT 1.10.2.1: multi-kind JSON includes kind:"multi"
+// CONTEXT 1.10.2.2: multi-kind sub-objects follow single-kind schema without kind property
 func doSDKContextBuildTests(t *ldtest.T) {
 	dataSystem := NewSDKDataSystem(t, nil)
 	client := NewSDKClient(t, dataSystem)
@@ -112,6 +128,8 @@ func doSDKContextBuildTests(t *ldtest.T) {
 	})
 }
 
+// CONTEXT 1.12.4: SDK supports converting context to/from JSON
+// CONTEXT 1.12.5: SDK supports deserializing legacy JSON format
 func doSDKContextConvertTests(t *ldtest.T) {
 	dataSystem := NewSDKDataSystem(t, nil)
 	client := NewSDKClient(t, dataSystem)
@@ -123,6 +141,16 @@ func doSDKContextConvertTests(t *ldtest.T) {
 		return fmt.Sprintf(`{"kind": "org", "key": "x"%s}`, extraProps)
 	}
 
+	// CONTEXT 1.1.2: kind contains only allowed characters (ASCII alphanumerics, ., -, _)
+	// CONTEXT 1.2.1.1: key present on every single-kind context
+	// CONTEXT 1.2.2.1: name is a string if set
+	// CONTEXT 1.2.3.1: anonymous is a boolean if set
+	// CONTEXT 1.4.2: custom attribute value types
+	// CONTEXT 1.10.1.1: single-kind includes kind and key as top-level properties
+	// CONTEXT 1.10.1.2: _meta.privateAttributes format
+	// CONTEXT 1.10.1.5: non-built-in top-level properties are custom attributes
+	// CONTEXT 1.10.2.1: multi-kind includes kind:"multi"
+	// CONTEXT 1.10.2.2: multi-kind sub-objects without kind property
 	t.Run("valid, no changes", func(t *ldtest.T) {
 		singleKindProps := []string{
 			``,
@@ -166,6 +194,8 @@ func doSDKContextConvertTests(t *ldtest.T) {
 		}
 	})
 
+	// CONTEXT 1.5.6: null attribute value treated as absent
+	// CONTEXT 1.5.7: JSON null property treated as omitting property
 	t.Run("unnecessary properties are dropped", func(t *ldtest.T) {
 		expected := json.RawMessage(basicInputPlusProps(""))
 
@@ -186,6 +216,12 @@ func doSDKContextConvertTests(t *ldtest.T) {
 		}
 	})
 
+	// CONTEXT 1.10.3.1: no kind property means kind "user"
+	// CONTEXT 1.10.3.2: legacy key and name treated same as regular context
+	// CONTEXT 1.10.3.3: privateAttributeNames treated as _meta.privateAttributes
+	// CONTEXT 1.10.3.4: legacy string attrs (firstName, lastName, email, country, ip, avatar)
+	// CONTEXT 1.10.3.5: custom property treated as additional custom attributes
+	// CONTEXT 1.12.5: SDK deserializes legacy JSON format
 	t.Run("old user to context", func(t *ldtest.T) {
 		t.RequireCapability(servicedef.CapabilityUserType)
 		type contextConversionParams struct {
@@ -235,6 +271,7 @@ func doSDKContextConvertTests(t *ldtest.T) {
 		}
 	})
 
+	// CTXBLD 1.2.7: multi-context with single kind normalizes to individual context
 	t.Run("multi-kind with only one kind becomes single-kind", func(t *ldtest.T) {
 		singleKindJSON := `{"kind": "org", "key": "a", "name": "b"}`
 		multiKindJSON := `{"kind": "multi", "org": {"key": "a", "name": "b"}}`
@@ -243,6 +280,14 @@ func doSDKContextConvertTests(t *ldtest.T) {
 		m.In(t).Assert(json.RawMessage(resp.Output), m.JSONEqual(json.RawMessage(singleKindJSON)))
 	})
 
+	// CONTEXT 1.1.1: kind must be non-empty string
+	// CONTEXT 1.1.2: kind must contain only ASCII alphanumerics, ., -, _
+	// CONTEXT 1.1.3: kind must not be "kind"
+	// CONTEXT 1.13.1.1: invalid kind (empty, bad chars, or equals "kind")
+	// CONTEXT 1.13.1.3: multi-kind with no contexts is invalid
+	// CONTEXT 1.13.2.1: kind null or not a string is invalid
+	// CONTEXT 1.13.2.2: single-kind type/schema validation errors
+	// CONTEXT 1.13.4.1: deserialization must fail on invalid conditions
 	t.Run("invalid context", func(t *ldtest.T) {
 		inputs := []string{
 			``,
@@ -298,6 +343,7 @@ func doSDKContextConvertTests(t *ldtest.T) {
 		})
 	})
 
+	// CONTEXT 1.13.2.4: legacy format type/schema validation errors
 	t.Run("invalid old user", func(t *ldtest.T) {
 		t.RequireCapability(servicedef.CapabilityUserType)
 		inputs := make([]string, 0, 12)
@@ -320,6 +366,8 @@ func doSDKContextConvertTests(t *ldtest.T) {
 	})
 }
 
+// CTXBLD 1.8.4: equal contexts have same kinds, keys, names, anonymous, custom attrs, private attrs
+// CONTEXT 1.10.1.4: order of privateAttributes entries is not significant
 func doSDKContextComparisonTests(t *ldtest.T) {
 	dataSystem := NewSDKDataSystem(t, nil)
 	client := NewSDKClient(t, dataSystem)
