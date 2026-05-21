@@ -441,7 +441,6 @@ func (c CommonStreamingTests) FDv1FallbackDirective(t *ldtest.T) {
 // serves it. The FDv1 endpoint therefore delivers a distinctive flag value, and the
 // test asserts evaluations return that value — proving FDv1 actually became the
 // active data source, not just that its URL was hit.
-//
 func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) {
 	t.Specification("DATASYSTEM", "1.6.1", "X-LD-FD-Fallback header on error engages FDv1 Fallback Synchronizer")
 	t.Specification("DATASYSTEM", "1.6.3", "FDv2 synchronizer chain halted when directive engages FDv1")
@@ -527,7 +526,6 @@ func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) 
 // request whose validators match (RFC 9111 §4.3.4); browser-based runtimes in
 // particular translate an unsolicited 304 into a 200 against their cache, which
 // would defeat the "FDv1 supplies no fresh data" property this test relies on.
-//
 func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtest.T) {
 	t.Specification("DATASYSTEM", "1.6.2", "payload applied to Memory Store before transitioning to FDv1")
 	t.Specification("DATASYSTEM", "1.6.3", "FDv2 Primary Synchronizer stopped when directive engages FDv1")
@@ -618,7 +616,6 @@ func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtes
 // initializer-then-synchronizer flow. In particular, the configured FDv2 Primary
 // Synchronizer must never be started; the SDK transitions directly to the FDv1
 // Fallback Synchronizer.
-//
 func (c CommonStreamingTests) DirectiveOnPollingInitializerSkipsSynchronizers(t *ldtest.T) {
 	t.Specification("DATASYSTEM", "1.6.3", "initializer directive skips FDv2 synchronizers entirely")
 	t.Specification("CSFDV2", "8.1.1", "x-ld-fd-fallback header triggers client-side FDv1 fallback")
@@ -715,7 +712,6 @@ func (c CommonStreamingTests) DirectiveOnPollingInitializerSkipsSynchronizers(t 
 // *ignored* the directive, we would see retries on the streaming endpoint; absence of
 // those retries is the positive signal that the directive caused a halt rather than
 // ordinary permanent removal (which would fire on a 4xx instead).
-//
 func (c CommonStreamingTests) DirectiveWithoutFDv1ConfiguredHaltsDataSystem(t *ldtest.T) {
 	t.Specification("DATASYSTEM", "1.6.3", "directive without FDv1 configured halts data system entirely")
 	t.Specification("CSFDV2", "8.1.1", "x-ld-fd-fallback header recognized on client-side")
@@ -781,7 +777,6 @@ func (c CommonStreamingTests) DirectiveWithoutFDv1ConfiguredHaltsDataSystem(t *l
 // applies. We prove this by keeping the FDv1 endpoint healthy and watching a long
 // enough window that the FDv2 Recovery Condition (5 minutes in the default config)
 // would normally fire if the SDK were still treating this as a heuristic fallback.
-//
 func (c CommonStreamingTests) DirectedFallbackIsTerminal(t *ldtest.T) {
 	t.Specification("DATASYSTEM", "1.6.4", "directed fallback is terminal; SDK never returns to FDv2 synchronizers")
 	t.Specification("CSFDV2", "8.1.1", "x-ld-fd-fallback triggers client-side FDv1 fallback")
