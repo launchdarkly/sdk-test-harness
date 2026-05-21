@@ -24,12 +24,13 @@ type JUnitTestLogger struct {
 }
 
 type jUnitTestStatus struct {
-	failures    []error
-	skipped     o.Maybe[string]
-	nonCritical bool
-	output      string
-	startTime   time.Time
-	duration    time.Duration
+	failures       []error
+	skipped        o.Maybe[string]
+	nonCritical    bool
+	output         string
+	startTime      time.Time
+	duration       time.Duration
+	specifications []SpecReference
 }
 
 // Struct definitions for the JUnit XML schema - see https://github.com/jstemmer/go-junit-report
@@ -54,6 +55,7 @@ type jUnitXMLTestCase struct {
 	Classname   string               `xml:"classname,attr"`
 	Name        string               `xml:"name,attr"`
 	Time        string               `xml:"time,attr"`
+	Properties  []jUnitXMLProperty   `xml:"properties>property,omitempty"`
 	SkipMessage *jUnitXMLSkipMessage `xml:"skipped,omitempty"`
 	Failure     *jUnitXMLFailure     `xml:"failure,omitempty"`
 }
@@ -110,6 +112,7 @@ func (j *JUnitTestLogger) TestFinished(id TestID, result TestResult, debugOutput
 	status.output = debugOutput.ToString("")
 	status.duration = time.Since(status.startTime)
 	status.nonCritical = result.NonCritical
+	status.specifications = result.Specifications
 	j.tests[id.String()] = status
 }
 
@@ -162,6 +165,12 @@ func (j *JUnitTestLogger) EndLog(results Results) error {
 			testCase := jUnitXMLTestCase{
 				Name: testID.String(),
 				Time: jUnitDurationString(status.duration),
+			}
+			for _, spec := range status.specifications {
+				testCase.Properties = append(testCase.Properties, jUnitXMLProperty{
+					Name:  "specification",
+					Value: spec.String(),
+				})
 			}
 			if status.nonCritical {
 				testCase.Name += " (non-critical)"
