@@ -34,7 +34,10 @@ func doClientSideAutoEnvAttributesRequestingTests(t *ldtest.T) {
 	t.Run("collisions", doClientSideAutoEnvAttributesRequestingCollisionsTests)
 }
 
-// Start tests for events
+// AUTOENVATTR 1.2.1.1: SDK must require explicit opt-in/opt-out decision for environment attributes
+// AUTOENVATTR 1.2.1.2: SDK must not add environment attributes without explicit opt-in
+// AUTOENVATTR 1.2.2.5: SDK must include envAttributesVersion in auto-env contexts
+// AUTOENVATTR 1.2.2.7: All auto-env contexts must be added to the evaluation context
 func doClientSideAutoEnvAttributesEventsNoCollisionsTests(t *ldtest.T) {
 	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesEventsNoCollisionsTests")
 	dataSystem := NewSDKDataSystem(t, nil)
@@ -112,6 +115,8 @@ func doClientSideAutoEnvAttributesEventsNoCollisionsTests(t *ldtest.T) {
 	})
 }
 
+// AUTOENVATTR 1.2.2.6: Auto-env context kinds must not be added if user-specified context of that kind exists
+// AUTOENVATTR 1.2.5.1: SDK must not alter any portion of a customer-provided context kind
 func doClientSideAutoEnvAttributesEventsCollisionsTests(t *ldtest.T) {
 	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesEventsCollisionsTests")
 	dataSystem := NewSDKDataSystem(t, nil)
@@ -175,7 +180,8 @@ func doClientSideAutoEnvAttributesEventsCollisionsTests(t *ldtest.T) {
 
 // end tests for events
 
-// start tests for streaming/polling
+// AUTOENVATTR 1.2.2.5: SDK must include envAttributesVersion in auto-env contexts
+// AUTOENVATTR 1.2.2.7: All auto-env contexts must be added to the evaluation context
 func doClientSideAutoEnvAttributesRequestingNoCollisionsTests(t *ldtest.T) {
 	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesPollNoCollisionsTests")
 	dsos := []SDKDataSystemOption{DataSystemOptionPolling(), DataSystemOptionStreaming()}
@@ -206,6 +212,8 @@ func doClientSideAutoEnvAttributesRequestingNoCollisionsTests(t *ldtest.T) {
 	}
 }
 
+// AUTOENVATTR 1.2.2.6: Auto-env context kinds must not be added if user-specified context of that kind exists
+// AUTOENVATTR 1.2.5.1: SDK must not alter any portion of a customer-provided context kind
 func doClientSideAutoEnvAttributesRequestingCollisionsTests(t *ldtest.T) {
 	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesPollCollisionsTests")
 	dsos := []SDKDataSystemOption{DataSystemOptionPolling(), DataSystemOptionStreaming()}
@@ -245,7 +253,7 @@ func doClientSideAutoEnvAttributesRequestingCollisionsTests(t *ldtest.T) {
 
 // end tests for streaming/polling
 
-// start tests for headers
+// AUTOENVATTR 1.2.5.2: ld_application id, version, and versionName sourced by priority (config > platform > SDK info)
 func doClientSideAutoEnvAttributesHeaderTests(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityTags)
 	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesEventsCollisionsTests")
