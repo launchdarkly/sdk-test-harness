@@ -136,7 +136,19 @@ func makeEventContextTestParams() []eventContextTestParams {
 	}
 	return ret
 }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 311520a (chore: convert CONTEXT and CTXBLD spec comments to t.Specification() calls)
 func (c CommonEventTests) EventContexts(t *ldtest.T) {
+	t.Specification("CONTEXT", "1.4.2", "custom attribute value types in event context output")
+	t.Specification("CONTEXT", "1.7.1", "private attributes do not affect flag evaluations")
+	t.Specification("CONTEXT", "1.7.2", "kind, key, anonymous not redacted even with allAttributesPrivate")
+	t.Specification("CONTEXT", "1.10.1.2", "_meta.privateAttributes redaction in event output")
+	t.Specification("CONTEXT", "1.10.1.5", "non-built-in properties treated as custom attributes in events")
+	t.Specification("CONTEXT", "1.10.2.1", "multi-kind contexts in event output")
+	t.Specification("CONTEXT", "1.10.2.2", "multi-kind sub-objects in event context output")
+
 	// Flags to use for "feature" and "debug" event tests
 	// The flag variation/value is irrelevant.
 	var flagKey, debuggedFlagKey string
