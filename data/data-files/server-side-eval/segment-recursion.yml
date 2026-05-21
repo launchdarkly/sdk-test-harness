@@ -1,5 +1,9 @@
 ---
 name: segment recursion
+specifications:
+  - spec: "FLGEA"
+    number: "1.6.2.8"
+    summary: "segment matching with circular reference detection"
 
 constants:
   IS_MATCH:

@@ -1,5 +1,9 @@
 ---
 name: operators - semver - unequal
+specifications:
+  - spec: "FLGEA"
+    number: "1.6.2.7.4"
+    summary: "semantic version comparison (semVerLessThan, semVerGreaterThan)"
 
 constants:
   IS_MATCH:

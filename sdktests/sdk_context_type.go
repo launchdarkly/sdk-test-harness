@@ -33,6 +33,23 @@ func doSDKContextTypeTests(t *ldtest.T) {
 // at a client instance.
 
 func doSDKContextBuildTests(t *ldtest.T) {
+	t.Specification("CTXBLD", "1.2.3", "kind operation takes kind string and optional key, returns LDAttributesBuilder")
+	t.Specification("CTXBLD", "1.2.6", "build operation returns LDContext")
+	t.Specification("CTXBLD", "1.2.7", "one kind = individual context, more than one = multi-context")
+	t.Specification("CTXBLD", "1.4.1", "dedicated name operation accepts string")
+	t.Specification("CTXBLD", "1.4.2", "dedicated anonymous operation accepts boolean")
+	t.Specification("CTXBLD", "1.4.3", "unset anonymous behaves as false")
+	t.Specification("CTXBLD", "1.5.1", "generic attribute setter stores custom attributes")
+	t.Specification("CTXBLD", "1.5.3", "null value removes custom attribute")
+	t.Specification("CTXBLD", "1.5.4", "non-null value stores custom attribute")
+	t.Specification("CTXBLD", "1.6.4", "add private attribute reference strings")
+	t.Specification("CONTEXT", "1.2.3.2", "anonymous false treated as absent")
+	t.Specification("CONTEXT", "1.4.2", "custom attribute value types (boolean, number, string, array, object)")
+	t.Specification("CONTEXT", "1.5.6", "null attribute value treated as absent")
+	t.Specification("CONTEXT", "1.10.1.1", "single-kind JSON includes kind and key")
+	t.Specification("CONTEXT", "1.10.2.1", "multi-kind JSON includes kind:\"multi\"")
+	t.Specification("CONTEXT", "1.10.2.2", "multi-kind sub-objects follow single-kind schema without kind property")
+
 	dataSystem := NewSDKDataSystem(t, nil)
 	client := NewSDKClient(t, dataSystem)
 
@@ -113,6 +130,9 @@ func doSDKContextBuildTests(t *ldtest.T) {
 }
 
 func doSDKContextConvertTests(t *ldtest.T) {
+	t.Specification("CONTEXT", "1.12.4", "SDK supports converting context to/from JSON")
+	t.Specification("CONTEXT", "1.12.5", "SDK supports deserializing legacy JSON format")
+
 	dataSystem := NewSDKDataSystem(t, nil)
 	client := NewSDKClient(t, dataSystem)
 
@@ -124,6 +144,17 @@ func doSDKContextConvertTests(t *ldtest.T) {
 	}
 
 	t.Run("valid, no changes", func(t *ldtest.T) {
+		t.Specification("CONTEXT", "1.1.2", "kind contains only allowed characters (ASCII alphanumerics, ., -, _)")
+		t.Specification("CONTEXT", "1.2.1.1", "key present on every single-kind context")
+		t.Specification("CONTEXT", "1.2.2.1", "name is a string if set")
+		t.Specification("CONTEXT", "1.2.3.1", "anonymous is a boolean if set")
+		t.Specification("CONTEXT", "1.4.2", "custom attribute value types")
+		t.Specification("CONTEXT", "1.10.1.1", "single-kind includes kind and key as top-level properties")
+		t.Specification("CONTEXT", "1.10.1.2", "_meta.privateAttributes format")
+		t.Specification("CONTEXT", "1.10.1.5", "non-built-in top-level properties are custom attributes")
+		t.Specification("CONTEXT", "1.10.2.1", "multi-kind includes kind:\"multi\"")
+		t.Specification("CONTEXT", "1.10.2.2", "multi-kind sub-objects without kind property")
+
 		singleKindProps := []string{
 			``,
 			`"name": "b"`,
@@ -167,6 +198,9 @@ func doSDKContextConvertTests(t *ldtest.T) {
 	})
 
 	t.Run("unnecessary properties are dropped", func(t *ldtest.T) {
+		t.Specification("CONTEXT", "1.5.6", "null attribute value treated as absent")
+		t.Specification("CONTEXT", "1.5.7", "JSON null property treated as omitting property")
+
 		expected := json.RawMessage(basicInputPlusProps(""))
 
 		for _, extraProps := range []string{
@@ -187,6 +221,13 @@ func doSDKContextConvertTests(t *ldtest.T) {
 	})
 
 	t.Run("old user to context", func(t *ldtest.T) {
+		t.Specification("CONTEXT", "1.10.3.1", "no kind property means kind \"user\"")
+		t.Specification("CONTEXT", "1.10.3.2", "legacy key and name treated same as regular context")
+		t.Specification("CONTEXT", "1.10.3.3", "privateAttributeNames treated as _meta.privateAttributes")
+		t.Specification("CONTEXT", "1.10.3.4", "legacy string attrs (firstName, lastName, email, country, ip, avatar)")
+		t.Specification("CONTEXT", "1.10.3.5", "custom property treated as additional custom attributes")
+		t.Specification("CONTEXT", "1.12.5", "SDK deserializes legacy JSON format")
+
 		t.RequireCapability(servicedef.CapabilityUserType)
 		type contextConversionParams struct {
 			in, out string // out only needs to be set if it's different from in
@@ -236,6 +277,7 @@ func doSDKContextConvertTests(t *ldtest.T) {
 	})
 
 	t.Run("multi-kind with only one kind becomes single-kind", func(t *ldtest.T) {
+		t.Specification("CTXBLD", "1.2.7", "multi-context with single kind normalizes to individual context")
 		singleKindJSON := `{"kind": "org", "key": "a", "name": "b"}`
 		multiKindJSON := `{"kind": "multi", "org": {"key": "a", "name": "b"}}`
 		resp := client.ContextConvert(t, servicedef.ContextConvertParams{Input: multiKindJSON})
@@ -244,6 +286,15 @@ func doSDKContextConvertTests(t *ldtest.T) {
 	})
 
 	t.Run("invalid context", func(t *ldtest.T) {
+		t.Specification("CONTEXT", "1.1.1", "kind must be non-empty string")
+		t.Specification("CONTEXT", "1.1.2", "kind must contain only ASCII alphanumerics, ., -, _")
+		t.Specification("CONTEXT", "1.1.3", "kind must not be \"kind\"")
+		t.Specification("CONTEXT", "1.13.1.1", "invalid kind (empty, bad chars, or equals \"kind\")")
+		t.Specification("CONTEXT", "1.13.1.3", "multi-kind with no contexts is invalid")
+		t.Specification("CONTEXT", "1.13.2.1", "kind null or not a string is invalid")
+		t.Specification("CONTEXT", "1.13.2.2", "single-kind type/schema validation errors")
+		t.Specification("CONTEXT", "1.13.4.1", "deserialization must fail on invalid conditions")
+
 		inputs := []string{
 			``,
 			`{`,    // malformed JSON
@@ -299,6 +350,8 @@ func doSDKContextConvertTests(t *ldtest.T) {
 	})
 
 	t.Run("invalid old user", func(t *ldtest.T) {
+		t.Specification("CONTEXT", "1.13.2.4", "legacy format type/schema validation errors")
+
 		t.RequireCapability(servicedef.CapabilityUserType)
 		inputs := make([]string, 0, 12)
 		inputs = append(inputs,
@@ -321,6 +374,9 @@ func doSDKContextConvertTests(t *ldtest.T) {
 }
 
 func doSDKContextComparisonTests(t *ldtest.T) {
+	t.Specification("CTXBLD", "1.8.4",
+		"equal contexts have same kinds, keys, names, anonymous, custom attrs, private attrs")
+	t.Specification("CONTEXT", "1.10.1.4", "order of privateAttributes entries is not significant")
 	dataSystem := NewSDKDataSystem(t, nil)
 	client := NewSDKClient(t, dataSystem)
 	address := ldvalue.ObjectBuild().SetString("street", "123 Easy St").SetString("city", "Anytown").Build()

@@ -1,5 +1,9 @@
 ---
 name: operators - date - bad type
+specifications:
+  - spec: "FLGEA"
+    number: "1.6.2.7.3"
+    summary: "date-time operators with invalid type"
 
 constants:
   IS_NOT_MATCH:

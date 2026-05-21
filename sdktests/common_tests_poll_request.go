@@ -107,6 +107,10 @@ func (c CommonPollingTests) LargePayloads(t *ldtest.T) {
 }
 
 func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagRequestMethod) m.Matcher) {
+	t.Specification("ENVFILTER", "1.2.1", "request URL joins base URI with filter query parameter")
+	t.Specification("ENVFILTER", "1.2.2", "exactly one filter parameter is included")
+	t.Specification("ENVFILTER", "1.2.3", "filter parameter value is URL encoded")
+	t.Specification("ENVFILTER", "1.3.1", "filter parameter omitted for invalid filter key")
 	t.Run("URL path is computed correctly", func(t *ldtest.T) {
 		for _, filter := range c.environmentFilters() {
 			t.Run(h.IfElse(filter.IsDefined(), filter.String(), "no environment filter"), func(t *ldtest.T) {

@@ -1,5 +1,27 @@
 ---
 name: evaluation failures (<TYPE_NAME>)
+specifications:
+  - spec: "FLGEA"
+    number: "1.6.1"
+    summary: "FLAG_NOT_FOUND error"
+  - spec: "FLGEA"
+    number: "1.6.2.3"
+    summary: "MALFORMED_FLAG for invalid variation index"
+  - spec: "FLGEA"
+    number: "1.6.2"
+    summary: "off with undefined offVariation returns default"
+  - spec: "FLGEDETAIL"
+    number: "1.2.2"
+    summary: "reason kind ERROR when flag could not be evaluated"
+  - spec: "FLGEDETAIL"
+    number: "1.3.1"
+    summary: "errorKind FLAG_NOT_FOUND and MALFORMED_FLAG"
+  - spec: "FLGEDETAIL"
+    number: "1.1.2"
+    summary: "default value returned when evaluation fails"
+  - spec: "FLGEDETAIL"
+    number: "1.1.3"
+    summary: "variationIndex absent when default value returned"
 
 constants:
   CONTEXT: { kind: "user", key: "user-key" }

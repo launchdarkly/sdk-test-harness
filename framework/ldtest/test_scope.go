@@ -16,16 +16,17 @@ type environment struct {
 
 // T represents a test scope. It is very similar to Go's testing.T type.
 type T struct {
-	env         *environment
-	id          TestID
-	debugLogger framework.CapturingLogger
-	nonCritical string
-	failed      bool
-	skipped     bool
-	skipReason  string
-	cleanups    []func()
-	errors      []error
-	helperFns   []string
+	env            *environment
+	id             TestID
+	debugLogger    framework.CapturingLogger
+	nonCritical    string
+	failed         bool
+	skipped        bool
+	skipReason     string
+	cleanups       []func()
+	errors         []error
+	helperFns      []string
+	specifications []SpecReference
 }
 
 // TestConfiguration contains options for the entire test run.
@@ -84,6 +85,7 @@ func (t *T) run(action func(*T)) (result TestResult) {
 			}
 		}
 		result.Errors = t.errors
+		result.Specifications = t.specifications
 		if t.failed {
 			if t.nonCritical == "" {
 				t.env.results.Failures = append(t.env.results.Failures, result)
@@ -235,6 +237,18 @@ func (t *T) RequireCapabilities(names ...string) {
 	if !t.Capabilities().HasAll(names...) {
 		t.SkipWithReason(fmt.Sprintf("test service does not have all of the required capabilities: %v", names))
 	}
+}
+
+// Specification records that this test exercises a formal specification requirement.
+// It is the Go equivalent of the OpenFeature @Specification annotation (Java) or
+// [Specification] attribute (.NET). A test may call Specification multiple times to
+// link itself to multiple requirements.
+func (t *T) Specification(specID, number, summary string) {
+	t.specifications = append(t.specifications, SpecReference{
+		SpecID:  specID,
+		Number:  number,
+		Summary: summary,
+	})
 }
 
 // Helper marks the function that calls it as a test helper that shouldn't appear in stacktraces.

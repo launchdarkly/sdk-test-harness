@@ -22,6 +22,8 @@ func doServerSideEvalTests(t *ldtest.T) {
 }
 
 func runParameterizedServerSideEvalTests(t *ldtest.T) {
+	t.Specification("FLGEDETAIL", "1.1.6.1", "server-side reason field is always present and non-null")
+	t.Specification("FLGEDETAIL", "1.4.3.1", "server-side *variationDetail accepts (flagKey, context, defaultValue)")
 	parameterizedTests := CommonEvalParameterizedTestRunner[mockld.ServerSDKData]{
 		SDKConfigurers:       func(testSuite testmodel.EvalTestSuite[mockld.ServerSDKData]) []SDKConfigurer { return nil },
 		FilterSDKData:        nil,
@@ -31,6 +33,8 @@ func runParameterizedServerSideEvalTests(t *ldtest.T) {
 }
 
 func runParameterizedServerSideClientNotReadyEvalTests(t *ldtest.T) {
+	t.Specification("FLGEDETAIL", "1.3.1", "errorKind CLIENT_NOT_READY when SDK not initialized")
+	t.Specification("FLGEDETAIL", "1.1.3", "variationIndex absent when default value returned")
 	defaultValues := data.MakeValueFactoryBySDKValueType()
 	flagKey := "some-flag"
 	context := ldcontext.New("user-key")

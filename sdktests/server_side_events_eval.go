@@ -484,6 +484,10 @@ func doDebugEventTestCases(
 }
 
 func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
+	t.Specification("CSPE", "1.2.1", "prerequisite events emitted equivalent to direct evaluation (server-side)")
+	t.Specification("CSPE", "1.2.3", "prerequisite events emitted before dependent flag's event")
+	t.Specification("CSPE", "1.2.4", "recursive prerequisites generate events (flag1→flag2→flag3)")
+
 	// The test logic for this is *almost* exactly the same for PHP as for other server-side SDKs
 	// (the only difference is the absence of index and summary events), so we reuse the same
 	// function.

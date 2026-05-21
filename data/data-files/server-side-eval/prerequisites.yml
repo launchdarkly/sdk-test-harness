@@ -1,5 +1,9 @@
 ---
 name: prerequisites
+specifications:
+  - spec: "FLGEA"
+    number: "1.6.2.4"
+    summary: "prerequisite evaluation"
 
 constants:
   CONTEXT: { key: "user-key" }

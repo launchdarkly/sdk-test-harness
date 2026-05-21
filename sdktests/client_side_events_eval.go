@@ -255,6 +255,10 @@ func doClientSideFeatureEventTests(t *ldtest.T) {
 }
 
 func doClientSideInOrderPrereqEventTests(t *ldtest.T) {
+	t.Specification("CSPE", "1.2.1", "prerequisite events emitted equivalent to direct evaluation")
+	t.Specification("CSPE", "1.2.3", "prerequisites processed in order before the dependent flag's event")
+	t.Specification("CSPE", "1.2.4", "recursive prerequisites are handled (prereq1 depends on prereq2)")
+
 	dataBuilder := mockld.NewClientSDKDataBuilder()
 	dataBuilder.
 		Flag("topLevel", mockld.ClientSDKFlag{

@@ -38,6 +38,14 @@ func doServerSideBigSegmentsTests(t *ldtest.T) {
 }
 
 func doBigSegmentsEvaluateSegment(t *ldtest.T) {
+	t.Specification("BIGSEG", "1.3.1", "context keys hashed as base64(sha256(key)) before store query")
+	t.Specification("BIGSEG", "1.9.2.1",
+		"included/excluded/includedContexts/excludedContexts fields ignored for big segments")
+	t.Specification("BIGSEG", "1.9.2.2", "store queried when unbounded=true and generation has a value")
+	t.Specification("BIGSEG", "1.9.2.5", "membership tested using \"<segmentKey>.g<generation>\" reference format")
+	t.Specification("BIGSEG", "1.9.2.6", "true→match, false→non-match, absent→fall through to rules")
+	t.Specification("BIGSEG", "1.9.1.3", "no query if context kind doesn't match unboundedContextKind")
+	t.Specification("BIGSEG", "1.9.4.1", "bigSegmentsStatus added to evaluation reason")
 	otherContext := ldcontext.New("other-user-key")
 	otherKind := ldcontext.Kind("other")
 
@@ -180,6 +188,16 @@ func doBigSegmentsEvaluateSegment(t *ldtest.T) {
 }
 
 func doBigSegmentsMembershipCachingTests(t *ldtest.T) {
+	t.Specification("BIGSEG", "1.9.5.1", "store queried at most once per context key within a single evaluation")
+	t.Specification("BIGSEG", "1.9.1.2", "individual context extracted by unboundedContextKind")
+	t.Specification("BIGSEG", "1.9.1.4", "store query uses context key alone, not (kind, key) pair")
+	t.Specification("BIGSEG", "1.5.2", "wrapper checks LRU cache before querying store")
+	t.Specification("BIGSEG", "1.6.1", "wrapper checks LRU cache before querying store")
+	t.Specification("BIGSEG", "1.6.2", "cache keyed by unhashed context key")
+	t.Specification("BIGSEG", "1.6.3", "cache holds at most configured max entries (LRU eviction)")
+	t.Specification("BIGSEG", "1.4.2", "cache holds at most configured max entries (LRU eviction)")
+	t.Specification("BIGSEG", "1.6.4", "cache entries expire after configured TTL")
+	t.Specification("BIGSEG", "1.4.3", "cache entries expire after configured TTL")
 	user1, user2, user3 := ldcontext.New("user1"), ldcontext.New("user2"), ldcontext.New("user3")
 	otherKind := ldcontext.Kind("other")
 	expectedUserHash1, expectedUserHash2, expectedUserHash3 := "CgQblGLKpKMbrDVn4Lbm/ZEAeH2yq0M9lvbReMq/zpA=",
@@ -405,6 +423,11 @@ func doBigSegmentsMembershipCachingTests(t *ldtest.T) {
 }
 
 func doBigSegmentsStatusPollingTests(t *ldtest.T) {
+	t.Specification("BIGSEG", "1.8.4", "background task polls store metadata at configured interval")
+	t.Specification("BIGSEG", "1.4.5", "background task polls store metadata at configured interval")
+	t.Specification("BIGSEG", "1.8.5", "polling calls GetMetadata and updates status (available + stale)")
+	t.Specification("BIGSEG", "1.8.6", "listeners notified only when status actually changes")
+	t.Specification("BIGSEG", "1.8.9", "evaluations do not trigger additional metadata polls")
 	dataSystem := NewSDKDataSystem(t, mockld.EmptyServerSDKData())
 
 	// PHP SDKs only support second-level granularity
@@ -520,6 +543,12 @@ func doBigSegmentsStatusPollingTests(t *ldtest.T) {
 }
 
 func doBigSegmentsErrorHandlingTests(t *ldtest.T) {
+	t.Specification("BIGSEG", "1.9.2.4", "no store configured → NOT_CONFIGURED status, segment is non-match")
+	t.Specification("BIGSEG", "1.5.4", "no store configured → NOT_CONFIGURED status, segment is non-match")
+	t.Specification("BIGSEG", "1.9.2.3", "unbounded=true but no generation → NOT_CONFIGURED, segment is non-match")
+	t.Specification("BIGSEG", "1.5.5", "store error → STORE_ERROR status, segment is non-match, eval doesn't fail")
+	t.Specification("BIGSEG", "1.9.3.1", "store error → STORE_ERROR status, segment is non-match, eval doesn't fail")
+	t.Specification("BIGSEG", "1.9.3.3", "store error → STORE_ERROR status, segment is non-match, eval doesn't fail")
 	t.Run("big segment store was not configured", func(t *ldtest.T) {
 		segment := ldbuilders.NewSegmentBuilder("segment-key").Version(1).
 			Included(bigSegmentsContext.Key()). // regular include list should be ignored if unbounded=true

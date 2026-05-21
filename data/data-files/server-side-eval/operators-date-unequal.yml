@@ -1,5 +1,9 @@
 ---
 name: operators - date - unequal
+specifications:
+  - spec: "FLGEA"
+    number: "1.6.2.7.3"
+    summary: "date-time operators with unequal values (before, after)"
 
 constants:
   IS_MATCH:

@@ -62,6 +62,9 @@ func withExecutionOrders(test func(*ldtest.T, ldmigration.ExecutionOrder)) func(
 }
 
 func identifyCorrectStageFromStringFlag(t *ldtest.T) {
+	t.Specification("MIGRATIONS", "1.1.1", "MigrationVariation returns current stage for a migration flag key")
+	t.Specification("MIGRATIONS", "1.1.1.1", "returns one of off/dualwrite/shadow/live/rampdown/complete")
+
 	stages := []ldmigration.Stage{ldmigration.Off, ldmigration.DualWrite, ldmigration.Shadow, ldmigration.Live, ldmigration.RampDown, ldmigration.Complete}
 
 	for _, stage := range stages {
@@ -83,6 +86,9 @@ func identifyCorrectStageFromStringFlag(t *ldtest.T) {
 }
 
 func usesDefaultWhenAppropriate(t *ldtest.T) {
+	t.Specification("MIGRATIONS", "1.1.1.2", "invalid default stage falls back to off")
+	t.Specification("MIGRATIONS", "1.1.1.3", "invalid eval result returns default stage with WRONG_TYPE reason")
+
 	stages := []ldmigration.Stage{ldmigration.Off, ldmigration.DualWrite, ldmigration.Shadow, ldmigration.Live, ldmigration.RampDown, ldmigration.Complete}
 	scenarios := []struct {
 		key         string
@@ -115,6 +121,8 @@ func usesDefaultWhenAppropriate(t *ldtest.T) {
 }
 
 func executesOriginsInCorrectOrder(t *ldtest.T) {
+	t.Specification("MIGRATIONS", "1.3.2.2", "write operations execute origins in table-specified order, not parallel")
+
 	testParams := []struct {
 		Operation        ldmigration.Operation
 		Stage            ldmigration.Stage
@@ -185,6 +193,8 @@ func executesOriginsInCorrectOrder(t *ldtest.T) {
 }
 
 func executesReads(t *ldtest.T) {
+	t.Specification("MIGRATIONS", "1.3.1.3", "read operations invoke old/new/both origins per stage table")
+
 	testParams := []struct {
 		Operation        ldmigration.Operation
 		Stage            ldmigration.Stage
@@ -255,6 +265,9 @@ func executesReads(t *ldtest.T) {
 }
 
 func payloadsArePassedThrough(t *ldtest.T) {
+	t.Specification("MIGRATIONS", "1.3.1.5", "payload parameter forwarded to read and write methods")
+	t.Specification("MIGRATIONS", "1.3.2.4", "payload parameter forwarded to read and write methods")
+
 	testParams := []struct {
 		Operation   ldmigration.Operation
 		Stage       ldmigration.Stage
@@ -339,6 +352,9 @@ func payloadsArePassedThrough(t *ldtest.T) {
 }
 
 func tracksInvoked(t *ldtest.T, order ldmigration.ExecutionOrder) {
+	t.Specification("MIGRATIONS", "1.1.3.3", "tracker records which origins were invoked")
+	t.Specification("MIGRATIONS", "1.1.3.1", "tracker event includes evaluation detail from MigrationVariation")
+
 	onlyOld := []m.Matcher{m.JSONOptProperty("old").Should(m.Not(m.BeNil())), m.JSONOptProperty("new").Should(m.BeNil())}
 	both := []m.Matcher{m.JSONOptProperty("old").Should(m.Not(m.BeNil())), m.JSONOptProperty("new").Should(m.Not(m.BeNil()))}
 	onlyNew := []m.Matcher{m.JSONOptProperty("old").Should(m.BeNil()), m.JSONOptProperty("new").Should(m.Not(m.BeNil()))}
@@ -432,6 +448,9 @@ func tracksInvoked(t *ldtest.T, order ldmigration.ExecutionOrder) {
 
 //nolint:dupl // Invokes and latency happen to share the same setup, but should be tested independently.
 func tracksLatency(t *ldtest.T, order ldmigration.ExecutionOrder) {
+	t.Specification("MIGRATIONS", "1.1.3.5", "tracker records latency measurements per origin")
+	t.Specification("MIGRATIONS", "1.2.3", "latency tracking is opt-in")
+
 	onlyOld := []m.Matcher{m.JSONOptProperty("old").Should(m.Not(m.BeNil())), m.JSONOptProperty("new").Should(m.BeNil())}
 	both := []m.Matcher{m.JSONOptProperty("old").Should(m.Not(m.BeNil())), m.JSONOptProperty("new").Should(m.Not(m.BeNil()))}
 	onlyNew := []m.Matcher{m.JSONOptProperty("old").Should(m.BeNil()), m.JSONOptProperty("new").Should(m.Not(m.BeNil()))}
@@ -544,6 +563,10 @@ func tracksLatency(t *ldtest.T, order ldmigration.ExecutionOrder) {
 }
 
 func writeFailuresShouldGenerateErrorMetrics(t *ldtest.T, order ldmigration.ExecutionOrder) {
+	t.Specification("MIGRATIONS", "1.1.3.4", "tracker records error occurrences per origin")
+	t.Specification("MIGRATIONS", "1.2.4", "error tracking is opt-in")
+	t.Specification("MIGRATIONS", "1.3.2.3", "execution halts on first error")
+
 	hasError := func(label string) m.Matcher { return m.JSONOptProperty(label).Should(m.Equal(true)) }
 	isMissingOrNoError := func(label string) m.Matcher { return JSONPropertyNullOrAbsentOrEqualTo(label, false) }
 
@@ -640,6 +663,8 @@ func writeFailuresShouldGenerateErrorMetrics(t *ldtest.T, order ldmigration.Exec
 }
 
 func successfulHandlersShouldNotGenerateErrorMetrics(t *ldtest.T, order ldmigration.ExecutionOrder) {
+	t.Specification("MIGRATIONS", "1.2.4", "no error measurement emitted when all handlers succeed")
+
 	successfulHandler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
 
 	testParams := []struct {
@@ -716,6 +741,8 @@ func successfulHandlersShouldNotGenerateErrorMetrics(t *ldtest.T, order ldmigrat
 }
 
 func itHandlesMigrationEventsForMissingFlags(t *ldtest.T) {
+	t.Specification("MIGRATIONS", "1.1.3.8", "validation — missing flag generates error event with FLAG_NOT_FOUND")
+
 	successfulHandler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
 
 	testParams := []struct {
@@ -796,6 +823,8 @@ func itHandlesMigrationEventsForMissingFlags(t *ldtest.T) {
 
 func itRedactsAnonymousContextAttributes(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityAnonymousRedaction)
+	t.Specification("MIGRATIONS", "1.1.3.1", "migration op event includes context (redacted when anonymous)")
+
 	successfulHandler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
 
 	// Variation index does not matter for this test.
@@ -861,6 +890,8 @@ func itRedactsAnonymousContextAttributes(t *ldtest.T) {
 }
 
 func itHandlesNonMigrationFlags(t *ldtest.T) {
+	t.Specification("MIGRATIONS", "1.1.1.3", "non-migration flag returns default stage with WRONG_TYPE reason")
+
 	successfulHandler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
 
 	testParams := []struct {
@@ -939,6 +970,9 @@ func itHandlesNonMigrationFlags(t *ldtest.T) {
 }
 
 func trackConsistency(t *ldtest.T) {
+	t.Specification("MIGRATIONS", "1.1.3.6", "tracker records consistency check results")
+	t.Specification("MIGRATIONS", "1.3.1.4", "consistency tracked only for shadow/live stages when both reads succeed")
+
 	t.Run("checks for correct stage", withExecutionOrders(tracksConsistencyCorrectlyBasedOnStage))
 	t.Run("check ratio can disable", withExecutionOrders(tracksConsistencyIsDisabledByCheckRatio))
 	t.Run("unless callbacks fail", withExecutionOrders(tracksConsistencyIsDisabledIfCallbackFails))
@@ -946,6 +980,7 @@ func trackConsistency(t *ldtest.T) {
 
 func disableOpEventWithSamplingRatio(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityEventSampling)
+	t.Specification("MIGRATIONS", "1.5", "samplingRatio of 0 suppresses op event emission")
 
 	handler := func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -1006,6 +1041,8 @@ func disableOpEventWithSamplingRatio(t *ldtest.T) {
 }
 
 func tracksConsistencyCorrectlyBasedOnStage(t *ldtest.T, order ldmigration.ExecutionOrder) {
+	t.Specification("MIGRATIONS", "1.3.1.4", "consistency checked only for shadow/live read stages")
+
 	handler := func(response string) func(w http.ResponseWriter, req *http.Request) {
 		return func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusOK)
@@ -1118,6 +1155,8 @@ func tracksConsistencyCorrectlyBasedOnStage(t *ldtest.T, order ldmigration.Execu
 }
 
 func tracksConsistencyIsDisabledByCheckRatio(t *ldtest.T, order ldmigration.ExecutionOrder) {
+	t.Specification("MIGRATIONS", "1.1.3.6", "checkRatio of 0 disables consistency check invocation")
+
 	handler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
 
 	testParams := []struct {
@@ -1194,6 +1233,8 @@ func tracksConsistencyIsDisabledByCheckRatio(t *ldtest.T, order ldmigration.Exec
 }
 
 func tracksConsistencyIsDisabledIfCallbackFails(t *ldtest.T, order ldmigration.ExecutionOrder) {
+	t.Specification("MIGRATIONS", "1.3.1.4", "consistency not tracked when read callbacks fail")
+
 	handler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusConflict) }
 
 	testParams := []struct {

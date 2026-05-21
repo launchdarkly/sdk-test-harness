@@ -1,5 +1,18 @@
 ---
 name: evaluation reasons - <NAME>
+specifications:
+  - spec: "FLGEA"
+    number: "1.3"
+    summary: "all evaluation reason kinds (OFF, FALLTHROUGH, TARGET_MATCH, RULE_MATCH, PREREQUISITE_FAILED, ERROR)"
+  - spec: "FLGEDETAIL"
+    number: "1.2.2"
+    summary: "reason kind values OFF, FALLTHROUGH, TARGET_MATCH, RULE_MATCH, PREREQUISITE_FAILED, ERROR"
+  - spec: "FLGEDETAIL"
+    number: "1.2.3"
+    summary: "ruleIndex, ruleId fields for RULE_MATCH; prerequisiteKey for PREREQUISITE_FAILED; inExperiment for experiments"
+  - spec: "FLGEDETAIL"
+    number: "1.3.1"
+    summary: "errorKind MALFORMED_FLAG and EXCEPTION"
 
 parameters:
   - NAME: off

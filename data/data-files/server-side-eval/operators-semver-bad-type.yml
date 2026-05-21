@@ -1,5 +1,9 @@
 ---
 name: operators - semver - bad type
+specifications:
+  - spec: "FLGEA"
+    number: "1.6.2.7.4"
+    summary: "semantic version invalid type"
 
 constants:
   IS_NOT_MATCH:

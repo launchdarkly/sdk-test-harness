@@ -11,10 +11,18 @@ import (
 
 const DefaultForAllTypes servicedef.ValueType = "allDefaults"
 
+// TestSpecReference links a test or test suite to a formal specification requirement.
+type TestSpecReference struct {
+	Spec    string `json:"spec"`
+	Number  string `json:"number"`
+	Summary string `json:"summary"`
+}
+
 type EvalTestSuite[SDKDataType any] struct {
 	Name                 string                     `json:"name"`
 	RequireCapability    string                     `json:"requireCapability"`
 	SkipEvaluateAllFlags bool                       `json:"skipEvaluateAllFlags"`
+	Specifications       []TestSpecReference        `json:"specifications,omitempty"`
 	SDKData              SDKDataType                `json:"sdkData"`
 	Context              o.Maybe[ldcontext.Context] `json:"context"` // used only for client-side tests
 	Evaluations          []EvalTest                 `json:"evaluations"`

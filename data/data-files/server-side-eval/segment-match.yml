@@ -1,5 +1,9 @@
 ---
   name: segment match
+  specifications:
+    - spec: "FLGEA"
+      number: "1.6.2.8"
+      summary: "segment matching"
   
   constants:
     IS_MATCH:
