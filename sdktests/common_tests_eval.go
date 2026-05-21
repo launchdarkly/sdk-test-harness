@@ -65,6 +65,9 @@ func (c CommonEvalParameterizedTestRunner[SDKDataType]) runTestSuite(
 	if suite.RequireCapability != "" {
 		t.RequireCapability(suite.RequireCapability)
 	}
+	for _, spec := range suite.Specifications {
+		t.Specification(spec.Spec, spec.Number, spec.Summary)
+	}
 
 	sdkData := suite.SDKData
 	if c.FilterSDKData != nil {
