@@ -109,6 +109,12 @@ func (c CommonEvalParameterizedTestRunner[SDKDataType]) runTestEval(
 	sdkData SDKDataType,
 	client *SDKClient,
 ) {
+	t.Specification("FLGEDETAIL", "1.1.1", "EvaluationDetail returned by *variationDetail methods")
+	t.Specification("FLGEDETAIL", "1.1.2", "EvaluationDetail carries value field")
+	t.Specification("FLGEDETAIL", "1.1.3", "EvaluationDetail carries variationIndex field")
+	t.Specification("FLGEDETAIL", "1.1.5", "EvaluationDetail carries reason field")
+	t.Specification("FLGEDETAIL", "1.2.1", "EvaluationReason type describing evaluation result")
+	t.Specification("FLGEDETAIL", "1.4.1", "typed *variationDetail methods for bool, string, int, double, JSON")
 	name := test.Name
 	if name == "" {
 		name = test.FlagKey
