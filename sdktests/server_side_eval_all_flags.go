@@ -41,6 +41,14 @@ func runServerSideEvalAllFlagsTests(t *ldtest.T) {
 }
 
 func doServerSideAllFlagsBasicTest(t *ldtest.T) {
+	t.Specification("FLGMES", "1.1.1", "AllFlagsState returns evaluation results for all flags for a context")
+	t.Specification("FLGMES", "1.3.1.5", "Flags state has valid=true when evaluation succeeds")
+	t.Specification("FLGMES", "1.3.2.5", "Flag version set to the flag's version property")
+	t.Specification("FLGMES", "1.3.2.6", "Flag value set to the value returned by the evaluation algorithm")
+	t.Specification("FLGMES", "1.3.2.7", "Variation index set to the evaluation result variation index")
+	t.Specification("FLGMES", "1.3.2.9", "Track events true when flag's trackEvents property is true")
+	t.Specification("FLGMES", "1.3.2.11", "Debug events until date set from flag's debugEventsUntilDate property")
+	t.Specification("FLGMES", "1.4.1", "Omits null/false properties in bootstrapping JSON")
 	flag1 := ldbuilders.NewFlagBuilder("flag1").Version(100).
 		Variations(dummyValue0, ldvalue.String("value1")).
 		On(false).OffVariation(1).
@@ -106,6 +114,8 @@ func doServerSideAllFlagsBasicTest(t *ldtest.T) {
 
 func doServerSideAllFlagsWithReasonsTest(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityAllFlagsWithReasons)
+	t.Specification("FLGEDETAIL", "1.2.2", "reason kind OFF and FALLTHROUGH returned in all-flags state")
+	t.Specification("FLGMES", "1.3.2.8", "Reason included when with-reasons option is true")
 
 	// flag1 has reason "OFF"
 	flag1 := ldbuilders.NewFlagBuilder("flag1").Version(100).
@@ -148,6 +158,10 @@ func doServerSideAllFlagsWithReasonsTest(t *ldtest.T) {
 }
 
 func doServerSideAllFlagsExperimentationTest(t *ldtest.T) {
+	t.Specification("FLGEDETAIL", "1.2.3", "inExperiment field present when kind is FALLTHROUGH or RULE_MATCH")
+	t.Specification("FLGMES", "1.3.2.8", "Reason included when evaluation involves an experiment")
+	t.Specification("FLGMES", "1.3.2.9", "Track events true when evaluation involves an experiment")
+	t.Specification("FLGMES", "1.3.2.10", "Track reason true when evaluation involves an experiment")
 	// flag1 has experiment behavior because it's a fallthrough and has trackEventsFallthrough=true
 	flag1 := ldbuilders.NewFlagBuilder("flag1").Version(100).
 		Variations(dummyValue0, ldvalue.String("value1")).
@@ -192,6 +206,10 @@ func doServerSideAllFlagsExperimentationTest(t *ldtest.T) {
 }
 
 func doServerSideAllFlagsErrorInFlagTest(t *ldtest.T) {
+	t.Specification("FLGEDETAIL", "1.2.2", "reason kind ERROR with errorKind in all-flags state")
+	t.Specification("FLGEDETAIL", "1.3.1", "errorKind MALFORMED_FLAG for invalid flag data")
+	t.Specification("FLGMES", "1.6.1.1", "Failed flag still included with null value and no variation")
+	t.Specification("FLGMES", "1.3.2.8", "Error reason included when with-reasons is true")
 	// This test verifies that 1. an error in evaluation of one flag does not prevent evaluation
 	// of the rest of the flags, and 2. the failed flag is still included in the results, with a
 	// value of null (and, if reasons are present, a reason that explains the error)
@@ -264,6 +282,7 @@ func doServerSideAllFlagsErrorInFlagTest(t *ldtest.T) {
 
 func doServerSideAllFlagsClientSideOnlyTest(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityAllFlagsClientSideOnly)
+	t.Specification("FLGMES", "1.3.2.1", "Flags skipped when client-side only and usingEnvironmentId is false")
 
 	flag1 := ldbuilders.NewFlagBuilder("server-side-1").Build()
 	flag2 := ldbuilders.NewFlagBuilder("server-side-2").Build()
@@ -297,6 +316,9 @@ func doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest(t *ldtest.T) {
 	// appropriate.
 
 	t.RequireCapability(servicedef.CapabilityAllFlagsDetailsOnlyForTrackedFlags)
+	t.Specification("FLGEDETAIL", "1.1.3", "variationIndex always present even when reason/version omitted")
+	t.Specification("FLGEDETAIL", "1.2.2", "reason kind OFF included only for tracked flags")
+	t.Specification("FLGMES", "1.3.2.8", "Reason and version omitted for untracked flags when details-only-for-tracked is true")
 
 	// flag1 will have details removed because it's not in any of the other categories below
 	flag1 := ldbuilders.NewFlagBuilder("flag1").Version(100).
@@ -354,6 +376,8 @@ func doServerSideAllFlagsDetailsOnlyForTrackedFlagsTest(t *ldtest.T) {
 }
 
 func doServerSideAllFlagsClientNotReadyTest(t *ldtest.T) {
+	t.Specification("FLGEDETAIL", "1.3.1", "errorKind CLIENT_NOT_READY in all-flags when SDK not initialized")
+	t.Specification("FLGMES", "1.3.1.1", "Uninitialized SDK returns empty flags state with valid=false")
 	dataSystem := NewSDKDataSystem(t, mockld.BlockingUnavailableSDKData(mockld.ServerSideSDK))
 	client := NewSDKClient(t,
 		WithConfig(servicedef.SDKConfigParams{StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(1)),
@@ -373,6 +397,7 @@ func doServerSideAllFlagsClientNotReadyTest(t *ldtest.T) {
 }
 
 func doServerSideAllFlagsCompactRepresentationsTest(t *ldtest.T) {
+	t.Specification("FLGMES", "1.4.1", "SDKs must omit null/false properties in bootstrapping JSON")
 	t.NonCritical(`If this failed but the other 'all flags' tests passed, the SDK is including null-valued` +
 		` properties within the $flagsState part of the representation. To save bandwidth, it's desirable` +
 		` to omit such properties.`)
@@ -407,6 +432,9 @@ func doServerSideAllFlagsCompactRepresentationsTest(t *ldtest.T) {
 }
 
 func doServerSideAllFlagsIncludesToplevelPreqrequisitesTest(t *ldtest.T) {
+	t.Specification("CSPE", "1.1.1", "$flagsState includes prerequisites field for flags with prerequisite evaluations")
+	t.Specification("CSPE", "1.1.1.2", "prerequisites is an ordered list of evaluated direct prerequisites")
+
 	topLevel := ldbuilders.NewFlagBuilder("topLevel").Version(100).
 		Variations(ldvalue.String("value1")).On(true).FallthroughVariation(0).
 		AddPrerequisite("directPrereq1", 0).
@@ -460,6 +488,9 @@ func doServerSideAllFlagsIncludesToplevelPreqrequisitesTest(t *ldtest.T) {
 }
 
 func doServerSideAllFlagsIgnoresPrereqsIfNotEvaluatedTest(t *ldtest.T) {
+	t.Specification("CSPE", "1.1.1.1", "prerequisites field omitted when flag is off or not evaluated")
+	t.Specification("CSPE", "1.1.1.2", "only evaluated prerequisites included; short-circuits on failure")
+
 	flagOn := ldbuilders.NewFlagBuilder("flagOn").Version(100).
 		Variations(ldvalue.String("value1")).On(true).FallthroughVariation(0).
 		AddPrerequisite("prereq1", 0).
@@ -529,6 +560,8 @@ func doServerSideAllFlagsIgnoresPrereqsIfNotEvaluatedTest(t *ldtest.T) {
 }
 
 func doServerSideAllFlagsIgnoresClientSideOnlyForPrereqKeys(t *ldtest.T) {
+	t.Specification("CSPE", "1.1.1", "prerequisites listed regardless of client-side visibility (Note 1.1.1)")
+
 	flag := ldbuilders.NewFlagBuilder("flag").Version(100).
 		ClientSideUsingEnvironmentID(true).
 		Variations(ldvalue.String("value1")).On(true).FallthroughVariation(0).
