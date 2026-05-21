@@ -132,8 +132,9 @@ func (c CommonStreamingTests) InitializeFromPollingInitializerWithStreamingUpdat
 }
 
 func (c CommonStreamingTests) InitializeFromTwoPollingInitializers(t *ldtest.T) {
-	t.Specification("DATASYSTEM", "1.1.2", "first initializer failure falls through to next initializer")
-	t.Specification("DATASYSTEM", "1.1.3", "first initializer failure falls through to next initializer")
+	t.Specification("DATASYSTEM", "1.1.2", "initializers called in configuration order")
+	t.Specification("DATASYSTEM", "1.1.3",
+		"initialization continues when first initializer fails")
 	emptyPayload := mockld.NewServerSDKDataBuilder().
 		Build()
 	initialStatefulData := mockld.NewServerSDKDataBuilder().
@@ -1012,7 +1013,8 @@ func (c CommonStreamingTests) IgnoresModelVersion(t *ldtest.T) {
 }
 
 func (c CommonStreamingTests) IgnoresHeartBeat(t *ldtest.T) {
-	t.Specification("DATASYSTEM", "1.2.2", "heartbeat events ignored, do not affect payload processing")
+	t.Specification("FDV2PL", "4.3.9",
+		"heartbeat events silently ignored")
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
 	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 
@@ -1141,7 +1143,8 @@ func (c CommonStreamingTests) CanDiscardFullEventsOnError(t *ldtest.T) {
 }
 
 func (c CommonStreamingTests) DisconnectsOnGoodbye(t *ldtest.T) {
-	t.Specification("DATASYSTEM", "1.2.2", "goodbye event causes SDK to disconnect and discard pending updates")
+	t.Specification("FDV2PL", "4.3.5",
+		"goodbye event logged and triggers disconnection")
 	dataBefore := c.makeSDKDataWithFlag(1, initialValue)
 	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("none").IntentReason("up-to-date").Build()
 	streamEndpoint, dataSystems := makeSequentialStreamHandler(t, dataBefore, dataAfter)
