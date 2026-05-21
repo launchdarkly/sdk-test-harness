@@ -62,11 +62,11 @@ func (c CommonEvalParameterizedTestRunner[SDKDataType]) runTestSuite(
 	t *ldtest.T,
 	suite testmodel.EvalTestSuite[SDKDataType],
 ) {
-	if suite.RequireCapability != "" {
-		t.RequireCapability(suite.RequireCapability)
-	}
 	for _, spec := range suite.Specifications {
 		t.Specification(spec.Spec, spec.Number, spec.Summary)
+	}
+	if suite.RequireCapability != "" {
+		t.RequireCapability(suite.RequireCapability)
 	}
 
 	sdkData := suite.SDKData

@@ -627,20 +627,18 @@ func (s *ServerSidePersistentTests) runWithEmptyStore(t *ldtest.T, testName stri
 	})
 }
 
+// PS 1.1.7: validates the $inited key is set in the persistent store
 func (s *ServerSidePersistentTests) eventuallyRequireDataStoreInit(t *ldtest.T, prefix string) {
-	t.Specification("PS", "1.1.7", "validates the $inited key is set in the persistent store")
-
 	h.RequireEventually(t, func() bool {
 		value, _ := s.persistentStore.Get(prefix, persistenceInitedKey)
 		return value.IsDefined()
 	}, time.Second, time.Millisecond*20, persistenceInitedKey+" key was not set")
 }
 
+// PS 1.1.3: validates flag data written to persistent store matches expectations
+// PS 1.1.6: validates flag data written to persistent store matches expectations
 func (s *ServerSidePersistentTests) eventuallyValidateFlagData(
 	t *ldtest.T, prefix string, matchers map[string]m.Matcher) {
-	t.Specification("PS", "1.1.3", "validates flag data written to persistent store matches expectations")
-	t.Specification("PS", "1.1.6", "validates flag data written to persistent store matches expectations")
-
 	h.RequireEventually(t, func() bool {
 		data, err := s.persistentStore.GetMap(prefix, "features")
 		if err != nil {
@@ -651,9 +649,8 @@ func (s *ServerSidePersistentTests) eventuallyValidateFlagData(
 	}, time.Second, time.Millisecond*20, "flag data did not match")
 }
 
+// PS 1.1.6: validates flag data is NOT written when version check rejects update
 func (s *ServerSidePersistentTests) neverValidateFlagData(t *ldtest.T, prefix string, matchers map[string]m.Matcher) {
-	t.Specification("PS", "1.1.6", "validates flag data is NOT written when version check rejects update")
-
 	h.RequireNever(t, func() bool {
 		data, err := s.persistentStore.GetMap(prefix, "features")
 		if err != nil {
@@ -664,6 +661,7 @@ func (s *ServerSidePersistentTests) neverValidateFlagData(t *ldtest.T, prefix st
 	}, time.Second, time.Millisecond*20, "flag data did not match")
 }
 
+// PS 1.1.3: builds matcher for flag key, version, and variations in store
 func basicFlagValidationMatcher(key string, version int, value string) m.Matcher {
 	return m.AllOf(
 		m.JSONProperty("key").Should(m.Equal(key)),
@@ -672,6 +670,7 @@ func basicFlagValidationMatcher(key string, version int, value string) m.Matcher
 	)
 }
 
+// PS 1.1.6: builds matcher for deleted flag tombstone in store
 func basicDeletedFlagValidationMatcher(key string, version int) m.Matcher {
 	return m.AllOf(
 		m.AnyOf(
