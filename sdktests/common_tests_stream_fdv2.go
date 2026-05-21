@@ -235,8 +235,8 @@ func (c CommonStreamingTests) PermanentFallbackToSecondarySynchronizer(t *ldtest
 
 func (c CommonStreamingTests) RecoverableFallbackWithRecovery(t *ldtest.T) {
 	t.Specification("DATASYSTEM", "1.2.7", "after recovery period, SDK attempts reconnection to earlier synchronizers")
-	t.LongRunning()
 	t.Specification("CSFDV2", "8.2.1", "client-side recovery timeout default is 300 seconds (VALID condition)")
+	t.LongRunning()
 
 	// This test verifies that after a recoverable fallback, the SDK will attempt to
 	// reconnect to the original synchronizer after the 5-minute recovery period.
@@ -320,8 +320,8 @@ func (c CommonStreamingTests) RecoverableFallbackWithRecovery(t *ldtest.T) {
 
 func (c CommonStreamingTests) PermanentFallbackWithRecovery(t *ldtest.T) {
 	t.Specification("DATASYSTEM", "1.2.7", "permanently removed synchronizers excluded from recovery; recoverable ones revisited")
-	t.LongRunning()
 	t.Specification("CSFDV2", "8.2.1", "client-side recovery timeout default is 300 seconds (VALID condition)")
+	t.LongRunning()
 
 	// This test verifies that after a permanent removal (non-recoverable error), the SDK
 	// will NOT attempt to reconnect to that synchronizer, but WILL recover to other
@@ -777,9 +777,9 @@ func (c CommonStreamingTests) DirectiveWithoutFDv1ConfiguredHaltsDataSystem(t *l
 // would normally fire if the SDK were still treating this as a heuristic fallback.
 func (c CommonStreamingTests) DirectedFallbackIsTerminal(t *ldtest.T) {
 	t.Specification("DATASYSTEM", "1.6.4", "directed fallback is terminal; SDK never returns to FDv2 synchronizers")
-	t.LongRunning()
 	t.Specification("CSFDV2", "8.1.1", "x-ld-fd-fallback triggers client-side FDv1 fallback")
 	t.Specification("CSFDV2", "8.1.3", "FDv2 synchronizers remain disabled indefinitely")
+	t.LongRunning()
 
 	// FDv2 streaming endpoint: 500 + directive on every request. 500 is normally a
 	// recoverable error; using it (instead of a 4xx that would permanently remove the
