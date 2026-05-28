@@ -23,21 +23,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// serverSideFDv1AllData builds an FDv1-format polling response body containing a single flag.
-// The FDv1 wire format is a single JSON object with `"flags"` and `"segments"` keys, distinct
-// from the FDv2 polling wire format. Tests use this to stand up a realistic FDv1 Fallback
-// Synchronizer endpoint.
-func serverSideFDv1AllData(
+// fdv1FallbackBody builds an FDv1-format polling response body containing a single flag.
+// The wire format differs between server-side and client-side SDKs: server-side FDv1 polling
+// returns `{"flags": {...}, "segments": {...}}` with full flag/segment models, while
+// mobile and JS client FDv1 polling returns a flat map of flag-key to evaluation result.
+// Tests use this to stand up a realistic FDv1 Fallback Synchronizer endpoint regardless
+// of SDK kind.
+func fdv1FallbackBody(
 	t *ldtest.T, c CommonStreamingTests, flagKey string,
 	version int,
 	value ldvalue.Value,
 ) []byte {
 	t.Helper()
-	body := map[string]any{
-		"flags": map[string]json.RawMessage{
-			flagKey: c.makeFlagData(flagKey, version, value),
-		},
-		"segments": map[string]json.RawMessage{},
+	var body any
+	if c.isClientSide {
+		body = mockld.ClientSDKData{
+			flagKey: c.makeClientSideFlag(flagKey, version, value).ClientSDKFlag,
+		}
+	} else {
+		body = map[string]any{
+			"flags": map[string]json.RawMessage{
+				flagKey: c.makeFlagData(flagKey, version, value),
+			},
+			"segments": map[string]json.RawMessage{},
+		}
 	}
 	bytes, err := json.Marshal(body)
 	if err != nil {
@@ -498,7 +507,7 @@ func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) 
 	fdv1Value := ldvalue.String("value-from-fdv1")
 	fdv1Handler, fdv1Channel := httphelpers.RecordingHandler(
 		httphelpers.HandlerWithResponse(200, http.Header{"Content-Type": []string{"application/json"}},
-			serverSideFDv1AllData(t, c, "flag-key", 1, fdv1Value)))
+			fdv1FallbackBody(t, c, "flag-key", 1, fdv1Value)))
 	fdv1Endpoint := requireContext(t).harness.NewMockEndpoint(fdv1Handler, t.DebugLogger(),
 		harness.MockEndpointDescription("FDv1 polling service"))
 	t.Defer(fdv1Endpoint.Close)
@@ -597,6 +606,10 @@ func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtes
 		WithConfig(servicedef.SDKConfigParams{
 			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(5 * time.Second / time.Millisecond)),
 		}),
+		WithServiceEndpoints(servicedef.SDKConfigServiceEndpointsParams{
+			Streaming: streamingEndpoint.BaseURL(),
+			Polling:   fdv1Endpoint.BaseURL(),
+		}),
 		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 			BaseURI: streamingEndpoint.BaseURL(),
 		}),
@@ -680,7 +693,7 @@ func (c CommonStreamingTests) DirectiveOnPollingInitializerSkipsSynchronizers(t 
 	fdv1Value := ldvalue.String("value-from-fdv1")
 	fdv1Handler, fdv1Channel := httphelpers.RecordingHandler(
 		httphelpers.HandlerWithResponse(200, http.Header{"Content-Type": []string{"application/json"}},
-			serverSideFDv1AllData(t, c, "flag-key", 1, fdv1Value)))
+			fdv1FallbackBody(t, c, "flag-key", 1, fdv1Value)))
 	fdv1Endpoint := requireContext(t).harness.NewMockEndpoint(fdv1Handler, t.DebugLogger(),
 		harness.MockEndpointDescription("FDv1 polling service"))
 	t.Defer(fdv1Endpoint.Close)
@@ -839,7 +852,7 @@ func (c CommonStreamingTests) DirectedFallbackIsTerminal(t *ldtest.T) {
 	fdv1Value := ldvalue.String("value-from-fdv1")
 	fdv1Handler, _ := httphelpers.RecordingHandler(
 		httphelpers.HandlerWithResponse(200, http.Header{"Content-Type": []string{"application/json"}},
-			serverSideFDv1AllData(t, c, "flag-key", 1, fdv1Value)))
+			fdv1FallbackBody(t, c, "flag-key", 1, fdv1Value)))
 	fdv1Endpoint := requireContext(t).harness.NewMockEndpoint(fdv1Handler, t.DebugLogger(),
 		harness.MockEndpointDescription("FDv1 polling service"))
 	t.Defer(fdv1Endpoint.Close)
@@ -847,6 +860,10 @@ func (c CommonStreamingTests) DirectedFallbackIsTerminal(t *ldtest.T) {
 	client := c.newFDv2SDKClient(t,
 		WithConfig(servicedef.SDKConfigParams{
 			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(5 * time.Second / time.Millisecond)),
+		}),
+		WithServiceEndpoints(servicedef.SDKConfigServiceEndpointsParams{
+			Streaming: streamEndpoint.BaseURL(),
+			Polling:   fdv1Endpoint.BaseURL(),
 		}),
 		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 			BaseURI: streamEndpoint.BaseURL(),
