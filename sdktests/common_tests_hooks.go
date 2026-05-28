@@ -1,6 +1,8 @@
 package sdktests
 
 import (
+	"cmp"
+	"slices"
 	"strconv"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
@@ -29,6 +31,10 @@ func doEvaluationSeriesTests(t *ldtest.T) {
 	t.Run("executes beforeEvaluation stage", executesBeforeEvaluationStage)
 	t.Run("executes afterEvaluation stage", executesAfterEvaluationStage)
 	t.Run("an error in before stage does not affect after stage", errorInBeforeStageDoesNotAffectAfterStage)
+	t.Run("executes beforeEvaluation hooks in registration order",
+		executesBeforeEvaluationHooksInRegistrationOrder)
+	t.Run("executes afterEvaluation hooks in reverse registration order",
+		executesAfterEvaluationHooksInReverseRegistrationOrder)
 
 	t.Run("data propagates from before to after", beforeEvaluationDataPropagatesToAfter)
 	t.RequireCapability(servicedef.CapabilityMigrations)
@@ -39,6 +45,7 @@ func doTrackSeriesTests(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityTrackHooks)
 	t.Run("executes afterTrack stage", executesAfterTrackStage)
 	t.Run("a hook error prevents afterTrack stage", errorInHookPreventsAfterTrackStage)
+	t.Run("executes afterTrack hooks in registration order", executesAfterTrackHooksInRegistrationOrder)
 }
 
 func executesBeforeEvaluationStage(t *ldtest.T) {
@@ -470,6 +477,125 @@ func errorInHookPreventsAfterTrackStage(t *ldtest.T) {
 	})
 	client.FlushEvents(t)
 	hooks.ExpectNoCall(t, hookName)
+}
+
+// hookOrderTestNames returns numHooks distinct hook names suitable for
+// ordering tests. The names embed their registration index so the order in
+// which the SDK executed them is decoded from the names alone.
+func hookOrderTestNames(prefix string, numHooks int) []string {
+	names := make([]string, 0, numHooks)
+	for i := 0; i < numHooks; i++ {
+		names = append(names, prefix+"-"+strconv.Itoa(i))
+	}
+	return names
+}
+
+// observedHookOrder collects one call per hook at the given stage and returns
+// the hook names sorted by harness-stamped sequence number, i.e. the order
+// the SDK actually executed them.
+func observedHookOrder(t *ldtest.T, hooks *Hooks, names []string, stage servicedef.HookStage) []string {
+	type observedCall struct {
+		name     string
+		sequence int64
+	}
+	calls := make([]observedCall, 0, len(names))
+	for _, name := range names {
+		hooks.ExpectCall(t, name, func(payload servicedef.HookExecutionPayload) bool {
+			if payload.Stage.Value() != stage {
+				return false
+			}
+			calls = append(calls, observedCall{name: name, sequence: payload.Sequence})
+			return true
+		})
+	}
+	slices.SortFunc(calls, func(a, b observedCall) int { return cmp.Compare(a.sequence, b.sequence) })
+	out := make([]string, 0, len(calls))
+	for _, c := range calls {
+		out = append(out, c.name)
+	}
+	return out
+}
+
+// afterTrack must execute in the order of hook registration (forward),
+// unlike afterEvaluation/afterIdentify which run in reverse-registration order.
+func executesAfterTrackHooksInRegistrationOrder(t *ldtest.T) {
+	names := hookOrderTestNames("afterTrackOrderHook", 3)
+
+	context := ldcontext.New("user-key")
+	eventContext := o.Some(context)
+	configurers := []SDKConfigurer{}
+
+	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
+		configurers = append(configurers, WithClientSideInitialContext(context))
+		eventContext = o.None[ldcontext.Context]()
+	}
+
+	client, hooks := createClientForHooks(t, names, nil, configurers...)
+	defer hooks.Close()
+
+	client.SendCustomEvent(t, servicedef.CustomEventParams{
+		EventKey: "custom-event",
+		Context:  eventContext,
+	})
+
+	assert.Equal(t, names, observedHookOrder(t, hooks, names, servicedef.AfterTrack),
+		"afterTrack hooks must execute in the order of hook registration")
+}
+
+// beforeEvaluation must execute in the order of hook registration.
+func executesBeforeEvaluationHooksInRegistrationOrder(t *ldtest.T) {
+	names := hookOrderTestNames("beforeEvalOrderHook", 3)
+
+	context := ldcontext.New("user-key")
+	flagContext := o.Some(context)
+	configurers := []SDKConfigurer{}
+
+	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
+		configurers = append(configurers, WithClientSideInitialContext(context))
+		flagContext = o.None[ldcontext.Context]()
+	}
+
+	client, hooks := createClientForHooks(t, names, nil, configurers...)
+	defer hooks.Close()
+
+	client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+		FlagKey:      "bool-flag",
+		Context:      flagContext,
+		ValueType:    servicedef.ValueTypeBool,
+		DefaultValue: ldvalue.Bool(false),
+	})
+
+	assert.Equal(t, names, observedHookOrder(t, hooks, names, servicedef.BeforeEvaluation),
+		"beforeEvaluation hooks must execute in the order of hook registration")
+}
+
+// afterEvaluation must execute in the reverse of the order of hook registration.
+func executesAfterEvaluationHooksInReverseRegistrationOrder(t *ldtest.T) {
+	names := hookOrderTestNames("afterEvalOrderHook", 3)
+
+	context := ldcontext.New("user-key")
+	flagContext := o.Some(context)
+	configurers := []SDKConfigurer{}
+
+	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
+		configurers = append(configurers, WithClientSideInitialContext(context))
+		flagContext = o.None[ldcontext.Context]()
+	}
+
+	client, hooks := createClientForHooks(t, names, nil, configurers...)
+	defer hooks.Close()
+
+	client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+		FlagKey:      "bool-flag",
+		Context:      flagContext,
+		ValueType:    servicedef.ValueTypeBool,
+		DefaultValue: ldvalue.Bool(false),
+	})
+
+	expected := slices.Clone(names)
+	slices.Reverse(expected)
+	assert.Equal(t, expected, observedHookOrder(t, hooks, names, servicedef.AfterEvaluation),
+		"afterEvaluation hooks must execute in the reverse of the order of hook registration")
 }
 
 func createClientForHooks(t *ldtest.T, instances []string,
