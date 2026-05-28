@@ -720,6 +720,10 @@ func (c CommonStreamingTests) DirectiveOnPollingInitializerSkipsSynchronizers(t 
 					BaseURI: fdv1Endpoint.BaseURL(),
 				}),
 			}),
+		}),
+		WithServiceEndpoints(servicedef.SDKConfigServiceEndpointsParams{
+			Streaming: streamEndpoint.BaseURL(),
+			Polling:   fdv1Endpoint.BaseURL(),
 		}))
 
 	// The FDv1 fallback endpoint must see traffic on the FDv1 polling path for this SDK kind.
