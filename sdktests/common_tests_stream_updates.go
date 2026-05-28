@@ -24,7 +24,9 @@ func (c CommonStreamingTests) makeSDKDataWithFlag(version int, value ldvalue.Val
 }
 
 // fdv2ServerData builds FDv2 mock data from server-side flags with an explicit envelope.
-func (c CommonStreamingTests) fdv2ServerData(intentCode, intentReason, state string, flags ...ldmodel.FeatureFlag) mockld.FDv2SDKData {
+func (c CommonStreamingTests) fdv2ServerData(
+	intentCode, intentReason, state string, flags ...ldmodel.FeatureFlag,
+) mockld.FDv2SDKData {
 	b := mockld.NewServerSDKDataBuilder()
 	if len(flags) > 0 {
 		b.Flag(flags...)
@@ -33,7 +35,9 @@ func (c CommonStreamingTests) fdv2ServerData(intentCode, intentReason, state str
 }
 
 // fdv2ClientData builds FDv2 mock data from client-side flag eval results with an explicit envelope.
-func (c CommonStreamingTests) fdv2ClientData(intentCode, intentReason, state string, flags ...mockld.ClientSDKFlagWithKey) mockld.FDv2SDKData {
+func (c CommonStreamingTests) fdv2ClientData(
+	intentCode, intentReason, state string, flags ...mockld.ClientSDKFlagWithKey,
+) mockld.FDv2SDKData {
 	b := mockld.NewClientSDKDataBuilder()
 	for _, f := range flags {
 		b.FullFlag(f)
