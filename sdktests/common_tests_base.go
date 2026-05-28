@@ -118,8 +118,8 @@ func (c commonTestsBase) authorizationHeaderMatcher(credential string) m.Matcher
 	return HasAuthorizationHeader(credential)
 }
 
-func (c commonTestsBase) availableFlagRequestMethods() []flagRequestMethod {
-	if c.isClientSide {
+func (c commonTestsBase) availableFlagRequestMethods(t *ldtest.T) []flagRequestMethod {
+	if c.isClientSide && t.Capabilities().Has(servicedef.CapabilityClientUseReport) {
 		return []flagRequestMethod{flagRequestGET, flagRequestREPORT}
 	}
 	return []flagRequestMethod{flagRequestGET}

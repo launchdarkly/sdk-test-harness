@@ -25,7 +25,7 @@ import (
 
 func (c CommonPollingTests) RequestMethodAndHeaders(t *ldtest.T, credential string) {
 	t.Run("method and headers", func(t *ldtest.T) {
-		for _, method := range c.availableFlagRequestMethods() {
+		for _, method := range c.availableFlagRequestMethods(t) {
 			t.Run(string(method), func(t *ldtest.T) {
 				for _, transport := range c.withAvailableTransports(t) {
 					transport.Run(t, func(t *ldtest.T) {
@@ -121,7 +121,7 @@ func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagReq
 				for _, trailingSlash := range []bool{false, true} {
 					t.Run(h.IfElse(trailingSlash, "base URI has a trailing slash",
 						"base URI has no trailing slash"), func(t *ldtest.T) {
-						for _, method := range c.availableFlagRequestMethods() {
+						for _, method := range c.availableFlagRequestMethods(t) {
 							t.Run(string(method), func(t *ldtest.T) {
 								dataSystem := NewSDKDataSystem(t, nil, c.pollingDataSystemOptions()...)
 
@@ -169,7 +169,7 @@ func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagReq
 				// of false if we *don't* set the property.
 
 				t.Run(fmt.Sprintf("evaluationReasons set to %s", withReasons), func(t *ldtest.T) {
-					for _, method := range c.availableFlagRequestMethods() {
+					for _, method := range c.availableFlagRequestMethods(t) {
 						t.Run(string(method), func(t *ldtest.T) {
 							dataSystem := NewSDKDataSystem(t, nil, c.pollingDataSystemOptions()...)
 
@@ -205,7 +205,7 @@ func (c CommonPollingTests) RequestContextProperties(t *ldtest.T, getPath string
 	t.Run("context properties", func(t *ldtest.T) {
 		for _, contexts := range data.NewContextFactoriesForExercisingAllAttributes(c.contextFactory.Prefix()) {
 			t.Run(contexts.Description(), func(t *ldtest.T) {
-				for _, method := range c.availableFlagRequestMethods() {
+				for _, method := range c.availableFlagRequestMethods(t) {
 					t.Run(string(method), func(t *ldtest.T) {
 						dataSystem := NewSDKDataSystem(t, nil, c.pollingDataSystemOptions()...)
 
@@ -246,7 +246,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 
 	t.Run("e-tag", func(t *ldtest.T) {
 		t.Run("is not set on initial request", func(t *ldtest.T) {
-			for _, method := range c.availableFlagRequestMethods() {
+			for _, method := range c.availableFlagRequestMethods(t) {
 				context := contexts.NextUniqueContext()
 
 				dataSystem := NewSDKDataSystem(t, nil, c.pollingDataSystemOptions()...)
@@ -280,7 +280,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 		})
 
 		t.Run("is different for different contexts", func(t *ldtest.T) {
-			for _, method := range c.availableFlagRequestMethods() {
+			for _, method := range c.availableFlagRequestMethods(t) {
 				context1 := contexts.NextUniqueContext()
 				context2 := contexts.NextUniqueContext()
 				contexts := []ldcontext.Context{context1, context2}
@@ -322,7 +322,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 		})
 
 		t.Run("considers the full context hash", func(t *ldtest.T) {
-			for _, method := range c.availableFlagRequestMethods() {
+			for _, method := range c.availableFlagRequestMethods(t) {
 				context1 := contexts.NextUniqueContext()
 
 				// These attributes would affect a full context hash, but not the fully qualified key.
@@ -363,7 +363,7 @@ func (c CommonPollingTests) InitialRequestIncludesCorrectEtag(t *ldtest.T) {
 		})
 
 		t.Run("is not reset if streaming is used", func(t *ldtest.T) {
-			for _, method := range c.availableFlagRequestMethods() {
+			for _, method := range c.availableFlagRequestMethods(t) {
 				context := contexts.NextUniqueContext()
 
 				// Setup an initial polling request with a defined e-tag value

@@ -96,6 +96,10 @@ For client-side SDKs only. This means the SDK's EventSource implementation can d
 
 Browser-native `EventSource` does not expose HTTP status codes or response headers, so browser-based SDKs typically lack this capability. Client-side SDKs using custom or polyfilled EventSource implementations that provide this information should include it. Server-side SDKs do not need to declare this capability.
 
+#### Capability `"client-use-report"`
+
+For client-side SDKs only. This means the SDK can be configured to issue streaming and polling flag requests using the HTTP `REPORT` method (which carries the evaluation context in the request body) instead of `GET`. SDKs lacking this capability will only have their `GET` request variants exercised, and tests that hardcode `REPORT` will be skipped. Server-side SDKs do not need to declare this capability.
+
 #### Capability `"event-sampling"`
 
 This means that the SDK supports event sampling; the SDK can limit the number of certain events based on payloads received from upstream services.

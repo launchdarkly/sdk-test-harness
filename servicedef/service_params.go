@@ -72,6 +72,13 @@ const (
 	// SDKs do not need to declare it.
 	CapabilityClientEventSourceHTTPErrors = "client-event-source-http-errors"
 
+	// CapabilityClientUseReport indicates that a client-side SDK can be configured to issue
+	// streaming and polling flag requests using the REPORT HTTP method instead of GET.
+	// SDKs that lack this capability will only have their GET request variants exercised,
+	// and tests that hardcode REPORT will be skipped. Only checked for client-side SDKs;
+	// server-side SDKs do not need to declare it.
+	CapabilityClientUseReport = "client-use-report"
+
 	CapabilityOmitAnonymousContexts = "omit-anonymous-contexts"
 
 	// CapabilityWrapper indicates that the SDK supports setting wrapper name and version and including them in request

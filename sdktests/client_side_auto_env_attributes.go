@@ -177,6 +177,7 @@ func doClientSideAutoEnvAttributesEventsCollisionsTests(t *ldtest.T) {
 
 // start tests for streaming/polling
 func doClientSideAutoEnvAttributesRequestingNoCollisionsTests(t *ldtest.T) {
+	t.RequireCapability(servicedef.CapabilityClientUseReport)
 	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesPollNoCollisionsTests")
 	dsos := []SDKDataSystemOption{DataSystemOptionPolling(), DataSystemOptionStreaming()}
 	for _, dso := range dsos {
@@ -207,6 +208,7 @@ func doClientSideAutoEnvAttributesRequestingNoCollisionsTests(t *ldtest.T) {
 }
 
 func doClientSideAutoEnvAttributesRequestingCollisionsTests(t *ldtest.T) {
+	t.RequireCapability(servicedef.CapabilityClientUseReport)
 	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesPollCollisionsTests")
 	dsos := []SDKDataSystemOption{DataSystemOptionPolling(), DataSystemOptionStreaming()}
 	for _, dso := range dsos {
