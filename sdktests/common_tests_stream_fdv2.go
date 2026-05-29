@@ -600,6 +600,10 @@ func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) 
 // particular translate an unsolicited 304 into a 200 against their cache, which
 // would defeat the "FDv1 supplies no fresh data" property this test relies on.
 func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtest.T) {
+	if c.isClientSide {
+		t.RequireCapability(servicedef.CapabilityClientEventSourceHTTPErrors)
+	}
+
 	streamingValue := ldvalue.String("value-from-streaming-payload")
 	streamingData := c.makeSDKDataWithFlag(1, streamingValue)
 	streamingService := mockld.NewStreamingService(streamingData, requireContext(t).sdkKind, t.DebugLogger())
