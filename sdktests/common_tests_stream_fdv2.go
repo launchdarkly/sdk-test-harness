@@ -562,7 +562,7 @@ func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) 
 
 	// Evaluation must reflect FDv1's payload. If we saw the default here, the SDK
 	// routed to FDv1 but never finished wiring FDv1's data into the Memory Store.
-	context := ldcontext.New("context-key")
+	context := c.flagEvaluationContext
 	h.RequireEventually(t, func() bool {
 		value := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
 		return m.In(t).Assert(value, m.JSONEqual(fdv1Value))
@@ -655,7 +655,7 @@ func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtes
 	// applied the streaming basis before transitioning (1.6.2). Seeing
 	// defaultValue would mean the SDK dropped the payload somewhere along the
 	// handoff.
-	context := ldcontext.New("context-key")
+	context := c.flagEvaluationContext
 	h.RequireEventually(t, func() bool {
 		value := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
 		return m.In(t).Assert(value, m.JSONEqual(streamingValue))
@@ -770,7 +770,7 @@ func (c CommonStreamingTests) DirectiveOnPollingInitializerSkipsSynchronizers(t 
 	// Evaluation must return FDv1's value. Simply having the FDv1 endpoint hit is
 	// not enough — the directive path must also install FDv1's payload as the active
 	// data, or evaluations would fall through to the default.
-	context := ldcontext.New("context-key")
+	context := c.flagEvaluationContext
 	h.RequireEventually(t, func() bool {
 		value := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
 		return m.In(t).Assert(value, m.JSONEqual(fdv1Value))
@@ -914,7 +914,7 @@ func (c CommonStreamingTests) DirectedFallbackIsTerminal(t *ldtest.T) {
 	// Confirm FDv1 is actually serving data before we start waiting — otherwise a
 	// later "no FDv2 re-contact" assertion could pass simply because the SDK had
 	// already given up on everything.
-	context := ldcontext.New("context-key")
+	context := c.flagEvaluationContext
 	h.RequireEventually(t, func() bool {
 		value := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
 		return m.In(t).Assert(value, m.JSONEqual(fdv1Value))

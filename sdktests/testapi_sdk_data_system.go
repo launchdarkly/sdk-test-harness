@@ -461,6 +461,7 @@ func createEndpoints(t *ldtest.T, initializers []DataInitializer, synchronizers 
 		init.endpoint =
 			requireContext(t).harness.NewMockEndpoint(init.pollingService, t.DebugLogger(),
 				harness.MockEndpointDescription("polling initializer"))
+		t.Defer(init.endpoint.Close)
 	}
 
 	for i := range synchronizers {
@@ -469,6 +470,7 @@ func createEndpoints(t *ldtest.T, initializers []DataInitializer, synchronizers 
 		handler := helpers.IfElse[http.Handler](isPolling, sync.polling, sync.streaming)
 		sync.endpoint = requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
 			harness.MockEndpointDescription("synchronizer service"))
+		t.Defer(sync.endpoint.Close)
 	}
 }
 
