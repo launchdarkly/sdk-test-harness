@@ -21,7 +21,7 @@ import (
 
 func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, credential string) {
 	t.Run("method and headers", func(t *ldtest.T) {
-		for _, method := range c.availableFlagRequestMethods() {
+		for _, method := range c.availableFlagRequestMethods(t) {
 			t.Run(string(method), func(t *ldtest.T) {
 				for _, transport := range c.withAvailableTransports(t) {
 					transport.Run(t, func(t *ldtest.T) {
@@ -68,7 +68,7 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 				for _, trailingSlash := range []bool{false, true} {
 					t.Run(h.IfElse(trailingSlash, "base URI has a trailing slash",
 						"base URI has no trailing slash"), func(t *ldtest.T) {
-						for _, method := range c.availableFlagRequestMethods() {
+						for _, method := range c.availableFlagRequestMethods(t) {
 							t.Run(string(method), func(t *ldtest.T) {
 								dataSystem, configurers := c.setupDataSystems(t, nil)
 
@@ -77,12 +77,20 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 									streamURI += "/"
 								}
 
+								var uriConfigurer SDKConfigurer
+								if c.isClientSide {
+									uriConfigurer = WithConnectionModeSynchronizer("streaming", servicedef.DataSynchronizer{
+										Streaming: o.Some(servicedef.SDKConfigStreamingParams{BaseURI: streamURI}),
+									})
+								} else {
+									uriConfigurer = WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+										BaseURI: streamURI,
+									})
+								}
 								_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 									append(configurers,
 										WithPayloadFilter(filter),
-										WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
-											BaseURI: streamURI,
-										}),
+										uriConfigurer,
 										c.withFlagRequestMethod(method),
 									)...)...)
 
@@ -105,7 +113,7 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 				// of false if we *don't* set the property.
 
 				t.Run(fmt.Sprintf("evaluationReasons set to %s", withReasons), func(t *ldtest.T) {
-					for _, method := range c.availableFlagRequestMethods() {
+					for _, method := range c.availableFlagRequestMethods(t) {
 						t.Run(string(method), func(t *ldtest.T) {
 							dataSystem, configurers := c.setupDataSystems(t, nil)
 
@@ -120,20 +128,13 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 
 							request := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
 
-							var queryMatcher m.Matcher
+							withReasonsParam := request.URL.Query().Get("withReasons")
 							if withReasons.Value() {
-								queryMatcher = m.MapOf(
-									m.KV("withReasons", m.Items(m.Equal("true"))),
-								)
+								m.In(t).For("withReasons query parameter").Assert(withReasonsParam, m.Equal("true"))
 							} else {
-								queryMatcher = m.AnyOf(
-									m.MapOf(
-										m.KV("withReasons", m.Items(m.Equal("false"))),
-									),
-									m.MapOf(),
-								)
+								m.In(t).For("withReasons query parameter").Assert(withReasonsParam,
+									m.AnyOf(m.Equal("false"), m.Equal("")))
 							}
-							m.In(t).For("query string").Assert(request.URL.Query(), queryMatcher)
 						})
 					}
 				})
@@ -148,7 +149,7 @@ func (c CommonStreamingTests) RequestContextProperties(t *ldtest.T, getPath stri
 	t.Run("context properties", func(t *ldtest.T) {
 		for _, contexts := range data.NewContextFactoriesForExercisingAllAttributes(c.contextFactory.Prefix()) {
 			t.Run(contexts.Description(), func(t *ldtest.T) {
-				for _, method := range c.availableFlagRequestMethods() {
+				for _, method := range c.availableFlagRequestMethods(t) {
 					t.Run(string(method), func(t *ldtest.T) {
 						dataSystem, configurers := c.setupDataSystems(t, nil)
 
@@ -207,11 +208,20 @@ func (c CommonStreamingTests) RequestViaHTTPProxy(t *ldtest.T) {
 		}
 		u.Path = ""
 
+		var uriConfigurer SDKConfigurer
+		if c.isClientSide {
+			uriConfigurer = WithConnectionModeSynchronizer("streaming", servicedef.DataSynchronizer{
+				Streaming: o.Some(servicedef.SDKConfigStreamingParams{BaseURI: streamURI}),
+			})
+		} else {
+			uriConfigurer = WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+				BaseURI: streamURI,
+			})
+		}
+
 		_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 			append(configurers,
-				WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
-					BaseURI: streamURI,
-				}),
+				uriConfigurer,
 				c.withHTTPProxy(u.String()),
 			)...)...)
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
@@ -22,21 +23,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// serverSideFDv1AllData builds an FDv1-format polling response body containing a single flag.
-// The FDv1 wire format is a single JSON object with `"flags"` and `"segments"` keys, distinct
-// from the FDv2 polling wire format. Tests use this to stand up a realistic FDv1 Fallback
-// Synchronizer endpoint.
-func serverSideFDv1AllData(
+// fdv1FallbackBody builds an FDv1-format polling response body containing a single flag.
+// The wire format differs between server-side and client-side SDKs: server-side FDv1 polling
+// returns `{"flags": {...}, "segments": {...}}` with full flag/segment models, while
+// mobile and JS client FDv1 polling returns a flat map of flag-key to evaluation result.
+// Tests use this to stand up a realistic FDv1 Fallback Synchronizer endpoint regardless
+// of SDK kind.
+func fdv1FallbackBody(
 	t *ldtest.T, c CommonStreamingTests, flagKey string,
 	version int,
 	value ldvalue.Value,
 ) []byte {
 	t.Helper()
-	body := map[string]any{
-		"flags": map[string]json.RawMessage{
-			flagKey: c.makeFlagData(flagKey, version, value),
-		},
-		"segments": map[string]json.RawMessage{},
+	var body any
+	if c.isClientSide {
+		body = mockld.ClientSDKData{
+			flagKey: c.makeClientSideFlag(flagKey, version, value).ClientSDKFlag,
+		}
+	} else {
+		body = map[string]any{
+			"flags": map[string]json.RawMessage{
+				flagKey: c.makeFlagData(flagKey, version, value),
+			},
+			"segments": map[string]json.RawMessage{},
+		}
 	}
 	bytes, err := json.Marshal(body)
 	if err != nil {
@@ -53,7 +63,45 @@ var (
 	newInitialValue = ldvalue.String("new initial value") //nolint:gochecknoglobals
 
 	defaultValue = ldvalue.String("default value") //nolint:gochecknoglobals
+
+	// FDv1 polling paths expected after FDv2 stream fallback (see mockld.PollingPath*).
+	fdV1FallbackPathServerSide = regexp.MustCompile(`^/sdk/latest-all$`)
+	fdV1FallbackPathMobile     = regexp.MustCompile(`^/msdk/evalx/contexts/.+`)
+	fdV1FallbackPathJSClient   = regexp.MustCompile(`^/sdk/evalx/[^/]+/contexts/.+`)
 )
+
+// reconnectStateTestDelay is the InitialRetryDelayMS used by the FDv2
+// reconnection-state-management tests. These tests cancel a stream and
+// immediately assert on the basis query parameter of the next request URL.
+// Using briefDelay (1ms) here races the SDK's microtask chain that commits
+// the basis selector against the setTimeout that builds the reconnect URL,
+// causing intermittent failures on event-loop-based runtimes. 50ms is
+// comfortably above browser timer-throttling minimums and gives the SDK
+// time to commit state from the previous payload-transferred event before
+// the reconnect fires, without making the tests meaningfully slower.
+const reconnectStateTestDelay ldtime.UnixMillisecondTime = 50
+
+func reconnectStateTestStreamConfig(endpoint *harness.MockEndpoint) servicedef.SDKConfigStreamingParams {
+	return servicedef.SDKConfigStreamingParams{
+		BaseURI:             endpoint.BaseURL(),
+		InitialRetryDelayMS: o.Some(reconnectStateTestDelay),
+	}
+}
+
+// fdv1FallbackPollPathMatches reports whether path is the FDv1 (non-FDv2) polling URL for
+// sdkKind once the directed FDv1 fallback synchronizer is engaged.
+func fdv1FallbackPollPathMatches(sdkKind mockld.SDKKind, path string) bool {
+	switch sdkKind {
+	case mockld.ServerSideSDK, mockld.PHPSDK:
+		return fdV1FallbackPathServerSide.MatchString(path)
+	case mockld.MobileSDK, mockld.RokuSDK:
+		return fdV1FallbackPathMobile.MatchString(path)
+	case mockld.JSClientSDK:
+		return fdV1FallbackPathJSClient.MatchString(path)
+	default:
+		return false
+	}
+}
 
 func (c CommonStreamingTests) FDv2(t *ldtest.T) {
 	t.Run("reconnection state management", c.StateTransitions)
@@ -87,75 +135,112 @@ func (c CommonStreamingTests) StateTransitions(t *ldtest.T) {
 
 func (c CommonStreamingTests) InitializeFromEmptyState(t *ldtest.T) {
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
-	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
+	client := c.newFDv2SDKClient(t, configurers...)
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
-	validatePayloadReceived(t, dataSystem.Synchronizers[0].endpoint, client, "", expectedEvaluations)
+	validatePayloadReceived(t, dataSystem.Synchronizers[0].Endpoint(), client,
+		c.flagEvaluationContext, "", expectedEvaluations)
 }
 
 func (c CommonStreamingTests) InitializeFromPollingInitializer(t *ldtest.T) {
-	dataBefore := mockld.NewServerSDKDataBuilder().Flag(c.makeServerSideFlag("flag-key", 1, initialValue)).Build()
-	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("none").IntentReason("up-to-date").Build()
-	dataSystem := NewSDKDataSystem(t, dataAfter, DataSystemOptionPollingInitializer(dataBefore))
+	var dataBefore mockld.FDv2SDKData
+	if c.isClientSide {
+		dataBefore = c.fdv2ClientData("xfer-full", "payload-missing", "initial",
+			c.makeClientSideFlag("flag-key", 1, initialValue))
+	} else {
+		dataBefore = c.fdv2ServerData("xfer-full", "payload-missing", "initial",
+			c.makeServerSideFlag("flag-key", 1, initialValue))
+	}
+	var dataAfter mockld.FDv2SDKData
+	if c.isClientSide {
+		dataAfter = c.fdv2ClientData("none", "up-to-date", "initial")
+	} else {
+		dataAfter = c.fdv2ServerData("none", "up-to-date", "initial")
+	}
+	dataSystem := NewSDKDataSystemCustom(t, dataAfter,
+		DataSystemOptionPollingInitializer(dataBefore), DataSystemOptionStreaming())
+	dataSystem.CreateEndpoints()
 
-	client := NewSDKClient(t, dataSystem)
+	client := c.newFDv2SDKClient(t, dataSystem)
 
 	_, err := dataSystem.Initializers[0].Endpoint().AwaitConnection(time.Second)
 	require.NoError(t, err)
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
-	validatePayloadReceived(t, dataSystem.Synchronizers[0].Endpoint(), client, "initial", expectedEvaluations)
+	validatePayloadReceived(t, dataSystem.Synchronizers[0].Endpoint(), client,
+		c.flagEvaluationContext, "initial", expectedEvaluations)
 }
 
 func (c CommonStreamingTests) InitializeFromPollingInitializerWithStreamingUpdates(t *ldtest.T) {
-	dataBefore := mockld.NewServerSDKDataBuilder().
-		Flag(c.makeServerSideFlag("flag-key", 1, initialValue)).
-		Build()
-	dataAfter := mockld.NewServerSDKDataBuilder().
-		IntentCode("xfer-changes").
-		IntentReason("stale").
-		Flag(c.makeServerSideFlag("new-flag-key", 1, newInitialValue)).
-		Build()
-	dataSystem := NewSDKDataSystem(t, dataBefore, DataSystemOptionPollingInitializer(dataBefore))
+	var dataBefore mockld.FDv2SDKData
+	if c.isClientSide {
+		dataBefore = c.fdv2ClientData("xfer-full", "payload-missing", "initial",
+			c.makeClientSideFlag("flag-key", 1, initialValue))
+	} else {
+		dataBefore = c.fdv2ServerData("xfer-full", "payload-missing", "initial",
+			c.makeServerSideFlag("flag-key", 1, initialValue))
+	}
+	var dataAfter mockld.FDv2SDKData
+	if c.isClientSide {
+		dataAfter = c.fdv2ClientData("xfer-changes", "stale", "initial",
+			c.makeClientSideFlag("new-flag-key", 1, newInitialValue))
+	} else {
+		dataAfter = c.fdv2ServerData("xfer-changes", "stale", "initial",
+			c.makeServerSideFlag("new-flag-key", 1, newInitialValue))
+	}
+	dataSystem := NewSDKDataSystemCustom(t, dataBefore,
+		DataSystemOptionPollingInitializer(dataBefore), DataSystemOptionStreaming())
+	dataSystem.CreateEndpoints()
 	dataSystem.Synchronizers[0].streaming.SetInitialData(dataAfter)
 
-	client := NewSDKClient(t, dataSystem)
+	client := c.newFDv2SDKClient(t, dataSystem)
 
 	_, err := dataSystem.Initializers[0].Endpoint().AwaitConnection(time.Second)
 	require.NoError(t, err)
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue, "new-flag-key": newInitialValue}
-	validatePayloadReceived(t, dataSystem.Synchronizers[0].Endpoint(), client, "initial", expectedEvaluations)
+	validatePayloadReceived(t, dataSystem.Synchronizers[0].Endpoint(), client,
+		c.flagEvaluationContext, "initial", expectedEvaluations)
 }
 
 func (c CommonStreamingTests) InitializeFromTwoPollingInitializers(t *ldtest.T) {
-	emptyPayload := mockld.NewServerSDKDataBuilder().
-		Build()
-	initialStatefulData := mockld.NewServerSDKDataBuilder().
-		IntentCode("xfer-full").
-		IntentReason("payload-missing").
-		State("expected-state").
-		Flag(c.makeServerSideFlag("flag-key", 2, updatedValue)).
-		Build()
-	streamingData := mockld.NewServerSDKDataBuilder().
-		IntentCode("none").
-		IntentReason("up-to-date").
-		State("expected-state").
-		Build()
-	dataSystem := NewSDKDataSystem(t, streamingData,
-		DataSystemOptionPollingInitializer(emptyPayload), DataSystemOptionPollingInitializer(initialStatefulData))
+	var emptyPayload mockld.FDv2SDKData
+	if c.isClientSide {
+		emptyPayload = c.fdv2ClientData("xfer-full", "payload-missing", "initial")
+	} else {
+		emptyPayload = c.fdv2ServerData("xfer-full", "payload-missing", "initial")
+	}
+	var initialStatefulData mockld.FDv2SDKData
+	if c.isClientSide {
+		initialStatefulData = c.fdv2ClientData("xfer-full", "payload-missing", "expected-state",
+			c.makeClientSideFlag("flag-key", 2, updatedValue))
+	} else {
+		initialStatefulData = c.fdv2ServerData("xfer-full", "payload-missing", "expected-state",
+			c.makeServerSideFlag("flag-key", 2, updatedValue))
+	}
+	var streamingData mockld.FDv2SDKData
+	if c.isClientSide {
+		streamingData = c.fdv2ClientData("none", "up-to-date", "expected-state")
+	} else {
+		streamingData = c.fdv2ServerData("none", "up-to-date", "expected-state")
+	}
+	dataSystem := NewSDKDataSystemCustom(t, streamingData,
+		DataSystemOptionPollingInitializer(emptyPayload), DataSystemOptionPollingInitializer(initialStatefulData),
+		DataSystemOptionStreaming())
+	dataSystem.CreateEndpoints()
 
 	// Force the first endpoint to fail
 	dataSystem.Initializers[0].Endpoint().Close()
 
-	client := NewSDKClient(t, dataSystem)
+	client := c.newFDv2SDKClient(t, dataSystem)
 
 	// Verify the initializers fall over to the next initializer in line.
 	_, err := dataSystem.Initializers[1].Endpoint().AwaitConnection(time.Second)
 	require.NoError(t, err)
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": updatedValue}
-	validatePayloadReceived(t, dataSystem.Synchronizers[0].Endpoint(), client, "expected-state", expectedEvaluations)
+	validatePayloadReceived(t, dataSystem.Synchronizers[0].Endpoint(), client,
+		c.flagEvaluationContext, "expected-state", expectedEvaluations)
 }
 
 func (c CommonStreamingTests) RecoverableFallbackToSecondarySynchronizer(t *ldtest.T) {
@@ -180,7 +265,7 @@ func (c CommonStreamingTests) RecoverableFallbackToSecondarySynchronizer(t *ldte
 		harness.MockEndpointDescription("secondary streaming service"))
 	t.Defer(secondaryEndpoint.Close)
 
-	client := NewSDKClient(t,
+	client := c.newFDv2SDKClient(t,
 		WithConfig(servicedef.SDKConfigParams{
 			// Allow initialization to eventually succeed via secondary
 			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(30 * time.Second)),
@@ -194,10 +279,14 @@ func (c CommonStreamingTests) RecoverableFallbackToSecondarySynchronizer(t *ldte
 
 	// Verify the client received data from the secondary synchronizer
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
-	validatePayloadReceived(t, secondaryEndpoint, client, "", expectedEvaluations)
+	validatePayloadReceived(t, secondaryEndpoint, client, c.flagEvaluationContext, "", expectedEvaluations)
 }
 
 func (c CommonStreamingTests) PermanentFallbackToSecondarySynchronizer(t *ldtest.T) {
+	if c.isClientSide {
+		t.RequireCapability(servicedef.CapabilityClientEventSourceHTTPErrors)
+	}
+
 	// First synchronizer returns 401 Unauthorized, which is a non-recoverable error.
 	// Non-recoverable 4xx errors (all except 400, 408, 429) cause the synchronizer to be
 	// permanently removed from the list, and the SDK immediately falls back to the secondary.
@@ -213,7 +302,7 @@ func (c CommonStreamingTests) PermanentFallbackToSecondarySynchronizer(t *ldtest
 		harness.MockEndpointDescription("secondary streaming service"))
 	t.Defer(secondaryEndpoint.Close)
 
-	client := NewSDKClient(t,
+	client := c.newFDv2SDKClient(t,
 		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 			BaseURI: errorEndpoint.BaseURL(),
 		}),
@@ -223,7 +312,7 @@ func (c CommonStreamingTests) PermanentFallbackToSecondarySynchronizer(t *ldtest
 
 	// Verify the client received data from the secondary synchronizer
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
-	validatePayloadReceived(t, secondaryEndpoint, client, "", expectedEvaluations)
+	validatePayloadReceived(t, secondaryEndpoint, client, c.flagEvaluationContext, "", expectedEvaluations)
 }
 
 func (c CommonStreamingTests) RecoverableFallbackWithRecovery(t *ldtest.T) {
@@ -264,7 +353,7 @@ func (c CommonStreamingTests) RecoverableFallbackWithRecovery(t *ldtest.T) {
 		harness.MockEndpointDescription("third streaming service"))
 	t.Defer(thirdEndpoint.Close)
 
-	client := NewSDKClient(t,
+	client := c.newFDv2SDKClient(t,
 		WithConfig(servicedef.SDKConfigParams{
 			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(60000)),
 		}),
@@ -280,7 +369,7 @@ func (c CommonStreamingTests) RecoverableFallbackWithRecovery(t *ldtest.T) {
 
 	// Verify initial data from third synchronizer
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
-	validatePayloadReceived(t, thirdEndpoint, client, "", expectedEvaluations)
+	validatePayloadReceived(t, thirdEndpoint, client, c.flagEvaluationContext, "", expectedEvaluations)
 
 	// Send periodic heartbeats to keep the third stream connection alive
 	// (prevents SSE read timeout from firing before recovery condition is met)
@@ -306,7 +395,7 @@ func (c CommonStreamingTests) RecoverableFallbackWithRecovery(t *ldtest.T) {
 	// The sequential handler serves updatedValue only on the second connection,
 	// so receiving it proves the SDK reconnected after recovery.
 	expectedEvaluations = map[string]ldvalue.Value{"flag-key": updatedValue}
-	validatePayloadReceived(t, firstEndpoint, client, "", expectedEvaluations)
+	validatePayloadReceived(t, firstEndpoint, client, c.flagEvaluationContext, "", expectedEvaluations)
 }
 
 func (c CommonStreamingTests) PermanentFallbackWithRecovery(t *ldtest.T) {
@@ -346,7 +435,7 @@ func (c CommonStreamingTests) PermanentFallbackWithRecovery(t *ldtest.T) {
 		harness.MockEndpointDescription("third streaming service"))
 	t.Defer(thirdEndpoint.Close)
 
-	client := NewSDKClient(t,
+	client := c.newFDv2SDKClient(t,
 		WithConfig(servicedef.SDKConfigParams{
 			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(60000)),
 		}),
@@ -362,7 +451,7 @@ func (c CommonStreamingTests) PermanentFallbackWithRecovery(t *ldtest.T) {
 
 	// Verify initial data from third synchronizer
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
-	validatePayloadReceived(t, thirdEndpoint, client, "", expectedEvaluations)
+	validatePayloadReceived(t, thirdEndpoint, client, c.flagEvaluationContext, "", expectedEvaluations)
 
 	// Send periodic heartbeats to keep the third stream connection alive
 	// (prevents SSE read timeout from firing before recovery condition is met)
@@ -388,14 +477,8 @@ func (c CommonStreamingTests) PermanentFallbackWithRecovery(t *ldtest.T) {
 	// The sequential handler serves updatedValue only on the second connection,
 	// so receiving it proves the SDK reconnected after recovery.
 	expectedEvaluations = map[string]ldvalue.Value{"flag-key": updatedValue}
-	validatePayloadReceived(t, secondEndpoint, client, "", expectedEvaluations)
+	validatePayloadReceived(t, secondEndpoint, client, c.flagEvaluationContext, "", expectedEvaluations)
 }
-
-// fdv1PollingPath is the FDv1 polling URL path. When the FDv1 Fallback Synchronizer
-// is engaged, the SDK must request this path — not the FDv2 /sdk/poll path — so tests
-// can distinguish between an FDv2-level fallback and a directed FDv1 fallback by URL
-// inspection alone.
-const fdv1PollingPath = "/sdk/latest-all"
 
 // FDv1FallbackDirective groups the server-directed FDv1 fallback tests defined by
 // section 1.6 of the Data System spec. See:
@@ -429,6 +512,10 @@ func (c CommonStreamingTests) FDv1FallbackDirective(t *ldtest.T) {
 // test asserts evaluations return that value — proving FDv1 actually became the
 // active data source, not just that its URL was hit.
 func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) {
+	if c.isClientSide {
+		t.RequireCapability(servicedef.CapabilityClientEventSourceHTTPErrors)
+	}
+
 	streamHandler, _ := httphelpers.RecordingHandler(httphelpers.HandlerWithResponse(
 		403, http.Header{"X-LD-FD-Fallback": []string{"true"}}, nil))
 	streamEndpoint := requireContext(t).harness.NewMockEndpoint(streamHandler, t.DebugLogger(),
@@ -438,14 +525,18 @@ func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) 
 	fdv1Value := ldvalue.String("value-from-fdv1")
 	fdv1Handler, fdv1Channel := httphelpers.RecordingHandler(
 		httphelpers.HandlerWithResponse(200, http.Header{"Content-Type": []string{"application/json"}},
-			serverSideFDv1AllData(t, c, "flag-key", 1, fdv1Value)))
+			fdv1FallbackBody(t, c, "flag-key", 1, fdv1Value)))
 	fdv1Endpoint := requireContext(t).harness.NewMockEndpoint(fdv1Handler, t.DebugLogger(),
 		harness.MockEndpointDescription("FDv1 polling service"))
 	t.Defer(fdv1Endpoint.Close)
 
-	client := NewSDKClient(t,
+	client := c.newFDv2SDKClient(t,
 		WithConfig(servicedef.SDKConfigParams{
 			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(5 * time.Second / time.Millisecond)),
+		}),
+		WithServiceEndpoints(servicedef.SDKConfigServiceEndpointsParams{
+			Streaming: streamEndpoint.BaseURL(),
+			Polling:   fdv1Endpoint.BaseURL(),
 		}),
 		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 			BaseURI: streamEndpoint.BaseURL(),
@@ -459,11 +550,10 @@ func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) 
 	_, err := streamEndpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
-	// FDv1 endpoint must be contacted at /sdk/latest-all.
 	h.RequireEventually(t, func() bool {
 		select {
 		case resp := <-fdv1Channel:
-			return resp.Request.URL.Path == fdv1PollingPath
+			return fdv1FallbackPollPathMatches(c.sdkKind, resp.Request.URL.Path)
 		default:
 			return false
 		}
@@ -472,7 +562,7 @@ func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) 
 
 	// Evaluation must reflect FDv1's payload. If we saw the default here, the SDK
 	// routed to FDv1 but never finished wiring FDv1's data into the Memory Store.
-	context := ldcontext.New("context-key")
+	context := c.flagEvaluationContext
 	h.RequireEventually(t, func() bool {
 		value := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
 		return m.In(t).Assert(value, m.JSONEqual(fdv1Value))
@@ -510,6 +600,10 @@ func (c CommonStreamingTests) DirectiveOnStreamingErrorEngagesFDv1(t *ldtest.T) 
 // particular translate an unsolicited 304 into a 200 against their cache, which
 // would defeat the "FDv1 supplies no fresh data" property this test relies on.
 func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtest.T) {
+	if c.isClientSide {
+		t.RequireCapability(servicedef.CapabilityClientEventSourceHTTPErrors)
+	}
+
 	streamingValue := ldvalue.String("value-from-streaming-payload")
 	streamingData := c.makeSDKDataWithFlag(1, streamingValue)
 	streamingService := mockld.NewStreamingService(streamingData, requireContext(t).sdkKind, t.DebugLogger())
@@ -530,9 +624,13 @@ func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtes
 		harness.MockEndpointDescription("FDv1 polling service (HTTP 400)"))
 	t.Defer(fdv1Endpoint.Close)
 
-	client := NewSDKClient(t,
+	client := c.newFDv2SDKClient(t,
 		WithConfig(servicedef.SDKConfigParams{
 			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(5 * time.Second / time.Millisecond)),
+		}),
+		WithServiceEndpoints(servicedef.SDKConfigServiceEndpointsParams{
+			Streaming: streamingEndpoint.BaseURL(),
+			Polling:   fdv1Endpoint.BaseURL(),
 		}),
 		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 			BaseURI: streamingEndpoint.BaseURL(),
@@ -545,11 +643,11 @@ func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtes
 	streamingRequest, err := streamingEndpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
-	// The directive must drive the SDK to the FDv1 polling path.
+	// The directive must drive the SDK to the FDv1 polling path for this SDK kind.
 	h.RequireEventually(t, func() bool {
 		select {
 		case resp := <-fdv1Channel:
-			return resp.Request.URL.Path == fdv1PollingPath
+			return fdv1FallbackPollPathMatches(c.sdkKind, resp.Request.URL.Path)
 		default:
 			return false
 		}
@@ -561,7 +659,7 @@ func (c CommonStreamingTests) DirectiveOnStreamingSuccessAppliesPayload(t *ldtes
 	// applied the streaming basis before transitioning (1.6.2). Seeing
 	// defaultValue would mean the SDK dropped the payload somewhere along the
 	// handoff.
-	context := ldcontext.New("context-key")
+	context := c.flagEvaluationContext
 	h.RequireEventually(t, func() bool {
 		value := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
 		return m.In(t).Assert(value, m.JSONEqual(streamingValue))
@@ -612,18 +710,17 @@ func (c CommonStreamingTests) DirectiveOnPollingInitializerSkipsSynchronizers(t 
 		harness.MockEndpointDescription("streaming synchronizer (must not be contacted)"))
 	t.Defer(streamEndpoint.Close)
 
-	// FDv1 polling endpoint: receives traffic via /sdk/latest-all once the directive
-	// takes effect, and serves a distinctive flag value so we can tell the data
-	// actually flowed through the FDv1 path into the Memory Store.
+	// FDv1 polling endpoint: once the directive takes effect, traffic must use this
+	// SDK's FDv1 polling path (see fdv1FallbackPollPathMatches), not FDv2 poll paths.
 	fdv1Value := ldvalue.String("value-from-fdv1")
 	fdv1Handler, fdv1Channel := httphelpers.RecordingHandler(
 		httphelpers.HandlerWithResponse(200, http.Header{"Content-Type": []string{"application/json"}},
-			serverSideFDv1AllData(t, c, "flag-key", 1, fdv1Value)))
+			fdv1FallbackBody(t, c, "flag-key", 1, fdv1Value)))
 	fdv1Endpoint := requireContext(t).harness.NewMockEndpoint(fdv1Handler, t.DebugLogger(),
 		harness.MockEndpointDescription("FDv1 polling service"))
 	t.Defer(fdv1Endpoint.Close)
 
-	client := NewSDKClient(t,
+	client := c.newFDv2SDKClient(t,
 		WithConfig(servicedef.SDKConfigParams{
 			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(5 * time.Second / time.Millisecond)),
 			DataSystem: o.Some(servicedef.DataSystem{
@@ -645,13 +742,17 @@ func (c CommonStreamingTests) DirectiveOnPollingInitializerSkipsSynchronizers(t 
 					BaseURI: fdv1Endpoint.BaseURL(),
 				}),
 			}),
+		}),
+		WithServiceEndpoints(servicedef.SDKConfigServiceEndpointsParams{
+			Streaming: streamEndpoint.BaseURL(),
+			Polling:   fdv1Endpoint.BaseURL(),
 		}))
 
-	// The FDv1 fallback endpoint must see traffic at /sdk/latest-all.
+	// The FDv1 fallback endpoint must see traffic on the FDv1 polling path for this SDK kind.
 	h.RequireEventually(t, func() bool {
 		select {
 		case resp := <-fdv1Channel:
-			return resp.Request.URL.Path == fdv1PollingPath
+			return fdv1FallbackPollPathMatches(c.sdkKind, resp.Request.URL.Path)
 		default:
 			return false
 		}
@@ -673,7 +774,7 @@ func (c CommonStreamingTests) DirectiveOnPollingInitializerSkipsSynchronizers(t 
 	// Evaluation must return FDv1's value. Simply having the FDv1 endpoint hit is
 	// not enough — the directive path must also install FDv1's payload as the active
 	// data, or evaluations would fall through to the default.
-	context := ldcontext.New("context-key")
+	context := c.flagEvaluationContext
 	h.RequireEventually(t, func() bool {
 		value := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
 		return m.In(t).Assert(value, m.JSONEqual(fdv1Value))
@@ -689,6 +790,10 @@ func (c CommonStreamingTests) DirectiveOnPollingInitializerSkipsSynchronizers(t 
 // those retries is the positive signal that the directive caused a halt rather than
 // ordinary permanent removal (which would fire on a 4xx instead).
 func (c CommonStreamingTests) DirectiveWithoutFDv1ConfiguredHaltsDataSystem(t *ldtest.T) {
+	if c.isClientSide {
+		t.RequireCapability(servicedef.CapabilityClientEventSourceHTTPErrors)
+	}
+
 	handler, channel := httphelpers.RecordingHandler(httphelpers.HandlerWithResponse(
 		500, http.Header{"X-LD-FD-Fallback": []string{"true"}}, nil))
 	endpoint := requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
@@ -702,7 +807,7 @@ func (c CommonStreamingTests) DirectiveWithoutFDv1ConfiguredHaltsDataSystem(t *l
 	// A very short retry delay ensures that an SDK that *ignored* the directive
 	// would re-contact the streaming endpoint within our observation window —
 	// otherwise ordinary backoff could hide a misbehavior.
-	_ = NewSDKClient(t,
+	_ = c.newFDv2SDKClient(t,
 		WithConfig(servicedef.SDKConfigParams{
 			InitCanFail:     true,
 			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(1)),
@@ -754,6 +859,10 @@ func (c CommonStreamingTests) DirectiveWithoutFDv1ConfiguredHaltsDataSystem(t *l
 func (c CommonStreamingTests) DirectedFallbackIsTerminal(t *ldtest.T) {
 	t.LongRunning()
 
+	if c.isClientSide {
+		t.RequireCapability(servicedef.CapabilityClientEventSourceHTTPErrors)
+	}
+
 	// FDv2 streaming endpoint: 500 + directive on every request. 500 is normally a
 	// recoverable error; using it (instead of a 4xx that would permanently remove the
 	// sync on its own) means any re-contact we observe must have come from an attempt
@@ -769,14 +878,18 @@ func (c CommonStreamingTests) DirectedFallbackIsTerminal(t *ldtest.T) {
 	fdv1Value := ldvalue.String("value-from-fdv1")
 	fdv1Handler, _ := httphelpers.RecordingHandler(
 		httphelpers.HandlerWithResponse(200, http.Header{"Content-Type": []string{"application/json"}},
-			serverSideFDv1AllData(t, c, "flag-key", 1, fdv1Value)))
+			fdv1FallbackBody(t, c, "flag-key", 1, fdv1Value)))
 	fdv1Endpoint := requireContext(t).harness.NewMockEndpoint(fdv1Handler, t.DebugLogger(),
 		harness.MockEndpointDescription("FDv1 polling service"))
 	t.Defer(fdv1Endpoint.Close)
 
-	client := NewSDKClient(t,
+	client := c.newFDv2SDKClient(t,
 		WithConfig(servicedef.SDKConfigParams{
 			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(5 * time.Second / time.Millisecond)),
+		}),
+		WithServiceEndpoints(servicedef.SDKConfigServiceEndpointsParams{
+			Streaming: streamEndpoint.BaseURL(),
+			Polling:   fdv1Endpoint.BaseURL(),
 		}),
 		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 			BaseURI: streamEndpoint.BaseURL(),
@@ -805,7 +918,7 @@ func (c CommonStreamingTests) DirectedFallbackIsTerminal(t *ldtest.T) {
 	// Confirm FDv1 is actually serving data before we start waiting — otherwise a
 	// later "no FDv2 re-contact" assertion could pass simply because the SDK had
 	// already given up on everything.
-	context := ldcontext.New("context-key")
+	context := c.flagEvaluationContext
 	h.RequireEventually(t, func() bool {
 		value := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
 		return m.In(t).Assert(value, m.JSONEqual(fdv1Value))
@@ -840,69 +953,81 @@ func (c CommonStreamingTests) DirectedFallbackIsTerminal(t *ldtest.T) {
 
 func (c CommonStreamingTests) SavesPreviouslyKnownState(t *ldtest.T) {
 	dataBefore := c.makeSDKDataWithFlag(1, initialValue)
-	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("none").IntentReason("up-to-date").Build()
+	var dataAfter mockld.FDv2SDKData
+	if c.isClientSide {
+		dataAfter = c.fdv2ClientData("none", "up-to-date", "initial")
+	} else {
+		dataAfter = c.fdv2ServerData("none", "up-to-date", "initial")
+	}
 	streamEndpoint, _ := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+	client := c.newFDv2SDKClient(t, WithStreamingSynchronizer(reconnectStateTestStreamConfig(streamEndpoint)))
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
-	request := validatePayloadReceived(t, streamEndpoint, client, "", expectedEvaluations)
+	request := validatePayloadReceived(t, streamEndpoint, client, c.flagEvaluationContext, "", expectedEvaluations)
 	request.Cancel() // Drop the stream and allow the SDK to reconnect
 
-	validatePayloadReceived(t, streamEndpoint, client, "initial", expectedEvaluations)
+	validatePayloadReceived(t, streamEndpoint, client, c.flagEvaluationContext, "initial", expectedEvaluations)
 }
 
 func (c CommonStreamingTests) ReplacesPreviouslyKnownState(t *ldtest.T) {
 	dataBefore := c.makeSDKDataWithFlag(1, initialValue)
-	dataAfter := mockld.NewServerSDKDataBuilder().
-		IntentCode("xfer-full").
-		IntentReason("cant-catchup").
-		Flag(c.makeServerSideFlag("new-flag-key", 1, ldvalue.String("replacement value"))).
-		Build()
+	replacement := ldvalue.String("replacement value")
+	var dataAfter mockld.FDv2SDKData
+	if c.isClientSide {
+		dataAfter = c.fdv2ClientData("xfer-full", "cant-catchup", "initial",
+			c.makeClientSideFlag("new-flag-key", 1, replacement))
+	} else {
+		dataAfter = c.fdv2ServerData("xfer-full", "cant-catchup", "initial",
+			c.makeServerSideFlag("new-flag-key", 1, replacement))
+	}
 	streamEndpoint, _ := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+	client := c.newFDv2SDKClient(t, WithStreamingSynchronizer(reconnectStateTestStreamConfig(streamEndpoint)))
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue, "new-flag-key": defaultValue}
-	request := validatePayloadReceived(t, streamEndpoint, client, "", expectedEvaluations)
+	request := validatePayloadReceived(t, streamEndpoint, client, c.flagEvaluationContext, "", expectedEvaluations)
 	request.Cancel() // Drop the stream and allow the SDK to reconnect
 
 	expectedEvaluations = map[string]ldvalue.Value{
 		"flag-key":     defaultValue,
 		"new-flag-key": ldvalue.String("replacement value"),
 	}
-	validatePayloadReceived(t, streamEndpoint, client, "initial", expectedEvaluations)
+	validatePayloadReceived(t, streamEndpoint, client, c.flagEvaluationContext, "initial", expectedEvaluations)
 }
 
 func (c CommonStreamingTests) UpdatesPreviouslyKnownState(t *ldtest.T) {
 	dataBefore := c.makeSDKDataWithFlag(1, initialValue)
-	dataAfter := mockld.NewServerSDKDataBuilder().
-		IntentCode("xfer-changes").
-		IntentReason("stale").
-		Flag(c.makeServerSideFlag("flag-key", 2, updatedValue)).
-		Flag(c.makeServerSideFlag("new-flag-key", 1, newInitialValue)).
-		Build()
+	var dataAfter mockld.FDv2SDKData
+	if c.isClientSide {
+		dataAfter = c.fdv2ClientData("xfer-changes", "stale", "initial",
+			c.makeClientSideFlag("flag-key", 2, updatedValue),
+			c.makeClientSideFlag("new-flag-key", 1, newInitialValue))
+	} else {
+		dataAfter = c.fdv2ServerData("xfer-changes", "stale", "initial",
+			c.makeServerSideFlag("flag-key", 2, updatedValue),
+			c.makeServerSideFlag("new-flag-key", 1, newInitialValue))
+	}
 	streamEndpoint, _ := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+	client := c.newFDv2SDKClient(t, WithStreamingSynchronizer(reconnectStateTestStreamConfig(streamEndpoint)))
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue, "new-flag-key": defaultValue}
-	request := validatePayloadReceived(t, streamEndpoint, client, "", expectedEvaluations)
+	request := validatePayloadReceived(t, streamEndpoint, client, c.flagEvaluationContext, "", expectedEvaluations)
 	request.Cancel() // Drop the stream and allow the SDK to reconnect
 
 	expectedEvaluations = map[string]ldvalue.Value{"flag-key": updatedValue, "new-flag-key": newInitialValue}
-	validatePayloadReceived(t, streamEndpoint, client, "initial", expectedEvaluations)
+	validatePayloadReceived(t, streamEndpoint, client, c.flagEvaluationContext, "initial", expectedEvaluations)
 }
 
 func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent(t *ldtest.T) {
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
-	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
+	client := c.newFDv2SDKClient(t, configurers...)
 
 	_, err := dataSystem.Synchronizers[0].endpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
-	context := ldcontext.New("context-key")
-	flagKeyValue := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
+	flagKeyValue := basicEvaluateFlag(t, client, "flag-key", c.flagEvaluationContext, defaultValue)
 	m.In(t).Assert(flagKeyValue, m.JSONEqual(initialValue))
 
 	dataSystem.Synchronizers[0].streaming.PushDelete("flag", "flag-key", 2)
@@ -911,7 +1036,7 @@ func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent
 
 	h.RequireNever(
 		t,
-		checkForUpdatedValue(t, client, "flag-key", context, initialValue, defaultValue, defaultValue),
+		checkForUpdatedValue(t, client, "flag-key", c.flagEvaluationContext, initialValue, defaultValue, defaultValue),
 		time.Millisecond*100,
 		time.Millisecond*20,
 		"flag value was updated, but it should not have been",
@@ -919,7 +1044,7 @@ func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent
 
 	h.RequireNever(
 		t,
-		checkForUpdatedValue(t, client, "new-flag-key", context, defaultValue, newInitialValue, defaultValue),
+		checkForUpdatedValue(t, client, "new-flag-key", c.flagEvaluationContext, defaultValue, newInitialValue, defaultValue),
 		time.Millisecond*100,
 		time.Millisecond*20,
 		"flag value was updated, but it should not have been",
@@ -927,42 +1052,46 @@ func (c CommonStreamingTests) UpdatesAreNotCompleteUntilPayloadTransferredIsSent
 
 	dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 2)
 
-	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, defaultValue, defaultValue)
-	pollUntilFlagValueUpdated(t, client, "new-flag-key", context, defaultValue, newInitialValue, defaultValue)
+	pollUntilFlagValueUpdated(t, client, "flag-key", c.flagEvaluationContext, initialValue, defaultValue, defaultValue)
+	pollUntilFlagValueUpdated(t, client, "new-flag-key", c.flagEvaluationContext,
+		defaultValue, newInitialValue, defaultValue)
 }
 
 func (c CommonStreamingTests) HandlesMultipleUpdates(t *ldtest.T) {
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
-	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
-	context := ldcontext.New("context-key")
+	client := c.newFDv2SDKClient(t, configurers...)
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
-	validatePayloadReceived(t, dataSystem.Synchronizers[0].Endpoint(), client, "", expectedEvaluations)
+	validatePayloadReceived(t, dataSystem.Synchronizers[0].Endpoint(), client,
+		c.flagEvaluationContext, "", expectedEvaluations)
 
 	dataSystem.Synchronizers[0].streaming.PushUpdate(
 		"flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
 	dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 2)
-	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
+	pollUntilFlagValueUpdated(t, client, "flag-key", c.flagEvaluationContext, initialValue, updatedValue, defaultValue)
 
 	dataSystem.Synchronizers[0].streaming.PushUpdate(
 		"flag", "new-flag-key", 2, c.makeFlagData("new-flag-key", 2, newInitialValue))
 	dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 3)
-	pollUntilFlagValueUpdated(t, client, "new-flag-key", context, defaultValue, newInitialValue, defaultValue)
+	pollUntilFlagValueUpdated(t, client, "new-flag-key", c.flagEvaluationContext,
+		defaultValue, newInitialValue, defaultValue)
 
 	dataSystem.Synchronizers[0].streaming.PushServerIntent("xfer-full", "stale")
 	dataSystem.Synchronizers[0].streaming.PushUpdate(
 		"flag", "flag-key", 3, c.makeFlagData("flag-key", 3, finalValue))
 	dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 4)
-	pollUntilFlagValueUpdated(t, client, "flag-key", context, updatedValue, finalValue, defaultValue)
-	pollUntilFlagValueUpdated(t, client, "new-flag-key", context, newInitialValue, defaultValue, defaultValue)
+	pollUntilFlagValueUpdated(t, client, "flag-key", c.flagEvaluationContext, updatedValue, finalValue, defaultValue)
+	pollUntilFlagValueUpdated(t, client, "new-flag-key", c.flagEvaluationContext,
+		newInitialValue, defaultValue, defaultValue)
 }
 
 func (c CommonStreamingTests) IgnoresModelVersion(t *ldtest.T) {
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(100, initialValue))
-	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
+	client := c.newFDv2SDKClient(t, configurers...)
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
-	validatePayloadReceived(t, dataSystem.Synchronizers[0].Endpoint(), client, "", expectedEvaluations)
+	validatePayloadReceived(t, dataSystem.Synchronizers[0].Endpoint(), client,
+		c.flagEvaluationContext, "", expectedEvaluations)
 
 	// This flag's version is less than the version previously given to the
 	// SDK. However, the state we are sending suggests it is later. The SDK
@@ -972,19 +1101,17 @@ func (c CommonStreamingTests) IgnoresModelVersion(t *ldtest.T) {
 		"flag", "flag-key", 1, c.makeFlagData("flag-key", 1, updatedValue))
 	dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 2)
 
-	context := ldcontext.New("context-key")
-	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
+	pollUntilFlagValueUpdated(t, client, "flag-key", c.flagEvaluationContext, initialValue, updatedValue, defaultValue)
 }
 
 func (c CommonStreamingTests) IgnoresHeartBeat(t *ldtest.T) {
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
-	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
+	client := c.newFDv2SDKClient(t, configurers...)
 
 	_, err := dataSystem.Synchronizers[0].endpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
-	context := ldcontext.New("context-key")
-	flagKeyValue := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
+	flagKeyValue := basicEvaluateFlag(t, client, "flag-key", c.flagEvaluationContext, defaultValue)
 	m.In(t).Assert(flagKeyValue, m.JSONEqual(initialValue))
 
 	dataSystem.Synchronizers[0].streaming.PushHeartbeat()
@@ -993,7 +1120,7 @@ func (c CommonStreamingTests) IgnoresHeartBeat(t *ldtest.T) {
 	dataSystem.Synchronizers[0].streaming.PushHeartbeat()
 	dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 2)
 
-	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
+	pollUntilFlagValueUpdated(t, client, "flag-key", c.flagEvaluationContext, initialValue, updatedValue, defaultValue)
 }
 
 func (c CommonStreamingTests) IgnoresUnknownEvent(t *ldtest.T) {
@@ -1003,13 +1130,12 @@ func (c CommonStreamingTests) IgnoresUnknownEvent(t *ldtest.T) {
 
 func (c CommonStreamingTests) IgnoresUnknownEventMiddleOfPayload(t *ldtest.T) {
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
-	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
+	client := c.newFDv2SDKClient(t, configurers...)
 
 	_, err := dataSystem.Synchronizers[0].endpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
-	context := ldcontext.New("context-key")
-	flagKeyValue := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
+	flagKeyValue := basicEvaluateFlag(t, client, "flag-key", c.flagEvaluationContext, defaultValue)
 	m.In(t).Assert(flagKeyValue, m.JSONEqual(initialValue))
 
 	dataSystem.Synchronizers[0].streaming.PushUpdate(
@@ -1021,19 +1147,19 @@ func (c CommonStreamingTests) IgnoresUnknownEventMiddleOfPayload(t *ldtest.T) {
 		"flag", "new-flag-key", 1, c.makeFlagData("new-flag-key", 1, newInitialValue))
 	dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 2)
 
-	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
-	pollUntilFlagValueUpdated(t, client, "new-flag-key", context, defaultValue, newInitialValue, defaultValue)
+	pollUntilFlagValueUpdated(t, client, "flag-key", c.flagEvaluationContext, initialValue, updatedValue, defaultValue)
+	pollUntilFlagValueUpdated(t, client, "new-flag-key", c.flagEvaluationContext,
+		defaultValue, newInitialValue, defaultValue)
 }
 
 func (c CommonStreamingTests) IgnoresUnknownEventStartOfPayload(t *ldtest.T) {
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
-	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
+	client := c.newFDv2SDKClient(t, configurers...)
 
 	_, err := dataSystem.Synchronizers[0].endpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
 
-	context := ldcontext.New("context-key")
-	flagKeyValue := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
+	flagKeyValue := basicEvaluateFlag(t, client, "flag-key", c.flagEvaluationContext, defaultValue)
 	m.In(t).Assert(flagKeyValue, m.JSONEqual(initialValue))
 
 	dataSystem.Synchronizers[0].streaming.PushEvent("unknown-event-type", map[string]interface{}{
@@ -1043,15 +1169,16 @@ func (c CommonStreamingTests) IgnoresUnknownEventStartOfPayload(t *ldtest.T) {
 		"flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
 	dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 2)
 
-	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, updatedValue, defaultValue)
+	pollUntilFlagValueUpdated(t, client, "flag-key", c.flagEvaluationContext, initialValue, updatedValue, defaultValue)
 }
 
 func (c CommonStreamingTests) CanDiscardPartialEventsOnError(t *ldtest.T) {
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
-	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
+	client := c.newFDv2SDKClient(t, configurers...)
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
-	validatePayloadReceived(t, dataSystem.Synchronizers[0].Endpoint(), client, "", expectedEvaluations)
+	validatePayloadReceived(t, dataSystem.Synchronizers[0].Endpoint(), client,
+		c.flagEvaluationContext, "", expectedEvaluations)
 
 	// The error should cause this update to be discard.
 	dataSystem.Synchronizers[0].streaming.PushUpdate(
@@ -1062,28 +1189,29 @@ func (c CommonStreamingTests) CanDiscardPartialEventsOnError(t *ldtest.T) {
 		"flag", "new-flag-key", 2, c.makeFlagData("new-flag-key", 2, newInitialValue))
 	dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 2)
 
-	context := ldcontext.New("context-key")
 	h.RequireNever(
 		t,
-		checkForUpdatedValue(t, client, "flag-key", context, initialValue, updatedValue, defaultValue),
+		checkForUpdatedValue(t, client, "flag-key", c.flagEvaluationContext, initialValue, updatedValue, defaultValue),
 		time.Millisecond*100,
 		time.Millisecond*20,
 		"flag value was updated, but it should not have been",
 	)
 
-	pollUntilFlagValueUpdated(t, client, "new-flag-key", context, defaultValue, newInitialValue, defaultValue)
+	pollUntilFlagValueUpdated(t, client, "new-flag-key", c.flagEvaluationContext,
+		defaultValue, newInitialValue, defaultValue)
 
 	// Original flag value should still be the same.
-	value := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
+	value := basicEvaluateFlag(t, client, "flag-key", c.flagEvaluationContext, defaultValue)
 	require.Equal(t, initialValue, value)
 }
 
 func (c CommonStreamingTests) CanDiscardFullEventsOnError(t *ldtest.T) {
 	dataSystem, configurers := c.setupDataSystems(t, c.makeSDKDataWithFlag(1, initialValue))
-	client := NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
+	client := c.newFDv2SDKClient(t, configurers...)
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
-	validatePayloadReceived(t, dataSystem.Synchronizers[0].Endpoint(), client, "", expectedEvaluations)
+	validatePayloadReceived(t, dataSystem.Synchronizers[0].Endpoint(), client,
+		c.flagEvaluationContext, "", expectedEvaluations)
 
 	// The error should cause this update to be discard.
 	dataSystem.Synchronizers[0].streaming.PushUpdate(
@@ -1095,21 +1223,29 @@ func (c CommonStreamingTests) CanDiscardFullEventsOnError(t *ldtest.T) {
 		"flag", "new-flag-key", 2, c.makeFlagData("new-flag-key", 2, newInitialValue))
 	dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 2)
 
-	context := ldcontext.New("context-key")
-
 	// Previous flag should be removed, reverting to a default value being served.
-	pollUntilFlagValueUpdated(t, client, "flag-key", context, initialValue, defaultValue, defaultValue)
-	pollUntilFlagValueUpdated(t, client, "new-flag-key", context, defaultValue, newInitialValue, defaultValue)
+	pollUntilFlagValueUpdated(t, client, "flag-key", c.flagEvaluationContext, initialValue, defaultValue, defaultValue)
+	pollUntilFlagValueUpdated(t, client, "new-flag-key", c.flagEvaluationContext,
+		defaultValue, newInitialValue, defaultValue)
 }
 
 func (c CommonStreamingTests) DisconnectsOnGoodbye(t *ldtest.T) {
 	dataBefore := c.makeSDKDataWithFlag(1, initialValue)
-	dataAfter := mockld.NewServerSDKDataBuilder().IntentCode("none").IntentReason("up-to-date").Build()
+	var dataAfter mockld.FDv2SDKData
+	if c.isClientSide {
+		dataAfter = c.fdv2ClientData("none", "up-to-date", "initial")
+	} else {
+		dataAfter = c.fdv2ServerData("none", "up-to-date", "initial")
+	}
 	streamEndpoint, dataSystems := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
-	client := NewSDKClient(t, WithStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+	client := c.newFDv2SDKClient(t, WithStreamingSynchronizer(reconnectStateTestStreamConfig(streamEndpoint)))
 
-	conn := streamEndpoint.RequireConnection(t, time.Second)
+	// 2s timeout (vs. 1s) for both connections: same justification as
+	// validatePayloadReceived -- the post-cancel reconnect can race the SDK's
+	// clamped 1s-min initialRetryDelayMs. Using the same timeout for the
+	// initial connect keeps the two call sites visually consistent.
+	conn := streamEndpoint.RequireConnection(t, time.Second*2)
 
 	dataSystems[0].Synchronizers[0].streaming.PushUpdate(
 		"flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
@@ -1117,12 +1253,11 @@ func (c CommonStreamingTests) DisconnectsOnGoodbye(t *ldtest.T) {
 	dataSystems[0].Synchronizers[0].streaming.PushGoodbye("some-reason", false, false)
 	conn.Cancel()
 
-	_ = streamEndpoint.RequireConnection(t, time.Second)
+	_ = streamEndpoint.RequireConnection(t, time.Second*2)
 
-	context := ldcontext.New("context-key")
 	h.RequireNever(
 		t,
-		checkForUpdatedValue(t, client, "flag-key", context, initialValue, updatedValue, defaultValue),
+		checkForUpdatedValue(t, client, "flag-key", c.flagEvaluationContext, initialValue, updatedValue, defaultValue),
 		time.Millisecond*100,
 		time.Millisecond*20,
 		"flag value was updated, but it should not have been",
@@ -1149,18 +1284,22 @@ func makeSequentialStreamHandler(t *ldtest.T, dataSources ...mockld.SDKData) (
 
 func validatePayloadReceived(t *ldtest.T,
 	streamEndpoint *harness.MockEndpoint, client *SDKClient,
+	evalContext ldcontext.Context,
 	state string, evaluations map[string]ldvalue.Value,
 ) harness.IncomingRequestInfo {
-	request, err := streamEndpoint.AwaitConnection(time.Second)
+	// 2s timeout (vs. 1s) leaves headroom for SDKs that clamp the configured
+	// initialRetryDelayMs to a 1s minimum: with the SDK's own jitter the
+	// post-cancel reconnect can land near the 1s boundary, racing a 1s
+	// AwaitConnection. server_side_stream_retry.go uses the same 2s margin
+	// for the same reason.
+	request, err := streamEndpoint.AwaitConnection(time.Second * 2)
 	require.NoError(t, err)
 
 	m.In(t).Assert(request.URL.Query().Get("basis"), m.Equal(state))
 
-	context := ldcontext.New("context-key")
-
 	h.RequireEventually(t, func() bool {
 		for flagKey, expectedValue := range evaluations {
-			actualValue := basicEvaluateFlag(t, client, flagKey, context, defaultValue)
+			actualValue := basicEvaluateFlag(t, client, flagKey, evalContext, defaultValue)
 			if !m.In(t).Assert(actualValue, m.JSONEqual(expectedValue)) {
 				return false
 			}

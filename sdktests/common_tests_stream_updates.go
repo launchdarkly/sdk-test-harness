@@ -4,6 +4,7 @@ import (
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldbuilders"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldmodel"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
+	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
@@ -11,11 +12,41 @@ import (
 
 func (c CommonStreamingTests) makeSDKDataWithFlag(version int, value ldvalue.Value) mockld.SDKData {
 	if c.isClientSide {
-		return mockld.NewClientSDKDataBuilder().
+		cd := mockld.NewClientSDKDataBuilder().
 			Flag("flag-key", c.makeClientSideFlag("flag-key", version, value).ClientSDKFlag).
 			Build()
+		return mockld.FDv2SDKDataFromClientSDKData(cd, "xfer-full", "initial", "initial")
 	}
-	return mockld.NewServerSDKDataBuilder().Flag(c.makeServerSideFlag("flag-key", version, value)).Build()
+	sd := mockld.NewServerSDKDataBuilder().
+		Flag(c.makeServerSideFlag("flag-key", version, value)).
+		Build()
+	return mockld.FDv2SDKDataFromServerSDKData(sd, "xfer-full", "initial", "initial")
+}
+
+// fdv2ServerData builds FDv2 mock data from server-side flags with an explicit envelope.
+func (c CommonStreamingTests) fdv2ServerData(
+	intentCode, intentReason, state string, flags ...ldmodel.FeatureFlag,
+) mockld.FDv2SDKData {
+	b := mockld.NewServerSDKDataBuilder()
+	if len(flags) > 0 {
+		b.Flag(flags...)
+	}
+	return mockld.FDv2SDKDataFromServerSDKData(b.Build(), intentCode, intentReason, state)
+}
+
+// fdv2ClientData builds FDv2 mock data from client-side flag eval results with an explicit envelope.
+func (c CommonStreamingTests) fdv2ClientData(
+	intentCode, intentReason, state string, flags ...mockld.ClientSDKFlagWithKey,
+) mockld.FDv2SDKData {
+	b := mockld.NewClientSDKDataBuilder()
+	for _, f := range flags {
+		b.FullFlag(f)
+	}
+	return mockld.FDv2SDKDataFromClientSDKData(b.Build(), intentCode, intentReason, state)
+}
+
+func (c CommonStreamingTests) newFDv2SDKClient(t *ldtest.T, configurers ...SDKConfigurer) *SDKClient {
+	return NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
 }
 
 func (c CommonStreamingTests) makeFlagData(key string, version int, value ldvalue.Value) []byte {

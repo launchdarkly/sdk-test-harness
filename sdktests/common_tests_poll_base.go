@@ -17,3 +17,29 @@ type CommonPollingTests struct {
 func NewCommonPollingTests(t *ldtest.T, testName string, baseSDKConfigurers ...SDKConfigurer) CommonPollingTests {
 	return CommonPollingTests{newCommonTestsBase(t, testName, baseSDKConfigurers...)}
 }
+
+// pollingDataSystemOptions returns the SDKDataSystemOption set for creating a polling data system
+// that will be passed as a configurer to NewSDKClient. For client-side SDKs, this wraps the
+// polling service in a connection mode; for server-side, it uses the top-level path.
+func (c CommonPollingTests) pollingDataSystemOptions() []SDKDataSystemOption {
+	if c.isClientSide {
+		return []SDKDataSystemOption{
+			DataSystemOptionConnectionMode("polling", DataSystemOptionPolling()),
+			DataSystemOptionInitialConnectionMode("polling"),
+		}
+	}
+	return []SDKDataSystemOption{DataSystemOptionPolling()}
+}
+
+// streamingDataSystemOptions returns the SDKDataSystemOption set for creating a streaming data
+// system that will be passed as a configurer to NewSDKClient. For client-side SDKs, this wraps
+// the streaming service in a connection mode; for server-side, it uses the top-level path.
+func (c CommonPollingTests) streamingDataSystemOptions() []SDKDataSystemOption {
+	if c.isClientSide {
+		return []SDKDataSystemOption{
+			DataSystemOptionConnectionMode("streaming", DataSystemOptionStreaming()),
+			DataSystemOptionInitialConnectionMode("streaming"),
+		}
+	}
+	return []SDKDataSystemOption{DataSystemOptionStreaming()}
+}
