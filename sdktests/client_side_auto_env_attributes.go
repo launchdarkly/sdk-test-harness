@@ -175,16 +175,35 @@ func doClientSideAutoEnvAttributesEventsCollisionsTests(t *ldtest.T) {
 
 // end tests for events
 
+// clientSideAutoEnvModeOptions returns the option sets for exercising the
+// polling and streaming data paths in client-side auto-env tests. A bare
+// DataSystemOptionPolling() / DataSystemOptionStreaming() would be silently
+// ignored once the default "streaming" connection mode is in the config
+// (buildDataSystem takes the connection-modes branch and never reads the
+// top-level polling field), so each option must be wrapped in a connection
+// mode and made the initial mode.
+func clientSideAutoEnvModeOptions() [][]SDKDataSystemOption {
+	return [][]SDKDataSystemOption{
+		{
+			DataSystemOptionConnectionMode("polling", DataSystemOptionPolling()),
+			DataSystemOptionInitialConnectionMode("polling"),
+		},
+		{
+			DataSystemOptionConnectionMode("streaming", DataSystemOptionStreaming()),
+			DataSystemOptionInitialConnectionMode("streaming"),
+		},
+	}
+}
+
 // start tests for streaming/polling
 func doClientSideAutoEnvAttributesRequestingNoCollisionsTests(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityClientUseReport)
 	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesPollNoCollisionsTests")
-	dsos := []SDKDataSystemOption{DataSystemOptionPolling(), DataSystemOptionStreaming()}
-	for _, dso := range dsos {
+	for _, modeOpts := range clientSideAutoEnvModeOptions() {
 		contextFactories := data.NewContextFactoriesForSingleAndMultiKind(base.contextFactory.Prefix())
 		for _, contexts := range contextFactories {
 			t.Run(contexts.Description(), func(t *ldtest.T) {
-				dataSystem := NewSDKDataSystem(t, nil, dso)
+				dataSystem := NewSDKDataSystem(t, nil, modeOpts...)
 				context := contexts.NextUniqueContext()
 
 				_ = NewSDKClient(t, base.baseSDKConfigurationPlus(
@@ -210,14 +229,13 @@ func doClientSideAutoEnvAttributesRequestingNoCollisionsTests(t *ldtest.T) {
 func doClientSideAutoEnvAttributesRequestingCollisionsTests(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityClientUseReport)
 	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesPollCollisionsTests")
-	dsos := []SDKDataSystemOption{DataSystemOptionPolling(), DataSystemOptionStreaming()}
-	for _, dso := range dsos {
+	for _, modeOpts := range clientSideAutoEnvModeOptions() {
 		f1 := data.NewContextFactory(base.contextFactory.Prefix(), func(b *ldcontext.Builder) { b.Kind("ld_application") })
 		f2 := data.NewMultiContextFactory(base.contextFactory.Prefix(), []ldcontext.Kind{"ld_application", "other"})
 		contextFactories := []*data.ContextFactory{f1, f2}
 		for _, contexts := range contextFactories {
 			t.Run(contexts.Description(), func(t *ldtest.T) {
-				dataSystem := NewSDKDataSystem(t, nil, dso)
+				dataSystem := NewSDKDataSystem(t, nil, modeOpts...)
 				context := contexts.NextUniqueContext()
 
 				_ = NewSDKClient(t, base.baseSDKConfigurationPlus(
