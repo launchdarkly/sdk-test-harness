@@ -1237,7 +1237,11 @@ func (c CommonStreamingTests) DisconnectsOnGoodbye(t *ldtest.T) {
 	t.Defer(streamEndpoint.Close)
 	client := c.newFDv2SDKClient(t, WithStreamingSynchronizer(reconnectStateTestStreamConfig(streamEndpoint)))
 
-	conn := streamEndpoint.RequireConnection(t, time.Second)
+	// 2s timeout (vs. 1s) for both connections: same justification as
+	// validatePayloadReceived -- the post-cancel reconnect can race the SDK's
+	// clamped 1s-min initialRetryDelayMs. Using the same timeout for the
+	// initial connect keeps the two call sites visually consistent.
+	conn := streamEndpoint.RequireConnection(t, time.Second*2)
 
 	dataSystems[0].Synchronizers[0].streaming.PushUpdate(
 		"flag", "flag-key", 2, c.makeFlagData("flag-key", 2, updatedValue))
@@ -1245,7 +1249,7 @@ func (c CommonStreamingTests) DisconnectsOnGoodbye(t *ldtest.T) {
 	dataSystems[0].Synchronizers[0].streaming.PushGoodbye("some-reason", false, false)
 	conn.Cancel()
 
-	_ = streamEndpoint.RequireConnection(t, time.Second)
+	_ = streamEndpoint.RequireConnection(t, time.Second*2)
 
 	h.RequireNever(
 		t,
@@ -1279,7 +1283,12 @@ func validatePayloadReceived(t *ldtest.T,
 	evalContext ldcontext.Context,
 	state string, evaluations map[string]ldvalue.Value,
 ) harness.IncomingRequestInfo {
-	request, err := streamEndpoint.AwaitConnection(time.Second)
+	// 2s timeout (vs. 1s) leaves headroom for SDKs that clamp the configured
+	// initialRetryDelayMs to a 1s minimum: with the SDK's own jitter the
+	// post-cancel reconnect can land near the 1s boundary, racing a 1s
+	// AwaitConnection. server_side_stream_retry.go uses the same 2s margin
+	// for the same reason.
+	request, err := streamEndpoint.AwaitConnection(time.Second * 2)
 	require.NoError(t, err)
 
 	m.In(t).Assert(request.URL.Query().Get("basis"), m.Equal(state))
