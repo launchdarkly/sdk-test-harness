@@ -70,6 +70,24 @@ var (
 	fdV1FallbackPathJSClient   = regexp.MustCompile(`^/sdk/evalx/[^/]+/contexts/.+`)
 )
 
+// reconnectStateTestDelay is the InitialRetryDelayMS used by the FDv2
+// reconnection-state-management tests. These tests cancel a stream and
+// immediately assert on the basis query parameter of the next request URL.
+// Using briefDelay (1ms) here races the SDK's microtask chain that commits
+// the basis selector against the setTimeout that builds the reconnect URL,
+// causing intermittent failures on event-loop-based runtimes. 50ms is
+// comfortably above browser timer-throttling minimums and gives the SDK
+// time to commit state from the previous payload-transferred event before
+// the reconnect fires, without making the tests meaningfully slower.
+const reconnectStateTestDelay ldtime.UnixMillisecondTime = 50
+
+func reconnectStateTestStreamConfig(endpoint *harness.MockEndpoint) servicedef.SDKConfigStreamingParams {
+	return servicedef.SDKConfigStreamingParams{
+		BaseURI:             endpoint.BaseURL(),
+		InitialRetryDelayMS: o.Some(reconnectStateTestDelay),
+	}
+}
+
 // fdv1FallbackPollPathMatches reports whether path is the FDv1 (non-FDv2) polling URL for
 // sdkKind once the directed FDv1 fallback synchronizer is engaged.
 func fdv1FallbackPollPathMatches(sdkKind mockld.SDKKind, path string) bool {
@@ -939,7 +957,7 @@ func (c CommonStreamingTests) SavesPreviouslyKnownState(t *ldtest.T) {
 	}
 	streamEndpoint, _ := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
-	client := c.newFDv2SDKClient(t, WithStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+	client := c.newFDv2SDKClient(t, WithStreamingSynchronizer(reconnectStateTestStreamConfig(streamEndpoint)))
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue}
 	request := validatePayloadReceived(t, streamEndpoint, client, c.flagEvaluationContext, "", expectedEvaluations)
@@ -961,7 +979,7 @@ func (c CommonStreamingTests) ReplacesPreviouslyKnownState(t *ldtest.T) {
 	}
 	streamEndpoint, _ := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
-	client := c.newFDv2SDKClient(t, WithStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+	client := c.newFDv2SDKClient(t, WithStreamingSynchronizer(reconnectStateTestStreamConfig(streamEndpoint)))
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue, "new-flag-key": defaultValue}
 	request := validatePayloadReceived(t, streamEndpoint, client, c.flagEvaluationContext, "", expectedEvaluations)
@@ -988,7 +1006,7 @@ func (c CommonStreamingTests) UpdatesPreviouslyKnownState(t *ldtest.T) {
 	}
 	streamEndpoint, _ := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
-	client := c.newFDv2SDKClient(t, WithStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+	client := c.newFDv2SDKClient(t, WithStreamingSynchronizer(reconnectStateTestStreamConfig(streamEndpoint)))
 
 	expectedEvaluations := map[string]ldvalue.Value{"flag-key": initialValue, "new-flag-key": defaultValue}
 	request := validatePayloadReceived(t, streamEndpoint, client, c.flagEvaluationContext, "", expectedEvaluations)
@@ -1217,7 +1235,7 @@ func (c CommonStreamingTests) DisconnectsOnGoodbye(t *ldtest.T) {
 	}
 	streamEndpoint, dataSystems := makeSequentialStreamHandler(t, dataBefore, dataAfter)
 	t.Defer(streamEndpoint.Close)
-	client := c.newFDv2SDKClient(t, WithStreamingSynchronizer(baseStreamConfig(streamEndpoint)))
+	client := c.newFDv2SDKClient(t, WithStreamingSynchronizer(reconnectStateTestStreamConfig(streamEndpoint)))
 
 	conn := streamEndpoint.RequireConnection(t, time.Second)
 
