@@ -112,8 +112,8 @@ func (c CommonInstanceIDTests) Run(t *ldtest.T) {
 	if c.sdkKind.IsServerSide() {
 		t.Run("polling initializer requests", func(t *ldtest.T) {
 			initializerData := mockld.NewServerSDKDataBuilder().Build()
-			synchronizerData := mockld.NewServerSDKDataBuilder().
-				IntentCode("none").IntentReason("up-to-date").Build()
+			synchronizerData := mockld.FDv2SDKDataFromServerSDKData(
+				mockld.NewServerSDKDataBuilder().Build(), "none", "up-to-date", "initial")
 			dataSystem := NewSDKDataSystem(t, synchronizerData,
 				DataSystemOptionPollingInitializer(initializerData))
 			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem)...)
@@ -131,9 +131,10 @@ func (c CommonInstanceIDTests) Run(t *ldtest.T) {
 				harness.MockEndpointDescription("unauthorized primary streaming service"))
 			t.Defer(primaryEndpoint.Close)
 
+			secondaryData := mockld.FDv2SDKDataFromServerSDKData(
+				mockld.NewServerSDKDataBuilder().Build(), "xfer-full", "initial", "initial")
 			secondaryStream := mockld.NewStreamingService(
-				mockld.NewServerSDKDataBuilder().Build(),
-				requireContext(t).sdkKind, t.DebugLogger())
+				secondaryData, requireContext(t).sdkKind, t.DebugLogger())
 			secondaryEndpoint := requireContext(t).harness.NewMockEndpoint(
 				secondaryStream, t.DebugLogger(),
 				harness.MockEndpointDescription("secondary streaming service"))
