@@ -105,8 +105,11 @@ func (c CommonInstanceIDTests) Run(t *ldtest.T) {
 	// precedes the synchronizer, a Secondary Synchronizer that is only
 	// contacted after the Primary is permanently removed, and an FDv1 Fallback
 	// Synchronizer reached via the server-directed FDv1 Fallback Directive.
-	// These shapes are server-side only today; gate accordingly.
-	if !c.isClientSide {
+	// These shapes are server-side only today, so gate on a positive
+	// identification of the server-side category rather than "not client-side":
+	// a future SDK category should have to opt in explicitly, not inherit these
+	// by default.
+	if c.sdkKind.IsServerSide() {
 		t.Run("polling initializer requests", func(t *ldtest.T) {
 			initializerData := mockld.NewServerSDKDataBuilder().Build()
 			synchronizerData := mockld.NewServerSDKDataBuilder().

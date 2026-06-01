@@ -125,7 +125,11 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 	}
 	fdv2TagParams.expectedHeaderValue = c.makeExpectedTagsHeader(fdv2TagParams.tags)
 
-	if !c.isClientSide {
+	// These shapes are server-side only today, so gate on a positive
+	// identification of the server-side category rather than "not client-side":
+	// a future SDK category should have to opt in explicitly, not inherit these
+	// by default.
+	if c.sdkKind.IsServerSide() {
 		t.Run("polling initializer requests", func(t *ldtest.T) {
 			initializerData := mockld.NewServerSDKDataBuilder().Build()
 			synchronizerData := mockld.NewServerSDKDataBuilder().
