@@ -199,6 +199,15 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 				withTagsConfig(fdv2TagParams.tags),
 				WithWaitToStart(5*time.Second, false),
+				// Point the top-level service endpoints at the mocks too: some
+				// SDKs resolve the FDv1 fallback polling URL from
+				// ServiceEndpoints.Polling rather than DataSystem.FDv1Fallback,
+				// and without this they would contact the real LaunchDarkly
+				// endpoint. Matches the existing FDv1 fallback tests.
+				WithServiceEndpoints(servicedef.SDKConfigServiceEndpointsParams{
+					Streaming: streamEndpoint.BaseURL(),
+					Polling:   fdv1Endpoint.BaseURL(),
+				}),
 				WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 					BaseURI: streamEndpoint.BaseURL(),
 				}),
