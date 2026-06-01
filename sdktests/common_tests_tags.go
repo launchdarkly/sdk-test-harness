@@ -1,6 +1,7 @@
 package sdktests
 
 import (
+	"net/http"
 	"strings"
 	"time"
 
@@ -8,8 +9,10 @@ import (
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
+	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 
 	"github.com/stretchr/testify/assert"
@@ -99,6 +102,127 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 			})
 		}
 	})
+
+	// FDv2 introduces request shapes the streaming/polling synchronizer cases
+	// above do not cover: a polling Initializer that runs before the
+	// synchronizer, a Secondary Synchronizer reached after the Primary is
+	// permanently removed, and the FDv1 Fallback Synchronizer reached via the
+	// server-directed FDv1 Fallback Directive. The endpoint-coverage property
+	// for these new request shapes is orthogonal to the tag-value variation
+	// the subtests above exercise, so a single representative tags config is
+	// sufficient.
+	fdv2TagParams := tagsTestParams{
+		tags: servicedef.SDKConfigTagsParams{
+			ApplicationID:      o.Some("test-app"),
+			ApplicationVersion: o.Some("1.0.0"),
+		},
+	}
+	fdv2TagParams.expectedHeaderValue = c.makeExpectedTagsHeader(fdv2TagParams.tags)
+
+	// These shapes are server-side only today, so gate on a positive
+	// identification of the server-side category rather than "not client-side":
+	// a future SDK category should have to opt in explicitly, not inherit these
+	// by default.
+	if c.sdkKind.IsServerSide() {
+		t.Run("polling initializer requests", func(t *ldtest.T) {
+			initializerData := mockld.NewServerSDKDataBuilder().Build()
+			synchronizerData := mockld.FDv2SDKDataFromServerSDKData(
+				mockld.NewServerSDKDataBuilder().Build(), "none", "up-to-date", "initial")
+			dataSystem := NewSDKDataSystem(t, synchronizerData,
+				DataSystemOptionPollingInitializer(initializerData))
+			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
+				withTagsConfig(fdv2TagParams.tags),
+				dataSystem)...)
+			verifyRequestHeader(t, fdv2TagParams, dataSystem.Initializers[0].Endpoint())
+			verifyRequestHeader(t, fdv2TagParams, dataSystem.Synchronizers[0].Endpoint())
+		})
+
+		t.Run("secondary synchronizer requests after permanent fallback", func(t *ldtest.T) {
+			// Primary returns 401, a non-recoverable status that permanently
+			// removes it from the synchronizer chain and causes the SDK to
+			// fall through to the Secondary immediately.
+			primaryEndpoint := requireContext(t).harness.NewMockEndpoint(
+				httphelpers.HandlerWithStatus(401), t.DebugLogger(),
+				harness.MockEndpointDescription("unauthorized primary streaming service"))
+			t.Defer(primaryEndpoint.Close)
+
+			secondaryData := mockld.FDv2SDKDataFromServerSDKData(
+				mockld.NewServerSDKDataBuilder().Build(), "xfer-full", "initial", "initial")
+			secondaryStream := mockld.NewStreamingService(
+				secondaryData, requireContext(t).sdkKind, t.DebugLogger())
+			secondaryEndpoint := requireContext(t).harness.NewMockEndpoint(
+				secondaryStream, t.DebugLogger(),
+				harness.MockEndpointDescription("secondary streaming service"))
+			t.Defer(secondaryEndpoint.Close)
+
+			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
+				withTagsConfig(fdv2TagParams.tags),
+				WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+					BaseURI: primaryEndpoint.BaseURL(),
+				}),
+				WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+					BaseURI: secondaryEndpoint.BaseURL(),
+				}))...)
+
+			verifyRequestHeader(t, fdv2TagParams, primaryEndpoint)
+			verifyRequestHeader(t, fdv2TagParams, secondaryEndpoint)
+
+			// The Primary was permanently removed on the non-recoverable 401;
+			// assert the SDK is not still retrying it in the background after
+			// falling through to the Secondary.
+			primaryEndpoint.RequireNoMoreConnections(t, time.Millisecond*500)
+		})
+	}
+
+	if t.Capabilities().Has(servicedef.CapabilityFDv1Fallback) {
+		t.Run("FDv1 fallback directive requests", func(t *ldtest.T) {
+			// FDv2 streaming responds with 403 + directive on every request
+			// so the SDK transitions to the FDv1 Fallback Synchronizer. The
+			// FDv1 endpoint serves an empty payload so initialization can
+			// complete along the fallback path.
+			streamEndpoint := requireContext(t).harness.NewMockEndpoint(
+				httphelpers.HandlerWithResponse(
+					403, http.Header{"X-LD-FD-Fallback": []string{"true"}}, nil),
+				t.DebugLogger(),
+				harness.MockEndpointDescription("FDv2 streaming service (403 + directive)"))
+			t.Defer(streamEndpoint.Close)
+
+			fdv1Endpoint := requireContext(t).harness.NewMockEndpoint(
+				httphelpers.HandlerWithResponse(
+					200,
+					http.Header{"Content-Type": []string{"application/json"}},
+					c.emptyFDv1FallbackBody()),
+				t.DebugLogger(),
+				harness.MockEndpointDescription("FDv1 polling service"))
+			t.Defer(fdv1Endpoint.Close)
+
+			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
+				withTagsConfig(fdv2TagParams.tags),
+				WithWaitToStart(5*time.Second, false),
+				// Point the top-level service endpoints at the mocks too: some
+				// SDKs resolve the FDv1 fallback polling URL from
+				// ServiceEndpoints.Polling rather than DataSystem.FDv1Fallback,
+				// and without this they would contact the real LaunchDarkly
+				// endpoint. Matches the existing FDv1 fallback tests.
+				WithServiceEndpoints(servicedef.SDKConfigServiceEndpointsParams{
+					Streaming: streamEndpoint.BaseURL(),
+					Polling:   fdv1Endpoint.BaseURL(),
+				}),
+				WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
+					BaseURI: streamEndpoint.BaseURL(),
+				}),
+				WithFDv1Fallback(servicedef.SDKConfigPollingParams{
+					BaseURI: fdv1Endpoint.BaseURL(),
+				}))...)
+
+			verifyRequestHeader(t, fdv2TagParams, streamEndpoint)
+			verifyRequestHeader(t, fdv2TagParams, fdv1Endpoint)
+
+			// Once the directive engaged the FDv1 fallback, the FDv2 stream must
+			// be quiet; assert the SDK is not concurrently retrying it.
+			streamEndpoint.RequireNoMoreConnections(t, time.Millisecond*500)
+		})
+	}
 
 	runPermutations := func(t *ldtest.T, params []tagsTestParams) {
 		for _, p := range params {

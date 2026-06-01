@@ -1,6 +1,7 @@
 package sdktests
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 
@@ -234,6 +235,32 @@ func (c commonTestsBase) sendArbitraryEvent(t *ldtest.T, client *SDKClient) {
 		params.Context = o.Some(ldcontext.New("user-key"))
 	}
 	client.SendCustomEvent(t, params)
+}
+
+// emptyFDv1FallbackBody returns an empty FDv1 polling payload in the format the
+// SDK kind expects: server-side SDKs receive a {"flags":..,"segments":..} object,
+// while client-side SDKs receive a flat map of flag evaluations. The FDv1 fallback
+// directive subtests only need initialization to complete (no flag values) so the
+// request header can be asserted, so the payload is empty in either format.
+//
+// Client-side support for the FDv1 Fallback Directive is in progress; serving the
+// correct format per kind keeps these subtests valid for both rather than feeding a
+// client-side SDK an unparseable server-side body.
+func (c commonTestsBase) emptyFDv1FallbackBody() []byte {
+	var body any
+	if c.isClientSide {
+		body = mockld.ClientSDKData{}
+	} else {
+		body = map[string]any{
+			"flags":    map[string]json.RawMessage{},
+			"segments": map[string]json.RawMessage{},
+		}
+	}
+	bytes, err := json.Marshal(body)
+	if err != nil {
+		panic(fmt.Errorf("failed to marshal empty FDv1 fallback body: %w", err))
+	}
+	return bytes
 }
 
 func (c commonTestsBase) withHTTPProxy(url string) SDKConfigurer {
