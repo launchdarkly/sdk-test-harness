@@ -167,6 +167,11 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 
 			verifyRequestHeader(t, fdv2TagParams, primaryEndpoint)
 			verifyRequestHeader(t, fdv2TagParams, secondaryEndpoint)
+
+			// The Primary was permanently removed on the non-recoverable 401;
+			// assert the SDK is not still retrying it in the background after
+			// falling through to the Secondary.
+			primaryEndpoint.RequireNoMoreConnections(t, time.Millisecond*500)
 		})
 	}
 
@@ -204,6 +209,10 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 
 			verifyRequestHeader(t, fdv2TagParams, streamEndpoint)
 			verifyRequestHeader(t, fdv2TagParams, fdv1Endpoint)
+
+			// Once the directive engaged the FDv1 fallback, the FDv2 stream must
+			// be quiet; assert the SDK is not concurrently retrying it.
+			streamEndpoint.RequireNoMoreConnections(t, time.Millisecond*500)
 		})
 	}
 

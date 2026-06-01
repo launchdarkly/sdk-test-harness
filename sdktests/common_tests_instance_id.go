@@ -147,6 +147,11 @@ func (c CommonInstanceIDTests) Run(t *ldtest.T) {
 			check := newInstanceIDChecker(t)
 			check(primaryEndpoint)
 			check(secondaryEndpoint)
+
+			// The Primary was permanently removed on the non-recoverable 401;
+			// assert the SDK is not still retrying it in the background after
+			// falling through to the Secondary.
+			primaryEndpoint.RequireNoMoreConnections(t, time.Millisecond*500)
 		})
 	}
 
@@ -184,6 +189,10 @@ func (c CommonInstanceIDTests) Run(t *ldtest.T) {
 			check := newInstanceIDChecker(t)
 			check(streamEndpoint)
 			check(fdv1Endpoint)
+
+			// Once the directive engaged the FDv1 fallback, the FDv2 stream must
+			// be quiet; assert the SDK is not concurrently retrying it.
+			streamEndpoint.RequireNoMoreConnections(t, time.Millisecond*500)
 		})
 	}
 }
