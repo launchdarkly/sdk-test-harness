@@ -191,7 +191,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 				httphelpers.HandlerWithResponse(
 					200,
 					http.Header{"Content-Type": []string{"application/json"}},
-					[]byte(`{"flags":{},"segments":{}}`)),
+					c.emptyFDv1FallbackBody()),
 				t.DebugLogger(),
 				harness.MockEndpointDescription("FDv1 polling service"))
 			t.Defer(fdv1Endpoint.Close)
