@@ -86,7 +86,8 @@ func (b blockingUnavailableSDKData) Serialize() []byte { return nil }
 // We use this for both regular server-side SDKs and the PHP SDK.
 type ServerSDKData map[DataItemKind]map[string]json.RawMessage
 
-func (d ServerSDKData) ConvertToFDv2SDKData(t *ldtest.T) FDv2SDKData {
+// ServerSDKDataToFDv2Events converts server-side environment data to FDv2 base objects (payload only).
+func ServerSDKDataToFDv2Events(d ServerSDKData) []framework.BaseObject {
 	payloadObjects := make([]framework.BaseObject, 0, len(d))
 
 	for kind, items := range d {
@@ -100,12 +101,17 @@ func (d ServerSDKData) ConvertToFDv2SDKData(t *ldtest.T) FDv2SDKData {
 		}
 	}
 
-	return FDv2SDKData{
-		intentCode:   "xfer-full",
-		intentReason: "initial",
-		state:        "initial",
-		events:       payloadObjects,
-	}
+	return payloadObjects
+}
+
+// FDv2SDKDataFromServerSDKData wraps server payload data with an FDv2 envelope.
+func FDv2SDKDataFromServerSDKData(d ServerSDKData, intentCode, intentReason, state string) FDv2SDKData {
+	return NewFDv2SDKData(intentCode, intentReason, state, ServerSDKDataToFDv2Events(d))
+}
+
+func (d ServerSDKData) ConvertToFDv2SDKData(t *ldtest.T) FDv2SDKData {
+	_ = t
+	return FDv2SDKDataFromServerSDKData(d, "xfer-full", "initial", "initial")
 }
 
 // ClientSDKData contains simulated LaunchDarkly environment data for a client-side SDK.
@@ -113,7 +119,8 @@ func (d ServerSDKData) ConvertToFDv2SDKData(t *ldtest.T) FDv2SDKData {
 // This does not include flag or segment configurations, but only flag evaluation results for a specific user.
 type ClientSDKData map[string]ClientSDKFlag
 
-func (d ClientSDKData) ConvertToFDv2SDKClientData(t *ldtest.T, state string) FDv2SDKData {
+// ClientSDKDataToFDv2Events converts client-side flag eval data to FDv2 base objects (payload only).
+func ClientSDKDataToFDv2Events(d ClientSDKData) []framework.BaseObject {
 	payloadObjects := make([]framework.BaseObject, 0, len(d))
 
 	for key, item := range d {
@@ -123,19 +130,24 @@ func (d ClientSDKData) ConvertToFDv2SDKClientData(t *ldtest.T, state string) FDv
 		}
 
 		payloadObjects = append(payloadObjects, framework.BaseObject{
-			Kind:    "flag",
+			Kind:    "flag-eval",
 			Version: item.Version,
 			Key:     key,
 			Object:  json,
 		})
 	}
 
-	return FDv2SDKData{
-		intentCode:   "xfer-full",
-		intentReason: "initial",
-		state:        state,
-		events:       payloadObjects,
-	}
+	return payloadObjects
+}
+
+// FDv2SDKDataFromClientSDKData wraps client eval payload data with an FDv2 envelope.
+func FDv2SDKDataFromClientSDKData(d ClientSDKData, intentCode, intentReason, state string) FDv2SDKData {
+	return NewFDv2SDKData(intentCode, intentReason, state, ClientSDKDataToFDv2Events(d))
+}
+
+func (d ClientSDKData) ConvertToFDv2SDKClientData(t *ldtest.T, state string) FDv2SDKData {
+	_ = t
+	return FDv2SDKDataFromClientSDKData(d, "xfer-full", "initial", state)
 }
 
 // ClientSDKFlag contains the flag evaluation results for a single flag in ClientSDKData.
@@ -204,7 +216,7 @@ func (d *ServerSDKData) UnmarshalJSON(data []byte) error {
 		}
 		builder.RawSegment(key, newData)
 	}
-	*d = builder.BuildServerSDKData()
+	*d = builder.Build()
 	return nil
 }
 
@@ -239,25 +251,18 @@ func normalizeSegment(key string, data json.RawMessage) (json.RawMessage, error)
 }
 
 type ServerSDKDataBuilder struct {
-	flags        map[string]json.RawMessage
-	segments     map[string]json.RawMessage
-	intentCode   string
-	intentReason string
-	state        string
+	flags    map[string]json.RawMessage
+	segments map[string]json.RawMessage
 }
 
 func NewServerSDKDataBuilder() *ServerSDKDataBuilder {
 	return &ServerSDKDataBuilder{
 		flags:    make(map[string]json.RawMessage),
 		segments: make(map[string]json.RawMessage),
-
-		intentCode:   "xfer-full",
-		intentReason: "payload-missing",
-		state:        "initial",
 	}
 }
 
-func (b *ServerSDKDataBuilder) BuildServerSDKData() ServerSDKData {
+func (b *ServerSDKDataBuilder) Build() ServerSDKData {
 	flags := maps.Clone(b.flags)
 	segments := maps.Clone(b.segments)
 
@@ -265,56 +270,6 @@ func (b *ServerSDKDataBuilder) BuildServerSDKData() ServerSDKData {
 		"flag":    flags,
 		"segment": segments,
 	}
-}
-
-func (b *ServerSDKDataBuilder) Build() FDv2SDKData {
-	flags := maps.Clone(b.flags)
-	segments := maps.Clone(b.segments)
-
-	events := make([]framework.BaseObject, 0, len(flags)+len(segments))
-	for key, flag := range flags {
-		events = append(events, framework.BaseObject{
-			//nolint:godox
-			// TODO: We have to deal with this version at some point
-			Version: 1,
-			Kind:    "flag",
-			Key:     key,
-			Object:  flag,
-		})
-	}
-
-	for key, segment := range segments {
-		events = append(events, framework.BaseObject{
-			//nolint:godox
-			// TODO: We have to deal with this version at some point
-			Version: 1,
-			Kind:    "segment",
-			Key:     key,
-			Object:  segment,
-		})
-	}
-
-	return FDv2SDKData{
-		intentCode:   b.intentCode,
-		intentReason: b.intentReason,
-		state:        b.state,
-		events:       events,
-	}
-}
-
-func (b *ServerSDKDataBuilder) IntentCode(code string) *ServerSDKDataBuilder {
-	b.intentCode = code
-	return b
-}
-
-func (b *ServerSDKDataBuilder) IntentReason(reason string) *ServerSDKDataBuilder {
-	b.intentReason = reason
-	return b
-}
-
-func (b *ServerSDKDataBuilder) State(state string) *ServerSDKDataBuilder {
-	b.state = state
-	return b
 }
 
 func (b *ServerSDKDataBuilder) RawFlag(key string, data json.RawMessage) *ServerSDKDataBuilder {

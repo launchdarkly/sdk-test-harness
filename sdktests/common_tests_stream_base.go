@@ -12,7 +12,11 @@ type CommonStreamingTests struct {
 }
 
 func NewCommonStreamingTests(t *ldtest.T, testName string, baseSDKConfigurers ...SDKConfigurer) CommonStreamingTests {
-	return CommonStreamingTests{newCommonTestsBase(t, testName, baseSDKConfigurers...)}
+	base := newCommonTestsBase(t, testName, baseSDKConfigurers...)
+	if !base.isClientSide {
+		base.flagEvaluationContext = base.contextFactory.NextUniqueContext()
+	}
+	return CommonStreamingTests{base}
 }
 
 // Create a data system that can be used to push updates, and return the necessary configuration actions for
@@ -38,26 +42,37 @@ func (c CommonStreamingTests) setupDataSystems(
 		initialData = d.ConvertToFDv2SDKData(t)
 	}
 
-	var configurers []SDKConfigurer
-	dataSystem := NewSDKDataSystem(t, initialData)
+	var dsOptions []SDKDataSystemOption
 
 	switch c.sdkKind {
 	case mockld.ServerSideSDK:
-		break
+		// Streaming tests need only a streaming synchronizer (no polling initializer)
+		// so the SDK connects to streaming with an empty basis. Tests that need a
+		// polling initializer create their own data system via NewSDKDataSystemCustom.
+		dataSystem := NewSDKDataSystemCustom(t, initialData, DataSystemOptionStreaming())
+		dataSystem.CreateEndpoints()
+		return dataSystem, []SDKConfigurer{dataSystem}
 
-	case mockld.RokuSDK:
-		fallthrough
-	case mockld.MobileSDK:
-		emptyPollingDataSource := NewSDKDataSystem(t, nil, DataSystemOptionPolling())
-		configurers = append(configurers, emptyPollingDataSource)
+	case mockld.RokuSDK, mockld.MobileSDK:
+		dsOptions = append(dsOptions,
+			DataSystemOptionConnectionMode("streaming", DataSystemOptionStreaming()),
+			DataSystemOptionConnectionMode("polling", DataSystemOptionPolling()),
+			DataSystemOptionInitialConnectionMode("streaming"),
+		)
 
 	case mockld.JSClientSDK:
-		pollingDataSourceWithInitialData := NewSDKDataSystem(t, initialData, DataSystemOptionPolling())
-		configurers = append(configurers, pollingDataSourceWithInitialData)
+		// JS client-side SDKs use connection modes. Streaming-only (no polling
+		// initializer) so the SDK connects to streaming with an empty basis,
+		// matching the server-side behavior for these tests.
+		dsOptions = append(dsOptions,
+			DataSystemOptionConnectionMode("streaming", DataSystemOptionStreaming()),
+			DataSystemOptionInitialConnectionMode("streaming"),
+		)
 
 	default:
 		panic("unknown SDK kind")
 	}
 
-	return dataSystem, append(configurers, dataSystem)
+	dataSystem := NewSDKDataSystem(t, initialData, dsOptions...)
+	return dataSystem, []SDKConfigurer{dataSystem}
 }

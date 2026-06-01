@@ -90,6 +90,16 @@ This means that the SDK supports disabling gzip compression. This capability exp
 
 When this capability is set a subset of tests will set the "enableGzip" of the events configuration to false.
 
+#### Capability `"client-event-source-http-errors"`
+
+For client-side SDKs only. This means the SDK's EventSource implementation can detect HTTP error status codes (e.g. 401, 403) and response headers from failed streaming connections. This is required for tests that verify synchronizer fallback behavior on non-recoverable HTTP errors, and for FDv1 fallback detection via the `X-LD-FD-Fallback` response header.
+
+Browser-native `EventSource` does not expose HTTP status codes or response headers, so browser-based SDKs typically lack this capability. Client-side SDKs using custom or polyfilled EventSource implementations that provide this information should include it. Server-side SDKs do not need to declare this capability.
+
+#### Capability `"client-use-report"`
+
+For client-side SDKs only. This means the SDK can be configured to issue streaming and polling flag requests using the HTTP `REPORT` method (which carries the evaluation context in the request body) instead of `GET`. SDKs lacking this capability will only have their `GET` request variants exercised, and tests that hardcode `REPORT` will be skipped. Server-side SDKs do not need to declare this capability.
+
 #### Capability `"event-sampling"`
 
 This means that the SDK supports event sampling; the SDK can limit the number of certain events based on payloads received from upstream services.
@@ -349,6 +359,22 @@ A `POST` request indicates that the test harness wants to start an instance of t
     * `version`: The version of the wrapper.
   * `proxy` (object, optional): If specified contains proxy configuration.
     * `httpProxy` (string, optional): An HTTP proxy, of the form `http://host:port`.
+  * `dataSystem` (object, optional): Data system configuration. For **server-side** SDKs, this may contain `initializers` and `synchronizers` describing polling/streaming data sources; the test harness sets base URIs there so the SDK connects to simulated endpoints. For **client-side FDv2**, the test harness sends a data system with `useDefaultDataSystem` or `connectionModeConfig.initialConnectionMode` (see below), and sets endpoint base URIs via the top-level `serviceEndpoints` property instead. Properties are:
+    * `useDefaultDataSystem` (boolean, optional): When `true`, signals that the SDK should use the FDv2 data system with its default connection mode.
+    * `store` (object, optional): Persistent data store configuration.
+      * `persistentDataStore` (object, optional): See the `persistentDataStore` property definition elsewhere in this spec.
+    * `storeMode` (number, optional): `0` for read-only, `1` for read-write. Controls whether data from initializers/synchronizers is written back to the store.
+    * `initializers` (array, optional): A list of data initializers. Each initializer has:
+      * `polling` (object, optional): Polling configuration for the initializer, with the same shape as the top-level `polling` property (`baseUri`, `pollIntervalMs`).
+    * `synchronizers` (array, optional): A list of data synchronizers. Each synchronizer has:
+      * `streaming` (object, optional): Streaming configuration (`baseUri`, `initialRetryDelayMs`).
+      * `polling` (object, optional): Polling configuration (`baseUri`, `pollIntervalMs`).
+    * `payloadFilter` (string, optional): If set, the SDK should include this value as a `?filter=` query parameter on streaming/polling requests. See the `"filtering"` capability.
+    * `connectionModeConfig` (object, optional): Connection mode configuration. Properties are:
+      * `initialConnectionMode` (string, optional): The connection mode the SDK should start in (e.g. `"streaming"`, `"polling"`, `"offline"`, `"background"`, `"one-shot"`). For client-side FDv2, the test harness sends exactly one of `useDefaultDataSystem` (at the `dataSystem` level) or `initialConnectionMode`; it cannot send both but must send one.
+      * `customConnectionModes` (object, optional): A map of custom connection mode names to their definitions. Each definition has:
+        * `initializers` (array, optional): Same shape as `dataSystem.initializers`.
+        * `synchronizers` (array, optional): Same shape as `dataSystem.synchronizers`.
   
 The response to a valid request is any HTTP `2xx` status, with a `Location` header whose value is the URL of the test service resource representing this SDK client instance (that is, the one that would be used for "Close client" or "Send command" as described below).
 

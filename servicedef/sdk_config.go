@@ -25,6 +25,7 @@ type SDKConfigParams struct {
 	Wrapper             o.Maybe[SDKConfigWrapper]                   `json:"wrapper,omitempty"`
 	PersistentDataStore o.Maybe[SDKConfigPersistentDataStoreParams] `json:"persistentDataStore,omitempty"`
 	DataSystem          o.Maybe[DataSystem]                         `json:"dataSystem,omitempty"`
+	ServiceEndpoints    o.Maybe[SDKConfigServiceEndpointsParams]    `json:"serviceEndpoints,omitempty"`
 }
 
 type DataStoreMode int
@@ -49,12 +50,24 @@ const (
 // source for the remainder of its lifetime. Streaming is not a valid transport
 // for the FDv1 fallback.
 type DataSystem struct {
-	Store         o.Maybe[DataStore]              `json:"store,omitempty"`
-	StoreMode     DataStoreMode                   `json:"storeMode"`
-	Initializers  []DataInitializer               `json:"initializers"`
-	Synchronizers []DataSynchronizer              `json:"synchronizers"`
-	FDv1Fallback  o.Maybe[SDKConfigPollingParams] `json:"fdv1Fallback,omitempty"`
-	PayloadFilter o.Maybe[string]                 `json:"payloadFilter,omitempty"`
+	UseDefaultDataSystem o.Maybe[bool]                   `json:"useDefaultDataSystem,omitempty"`
+	Store                o.Maybe[DataStore]              `json:"store,omitempty"`
+	StoreMode            DataStoreMode                   `json:"storeMode"`
+	Initializers         []DataInitializer               `json:"initializers"`
+	Synchronizers        []DataSynchronizer              `json:"synchronizers"`
+	FDv1Fallback         o.Maybe[SDKConfigPollingParams] `json:"fdv1Fallback,omitempty"`
+	PayloadFilter        o.Maybe[string]                 `json:"payloadFilter,omitempty"`
+	ConnectionModeConfig o.Maybe[ConnectionModeConfig]   `json:"connectionModeConfig,omitempty"`
+}
+
+type ConnectionModeConfig struct {
+	InitialConnectionMode o.Maybe[string]                    `json:"initialConnectionMode,omitempty"`
+	CustomConnectionModes o.Maybe[map[string]ModeDefinition] `json:"customConnectionModes,omitempty"`
+}
+
+type ModeDefinition struct {
+	Initializers  []DataInitializer  `json:"initializers"`
+	Synchronizers []DataSynchronizer `json:"synchronizers"`
 }
 
 type DataStore struct {

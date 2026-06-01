@@ -86,6 +86,14 @@ func WithEventsConfig(eventsConfig servicedef.SDKConfigEventParams) SDKConfigure
 	})
 }
 
+// WithServiceEndpoints sets the top-level serviceEndpoints configuration (streaming, polling, events base URIs).
+func WithServiceEndpoints(endpoints servicedef.SDKConfigServiceEndpointsParams) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		configOut.ServiceEndpoints = o.Some(endpoints)
+		return nil
+	})
+}
+
 // WithPayloadFilter is used to with StartSDKClient to apply a non-default payload filter configuration
 func WithPayloadFilter(filter environmentFilter) SDKConfigurer {
 	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
