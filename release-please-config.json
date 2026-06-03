@@ -6,6 +6,8 @@
       "bump-minor-pre-major": true,
       "versioning": "default",
       "include-component-in-tag": false,
+      "prerelease": true,
+      "prerelease-type": "alpha",
       "extra-files": [
         "main.go"
       ]
