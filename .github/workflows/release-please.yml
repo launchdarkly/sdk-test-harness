@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - v2
-      - feat/fdv2
+      - v3
   workflow_dispatch:
 
 jobs:
