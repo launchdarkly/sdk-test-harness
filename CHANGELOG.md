@@ -2,6 +2,14 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.1.0-alpha.6](https://github.com/launchdarkly/sdk-test-harness/compare/v3.0.0-alpha.6...v3.1.0-alpha.6) (2026-06-03)
+
+
+### Features
+
+* Assert hook execution order for evaluation and track stages ([#343](https://github.com/launchdarkly/sdk-test-harness/issues/343)) ([dee6b74](https://github.com/launchdarkly/sdk-test-harness/commit/dee6b74392693c2fee4d78e4c36b15d4c97f7b3e))
+* updates so FDv2 tests can run against client side sdks ([#325](https://github.com/launchdarkly/sdk-test-harness/issues/325)) ([b12862a](https://github.com/launchdarkly/sdk-test-harness/commit/b12862a9c5c27726cc6861edc42db3801ce64f04))
+
 ## [2.35.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.34.0...v2.35.0) (2026-04-22)
 
 
