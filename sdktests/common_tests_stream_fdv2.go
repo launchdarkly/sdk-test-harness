@@ -1297,16 +1297,22 @@ func validatePayloadReceived(t *ldtest.T,
 
 	m.In(t).Assert(request.URL.Query().Get("basis"), m.Equal(state))
 
+	// Use a non-recording matcher Test() inside the poll: m.In(t).Assert would
+	// call t.Errorf on the first miss and permanently fail the test, defeating
+	// RequireEventually. Some SDKs deliver the first streamed payload slightly
+	// after the connection is established (e.g. RN's XHR EventSource), so the
+	// expected value may not be present on the first poll even though the SDK
+	// behaves correctly. RequireEventually reports a real failure on timeout.
 	h.RequireEventually(t, func() bool {
 		for flagKey, expectedValue := range evaluations {
 			actualValue := basicEvaluateFlag(t, client, flagKey, evalContext, defaultValue)
-			if !m.In(t).Assert(actualValue, m.JSONEqual(expectedValue)) {
+			if pass, _ := m.JSONEqual(expectedValue).Test(actualValue); !pass {
 				return false
 			}
 		}
 
 		return true
-	}, time.Second, time.Millisecond*20, "failed to evaluate flag")
+	}, time.Second, time.Millisecond*20, "failed to evaluate flags to the expected values")
 
 	return request
 }
