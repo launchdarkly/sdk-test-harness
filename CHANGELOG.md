@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.1.1-alpha.6](https://github.com/launchdarkly/sdk-test-harness/compare/v3.1.0-alpha.6...v3.1.1-alpha.6) (2026-06-05)
+
+
+### Bug Fixes
+
+* Do not record intermediate poll misses in FDv2 validatePayloadReceived ([721db52](https://github.com/launchdarkly/sdk-test-harness/commit/721db5218b9aab892dbae1bb23395c0e98ae0cf4))
+
 ## [3.1.0-alpha.6](https://github.com/launchdarkly/sdk-test-harness/compare/v3.0.0-alpha.6...v3.1.0-alpha.6) (2026-06-03)
 
 
