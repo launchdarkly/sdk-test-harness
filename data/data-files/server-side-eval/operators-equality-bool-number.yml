@@ -1,0 +1,106 @@
+---
+name: operators - equality does not conflate booleans and numbers
+
+# Booleans and numbers are distinct JSON types, so the "in" operator must never
+# treat them as equal. Some languages make this easy to get wrong: in Python a
+# bool is a subclass of int, so a naive equality check makes True == 1 and
+# False == 0. These cases assert that a boolean attribute never matches a numeric
+# clause value (and vice versa), while genuine same-type matches still succeed.
+
+constants:
+  IS_MATCH:
+    value: true
+    variationIndex: 0
+    reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "ruleid" }
+  IS_NOT_MATCH:
+    value: false
+    variationIndex: 1
+    reason: { kind: "FALLTHROUGH" }
+
+parameters:
+  # boolean attribute against numeric clause values - never a match
+  - NAME: boolean true does not match integer clause value 1
+    CONTEXT: { key: "user-key", custom: { attrname: true } }
+    CLAUSE: { attribute: attrname, op: in, values: [ 1 ] }
+    EXPECT: <IS_NOT_MATCH>
+
+  - NAME: boolean true does not match double clause value 1.0
+    CONTEXT: { key: "user-key", custom: { attrname: true } }
+    CLAUSE: { attribute: attrname, op: in, values: [ 1.0 ] }
+    EXPECT: <IS_NOT_MATCH>
+
+  - NAME: boolean false does not match integer clause value 0
+    CONTEXT: { key: "user-key", custom: { attrname: false } }
+    CLAUSE: { attribute: attrname, op: in, values: [ 0 ] }
+    EXPECT: <IS_NOT_MATCH>
+
+  - NAME: boolean false does not match double clause value 0.0
+    CONTEXT: { key: "user-key", custom: { attrname: false } }
+    CLAUSE: { attribute: attrname, op: in, values: [ 0.0 ] }
+    EXPECT: <IS_NOT_MATCH>
+
+  # numeric attribute against boolean clause values - never a match
+  - NAME: integer 1 does not match boolean clause value true
+    CONTEXT: { key: "user-key", custom: { attrname: 1 } }
+    CLAUSE: { attribute: attrname, op: in, values: [ true ] }
+    EXPECT: <IS_NOT_MATCH>
+
+  - NAME: integer 0 does not match boolean clause value false
+    CONTEXT: { key: "user-key", custom: { attrname: 0 } }
+    CLAUSE: { attribute: attrname, op: in, values: [ false ] }
+    EXPECT: <IS_NOT_MATCH>
+
+  - NAME: double 1.0 does not match boolean clause value true
+    CONTEXT: { key: "user-key", custom: { attrname: 1.0 } }
+    CLAUSE: { attribute: attrname, op: in, values: [ true ] }
+    EXPECT: <IS_NOT_MATCH>
+
+  # a boolean must not match a numeric value even when the clause also lists a boolean
+  - NAME: integer 1 does not match clause listing boolean and numeric values
+    CONTEXT: { key: "user-key", custom: { attrname: 1 } }
+    CLAUSE: { attribute: attrname, op: in, values: [ false, true ] }
+    EXPECT: <IS_NOT_MATCH>
+
+  - NAME: boolean true does not match clause listing numeric values
+    CONTEXT: { key: "user-key", custom: { attrname: true } }
+    CLAUSE: { attribute: attrname, op: in, values: [ 0, 1 ] }
+    EXPECT: <IS_NOT_MATCH>
+
+  # same-type comparisons still match, confirming the fix does not over-reject
+  - NAME: boolean true matches boolean clause value true
+    CONTEXT: { key: "user-key", custom: { attrname: true } }
+    CLAUSE: { attribute: attrname, op: in, values: [ true ] }
+    EXPECT: <IS_MATCH>
+
+  - NAME: boolean false matches boolean clause value false
+    CONTEXT: { key: "user-key", custom: { attrname: false } }
+    CLAUSE: { attribute: attrname, op: in, values: [ false ] }
+    EXPECT: <IS_MATCH>
+
+  - NAME: integer 1 matches integer clause value 1
+    CONTEXT: { key: "user-key", custom: { attrname: 1 } }
+    CLAUSE: { attribute: attrname, op: in, values: [ 1 ] }
+    EXPECT: <IS_MATCH>
+
+  - NAME: integer 0 matches integer clause value 0
+    CONTEXT: { key: "user-key", custom: { attrname: 0 } }
+    CLAUSE: { attribute: attrname, op: in, values: [ 0 ] }
+    EXPECT: <IS_MATCH>
+
+sdkData:
+  flags:
+    test-flag:
+      on: true
+      fallthrough: { variation: 1 }
+      variations: [ true, false ]
+      rules:
+        - id: ruleid
+          variation: 0
+          clauses: [ <CLAUSE> ]
+
+evaluations:
+  - name: <NAME>
+    flagKey: test-flag
+    context: <CONTEXT>
+    default: false
+    expect: <EXPECT>
