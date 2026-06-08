@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.37.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.36.0...v2.37.0) (2026-06-08)
+
+
+### Features
+
+* Verify the in operator keeps booleans and numbers distinct ([2943c1d](https://github.com/launchdarkly/sdk-test-harness/commit/2943c1db3a37f5fa548505150c1be712d6eb5d80))
+
 ## [2.36.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.35.0...v2.36.0) (2026-05-15)
 
 
