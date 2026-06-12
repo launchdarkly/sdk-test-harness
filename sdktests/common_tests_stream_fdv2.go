@@ -1006,8 +1006,24 @@ func (c CommonStreamingTests) DirectiveViaGoodbyeEngagesFDv1(t *ldtest.T) {
 
 	// Send the goodbye event with protocolFallbackTTL to trigger FDv1 fallback.
 	// TTL 0 means indefinite fallback — the SDK must not attempt FDv2 recovery.
+	// We do NOT cancel the connection ourselves — the SDK must close the stream
+	// after processing the directive. Forcing a cancel here would race the SDK's
+	// event processing and could mask a bug where the SDK ignores the goodbye.
 	dataSystem.Synchronizers[0].streaming.PushGoodbyeWithFallback("fdv1-fallback-directed", 0)
-	conn.Cancel()
+
+	// The SDK must close the FDv2 streaming connection after processing the
+	// goodbye directive. The request context is tied to the TCP connection; if the
+	// SDK correctly stopped the Primary Synchronizer, the context will be cancelled.
+	h.RequireEventually(t, func() bool {
+		select {
+		case <-conn.Context.Done():
+			return true
+		default:
+			return false
+		}
+	}, time.Second*3, time.Millisecond*20,
+		"SDK did not close the FDv2 streaming connection after goodbye with protocolFallbackTTL — "+
+			"the Primary Synchronizer must be stopped when Directed Fallback engages")
 
 	// The SDK must contact the FDv1 polling endpoint after the goodbye directive.
 	h.RequireEventually(t, func() bool {
