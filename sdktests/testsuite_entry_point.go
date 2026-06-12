@@ -112,6 +112,7 @@ func doAllClientSideTests(t *ldtest.T) {
 	t.Run("client independence", doClientSideClientIndependenceTests)
 	t.Run("hooks", doCommonHooksTests)
 	t.Run("wrapper", doClientSideWrapperTests)
+	t.Run("secure mode hash", doClientSideSecureModeHashTests)
 }
 
 func doAllPHPTests(t *ldtest.T) {
