@@ -96,6 +96,7 @@ func doAllClientSideTests(t *ldtest.T) {
 	t.Run("streaming", doClientSideStreamTests)
 	t.Run("polling", doClientSidePollTests)
 	t.Run("tags", doClientSideTagsTests)
+	t.Run("secure mode hash", doClientSideSecureModeHashTests)
 }
 
 func doAllPHPTests(t *ldtest.T) {

@@ -67,8 +67,9 @@ type SDKConfigTagsParams struct {
 }
 
 type SDKConfigClientSideParams struct {
-	InitialUser        lduser.User   `json:"initialUser"`
-	AutoAliasingOptOut o.Maybe[bool] `json:"autoAliasingOptOut,omitempty"`
-	EvaluationReasons  o.Maybe[bool] `json:"evaluationReasons,omitempty"`
-	UseReport          o.Maybe[bool] `json:"useReport,omitempty"`
+	InitialUser        lduser.User     `json:"initialUser"`
+	AutoAliasingOptOut o.Maybe[bool]   `json:"autoAliasingOptOut,omitempty"`
+	EvaluationReasons  o.Maybe[bool]   `json:"evaluationReasons,omitempty"`
+	UseReport          o.Maybe[bool]   `json:"useReport,omitempty"`
+	Hash               o.Maybe[string] `json:"hash,omitempty"`
 }
