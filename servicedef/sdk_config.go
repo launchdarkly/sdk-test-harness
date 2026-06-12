@@ -86,6 +86,7 @@ type SDKConfigClientSideParams struct {
 	EvaluationReasons            o.Maybe[bool]              `json:"evaluationReasons,omitempty"`
 	UseReport                    o.Maybe[bool]              `json:"useReport,omitempty"`
 	IncludeEnvironmentAttributes o.Maybe[bool]              `json:"includeEnvironmentAttributes,omitempty"`
+	Hash                         o.Maybe[string]            `json:"hash,omitempty"`
 }
 
 type SDKConfigEvaluationHookData map[string]ldvalue.Value
