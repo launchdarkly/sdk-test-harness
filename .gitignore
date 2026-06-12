@@ -4,3 +4,4 @@ dist/
 .idea/
 
 sdk-test-harness
+.claude/sdk-one-shot/
