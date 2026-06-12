@@ -30,7 +30,7 @@ import (
 // Tests use this to stand up a realistic FDv1 Fallback Synchronizer endpoint regardless
 // of SDK kind.
 func fdv1FallbackBody(
-	t *ldtest.T, c CommonStreamingTests, flagKey string,
+	t *ldtest.T, c CommonStreamingTests, flagKey string, //nolint:unparam // kept as a parameter for API consistency
 	version int,
 	value ldvalue.Value,
 ) []byte {
@@ -500,6 +500,8 @@ func (c CommonStreamingTests) FDv1FallbackDirective(t *ldtest.T) {
 		c.DirectiveWithoutFDv1ConfiguredHaltsDataSystem)
 	t.Run("directed fallback is terminal and does not revisit FDv2 sources",
 		c.DirectedFallbackIsTerminal)
+	t.Run("goodbye event with protocolFallbackTTL engages FDv1 fallback",
+		c.DirectiveViaGoodbyeEngagesFDv1)
 }
 
 // DirectiveOnStreamingErrorEngagesFDv1 verifies Requirement 1.6.1 and 1.6.3 for the
@@ -949,6 +951,86 @@ func (c CommonStreamingTests) DirectedFallbackIsTerminal(t *ldtest.T) {
 		return m.In(t).Assert(value, m.JSONEqual(fdv1Value))
 	}, time.Second*3, time.Millisecond*20,
 		"flag-key should still be served from the FDv1 fallback after the recovery window elapses")
+}
+
+// DirectiveViaGoodbyeEngagesFDv1 verifies the in-band goodbye-event form of the FDv1
+// Fallback Directive (FDV2PL spec §3.7, CSFDV2 spec §8.3.4): a `goodbye` SSE event
+// whose JSON body contains a `protocolFallbackTTL` field MUST cause the SDK to engage
+// the FDv1 Fallback Synchronizer, just as the `X-LD-FD-Fallback` response header does.
+//
+// This transport is essential for browser SDKs that use the native EventSource API,
+// which does not expose HTTP response headers on the streaming connection. The goodbye
+// message provides the same fallback information in-band.
+//
+// The test delivers a full FDv2 basis via streaming so the SDK initializes normally,
+// then sends the goodbye event with protocolFallbackTTL. The FDv1 endpoint serves a
+// different flag value; the test asserts the SDK eventually returns that FDv1 value,
+// proving the transition completed and FDv1 data is the active source.
+func (c CommonStreamingTests) DirectiveViaGoodbyeEngagesFDv1(t *ldtest.T) {
+	streamingValue := ldvalue.String("value-from-streaming")
+	streamingData := c.makeSDKDataWithFlag(1, streamingValue)
+	dataSystem := NewSDKDataSystem(t, streamingData)
+
+	fdv1Value := ldvalue.String("value-from-fdv1-via-goodbye")
+	fdv1Handler, fdv1Channel := httphelpers.RecordingHandler(
+		httphelpers.HandlerWithResponse(200, http.Header{"Content-Type": []string{"application/json"}},
+			fdv1FallbackBody(t, c, "flag-key", 2, fdv1Value)))
+	fdv1Endpoint := requireContext(t).harness.NewMockEndpoint(fdv1Handler, t.DebugLogger(),
+		harness.MockEndpointDescription("FDv1 polling service (goodbye path)"))
+	t.Defer(fdv1Endpoint.Close)
+
+	client := c.newFDv2SDKClient(t,
+		WithConfig(servicedef.SDKConfigParams{
+			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(5 * time.Second / time.Millisecond)),
+		}),
+		WithServiceEndpoints(servicedef.SDKConfigServiceEndpointsParams{
+			Streaming: dataSystem.Synchronizers[0].Endpoint().BaseURL(),
+			Polling:   fdv1Endpoint.BaseURL(),
+		}),
+		dataSystem,
+		WithFDv1Fallback(servicedef.SDKConfigPollingParams{
+			BaseURI: fdv1Endpoint.BaseURL(),
+		}))
+
+	// Wait for the SDK to initialize from the streaming basis.
+	streamEndpoint := dataSystem.Synchronizers[0].Endpoint()
+	conn, err := streamEndpoint.AwaitConnection(time.Second * 2)
+	require.NoError(t, err)
+
+	context := c.flagEvaluationContext
+	h.RequireEventually(t, func() bool {
+		value := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
+		return m.In(t).Assert(value, m.JSONEqual(streamingValue))
+	}, time.Second*3, time.Millisecond*20,
+		"flag-key should have been served from the streaming payload before the goodbye event")
+
+	// Send the goodbye event with protocolFallbackTTL to trigger FDv1 fallback.
+	// TTL 0 means indefinite fallback — the SDK must not attempt FDv2 recovery.
+	dataSystem.Synchronizers[0].streaming.PushGoodbyeWithFallback("fdv1-fallback-directed", 0)
+	conn.Cancel()
+
+	// The SDK must contact the FDv1 polling endpoint after the goodbye directive.
+	h.RequireEventually(t, func() bool {
+		select {
+		case resp := <-fdv1Channel:
+			return fdv1FallbackPollPathMatches(c.sdkKind, resp.Request.URL.Path)
+		default:
+			return false
+		}
+	}, time.Second*3, time.Millisecond*10,
+		"FDv1 fallback endpoint was never contacted after goodbye event with protocolFallbackTTL")
+
+	// Evaluation must eventually reflect FDv1's value, proving the SDK installed
+	// the FDv1 payload and is serving from it rather than the stale streaming basis.
+	h.RequireEventually(t, func() bool {
+		value := basicEvaluateFlag(t, client, "flag-key", context, defaultValue)
+		return m.In(t).Assert(value, m.JSONEqual(fdv1Value))
+	}, time.Second*3, time.Millisecond*20,
+		"flag-key should have been served from the FDv1 fallback after goodbye with protocolFallbackTTL")
+
+	// The FDv2 streaming endpoint must not see any reconnection attempts — the
+	// directive is terminal and the SDK must not return to FDv2.
+	streamEndpoint.RequireNoMoreConnections(t, time.Millisecond*500)
 }
 
 func (c CommonStreamingTests) SavesPreviouslyKnownState(t *ldtest.T) {
