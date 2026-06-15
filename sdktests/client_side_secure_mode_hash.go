@@ -45,9 +45,8 @@ func doClientSideSecureModeHashTests(t *ldtest.T) {
 			)...)
 
 			request := dataSource.Endpoint().RequireConnection(t, time.Second)
-			// m.AllOf() is used as "match any value" since this matchers library has no Anything() function.
 			m.In(t).For("h query parameter").Assert(request.URL.RawQuery,
-				UniqueQueryParameters().Should(m.Not(m.MapIncluding(m.KV("h", m.AllOf())))))
+				UniqueQueryParameters().Should(m.Not(MapHasKey("h"))))
 		})
 	})
 
@@ -81,10 +80,8 @@ func doClientSideSecureModeHashTests(t *ldtest.T) {
 			)
 
 			request := dataSource.Endpoint().RequireConnection(t, time.Second)
-			// m.AllOf() with no args is vacuously true; used as "match any value" since this
-			// matchers library has no Anything() function.
 			m.In(t).For("h query parameter").Assert(request.URL.RawQuery,
-				UniqueQueryParameters().Should(m.Not(m.MapIncluding(m.KV("h", m.AllOf())))))
+				UniqueQueryParameters().Should(m.Not(MapHasKey("h"))))
 		})
 	})
 }
