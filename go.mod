@@ -1,6 +1,6 @@
 module github.com/launchdarkly/sdk-test-harness/v2
 
-go 1.23.0
+go 1.24
 
 toolchain go1.24.1
 
@@ -10,7 +10,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/consul/api v1.29.5
 	github.com/launchdarkly/eventsource v1.11.0
-	github.com/launchdarkly/go-jsonstream/v3 v3.0.0
+	github.com/launchdarkly/go-jsonstream/v3 v3.1.1
 	github.com/launchdarkly/go-sdk-common/v3 v3.5.0
 	github.com/launchdarkly/go-server-sdk-evaluation/v3 v3.0.0
 	github.com/launchdarkly/go-test-helpers/v2 v2.3.2
