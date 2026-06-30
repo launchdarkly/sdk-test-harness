@@ -15,7 +15,7 @@ require (
 	github.com/launchdarkly/go-server-sdk-evaluation/v3 v3.0.0
 	github.com/launchdarkly/go-test-helpers/v2 v2.3.2
 	github.com/redis/go-redis/v9 v9.6.3
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.11.1
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
 	gopkg.in/yaml.v3 v3.0.1
 )
