@@ -24,7 +24,7 @@ jobs:
           target-branch: ${{ github.ref_name }}
 
       # Need the repository content to be able to create and push a tag.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: ${{ steps.release.outputs.release_created == 'true' }}
 
       - name: Create release tag
@@ -58,7 +58,7 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # Needed for goreleaser to inspect tags.
       - uses: ./.github/actions/ci
