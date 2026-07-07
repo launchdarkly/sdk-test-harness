@@ -10,7 +10,7 @@ require (
 	github.com/launchdarkly/eventsource v1.11.0
 	github.com/launchdarkly/go-jsonstream/v3 v3.1.1
 	github.com/launchdarkly/go-sdk-common/v3 v3.5.0
-	github.com/launchdarkly/go-server-sdk-evaluation/v3 v3.0.0
+	github.com/launchdarkly/go-server-sdk-evaluation/v3 v3.0.1
 	github.com/launchdarkly/go-test-helpers/v2 v2.3.2
 	github.com/redis/go-redis/v9 v9.21.0
 	github.com/stretchr/testify v1.11.1
@@ -33,8 +33,8 @@ require (
 	github.com/hashicorp/serf v0.10.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/launchdarkly/go-semver v1.0.2 // indirect
-	github.com/mailru/easyjson v0.7.6 // indirect
+	github.com/launchdarkly/go-semver v1.0.3 // indirect
+	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
