@@ -4,7 +4,7 @@ go 1.26
 
 require (
 	github.com/aws/aws-sdk-go v1.55.5
-	github.com/fatih/color v1.16.0
+	github.com/fatih/color v1.19.0
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/consul/api v1.34.3
 	github.com/launchdarkly/eventsource v1.11.0
@@ -36,7 +36,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/launchdarkly/go-semver v1.0.2 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
