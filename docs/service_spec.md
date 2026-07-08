@@ -310,6 +310,7 @@ A `POST` request indicates that the test harness wants to start an instance of t
     * `initialContext` (object, optional): The context properties to initialize the SDK with (unless `initialUser` is specified instead). The test service for a client-side SDK can assume that the test harness will _always_ set this: if the test logic does not explicitly provide a value, the test harness will add a default one.
     * `initialUser` (object, optional): Can be specified instead of `initialContext` to use an old-style user JSON representation.
     * `evaluationReasons`, `useReport` (boolean, optional): These correspond to the SDK configuration properties of the same names.
+    * `hash` (string, optional): If present, a secure mode hash value that the SDK should use when connecting to the streaming and polling services. When set, the SDK must include this value as the `h` query parameter on streaming and polling requests. This field is only used by test services that declare the `"secure-mode-hash"` capability.
   * `hooks` (object, optional): If specified this has the configuration for hooks.
     * `hooks` (array, required): Contains configuration of one or more hooks, each item is an object with the following parameters.
       * `name` (string, required): A name to associate with the hook.
