@@ -21,11 +21,12 @@ This resource should return a 200 status to indicate that the service has starte
 
 The test harness will use the `capabilities` information to decide whether to run optional parts of the test suite that relate to those capabilities.
 
-#### SDK type capabilities: `"server-side"`, `"client-side"`, `"mobile"`, `"php"`
+#### SDK type capabilities: `"server-side"`, `"client-side"`, `"mobile"`, `"php"`, `"roku"`
 
-The most basic decision in this regard is what type of SDK is being tested: server-side, mobile client-side, or JavaScript-based client-side. The server-side test suite is much more detailed, since client-side SDKs do not have their own evaluation logic. In the client-side test suite, the two variants (mobile and JavaScript-based) mostly receive the same tests, but each variant uses somewhat different simulated LaunchDarkly services.
+These capabilities tell the test harness which type of SDK is under test: server-side, mobile client-side, or JavaScript-based client-side. The server-side suite is much more detailed because client-side SDKs do not have their own evaluation logic. Mobile and JavaScript-based client-side SDKs receive mostly the same tests, but each uses different simulated LaunchDarkly services.
 
 * If `"server-side"` is present, this is a server-side SDK. If `"php"` is also present, it is the PHP SDK which is a special case of server-side SDKs.
+* Otherwise, if `"client-side"`, `"mobile"`, and `"roku"` are all present, this is a Roku client-side SDK, a special case of mobile SDKs.
 * Otherwise, if `"client-side"` and `"mobile"` are present, this is a mobile client-side SDK.
 * Otherwise, if `"client-side"` is present without `"mobile"`, this is a JavaScript-based client-side SDK.
 * If none of the above are true, no tests can be run.
@@ -53,6 +54,10 @@ This means that the SDK's method for evaluating all flags at once has an option 
 #### Capability `"anonymous-redaction"`
 
 This means that the SDK will redact all attributes from an anonymous context when encoding it as part of a feature event. Other events will not be affected.
+
+#### Capability `"auto-env-attributes"`
+
+For client-side SDKs only. This means the SDK can automatically append environment attributes (device type, OS version, application metadata) to evaluation contexts. The test harness may set `includeEnvironmentAttributes` in the client-side configuration to enable or disable this in individual tests.
 
 #### Capability `"big-segments"`
 
@@ -99,6 +104,10 @@ Browser-native `EventSource` does not expose HTTP status codes or response heade
 #### Capability `"client-use-report"`
 
 For client-side SDKs only. This means the SDK can be configured to issue streaming and polling flag requests using the HTTP `REPORT` method (which carries the evaluation context in the request body) instead of `GET`. SDKs lacking this capability will only have their `GET` request variants exercised, and tests that hardcode `REPORT` will be skipped. Server-side SDKs do not need to declare this capability.
+
+#### Capability `"client-independence"`
+
+For client-side SDKs only. This means the SDK can run multiple client instances at the same time, with each instance maintaining independent flag data and evaluation state. Tests cover same-environment consistency, cross-environment isolation, and non-interference between instances (identify calls, close operations).
 
 #### Capability `"event-sampling"`
 
@@ -286,9 +295,15 @@ This indicates the SDK is capable of configuring an HTTP proxy for its network r
 All requests should be sent to the proxy. This is generally implemented in an SDK via standard networking
 library capabilities, such as setting an environment variable (like `http_proxy`) or a configuration option.
 
-### Capability `"client-per-context-summaries`
+### Capability `"client-per-context-summaries"`
 
 This indicates that a client-side SDK will emit a summary event per identified context which has evaluated flags.
+
+### Capability `"fdv1-fallback"`
+
+This means the SDK supports the server-directed FDv1 fallback behavior.
+
+This capability gates the FDv1 fallback subtests. SDKs that have not yet implemented this behavior omit the capability to skip those tests.
 
 ### Stop test service: `DELETE /`
 
