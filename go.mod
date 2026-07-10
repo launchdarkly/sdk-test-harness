@@ -3,7 +3,7 @@ module github.com/launchdarkly/sdk-test-harness/v2
 go 1.26
 
 require (
-	github.com/aws/aws-sdk-go v1.55.5
+	github.com/aws/aws-sdk-go v1.55.8
 	github.com/fatih/color v1.19.0
 	github.com/gorilla/mux v1.8.1
 	github.com/hashicorp/consul/api v1.34.3
