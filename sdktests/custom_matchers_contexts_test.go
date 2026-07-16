@@ -153,6 +153,11 @@ func TestJSONMatchesEventContext(t *testing.T) {
 				input:            `{"kind": "user", "key": "a", "_meta": {"redactedAttributes": ["b", "c"]}}`,
 				redactedShouldBe: map[string][]string{"user": {"c", "b"}},
 			},
+			{
+				c:                ldcontext.New("a"),
+				input:            `{"kind": "user", "key": "a", "_meta": {"redactedAttributes": ["/~1ssn"]}}`,
+				redactedShouldBe: map[string][]string{"user": {"/~1ssn"}},
+			},
 		} {
 			t.Run(p.input, func(t *testing.T) {
 				m.In(t).Assert(json.RawMessage(p.input), JSONMatchesEventContext(p.c, p.redactedShouldBe))
@@ -176,6 +181,11 @@ func TestJSONMatchesEventContext(t *testing.T) {
 				c:                ldcontext.NewBuilder("a").Private("b").Build(),
 				input:            `{"kind": "user", "key": "a", "_meta": {"privateAttributes": ["b"]}}`,
 				redactedShouldBe: map[string][]string{"user": {"b"}},
+			},
+			{
+				c:                ldcontext.New("a"),
+				input:            `{"kind": "user", "key": "a", "_meta": {"redactedAttributes": ["/ssn"]}}`,
+				redactedShouldBe: map[string][]string{"user": {"/~1ssn"}},
 			},
 		} {
 			t.Run(p.input, func(t *testing.T) {
