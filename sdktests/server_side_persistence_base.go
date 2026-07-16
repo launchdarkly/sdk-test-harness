@@ -11,6 +11,7 @@ package sdktests
 // dependencies are explicitly passed in.
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -18,10 +19,10 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	consul "github.com/hashicorp/consul/api"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
@@ -68,21 +69,22 @@ func doServerSidePersistentTests(t *ldtest.T) {
 
 	if t.Capabilities().Has(servicedef.CapabilityPersistentDataStoreDynamoDB) {
 		ranAtLeastOnce = true
-		mySession := session.Must(session.NewSession(
-			aws.NewConfig().
-				WithRegion("us-east-1").
-				WithEndpoint("http://localhost:8000").
-				WithCredentials(
-					credentials.NewStaticCredentials(
-						"dummy",
-						"dummy",
-						"dummy",
-					),
-				),
-		))
+		endpoint := "http://localhost:8000"
+		cfg, err := config.LoadDefaultConfig(
+			context.Background(),
+			config.WithRegion("us-east-1"),
+			config.WithCredentialsProvider(
+				credentials.NewStaticCredentialsProvider("dummy", "dummy", "dummy"),
+			),
+		)
+		require.NoError(t, err)
 
-		store := DynamoDBPersistentStore{dynamodb: dynamodb.New(mySession)}
-		err := store.Reset()
+		client := dynamodb.NewFromConfig(cfg, func(o *dynamodb.Options) {
+			o.BaseEndpoint = aws.String(endpoint)
+		})
+
+		store := DynamoDBPersistentStore{dynamodb: client, endpoint: endpoint}
+		err = store.Reset()
 		require.NoError(t, err)
 
 		t.Run("dynamodb", newServerSidePersistentTests(t, &store, "").Run)
