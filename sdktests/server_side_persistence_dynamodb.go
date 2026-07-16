@@ -1,15 +1,16 @@
 package sdktests
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
 	"strconv"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
@@ -25,11 +26,12 @@ const (
 )
 
 type DynamoDBPersistentStore struct {
-	dynamodb *dynamodb.DynamoDB
+	dynamodb *dynamodb.Client
+	endpoint string
 }
 
 func (d *DynamoDBPersistentStore) DSN() string {
-	return *d.dynamodb.Config.Endpoint
+	return d.endpoint
 }
 
 func (d *DynamoDBPersistentStore) Type() servicedef.SDKConfigPersistentType {
@@ -37,39 +39,36 @@ func (d *DynamoDBPersistentStore) Type() servicedef.SDKConfigPersistentType {
 }
 
 func (d *DynamoDBPersistentStore) Reset() error {
-	_, err := d.dynamodb.DeleteTable(&dynamodb.DeleteTableInput{TableName: aws.String(dynamoDBTableName)})
-	var aerr awserr.Error
-	if errors.As(err, &aerr) {
-		switch aerr.Code() {
-		case dynamodb.ErrCodeResourceNotFoundException:
-			// pass
-		default:
-			return err
-		}
+	ctx := context.Background()
+
+	_, err := d.dynamodb.DeleteTable(ctx, &dynamodb.DeleteTableInput{TableName: aws.String(dynamoDBTableName)})
+	var notFound *types.ResourceNotFoundException
+	if err != nil && !errors.As(err, &notFound) {
+		return err
 	}
 
-	_, err = d.dynamodb.CreateTable(&dynamodb.CreateTableInput{
-		AttributeDefinitions: []*dynamodb.AttributeDefinition{
+	_, err = d.dynamodb.CreateTable(ctx, &dynamodb.CreateTableInput{
+		AttributeDefinitions: []types.AttributeDefinition{
 			{
 				AttributeName: aws.String(dynamoDBTablePartitionKey),
-				AttributeType: aws.String("S"),
+				AttributeType: types.ScalarAttributeTypeS,
 			},
 			{
 				AttributeName: aws.String(dynamoDBTableSortKey),
-				AttributeType: aws.String("S"),
+				AttributeType: types.ScalarAttributeTypeS,
 			},
 		},
-		KeySchema: []*dynamodb.KeySchemaElement{
+		KeySchema: []types.KeySchemaElement{
 			{
 				AttributeName: aws.String(dynamoDBTablePartitionKey),
-				KeyType:       aws.String("HASH"),
+				KeyType:       types.KeyTypeHash,
 			},
 			{
 				AttributeName: aws.String(dynamoDBTableSortKey),
-				KeyType:       aws.String("RANGE"),
+				KeyType:       types.KeyTypeRange,
 			},
 		},
-		ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
+		ProvisionedThroughput: &types.ProvisionedThroughput{
 			ReadCapacityUnits:  aws.Int64(1),
 			WriteCapacityUnits: aws.Int64(1),
 		},
@@ -80,11 +79,12 @@ func (d *DynamoDBPersistentStore) Reset() error {
 
 func (d *DynamoDBPersistentStore) Get(prefix, key string) (o.Maybe[string], error) {
 	result, err := d.dynamodb.GetItem(
+		context.Background(),
 		&dynamodb.GetItemInput{
 			TableName: aws.String(dynamoDBTableName),
-			Key: map[string]*dynamodb.AttributeValue{
-				dynamoDBTablePartitionKey: {S: aws.String(addPrefix(prefix, key))},
-				dynamoDBTableSortKey:      {S: aws.String(addPrefix(prefix, key))},
+			Key: map[string]types.AttributeValue{
+				dynamoDBTablePartitionKey: &types.AttributeValueMemberS{Value: addPrefix(prefix, key)},
+				dynamoDBTableSortKey:      &types.AttributeValueMemberS{Value: addPrefix(prefix, key)},
 			},
 		})
 
@@ -101,32 +101,32 @@ func (d *DynamoDBPersistentStore) Get(prefix, key string) (o.Maybe[string], erro
 		return o.None[string](), nil
 	}
 
-	return o.Some(*result.Item[dynamoDBItemJSONAttribute].S), nil
+	return o.Some(result.Item[dynamoDBItemJSONAttribute].(*types.AttributeValueMemberS).Value), nil
 }
 
 func (d *DynamoDBPersistentStore) GetMap(prefix, key string) (map[string]string, error) {
 	query := &dynamodb.QueryInput{
 		TableName:      aws.String(dynamoDBTableName),
 		ConsistentRead: aws.Bool(true),
-		KeyConditions: map[string]*dynamodb.Condition{
+		KeyConditions: map[string]types.Condition{
 			dynamoDBTablePartitionKey: {
-				ComparisonOperator: aws.String(dynamodb.ComparisonOperatorEq),
-				AttributeValueList: []*dynamodb.AttributeValue{
-					{S: aws.String(addPrefix(prefix, key))},
+				ComparisonOperator: types.ComparisonOperatorEq,
+				AttributeValueList: []types.AttributeValue{
+					&types.AttributeValueMemberS{Value: addPrefix(prefix, key)},
 				},
 			},
 		},
 	}
 
 	results := map[string]string{}
-	response, err := d.dynamodb.Query(query)
+	response, err := d.dynamodb.Query(context.Background(), query)
 	if err != nil {
 		return results, err
 	}
 
 	for _, item := range response.Items {
-		itemKey := *item[dynamoDBTableSortKey].S
-		results[itemKey] = *item[dynamoDBItemJSONAttribute].S
+		itemKey := item[dynamoDBTableSortKey].(*types.AttributeValueMemberS).Value
+		results[itemKey] = item[dynamoDBItemJSONAttribute].(*types.AttributeValueMemberS).Value
 	}
 
 	return results, nil
@@ -135,33 +135,33 @@ func (d *DynamoDBPersistentStore) GetMap(prefix, key string) (map[string]string,
 func (d *DynamoDBPersistentStore) WriteMap(prefix, key string, data map[string]string) error {
 	unusedKeys := make(map[string]struct{})
 
-	condition := dynamodb.Condition{
-		ComparisonOperator: aws.String("EQ"),
-		AttributeValueList: []*dynamodb.AttributeValue{{
-			S: aws.String(addPrefix(prefix, key)),
-		}},
+	condition := types.Condition{
+		ComparisonOperator: types.ComparisonOperatorEq,
+		AttributeValueList: []types.AttributeValue{
+			&types.AttributeValueMemberS{Value: addPrefix(prefix, key)},
+		},
 	}
 
 	// Read in all the old keys first
 	query := &dynamodb.QueryInput{
 		TableName:      aws.String(dynamoDBTableName),
 		ConsistentRead: aws.Bool(true),
-		KeyConditions: map[string]*dynamodb.Condition{
-			dynamoDBTablePartitionKey: &condition,
+		KeyConditions: map[string]types.Condition{
+			dynamoDBTablePartitionKey: condition,
 		},
 	}
 
-	response, err := d.dynamodb.Query(query)
+	response, err := d.dynamodb.Query(context.Background(), query)
 	if err != nil {
 		return err
 	}
 
 	for _, item := range response.Items {
-		itemKey := item[dynamoDBTableSortKey].String()
+		itemKey := item[dynamoDBTableSortKey].(*types.AttributeValueMemberS).Value
 		unusedKeys[itemKey] = struct{}{}
 	}
 
-	requests := make([]*dynamodb.WriteRequest, 0)
+	requests := make([]types.WriteRequest, 0)
 
 	for k, v := range data {
 		var versioned struct {
@@ -170,13 +170,13 @@ func (d *DynamoDBPersistentStore) WriteMap(prefix, key string, data map[string]s
 		if err := json.Unmarshal([]byte(v), &versioned); err != nil {
 			return err
 		}
-		requests = append(requests, &dynamodb.WriteRequest{
-			PutRequest: &dynamodb.PutRequest{
-				Item: map[string]*dynamodb.AttributeValue{
-					dynamoDBTablePartitionKey: {S: aws.String(addPrefix(prefix, key))},
-					dynamoDBTableSortKey:      {S: aws.String(k)},
-					dynamoDBItemJSONAttribute: {S: aws.String(v)},
-					dynamoDBVersionAttribute:  {N: aws.String(strconv.Itoa(versioned.Version))},
+		requests = append(requests, types.WriteRequest{
+			PutRequest: &types.PutRequest{
+				Item: map[string]types.AttributeValue{
+					dynamoDBTablePartitionKey: &types.AttributeValueMemberS{Value: addPrefix(prefix, key)},
+					dynamoDBTableSortKey:      &types.AttributeValueMemberS{Value: k},
+					dynamoDBItemJSONAttribute: &types.AttributeValueMemberS{Value: v},
+					dynamoDBVersionAttribute:  &types.AttributeValueMemberN{Value: strconv.Itoa(versioned.Version)},
 				},
 			},
 		})
@@ -187,20 +187,20 @@ func (d *DynamoDBPersistentStore) WriteMap(prefix, key string, data map[string]s
 		if k == persistenceInitedKey {
 			continue
 		}
-		delKey := map[string]*dynamodb.AttributeValue{
-			dynamoDBTablePartitionKey: {S: aws.String(addPrefix(prefix, key))},
-			dynamoDBTableSortKey:      {S: aws.String(k)},
+		delKey := map[string]types.AttributeValue{
+			dynamoDBTablePartitionKey: &types.AttributeValueMemberS{Value: addPrefix(prefix, key)},
+			dynamoDBTableSortKey:      &types.AttributeValueMemberS{Value: k},
 		}
-		requests = append(requests, &dynamodb.WriteRequest{
-			DeleteRequest: &dynamodb.DeleteRequest{Key: delKey},
+		requests = append(requests, types.WriteRequest{
+			DeleteRequest: &types.DeleteRequest{Key: delKey},
 		})
 	}
 
 	// Now set the special key that we check in InitializedInternal()
-	requests = append(requests, &dynamodb.WriteRequest{
-		PutRequest: &dynamodb.PutRequest{Item: map[string]*dynamodb.AttributeValue{
-			dynamoDBTablePartitionKey: {S: aws.String(addPrefix(prefix, persistenceInitedKey))},
-			dynamoDBTableSortKey:      {S: aws.String(persistenceInitedKey)},
+	requests = append(requests, types.WriteRequest{
+		PutRequest: &types.PutRequest{Item: map[string]types.AttributeValue{
+			dynamoDBTablePartitionKey: &types.AttributeValueMemberS{Value: addPrefix(prefix, persistenceInitedKey)},
+			dynamoDBTableSortKey:      &types.AttributeValueMemberS{Value: persistenceInitedKey},
 		}},
 	})
 
@@ -216,17 +216,17 @@ func (d *DynamoDBPersistentStore) WriteMap(prefix, key string, data map[string]s
 // batchWriteRequests executes a list of write requests (PutItem or DeleteItem)
 // in batches of 25, which is the maximum BatchWriteItem can handle.
 func batchWriteRequests(
-	client *dynamodb.DynamoDB,
+	client *dynamodb.Client,
 	table string,
-	requests []*dynamodb.WriteRequest,
+	requests []types.WriteRequest,
 ) error {
 	for len(requests) > 0 {
 		batchSize := int(math.Min(float64(len(requests)), 25))
 		batch := requests[:batchSize]
 		requests = requests[batchSize:]
 
-		_, err := client.BatchWriteItem(&dynamodb.BatchWriteItemInput{
-			RequestItems: map[string][]*dynamodb.WriteRequest{table: batch},
+		_, err := client.BatchWriteItem(context.Background(), &dynamodb.BatchWriteItemInput{
+			RequestItems: map[string][]types.WriteRequest{table: batch},
 		})
 		if err != nil {
 			return err
