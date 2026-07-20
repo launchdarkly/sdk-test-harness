@@ -468,7 +468,8 @@ func doClientSidePrereqCycleTests(t *ldtest.T) {
 		client.FlushEvents(t)
 		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 
-		expected := []m.Matcher{IsIdentifyEventForContext(context)}
+		expected := make([]m.Matcher, 0, 1+len(expectedFeatureEventKeys)+1)
+		expected = append(expected, IsIdentifyEventForContext(context))
 		for _, key := range expectedFeatureEventKeys {
 			key := key
 			expected = append(expected, IsValidFeatureEventWithConditions(
