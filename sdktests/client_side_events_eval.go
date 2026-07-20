@@ -1,6 +1,7 @@
 package sdktests
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
@@ -422,4 +423,164 @@ func doClientSideDebugEventTests(t *ldtest.T) {
 	}
 
 	doDebugEventTestCases(t, doDebugTest)
+}
+
+// doClientSidePrereqCycleTests exercises CSPE 1.2.5, 1.2.5.1, and 1.2.5.2: the SDK must
+// not enter unbounded recursion when the prerequisites graph reachable from the evaluated
+// flag contains a cycle. On cycle detection the SDK skips the offending edge, continues
+// processing remaining prerequisites at the current level, and returns the requested
+// flag's cached value and reason unchanged.
+//
+// These cases cover feature-event emission. Companion summary-counter cases live in
+// client_side_events_summary.go as doClientSideSummaryPrereqCycleTests.
+func doClientSidePrereqCycleTests(t *ldtest.T) {
+	context := ldcontext.New("user")
+
+	// runCase evaluates evalKey against the given flag data and asserts:
+	//   - the HTTP round-trip to the test service completes (implicit: no SDK crash),
+	//   - Requirement 1.2.5.1: the returned value equals expectedValue (the cached
+	//     evaluation result of the requested flag, unchanged),
+	//   - feature events are emitted for the flags in expectedFeatureEventKeys, plus
+	//     the usual identify and summary events. The expected list is finite, so a
+	//     failed cycle guard that emits an unbounded event stream would fail the match.
+	runCase := func(
+		t *ldtest.T,
+		dataBuilder *mockld.ClientSDKDataBuilder,
+		evalKey string,
+		expectedValue ldvalue.Value,
+		expectedFeatureEventKeys []string,
+	) {
+		dataSource := NewSDKDataSource(t, dataBuilder.Build())
+		events := NewSDKEventSink(t)
+		client := NewSDKClient(t,
+			WithClientSideInitialContext(context),
+			dataSource, events)
+
+		result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+			FlagKey:      evalKey,
+			DefaultValue: ldvalue.Null(),
+			ValueType:    servicedef.ValueTypeAny,
+		})
+
+		// Requirement 1.2.5.1: value MUST equal the flag's cached evaluation result.
+		m.In(t).Assert(result.Value, m.JSONEqual(expectedValue))
+
+		client.FlushEvents(t)
+		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+		expected := make([]m.Matcher, 0, 1+len(expectedFeatureEventKeys)+1)
+		expected = append(expected, IsIdentifyEventForContext(context))
+		for _, key := range expectedFeatureEventKeys {
+			key := key
+			expected = append(expected, IsValidFeatureEventWithConditions(
+				t, false, context,
+				m.JSONProperty("key").Should(m.Equal(key)),
+			))
+		}
+		expected = append(expected, IsSummaryEvent())
+		m.In(t).Assert(payload, m.ItemsInAnyOrder(expected...))
+	}
+
+	valTrue := ldvalue.Bool(true)
+
+	makeFlag := func(prereqs ...string) mockld.ClientSDKFlag {
+		return mockld.ClientSDKFlag{
+			Value:         valTrue,
+			Variation:     o.Some(0),
+			TrackEvents:   true,
+			Prerequisites: prereqs,
+		}
+	}
+
+	t.Run("self-loop", func(t *ldtest.T) {
+		dataBuilder := mockld.NewClientSDKDataBuilder().
+			Flag("A", makeFlag("A"))
+		// A's only prerequisite is itself; the cycle guard skips it. Only A emits a
+		// feature event (as the top-level evaluation).
+		runCase(t, dataBuilder, "A", valTrue, []string{"A"})
+	})
+
+	t.Run("self-loop with sibling prerequisite", func(t *ldtest.T) {
+		dataBuilder := mockld.NewClientSDKDataBuilder().
+			Flag("A", makeFlag("A", "B")).
+			Flag("B", makeFlag())
+		// The self-prereq on A is skipped; B is still evaluated as a sibling.
+		runCase(t, dataBuilder, "A", valTrue, []string{"B", "A"})
+	})
+
+	t.Run("two-cycle, evaluating A", func(t *ldtest.T) {
+		dataBuilder := mockld.NewClientSDKDataBuilder().
+			Flag("A", makeFlag("B")).
+			Flag("B", makeFlag("A"))
+		// A -> B -> [A skipped by cycle guard]. Events: B (as prereq of A), A.
+		runCase(t, dataBuilder, "A", valTrue, []string{"B", "A"})
+	})
+
+	t.Run("two-cycle, evaluating B", func(t *ldtest.T) {
+		dataBuilder := mockld.NewClientSDKDataBuilder().
+			Flag("A", makeFlag("B")).
+			Flag("B", makeFlag("A"))
+		// Symmetric: same graph, but B is the entry point.
+		runCase(t, dataBuilder, "B", valTrue, []string{"A", "B"})
+	})
+
+	t.Run("three-cycle", func(t *ldtest.T) {
+		dataBuilder := mockld.NewClientSDKDataBuilder().
+			Flag("A", makeFlag("B")).
+			Flag("B", makeFlag("C")).
+			Flag("C", makeFlag("A"))
+		// A -> B -> C -> [A skipped]. Events (deepest first): C, B, A.
+		runCase(t, dataBuilder, "A", valTrue, []string{"C", "B", "A"})
+	})
+
+	t.Run("cycle within a subgraph", func(t *ldtest.T) {
+		// A has one acyclic branch (X) and one branch that contains a cycle (B <-> C).
+		// The cycle must not affect processing of the sibling branch.
+		dataBuilder := mockld.NewClientSDKDataBuilder().
+			Flag("A", makeFlag("X", "B")).
+			Flag("X", makeFlag()).
+			Flag("B", makeFlag("C")).
+			Flag("C", makeFlag("B"))
+		// A -> [X (leaf), B -> C -> [B skipped]]. Events: X, C, B, A.
+		runCase(t, dataBuilder, "A", valTrue, []string{"X", "C", "B", "A"})
+	})
+
+	t.Run("diamond (non-cyclic control)", func(t *ldtest.T) {
+		// Ancestor-set (Requirement 1.2.5.2) semantics: D is reached twice via
+		// independent paths and MUST emit a prerequisite event on each. A naive
+		// "visited across the whole walk" implementation would silently drop the
+		// second D event; this case catches that regression.
+		dataBuilder := mockld.NewClientSDKDataBuilder().
+			Flag("A", makeFlag("B", "C")).
+			Flag("B", makeFlag("D")).
+			Flag("C", makeFlag("D")).
+			Flag("D", makeFlag())
+		// Events: D (via B), B, D (via C), C, A. D appears twice.
+		runCase(t, dataBuilder, "A", valTrue, []string{"D", "B", "D", "C", "A"})
+	})
+
+	t.Run("deep chain (non-cyclic control)", func(t *ldtest.T) {
+		// Verifies that the cycle-detection implementation does not accidentally
+		// impose a shallow depth limit that would break legitimate deep prereq trees.
+		const depth = 20
+		dataBuilder := mockld.NewClientSDKDataBuilder()
+		for i := 0; i < depth; i++ {
+			key := fmt.Sprintf("f%d", i)
+			flag := mockld.ClientSDKFlag{
+				Value:       valTrue,
+				Variation:   o.Some(0),
+				TrackEvents: true,
+			}
+			if i < depth-1 {
+				flag.Prerequisites = []string{fmt.Sprintf("f%d", i+1)}
+			}
+			dataBuilder.Flag(key, flag)
+		}
+		// Deepest first: f19, f18, ..., f0.
+		expected := make([]string, depth)
+		for i := 0; i < depth; i++ {
+			expected[i] = fmt.Sprintf("f%d", depth-1-i)
+		}
+		runCase(t, dataBuilder, "f0", valTrue, expected)
+	})
 }

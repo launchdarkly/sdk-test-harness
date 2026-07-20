@@ -42,6 +42,7 @@ const (
 	CapabilityEvaluationHooks             = "evaluation-hooks"
 	CapabilityTrackHooks                  = "track-hooks"
 	CapabilityClientPrereqEvents          = "client-prereq-events"
+	CapabilityClientPrereqCycleDetection  = "client-prereq-cycle-detection"
 	CapabilityPersistentDataStoreRedis    = "persistent-data-store-redis"
 	CapabilityPersistentDataStoreConsul   = "persistent-data-store-consul"
 	CapabilityPersistentDataStoreDynamoDB = "persistent-data-store-dynamodb"
