@@ -39,6 +39,7 @@ func doServerSideMigrationTests(t *ldtest.T) {
 	t.Run("migration events for missing flags", itHandlesMigrationEventsForMissingFlags)
 	t.Run("uses wrong type for non-migration flag", itHandlesNonMigrationFlags)
 	t.Run("redacts anonymous context attributes", itRedactsAnonymousContextAttributes)
+	t.Run("redacts private context attributes", itRedactsPrivateContextAttributes)
 }
 
 func withExecutionOrders(test func(*ldtest.T, ldmigration.ExecutionOrder)) func(t *ldtest.T) {
@@ -850,6 +851,17 @@ func itRedactsAnonymousContextAttributes(t *ldtest.T) {
 		SetValue("punchline", ldvalue.Null()).
 		Build()
 
+	// When the SDK inlines the context, verify the redacted attributes are actually removed and
+	// reported under _meta.redactedAttributes. The default matcher only checks the context key.
+	if t.Capabilities().Has(servicedef.CapabilityInlineContextAll) {
+		opEventMatchers = append(opEventMatchers,
+			m.JSONProperty("context").Should(JSONMatchesEventContext(
+				expectedContext,
+				redactedAttrsByKind{"user": {"name", "setup", "punchline"}},
+			)),
+		)
+	}
+
 	expectEvents(
 		t, events, context,
 		IsValidMigrationOpEventWithConditions(
@@ -858,6 +870,129 @@ func itRedactsAnonymousContextAttributes(t *ldtest.T) {
 			opEventMatchers...,
 		),
 	)
+}
+
+func itRedactsPrivateContextAttributes(t *ldtest.T) {
+	// Redaction is only observable when the SDK inlines the full context in the migration op event.
+	// SDKs that only send contextKeys have nothing to redact.
+	t.RequireCapability(servicedef.CapabilityInlineContextAll)
+
+	successfulHandler := func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusOK) }
+
+	testParams := []struct {
+		name             string
+		eventsConfig     servicedef.SDKConfigEventParams
+		context          ldcontext.Context
+		outputContext    func(ldcontext.Context) ldcontext.Context
+		redactedShouldBe redactedAttrsByKind
+	}{
+		{
+			name:         "all attributes private",
+			eventsConfig: servicedef.SDKConfigEventParams{AllAttributesPrivate: true},
+			context: ldcontext.NewBuilder("user-key").
+				Name("Example name").
+				SetString("email", "victim@example.com").
+				SetString("apiToken", "LD_PRIVATE_TOKEN_12345").
+				Build(),
+			outputContext: func(c ldcontext.Context) ldcontext.Context {
+				return ldcontext.NewBuilderFromContext(c).
+					SetValue("name", ldvalue.Null()).
+					SetValue("email", ldvalue.Null()).
+					SetValue("apiToken", ldvalue.Null()).
+					Build()
+			},
+			redactedShouldBe: redactedAttrsByKind{"user": {"name", "email", "apiToken"}},
+		},
+		{
+			name: "globally configured private attributes",
+			eventsConfig: servicedef.SDKConfigEventParams{
+				GlobalPrivateAttributes: []string{"email"},
+			},
+			context: ldcontext.NewBuilder("user-key").
+				Name("Example name").
+				SetString("email", "victim@example.com").
+				SetString("visible", "keep-me").
+				Build(),
+			outputContext: func(c ldcontext.Context) ldcontext.Context {
+				return ldcontext.NewBuilderFromContext(c).
+					SetValue("email", ldvalue.Null()).
+					Build()
+			},
+			redactedShouldBe: redactedAttrsByKind{"user": {"email"}},
+		},
+		{
+			name: "context-specified private attributes",
+			context: ldcontext.NewBuilder("user-key").
+				Name("Example name").
+				SetString("email", "victim@example.com").
+				SetString("apiToken", "LD_PRIVATE_TOKEN_12345").
+				SetString("visible", "keep-me").
+				Private("email", "apiToken").
+				Build(),
+			outputContext: func(c ldcontext.Context) ldcontext.Context {
+				return ldcontext.NewBuilderFromContext(c).
+					SetValue("email", ldvalue.Null()).
+					SetValue("apiToken", ldvalue.Null()).
+					Build()
+			},
+			redactedShouldBe: redactedAttrsByKind{"user": {"email", "apiToken"}},
+		},
+		{
+			name: "private attribute nested property",
+			eventsConfig: servicedef.SDKConfigEventParams{
+				GlobalPrivateAttributes: []string{"/address/city"},
+			},
+			context: ldcontext.NewBuilder("user-key").
+				Name("Example name").
+				SetValue("address", ldvalue.Parse([]byte(`{"street": "123 Main St", "city": "Springfield"}`))).
+				Build(),
+			outputContext: func(c ldcontext.Context) ldcontext.Context {
+				return ldcontext.NewBuilderFromContext(c).
+					SetValue("address", ldvalue.Parse([]byte(`{"street": "123 Main St"}`))).
+					Build()
+			},
+			redactedShouldBe: redactedAttrsByKind{"user": {"/address/city"}},
+		},
+	}
+
+	for _, p := range testParams {
+		t.Run(p.name, func(t *ldtest.T) {
+			client, events := createClient(t, 0, WithEventsConfig(p.eventsConfig))
+
+			service := mockld.NewMigrationCallbackService(requireContext(t).harness, t.DebugLogger(), successfulHandler, successfulHandler)
+			t.Defer(service.Close)
+
+			params := servicedef.MigrationOperationParams{
+				Key:                "missing-key",
+				Context:            p.context,
+				DefaultStage:       ldmigration.Off,
+				ReadExecutionOrder: ldmigration.Concurrent,
+				OldEndpoint:        service.OldEndpoint().BaseURL(),
+				NewEndpoint:        service.NewEndpoint().BaseURL(),
+				Operation:          ldmigration.Read,
+				TrackErrors:        true,
+			}
+
+			_ = client.MigrationOperation(t, params)
+			client.FlushEvents(t)
+
+			expectedContext := p.outputContext(p.context)
+
+			opEventMatchers := []m.Matcher{
+				m.JSONProperty("operation").Should(m.Equal(string(ldmigration.Read))),
+				m.JSONProperty("context").Should(JSONMatchesEventContext(expectedContext, p.redactedShouldBe)),
+			}
+
+			expectEvents(
+				t, events, p.context,
+				IsValidMigrationOpEventWithConditions(
+					expectedContext,
+					true,
+					opEventMatchers...,
+				),
+			)
+		})
+	}
 }
 
 func itHandlesNonMigrationFlags(t *ldtest.T) {
@@ -1269,7 +1404,7 @@ func tracksConsistencyIsDisabledIfCallbackFails(t *ldtest.T, order ldmigration.E
 	}
 }
 
-func createClient(t *ldtest.T, variationIndex int) (*SDKClient, *SDKEventSink) {
+func createClient(t *ldtest.T, variationIndex int, opts ...SDKConfigurer) (*SDKClient, *SDKEventSink) {
 	migrationFlag := ldbuilders.NewFlagBuilder("migration-key").
 		On(true).
 		Variations(data.MakeStandardMigrationStages()...).
@@ -1302,7 +1437,11 @@ func createClient(t *ldtest.T, variationIndex int) (*SDKClient, *SDKEventSink) {
 
 	dataSystem := NewSDKDataSystem(t, dataBuilder.Build())
 	events := NewSDKEventSink(t)
-	client := NewSDKClient(t, dataSystem, events)
+	// The event sink's Configure merges its base URI into whatever events config is already present,
+	// so any caller-supplied options (e.g. WithEventsConfig) must be applied before the sink.
+	configurers := append([]SDKConfigurer{dataSystem}, opts...)
+	configurers = append(configurers, events)
+	client := NewSDKClient(t, configurers...)
 
 	return client, events
 }
