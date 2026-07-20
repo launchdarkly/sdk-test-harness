@@ -73,7 +73,7 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 		}
 	})
 
-	if t.Capabilities().Has(servicedef.CapabilityOmitAnonymousContexts) &&
+	if t.Capabilities().Has(servicedef.CapabilityAnonymousRedaction) &&
 		t.Capabilities().Has(servicedef.CapabilityInlineContextAll) {
 		t.Run("single-kind anonymous context redacts all attributes", func(t *ldtest.T) {
 			anonymousFactory := data.NewContextFactory("anonymous", func(b *ldcontext.Builder) {
