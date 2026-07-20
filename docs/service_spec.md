@@ -73,6 +73,12 @@ In short, this means that a client SDK emits prerequisite evaluation events alon
 
 For server side SDKs, this means `allFlagData` will reflect that updated flag evaluation model.
 
+#### Capability `"client-prereq-cycle-detection"`
+
+This means that the client-side SDK safely handles cyclic prerequisite graphs when emitting prerequisite evaluation events. It only applies to SDKs that also declare `"client-prereq-events"`.
+
+The SDK must not recurse without bound when a prerequisite cycle is reachable from the evaluated flag. It skips the cyclic edge, continues with the remaining prerequisites, and returns the flag's cached value and reason unchanged. Cycle detection uses the current evaluation path, so a prerequisite reachable through several non-cyclic paths is processed on each path.
+
 #### Capability `"context-type"`
 
 This means that the SDK has its own type for evaluation contexts (as opposed to just representing them as a JSON-equivalent generic data structure) and convert that type to and from JSON.
