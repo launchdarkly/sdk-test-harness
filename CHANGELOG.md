@@ -2,6 +2,20 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.38.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.37.0...v2.38.0) (2026-07-20)
+
+
+### Features
+
+* Add contract tests for client-side secure mode hash (h query param) ([#358](https://github.com/launchdarkly/sdk-test-harness/issues/358)) ([16ed598](https://github.com/launchdarkly/sdk-test-harness/commit/16ed5984cecd66ddb8066e34c5465ec2efb97d5c))
+* Add migration op event context redaction tests ([#383](https://github.com/launchdarkly/sdk-test-harness/issues/383)) ([daa7ad4](https://github.com/launchdarkly/sdk-test-harness/commit/daa7ad4b39ed38f99aebcb6026c22b921c1c50ea))
+* Contract tests for client-side prerequisite cycle detection ([#384](https://github.com/launchdarkly/sdk-test-harness/issues/384)) ([3605eb7](https://github.com/launchdarkly/sdk-test-harness/commit/3605eb7146c949968e2d365eacf6110ac45adbf4))
+
+
+### Bug Fixes
+
+* Fix capability guarding custom event redaction ([#386](https://github.com/launchdarkly/sdk-test-harness/issues/386)) ([357898f](https://github.com/launchdarkly/sdk-test-harness/commit/357898fdab0d9c2ba287bb92d1324c80c5f37b85))
+
 ## [2.37.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.36.0...v2.37.0) (2026-06-08)
 
 
