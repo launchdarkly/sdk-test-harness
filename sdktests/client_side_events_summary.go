@@ -31,6 +31,10 @@ func doClientSideSummaryEventTests(t *ldtest.T) {
 		t.RequireCapability(servicedef.CapabilityClientPrereqEvents)
 		t.Run("basic behavior", doClientSideSummaryBasicPrereqTest)
 		t.Run("emits unknown event", doClientSideSummaryPrereqUnknownFlagTest)
+		t.Run("handles cycles", func(t *ldtest.T) {
+			t.RequireCapability(servicedef.CapabilityClientPrereqCycleDetection)
+			doClientSideSummaryPrereqCycleTests(t)
+		})
 	})
 }
 
@@ -606,4 +610,136 @@ func doClientSideSummaryPrereqUnknownFlagTest(t *ldtest.T) {
 			)),
 		)),
 	)
+}
+
+// doClientSideSummaryPrereqCycleTests is the summary-counter mirror of the feature-event
+// cases in doClientSidePrereqCycleTests (client_side_events_eval.go). Requirement 1.2.2
+// says the SDK must update summary counters equivalently to a direct evaluation of each
+// prerequisite; Requirement 1.2.5 says the SDK must skip descent on cycle detection. The
+// combined effect is that each cycle-safe descent increments the counter exactly once,
+// and cyclic edges do not increment the counter at all. The diamond case verifies the
+// ancestor-set semantics of Requirement 1.2.5.2: the same flag reached via two independent
+// paths increments its counter twice.
+func doClientSideSummaryPrereqCycleTests(t *ldtest.T) {
+	context := ldcontext.New("user")
+	valTrue := ldvalue.Bool(true)
+	defaultVal := ldvalue.String("default")
+
+	makeFlag := func(prereqs ...string) mockld.ClientSDKFlag {
+		return mockld.ClientSDKFlag{
+			Value:         valTrue,
+			Variation:     o.Some(0),
+			FlagVersion:   o.Some(1),
+			Version:       1,
+			Prerequisites: prereqs,
+		}
+	}
+
+	// runCase evaluates evalKey and asserts each flag's summary counter matches
+	// expectedCounts. The top-level flag entry also carries the default value we
+	// passed to EvaluateFlag; prereq-only flags do not.
+	runCase := func(
+		t *ldtest.T,
+		dataBuilder *mockld.ClientSDKDataBuilder,
+		evalKey string,
+		expectedCounts map[string]int,
+	) {
+		dataSource := NewSDKDataSource(t, dataBuilder.Build())
+		events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
+		client := NewSDKClient(t,
+			WithClientSideInitialContext(context),
+			dataSource, events)
+
+		_ = client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+			FlagKey:      evalKey,
+			DefaultValue: defaultVal,
+		})
+
+		client.FlushEvents(t)
+		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+		flagEntries := make([]m.KeyValueMatcher, 0, len(expectedCounts))
+		for key, count := range expectedCounts {
+			key, count := key, count
+			counter := flagCounter(valTrue, 0, 1, count)
+			if key == evalKey {
+				flagEntries = append(flagEntries, m.KV(key, m.MapOf(
+					m.KV("default", m.JSONEqual(defaultVal)),
+					m.KV("counters", m.ItemsInAnyOrder(counter)),
+					m.KV("contextKinds", anyContextKindsList()),
+				)))
+			} else {
+				flagEntries = append(flagEntries, m.KV(key, m.AllOf(
+					JSONPropertyNullOrAbsent("default"),
+					m.JSONProperty("counters").Should(m.ItemsInAnyOrder(counter)),
+					m.JSONProperty("contextKinds").Should(anyContextKindsList()),
+				)))
+			}
+		}
+
+		m.In(t).Assert(payload, m.ItemsInAnyOrder(
+			IsIdentifyEventForContext(context),
+			IsValidSummaryEventWithFlags(
+				t.Capabilities().Has(servicedef.CapabilityClientPerContextSummaries),
+				flagEntries...,
+			),
+		))
+	}
+
+	t.Run("self-loop", func(t *ldtest.T) {
+		dataBuilder := mockld.NewClientSDKDataBuilder().
+			Flag("A", makeFlag("A"))
+		// A is counted once at the top level; the self-prereq is cycle-skipped.
+		runCase(t, dataBuilder, "A", map[string]int{"A": 1})
+	})
+
+	t.Run("self-loop with sibling prerequisite", func(t *ldtest.T) {
+		dataBuilder := mockld.NewClientSDKDataBuilder().
+			Flag("A", makeFlag("A", "B")).
+			Flag("B", makeFlag())
+		runCase(t, dataBuilder, "A", map[string]int{"A": 1, "B": 1})
+	})
+
+	t.Run("two-cycle, evaluating A", func(t *ldtest.T) {
+		dataBuilder := mockld.NewClientSDKDataBuilder().
+			Flag("A", makeFlag("B")).
+			Flag("B", makeFlag("A"))
+		runCase(t, dataBuilder, "A", map[string]int{"A": 1, "B": 1})
+	})
+
+	t.Run("two-cycle, evaluating B", func(t *ldtest.T) {
+		dataBuilder := mockld.NewClientSDKDataBuilder().
+			Flag("A", makeFlag("B")).
+			Flag("B", makeFlag("A"))
+		runCase(t, dataBuilder, "B", map[string]int{"A": 1, "B": 1})
+	})
+
+	t.Run("three-cycle", func(t *ldtest.T) {
+		dataBuilder := mockld.NewClientSDKDataBuilder().
+			Flag("A", makeFlag("B")).
+			Flag("B", makeFlag("C")).
+			Flag("C", makeFlag("A"))
+		runCase(t, dataBuilder, "A", map[string]int{"A": 1, "B": 1, "C": 1})
+	})
+
+	t.Run("cycle within a subgraph", func(t *ldtest.T) {
+		dataBuilder := mockld.NewClientSDKDataBuilder().
+			Flag("A", makeFlag("X", "B")).
+			Flag("X", makeFlag()).
+			Flag("B", makeFlag("C")).
+			Flag("C", makeFlag("B"))
+		runCase(t, dataBuilder, "A", map[string]int{"A": 1, "X": 1, "B": 1, "C": 1})
+	})
+
+	t.Run("diamond (non-cyclic control)", func(t *ldtest.T) {
+		// D is reached via two independent paths (through B and through C), so its
+		// counter increments twice. A naive "visited across the whole walk"
+		// implementation would count D only once.
+		dataBuilder := mockld.NewClientSDKDataBuilder().
+			Flag("A", makeFlag("B", "C")).
+			Flag("B", makeFlag("D")).
+			Flag("C", makeFlag("D")).
+			Flag("D", makeFlag())
+		runCase(t, dataBuilder, "A", map[string]int{"A": 1, "B": 1, "C": 1, "D": 2})
+	})
 }
