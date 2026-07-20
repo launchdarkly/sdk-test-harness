@@ -74,6 +74,23 @@ func makeEventContextTestParams() []eventContextTestParams {
 			redactedShouldBe: redactedAttrsByKind{"user": {"name", "b"}},
 		},
 		{
+			name: "single-kind, allAttributesPrivate, slash-prefixed attribute name",
+			// proves that a custom attribute whose literal name starts with "/" is redacted
+			// using the escaped attribute-reference form ("/ssn" -> "/~1ssn")
+			eventsConfig: servicedef.SDKConfigEventParams{AllAttributesPrivate: true},
+			contextFactory: func(prefix string) *data.ContextFactory {
+				return data.NewContextFactory(prefix, func(b *ldcontext.Builder) {
+					b.SetString("/ssn", "123-45-6789")
+				})
+			},
+			outputContext: func(c ldcontext.Context) ldcontext.Context {
+				return ldcontext.NewBuilderFromContext(c).
+					SetValue("/ssn", ldvalue.Null()).
+					Build()
+			},
+			redactedShouldBe: redactedAttrsByKind{"user": {"/~1ssn"}},
+		},
+		{
 			name: "single-kind, specific private attributes",
 			// here, "name" is declared private globally, and "b" is private per-context
 			eventsConfig: servicedef.SDKConfigEventParams{

@@ -157,6 +157,7 @@ func doPHPFeatureEventTests(t *ldtest.T) {
 				b.Name("Example name")
 				b.SetString("setup", "Why do programmers always confused Halloween and Christmas?")
 				b.SetString("punchline", "Because OCT 31 = DEC 25")
+				b.SetString("/ssn", "123-45-6789")
 			})
 
 			for _, valueType := range getValueTypesToTest(t) {
@@ -187,9 +188,15 @@ func doPHPFeatureEventTests(t *ldtest.T) {
 						SetValue("name", ldvalue.Null()).
 						SetValue("setup", ldvalue.Null()).
 						SetValue("punchline", ldvalue.Null()).
+						SetValue("/ssn", ldvalue.Null()).
 						Build()
 
-					matcher := JSONMatchesEventContext(expectedContext, map[string][]string{"user": {"name", "setup", "punchline"}})
+					// "/ssn" is a literal attribute name starting with "/", so the redacted
+					// list must use its escaped attribute-reference form: "/~1ssn"
+					matcher := JSONMatchesEventContext(
+						expectedContext,
+						map[string][]string{"user": {"name", "setup", "punchline", "/~1ssn"}},
+					)
 
 					payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 					m.In(t).Assert(payload, m.Items(
@@ -206,6 +213,7 @@ func doPHPFeatureEventTests(t *ldtest.T) {
 				b.Name("User name")
 				b.SetString("setup", "Why do programmers always confused Halloween and Christmas?")
 				b.SetString("punchline", "Because OCT 31 = DEC 25")
+				b.SetString("/ssn", "123-45-6789")
 			})
 			orgContextFactory := data.NewContextFactory("org", func(b *ldcontext.Builder) {
 				b.Name("Org name")
@@ -246,11 +254,16 @@ func doPHPFeatureEventTests(t *ldtest.T) {
 						SetValue("name", ldvalue.Null()).
 						SetValue("setup", ldvalue.Null()).
 						SetValue("punchline", ldvalue.Null()).
+						SetValue("/ssn", ldvalue.Null()).
 						Build()
 
 					expectedMultiKind := ldcontext.NewMultiBuilder().Add(expectedUser).Add(orgContext).Build()
 
-					matcher := JSONMatchesEventContext(expectedMultiKind, map[string][]string{"user": {"name", "setup", "punchline"}})
+					// same escaping as above: "/ssn" -> "/~1ssn"
+					matcher := JSONMatchesEventContext(
+						expectedMultiKind,
+						map[string][]string{"user": {"name", "setup", "punchline", "/~1ssn"}},
+					)
 
 					payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 					m.In(t).Assert(payload, m.Items(
