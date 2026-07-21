@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.38.2](https://github.com/launchdarkly/sdk-test-harness/compare/v2.38.1...v2.38.2) (2026-07-21)
+
+
+### Bug Fixes
+
+* Correct privateAttributes JSON tag in context comparison params ([#391](https://github.com/launchdarkly/sdk-test-harness/issues/391)) ([a45f514](https://github.com/launchdarkly/sdk-test-harness/commit/a45f51497e63004f8bcdd786540908d53d31ffb6))
+
 ## [2.38.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.38.0...v2.38.1) (2026-07-21)
 
 
