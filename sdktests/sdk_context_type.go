@@ -409,6 +409,37 @@ func doSDKContextComparisonTests(t *ldtest.T) {
 			m.In(t).Assert(resp.Equals, m.Equal(true))
 		})
 
+		t.Run("are different if only one has private attributes", func(t *ldtest.T) {
+			param := servicedef.ContextComparisonPairParams{
+				Context1: servicedef.ContextComparisonParams{
+					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key",
+						PrivateAttributes: []servicedef.PrivateAttribute{{Value: "name", Literal: false}}},
+				},
+				Context2: servicedef.ContextComparisonParams{
+					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key"},
+				},
+			}
+
+			resp := client.ContextComparison(t, param)
+			m.In(t).Assert(resp.Equals, m.Equal(false))
+		})
+
+		t.Run("are different if private attributes are not identical", func(t *ldtest.T) {
+			param := servicedef.ContextComparisonPairParams{
+				Context1: servicedef.ContextComparisonParams{
+					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key",
+						PrivateAttributes: []servicedef.PrivateAttribute{{Value: "name", Literal: false}}},
+				},
+				Context2: servicedef.ContextComparisonParams{
+					Single: &servicedef.ContextComparisonSingleParams{Kind: "user", Key: "user-key",
+						PrivateAttributes: []servicedef.PrivateAttribute{{Value: "/address/street", Literal: false}}},
+				},
+			}
+
+			resp := client.ContextComparison(t, param)
+			m.In(t).Assert(resp.Equals, m.Equal(false))
+		})
+
 		t.Run("are different if kinds are different", func(t *ldtest.T) {
 			param := servicedef.ContextComparisonPairParams{
 				Context1: servicedef.ContextComparisonParams{
