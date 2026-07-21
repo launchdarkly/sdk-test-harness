@@ -73,8 +73,13 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 		}
 	})
 
+	// Server-side SDKs inline the full context in custom events and redact anonymous context
+	// attributes. Client-side SDKs use the current (identified) context for custom events and do
+	// NOT redact anonymous contexts in custom events -- only in feature events. The client-side
+	// behavior is covered separately below.
 	if t.Capabilities().Has(servicedef.CapabilityAnonymousRedaction) &&
-		t.Capabilities().Has(servicedef.CapabilityInlineContextAll) {
+		t.Capabilities().Has(servicedef.CapabilityInlineContextAll) &&
+		!c.isClientSide {
 		t.Run("single-kind anonymous context redacts all attributes", func(t *ldtest.T) {
 			anonymousFactory := data.NewContextFactory("anonymous", func(b *ldcontext.Builder) {
 				b.Anonymous(true)
@@ -166,6 +171,86 @@ func (c CommonEventTests) CustomEvents(t *ldtest.T) {
 
 			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 			m.In(t).Assert(payload, m.ItemsInAnyOrder(expectedEvents...))
+		})
+	}
+
+	// Client-side SDKs use the current (identified) context for custom events and do NOT redact
+	// anonymous context attributes in custom events -- only feature events redact anonymous
+	// contexts on the client. Establish the context via identify (discarding that identify event),
+	// then verify the custom event carries the full, unredacted context.
+	if t.Capabilities().Has(servicedef.CapabilityAnonymousRedaction) &&
+		t.Capabilities().Has(servicedef.CapabilityInlineContextAll) &&
+		c.isClientSide {
+		t.Run("single-kind anonymous context is not redacted", func(t *ldtest.T) {
+			anonymousFactory := data.NewContextFactory("anonymous", func(b *ldcontext.Builder) {
+				b.Anonymous(true)
+				b.Name("Example name")
+				b.SetString("setup", "Why do programmers always confused Halloween and Christmas?")
+				b.SetString("punchline", "Because OCT 31 = DEC 25")
+			})
+			anonymousContext := anonymousFactory.NextUniqueContext()
+
+			dataSource := NewSDKDataSource(t, nil)
+			events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
+			client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
+
+			client.SendIdentifyEvent(t, anonymousContext)
+			client.FlushEvents(t)
+			_ = events.ExpectAnalyticsEvents(t, defaultEventTimeout) // discard the identify event
+
+			client.SendCustomEvent(t, servicedef.CustomEventParams{
+				EventKey: "event-key",
+				Context:  o.Some(anonymousContext),
+			})
+			client.FlushEvents(t)
+
+			// No redaction: the full anonymous context (including its attributes) is expected.
+			expectedContextMatcher := JSONMatchesEventContext(anonymousContext, nil)
+			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(
+				m.AllOf(IsCustomEvent(), m.JSONProperty("context").Should(expectedContextMatcher)),
+			))
+		})
+
+		t.Run("multi-kind with anonymous context is not redacted", func(t *ldtest.T) {
+			userContextFactory := data.NewContextFactory("user", func(b *ldcontext.Builder) {
+				b.Anonymous(true)
+				b.Kind("user")
+				b.Name("User name")
+				b.SetString("setup", "Why do programmers always confused Halloween and Christmas?")
+				b.SetString("punchline", "Because OCT 31 = DEC 25")
+			})
+			orgContextFactory := data.NewContextFactory("org", func(b *ldcontext.Builder) {
+				b.Name("Org name")
+				b.Kind("org")
+				b.SetString("setup", "Why did the edge server go bankrupt?")
+				b.SetString("punchline", "Because it ran out of cache")
+			})
+
+			userContext := userContextFactory.NextUniqueContext()
+			orgContext := orgContextFactory.NextUniqueContext()
+			multiContext := ldcontext.NewMultiBuilder().Add(userContext).Add(orgContext).Build()
+
+			dataSource := NewSDKDataSource(t, nil)
+			events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
+			client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
+
+			client.SendIdentifyEvent(t, multiContext)
+			client.FlushEvents(t)
+			_ = events.ExpectAnalyticsEvents(t, defaultEventTimeout) // discard the identify event
+
+			client.SendCustomEvent(t, servicedef.CustomEventParams{
+				EventKey: "event-key",
+				Context:  o.Some(multiContext),
+			})
+			client.FlushEvents(t)
+
+			// No redaction: the full multi-kind context (including all attributes) is expected.
+			expectedContextMatcher := JSONMatchesEventContext(multiContext, nil)
+			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+			m.In(t).Assert(payload, m.ItemsInAnyOrder(
+				m.AllOf(IsCustomEvent(), m.JSONProperty("context").Should(expectedContextMatcher)),
+			))
 		})
 	}
 }
