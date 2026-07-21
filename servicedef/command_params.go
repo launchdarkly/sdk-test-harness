@@ -140,7 +140,7 @@ type ContextComparisonSingleParams struct {
 	Kind              string                `json:"kind"`
 	Key               string                `json:"key"`
 	Attributes        []AttributeDefinition `json:"attributes,omitempty"`
-	PrivateAttributes []PrivateAttribute    `json:"privateAttributes:omitempty"`
+	PrivateAttributes []PrivateAttribute    `json:"privateAttributes,omitempty"`
 }
 
 type AttributeDefinition struct {
