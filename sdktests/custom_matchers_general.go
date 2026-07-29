@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -200,6 +201,21 @@ func SortedStrings() m.MatcherTransform {
 			sort.Strings(ret)
 			return ret, nil
 		})
+}
+
+// MapHasKey matches a map that contains the given key, regardless of its value.
+func MapHasKey(key string) m.Matcher {
+	return m.New(
+		func(value interface{}) bool {
+			rv := reflect.ValueOf(value)
+			if rv.Kind() != reflect.Map {
+				return false
+			}
+			return rv.MapIndex(reflect.ValueOf(key)).IsValid()
+		},
+		func() string { return fmt.Sprintf("map has key %q", key) },
+		func(value interface{}) string { return fmt.Sprintf("key %q not found in map", key) },
+	)
 }
 
 func ValueIsPositiveNonZeroInteger() m.Matcher {
