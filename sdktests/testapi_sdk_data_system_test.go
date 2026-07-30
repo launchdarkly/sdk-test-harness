@@ -60,13 +60,6 @@ func freeTCPPortForDataSystemTest(t *testing.T) int {
 // harness.NewTestHarness's constructor eagerly queries the test service and binds a real
 // TCP listener (unlike harness.MockEndpoint.BaseURL(), which is pure string construction
 // from host/port/id), so a real, working *harness.TestHarness must exist up front.
-//
-// KNOWN LEAK: harness.NewTestHarness spawns a background goroutine running
-// http.Server.ListenAndServe() forever and binds a real TCP listener. harness.TestHarness
-// has no Close()/Shutdown() method, so that goroutine and listener are never released for
-// the life of the test process. This is accepted as unavoidable given the current harness
-// package API; do not copy this helper elsewhere without understanding that tradeoff, and
-// do not add a Shutdown mechanism as part of fixing this test.
 func newTestHarnessForDataSystemTest(t *testing.T) *harness.TestHarness {
 	fakeService := newFakeTestServiceForDataSystemTest(t)
 	port := freeTCPPortForDataSystemTest(t)
