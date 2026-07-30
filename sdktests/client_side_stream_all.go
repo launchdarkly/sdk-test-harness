@@ -4,7 +4,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
@@ -79,16 +78,16 @@ func doClientSideStreamConnectionLifecycleTests(t *ldtest.T) {
 	// the incoming request's Context when the client closes the underlying TCP connection, so we
 	// detect closure by waiting for that Context to be cancelled.
 	//
-	// It explicitly configures a streaming data source, since JS-based client-side SDKs default to
-	// polling. It is intentionally not gated behind any FDv2 capability.
+	// setupDataSources configures the streaming data source plus, for JS-based client-side SDKs,
+	// a polling data source for the initial payload (those SDKs poll first, then stream for updates).
+	// It is intentionally not gated behind any FDv2 capability.
 	t.Run("SDK closes streaming connection when client is closed", func(t *ldtest.T) {
-		dataSource := NewSDKDataSource(t, nil, DataSourceOptionStreaming())
+		streamTests := NewCommonStreamingTests(t, "doClientSideStreamConnectionLifecycleTests")
+		stream, configurers := streamTests.setupDataSources(t, nil)
 
-		client := NewSDKClient(t,
-			WithClientSideInitialContext(ldcontext.New("user-key")),
-			dataSource)
+		client := NewSDKClient(t, streamTests.baseSDKConfigurationPlus(configurers...)...)
 
-		streamRequest := dataSource.Endpoint().RequireConnection(t, time.Second*5)
+		streamRequest := stream.Endpoint().RequireConnection(t, time.Second*5)
 
 		// Closing the client should force the SDK to close its streaming connection. This is
 		// idempotent with the automatic close that happens at end-of-test.
