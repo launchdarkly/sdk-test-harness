@@ -2,7 +2,9 @@ package sdktests
 
 import (
 	"strings"
+	"time"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
@@ -10,11 +12,14 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
+
+	"github.com/stretchr/testify/require"
 )
 
 func doClientSideStreamTests(t *ldtest.T) {
 	t.Run("requests", doClientSideStreamRequestTest)
 	t.Run("updates", doClientSideStreamUpdateTests)
+	t.Run("connection lifecycle", doClientSideStreamConnectionLifecycleTests)
 }
 
 func doClientSideStreamRequestTest(t *ldtest.T) {
@@ -66,4 +71,42 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 
 func doClientSideStreamUpdateTests(t *ldtest.T) {
 	NewCommonStreamingTests(t, "doClientSideStreamUpdateTests").Updates(t)
+}
+
+func doClientSideStreamConnectionLifecycleTests(t *ldtest.T) {
+	// This test verifies that when the SDK client is closed, it actively closes its streaming
+	// connection rather than leaving the underlying TCP socket lingering. Go's HTTP server cancels
+	// the incoming request's Context when the client closes the underlying TCP connection, so we
+	// detect closure by waiting for that Context to be cancelled.
+	//
+	// It explicitly configures a streaming data source, since JS-based client-side SDKs default to
+	// polling. It is intentionally not gated behind any FDv2 capability.
+	t.Run("SDK closes streaming connection when client is closed", func(t *ldtest.T) {
+		dataSource := NewSDKDataSource(t, nil, DataSourceOptionStreaming())
+
+		client := NewSDKClient(t,
+			WithClientSideInitialContext(ldcontext.New("user-key")),
+			dataSource)
+
+		streamRequest := dataSource.Endpoint().RequireConnection(t, time.Second*5)
+
+		// Closing the client should force the SDK to close its streaming connection. This is
+		// idempotent with the automatic close that happens at end-of-test.
+		require.NoError(t, client.Close())
+
+		h.RequireEventually(
+			t,
+			func() bool {
+				select {
+				case <-streamRequest.Context.Done():
+					return true
+				default:
+					return false
+				}
+			},
+			time.Second*3,
+			time.Millisecond*20,
+			"SDK did not close the streaming connection after the client was closed",
+		)
+	})
 }
