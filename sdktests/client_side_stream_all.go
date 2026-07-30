@@ -15,6 +15,7 @@ import (
 func doClientSideStreamTests(t *ldtest.T) {
 	t.Run("requests", doClientSideStreamRequestTest)
 	t.Run("updates", doClientSideStreamUpdateTests)
+	t.Run("retry behavior", doClientSideStreamRetryTests)
 }
 
 func doClientSideStreamRequestTest(t *ldtest.T) {
