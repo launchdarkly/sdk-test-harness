@@ -116,8 +116,7 @@ func (c CommonWrapperTests) Run(t *ldtest.T) {
 				dataSystem)
 			if c.isClientSide {
 				// client-side SDKs in streaming mode may *also* need a polling data source
-				configurers = append(configurers,
-					NewSDKDataSystem(t, nil, DataSystemOptionPolling()))
+				configurers = append(configurers, clientSideSecondaryPollingDataSystem(t))
 			}
 			_ = NewSDKClient(t, configurers...)
 			verifyRequestHeader(t, config, dataSystem.Synchronizers[0].Endpoint())
@@ -134,4 +133,25 @@ func (c CommonWrapperTests) Run(t *ldtest.T) {
 			verifyRequestHeader(t, config, dataSystem.Synchronizers[0].Endpoint())
 		})
 	})
+}
+
+// clientSideSecondaryPollingDataSystem returns an SDKConfigurer for the polling data
+// source that client-side SDKs use before switching to streaming.
+//
+// It builds the data system under the connection-mode name "polling", distinct from the
+// primary streaming data system's default mode name "streaming", because
+// SDKDataSystem.Configure() overwrites rather than merges a shared
+// servicedef.SDKConfigParams entry for a given mode name: two data systems both named
+// "streaming" would silently clobber each other's endpoint URIs.
+//
+// DataSystemOptionInitialConnectionMode("streaming") pins the initial connection mode
+// back to "streaming", since this data system's own Configure() call would otherwise
+// overwrite it and change which mode the SDK starts in.
+func clientSideSecondaryPollingDataSystem(t *ldtest.T) SDKConfigurer {
+	pollingDataSystem := NewSDKDataSystemCustom(t, nil,
+		DataSystemOptionConnectionMode("polling", DataSystemOptionPolling()),
+		DataSystemOptionInitialConnectionMode("streaming"),
+	)
+	pollingDataSystem.CreateEndpoints()
+	return pollingDataSystem
 }
