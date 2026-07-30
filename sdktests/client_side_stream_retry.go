@@ -35,7 +35,11 @@ func doClientSideStreamRetryTests(t *ldtest.T) {
 	// happen quickly - but, execution speed is always unpredictable, so we'll use a timeout for
 	// these that is much longer than we expect we'll need. That won't make the tests run any slower
 	// than they otherwise would unless the SDK really is hanging and not reconnecting.
-	incomingConnectionTimeout := time.Second * 2
+	//
+	// This timeout is deliberately more generous than the server-side equivalent: not every
+	// client-side SDK supports configuring the stream retry delay, and with a default initial
+	// delay of about a second, exponential backoff can put the third retry several seconds out.
+	incomingConnectionTimeout := time.Second * 10
 
 	// When we're asserting "there are no more connections", we should use a timeout that isn't too
 	// long because that *will* make successful tests run slow, but long enough that we have a
@@ -178,6 +182,10 @@ func doClientSideStreamRetryTests(t *ldtest.T) {
 	})
 
 	t.Run("do not retry after unrecoverable HTTP error on initial connect", func(t *ldtest.T) {
+		// Distinguishing unrecoverable HTTP errors requires the SDK's EventSource to expose
+		// response status codes; browser-native EventSource cannot, so SDKs without this
+		// capability treat every stream error as retryable.
+		t.RequireCapability(servicedef.CapabilityClientEventSourceHTTPErrors)
 		for _, status := range unrecoverableErrors {
 			t.Run(fmt.Sprintf("error %d", status), func(t *ldtest.T) {
 				stream := NewSDKDataSourceWithoutEndpoint(t, dataV1, DataSourceOptionStreaming())
@@ -199,6 +207,7 @@ func doClientSideStreamRetryTests(t *ldtest.T) {
 	})
 
 	t.Run("do not retry after unrecoverable HTTP error on reconnect", func(t *ldtest.T) {
+		t.RequireCapability(servicedef.CapabilityClientEventSourceHTTPErrors)
 		for _, status := range unrecoverableErrors {
 			t.Run(fmt.Sprintf("error %d", status), func(t *ldtest.T) {
 				stream := NewSDKDataSourceWithoutEndpoint(t, dataV1, DataSourceOptionStreaming())
