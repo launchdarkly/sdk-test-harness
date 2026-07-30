@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
@@ -100,8 +101,12 @@ func doClientSideStreamRetryTests(t *ldtest.T) {
 	// blocking application startup on retries would not be appropriate on a mobile device. So,
 	// unlike the equivalent server-side tests, we create the client with InitCanFail and then
 	// verify that the SDK keeps retrying in the background and eventually gets the flag data.
+	//
+	// The stream serves dataV2 while the polling service (which JS-based SDKs consult for their
+	// initial data before connecting to the stream) has dataV1, so seeing expectedValueV2 proves
+	// the data came from the successful stream connection rather than from the initial poll.
 	shouldRetryAfterErrorOnInitialConnect := func(t *ldtest.T, errorHandler http.Handler) {
-		stream := NewSDKDataSourceWithoutEndpoint(t, dataV1, DataSourceOptionStreaming())
+		stream := NewSDKDataSourceWithoutEndpoint(t, dataV2, DataSourceOptionStreaming())
 		handler := httphelpers.SequentialHandler(
 			errorHandler,     // first request gets the error
 			errorHandler,     // second request also gets the error
@@ -120,7 +125,9 @@ func doClientSideStreamRetryTests(t *ldtest.T) {
 		streamEndpoint.RequireNoMoreConnections(t, noMoreConnectionsTimeout)
 
 		// The third connection got the stream data, so the flag value should show up promptly
-		pollUntilFlagValueUpdated(t, client, flagKey, context, ldvalue.Null(), expectedValueV1, ldvalue.Null())
+		h.RequireEventually(t, func() bool {
+			return basicEvaluateFlag(t, client, flagKey, context, ldvalue.Null()).Equal(expectedValueV2)
+		}, time.Second*5, time.Millisecond*50, "timed out without seeing flag data from the stream")
 	}
 
 	t.Run("retry after IO error on initial connect", func(t *ldtest.T) {
