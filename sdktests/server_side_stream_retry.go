@@ -30,7 +30,7 @@ func baseStreamConfig(endpoint *harness.MockEndpoint) servicedef.SDKConfigStream
 
 func doServerSideStreamRetryTests(t *ldtest.T) {
 	recoverableErrors := []int{400, 408, 429, 500, 503}
-	unrecoverableErrors := []int{401, 403, 405} // really all 4xx errors that aren't 400, 408, or 429
+	unexpectedErrors := []int{401, 403, 405} // really all 4xx errors that aren't 400, 408, or 429
 
 	expectedValueV1 := ldvalue.Int(1)
 	expectedValueV2 := ldvalue.Int(2)
@@ -201,8 +201,8 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		}
 	})
 
-	t.Run("do not retry after unrecoverable HTTP error on initial connect", func(t *ldtest.T) {
-		for _, status := range unrecoverableErrors {
+	t.Run("do not retry after unexpected HTTP error on initial connect", func(t *ldtest.T) {
+		for _, status := range unexpectedErrors {
 			t.Run(fmt.Sprintf("error %d", status), func(t *ldtest.T) {
 				dataSystem := NewSDKDataSystemWithoutEndpoints(t, dataV1)
 				handler := httphelpers.SequentialHandler(
@@ -224,8 +224,8 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		}
 	})
 
-	t.Run("do not retry after unrecoverable HTTP error on reconnect", func(t *ldtest.T) {
-		for _, status := range unrecoverableErrors {
+	t.Run("do not retry after unexpected HTTP error on reconnect", func(t *ldtest.T) {
+		for _, status := range unexpectedErrors {
 			t.Run(fmt.Sprintf("error %d", status), func(t *ldtest.T) {
 				dataSystem := NewSDKDataSystemWithoutEndpoints(t, dataV1)
 				handler := httphelpers.SequentialHandler(
