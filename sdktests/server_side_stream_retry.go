@@ -28,6 +28,24 @@ func baseStreamConfig(endpoint *harness.MockEndpoint) servicedef.SDKConfigStream
 	}
 }
 
+// compressedExtendedInitialDelay is the value used for ExtendedInitialDelayMS in
+// retry-conformance tests. Compressed from the SDK's production default of 5 minutes
+// so tests can observe extended-regime engagement in a few seconds. Chosen at 500 ms
+// to be well above the paired-bound "no more connections" window (100 ms) and low enough
+// to keep tests fast.
+const compressedExtendedInitialDelay ldtime.UnixMillisecondTime = 500
+
+// retryConformanceStreamConfig returns a streaming config that compresses both the normal-regime
+// initial delay and the extended-regime initial delay to observable values. Used by tests guarded
+// by CapabilityRetryConformanceFDv1Streaming.
+func retryConformanceStreamConfig(endpoint *harness.MockEndpoint) servicedef.SDKConfigStreamingParams {
+	return servicedef.SDKConfigStreamingParams{
+		BaseURI:                endpoint.BaseURL(),
+		InitialRetryDelayMS:    o.Some(briefDelay),
+		ExtendedInitialDelayMS: o.Some(compressedExtendedInitialDelay),
+	}
+}
+
 func doServerSideStreamRetryTests(t *ldtest.T) {
 	recoverableErrors := []int{400, 408, 429, 500, 503}
 	unexpectedErrors := []int{401, 403, 405} // really all 4xx errors that aren't 400, 408, or 429
@@ -198,6 +216,119 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 			t.Run(fmt.Sprintf("error %d", status), func(t *ldtest.T) {
 				shouldRetryAfterErrorOnReconnect(t, httphelpers.HandlerWithStatus(status))
 			})
+		}
+	})
+
+	// extendedRegimeConnectionTimeout is used when waiting for a reconnect during extended-regime
+	// backoff. Set generously above the compressed ExtendedInitialDelayMS (500 ms) plus any
+	// doubling to tolerate CI variance.
+	extendedRegimeConnectionTimeout := time.Second * 3
+
+	// The following retry-conformance tests are guarded by CapabilityRetryConformanceFDv1Streaming
+	// being PRESENT. They assert RETRY-conformant behavior: unexpected HTTP errors trigger an
+	// extended-regime backoff (retry with a longer delay) rather than a permanent stop.
+	t.Run("retry after unexpected HTTP error on initial connect", func(t *ldtest.T) {
+		t.RequireCapability(servicedef.CapabilityRetryConformanceFDv1Streaming)
+		for _, status := range unexpectedErrors {
+			t.Run(fmt.Sprintf("error %d", status), func(t *ldtest.T) {
+				dataSystem := NewSDKDataSystemWithoutEndpoints(t, dataV1)
+				handler := httphelpers.SequentialHandler(
+					httphelpers.HandlerWithStatus(status), // 1st: error
+					httphelpers.HandlerWithStatus(status), // 2nd: error
+					dataSystem.Synchronizers[0].streaming, // 3rd: success
+				)
+				streamEndpoint := makeStreamEndpoint(t, handler)
+				t.Defer(streamEndpoint.Close)
+
+				client := NewSDKClient(t, WithStreamingSynchronizer(retryConformanceStreamConfig(streamEndpoint)))
+				result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
+				m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
+
+				for i := 0; i < 3; i++ { // expect three requests
+					_ = streamEndpoint.RequireConnection(t, extendedRegimeConnectionTimeout)
+				}
+			})
+		}
+	})
+
+	t.Run("retry after unexpected HTTP error on reconnect", func(t *ldtest.T) {
+		t.RequireCapability(servicedef.CapabilityRetryConformanceFDv1Streaming)
+		for _, status := range unexpectedErrors {
+			t.Run(fmt.Sprintf("error %d", status), func(t *ldtest.T) {
+				dataSystem1 := NewSDKDataSystemWithoutEndpoints(t, dataV1)
+				dataSystem2 := NewSDKDataSystemWithoutEndpoints(t, dataV2)
+				handler := httphelpers.SequentialHandler(
+					dataSystem1.Synchronizers[0].streaming, // 1st: first stream data
+					httphelpers.HandlerWithStatus(status),  // 2nd: error
+					httphelpers.HandlerWithStatus(status),  // 3rd: error
+					dataSystem2.Synchronizers[0].streaming, // 4th: second stream data
+				)
+				streamEndpoint := makeStreamEndpoint(t, handler)
+				t.Defer(streamEndpoint.Close)
+
+				client := NewSDKClient(t, WithStreamingSynchronizer(retryConformanceStreamConfig(streamEndpoint)))
+				result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
+				m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
+
+				// Cause the initial stream to close; triggers reconnect
+				request1 := streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
+				request1.Cancel()
+
+				// Two error responses, then a successful reconnect at extended-regime timing
+				_ = streamEndpoint.RequireConnection(t, extendedRegimeConnectionTimeout) // 2nd (error)
+				_ = streamEndpoint.RequireConnection(t, extendedRegimeConnectionTimeout) // 3rd (error)
+				_ = streamEndpoint.RequireConnection(t, extendedRegimeConnectionTimeout) // 4th (success)
+
+				pollUntilFlagValueUpdated(t, client, flagKey, context, expectedValueV1, expectedValueV2, ldvalue.Null())
+			})
+		}
+	})
+
+	t.Run("enters extended-regime backoff after unexpected HTTP error", func(t *ldtest.T) {
+		// Paired-bound assertion: after an unexpected error, the SDK MUST NOT retry at
+		// normal-regime timing (which would be ~briefDelay = 1 ms), AND MUST eventually retry
+		// (proving it hasn't permanently stopped). The 100 ms "no more connections" window is
+		// well above briefDelay (100x) and well below compressedExtendedInitialDelay (20% of
+		// 500 ms) -- a clean discriminating window.
+		t.RequireCapability(servicedef.CapabilityRetryConformanceFDv1Streaming)
+		dataSystem := NewSDKDataSystemWithoutEndpoints(t, dataV1)
+		handler := httphelpers.SequentialHandler(
+			httphelpers.HandlerWithStatus(401), // 1st: unexpected error
+			dataSystem.Synchronizers[0].streaming, // 2nd: success (only reached if SDK retries)
+		)
+		streamEndpoint := makeStreamEndpoint(t, handler)
+		t.Defer(streamEndpoint.Close)
+
+		_ = NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{InitCanFail: true}),
+			WithStreamingSynchronizer(retryConformanceStreamConfig(streamEndpoint)))
+
+		// 1st connection produces the 401
+		_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
+
+		// Assertion A: SDK does NOT reconnect within the normal-regime window (100 ms).
+		// If the SDK were retrying at normal-regime timing (1 ms) it would already have reconnected.
+		streamEndpoint.RequireNoMoreConnections(t, noMoreConnectionsTimeout)
+
+		// Assertion B: SDK DOES reconnect within the extended-regime window (3 s).
+		// If the SDK had permanently stopped, this would fail.
+		_ = streamEndpoint.RequireConnection(t, extendedRegimeConnectionTimeout)
+	})
+
+	t.Run("does not permanently stop under sustained unexpected HTTP errors", func(t *ldtest.T) {
+		// Endpoint returns 401 to every request. SDK should keep retrying at extended-regime
+		// cadence. Assert multiple connections observed within a bounded window (proves
+		// repeated retry) and one more still arrives at the end (proves not permanently stopped).
+		t.RequireCapability(servicedef.CapabilityRetryConformanceFDv1Streaming)
+		streamEndpoint := makeStreamEndpoint(t, httphelpers.HandlerWithStatus(401))
+		t.Defer(streamEndpoint.Close)
+
+		_ = NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{InitCanFail: true}),
+			WithStreamingSynchronizer(retryConformanceStreamConfig(streamEndpoint)))
+
+		// Observe at least 3 connections at extended-regime timing. Each takes ~500 ms; with
+		// doubling, total ~3.5 s in the worst case. Generous per-connection timeout.
+		for i := 0; i < 3; i++ {
+			_ = streamEndpoint.RequireConnection(t, extendedRegimeConnectionTimeout)
 		}
 	})
 
