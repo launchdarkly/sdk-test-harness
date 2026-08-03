@@ -98,6 +98,31 @@ const (
 	// implement the behavior can opt out, and so the tests can be decommissioned by dropping the
 	// capability from all SDK test services once it is ubiquitous.
 	CapabilityFDv1Fallback = "fdv1-fallback"
+
+	// CapabilityRetryConformanceFDv1Streaming indicates that the SDK's FDv1 streaming data source
+	// conforms to the RETRY specification: no HTTP response and no transport-level failure causes
+	// the data source to permanently cease operation. In particular, `401` / `403` / other `4xx`
+	// statuses and TLS/certificate validation failures now trigger an extended-regime backoff
+	// instead of a permanent stop.
+	//
+	// SDKs declaring this capability MUST also honor the extended-regime timing knobs exposed on
+	// SDKConfigStreamingParams (see ExtendedInitialDelayMS, ResetThresholdMS). The capability gates
+	// the new "retry-conformance" subtests. Legacy "do not retry after unexpected HTTP error"
+	// subtests are only run when this capability is absent; both sets of tests can be decommissioned
+	// once every SDK reports the capability.
+	CapabilityRetryConformanceFDv1Streaming = "retry-conformance-fdv1-streaming"
+
+	// CapabilityRetryConformanceFDv1Polling indicates that the SDK's FDv1 polling data source
+	// conforms to the RETRY specification: no HTTP response and no transport-level failure causes
+	// the data source to permanently cease operation. `401` / `403` / other `4xx` statuses and
+	// TLS/certificate validation failures trigger an extended-regime backoff floored at the
+	// customer-configured `PollInterval`.
+	//
+	// SDKs declaring this capability MUST also honor the extended-regime timing knob exposed on
+	// SDKConfigPollingParams (see ExtendedInitialDelayMS). The capability gates the new
+	// "retry-conformance" subtests and is scoped to the polling data source independently of the
+	// streaming capability so an SDK can partially adopt.
+	CapabilityRetryConformanceFDv1Polling = "retry-conformance-fdv1-polling"
 )
 
 type StatusRep struct {
