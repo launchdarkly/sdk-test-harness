@@ -201,7 +201,19 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		}
 	})
 
+	// The following two "do not retry" tests describe legacy behavior for SDKs that have not yet
+	// adopted the RETRY specification. Under RETRY, `401` / `403` / other `4xx` responses are
+	// classified as `unexpected` errors and trigger an extended-regime backoff rather than a
+	// permanent stop. These legacy tests are gated behind the ABSENCE of the
+	// `retry-conformance-fdv1-streaming` capability; SDKs that declare that capability run the
+	// new "retry after unexpected HTTP error" tests instead. Once every SDK reports the
+	// capability, these legacy tests can be removed.
 	t.Run("do not retry after unexpected HTTP error on initial connect", func(t *ldtest.T) {
+		if t.Capabilities().Has(servicedef.CapabilityRetryConformanceFDv1Streaming) {
+			t.SkipWithReason("SDK reports " + servicedef.CapabilityRetryConformanceFDv1Streaming +
+				"; legacy permanent-stop behavior does not apply")
+			return
+		}
 		for _, status := range unexpectedErrors {
 			t.Run(fmt.Sprintf("error %d", status), func(t *ldtest.T) {
 				dataSystem := NewSDKDataSystemWithoutEndpoints(t, dataV1)
@@ -225,6 +237,11 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 	})
 
 	t.Run("do not retry after unexpected HTTP error on reconnect", func(t *ldtest.T) {
+		if t.Capabilities().Has(servicedef.CapabilityRetryConformanceFDv1Streaming) {
+			t.SkipWithReason("SDK reports " + servicedef.CapabilityRetryConformanceFDv1Streaming +
+				"; legacy permanent-stop behavior does not apply")
+			return
+		}
 		for _, status := range unexpectedErrors {
 			t.Run(fmt.Sprintf("error %d", status), func(t *ldtest.T) {
 				dataSystem := NewSDKDataSystemWithoutEndpoints(t, dataV1)
