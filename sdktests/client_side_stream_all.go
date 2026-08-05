@@ -18,6 +18,7 @@ import (
 func doClientSideStreamTests(t *ldtest.T) {
 	t.Run("requests", doClientSideStreamRequestTest)
 	t.Run("fdv2", doClientSideFDv2StreamTests)
+	t.Run("retry behavior", doClientSideStreamRetryTests)
 	t.Run("connection lifecycle", doClientSideStreamConnectionLifecycleTests)
 }
 
