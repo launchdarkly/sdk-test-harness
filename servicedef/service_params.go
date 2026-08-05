@@ -42,6 +42,7 @@ const (
 	CapabilityEvaluationHooks             = "evaluation-hooks"
 	CapabilityTrackHooks                  = "track-hooks"
 	CapabilityClientPrereqEvents          = "client-prereq-events"
+	CapabilityClientPrereqCycleDetection  = "client-prereq-cycle-detection"
 	CapabilityPersistentDataStoreRedis    = "persistent-data-store-redis"
 	CapabilityPersistentDataStoreConsul   = "persistent-data-store-consul"
 	CapabilityPersistentDataStoreDynamoDB = "persistent-data-store-dynamodb"
@@ -62,6 +63,13 @@ const (
 	// to use a custom CA certificate. The path to this CA cert is provided to the SDK. The SDK should then configure this
 	// path as the only CA cert in its trust store (rather than adding it to an existing trust store.)
 	CapabilityTLSCustomCA = "tls:custom-ca"
+
+	// CapabilityClientEventSourceHTTPErrors indicates a client-side SDK's EventSource
+	// implementation can detect HTTP error status codes (e.g. 401) and response headers.
+	// Browser-native EventSource does not expose this information, so browser SDKs
+	// typically lack this capability. Only checked for client-side SDKs; server-side
+	// SDKs do not need to declare it.
+	CapabilityClientEventSourceHTTPErrors = "client-event-source-http-errors"
 
 	CapabilityOmitAnonymousContexts = "omit-anonymous-contexts"
 
