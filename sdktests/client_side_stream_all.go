@@ -2,6 +2,7 @@ package sdktests
 
 import (
 	"strings"
+	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
@@ -10,12 +11,15 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
+
+	"github.com/stretchr/testify/require"
 )
 
 func doClientSideStreamTests(t *ldtest.T) {
 	t.Run("requests", doClientSideStreamRequestTest)
 	t.Run("updates", doClientSideStreamUpdateTests)
 	t.Run("retry behavior", doClientSideStreamRetryTests)
+	t.Run("connection lifecycle", doClientSideStreamConnectionLifecycleTests)
 }
 
 func doClientSideStreamRequestTest(t *ldtest.T) {
@@ -67,4 +71,49 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 
 func doClientSideStreamUpdateTests(t *ldtest.T) {
 	NewCommonStreamingTests(t, "doClientSideStreamUpdateTests").Updates(t)
+}
+
+func doClientSideStreamConnectionLifecycleTests(t *ldtest.T) {
+	// This test verifies that when the SDK client is closed, it actively closes its streaming
+	// connection rather than leaving the underlying TCP socket lingering. Go's HTTP server cancels
+	// the incoming request's Context when the client closes the underlying TCP connection, so we
+	// detect closure by waiting for that Context to be cancelled.
+	//
+	// setupDataSources configures the streaming data source plus, for JS-based client-side SDKs,
+	// a polling data source for the initial payload (those SDKs poll first, then stream for updates).
+	// It is intentionally not gated behind any FDv2 capability.
+	t.Run("SDK closes streaming connection when client is closed", func(t *ldtest.T) {
+		streamTests := NewCommonStreamingTests(t, "doClientSideStreamConnectionLifecycleTests")
+		stream, configurers := streamTests.setupDataSources(t, nil)
+
+		client := NewSDKClient(t, streamTests.baseSDKConfigurationPlus(configurers...)...)
+
+		// Skip Roku's short-lived POST /handshake to the streaming endpoint (its Context is already
+		// cancelled once the handler returns) so we assert against the long-lived SSE connection.
+		endpoint := stream.Endpoint()
+		deadline := time.Now().Add(time.Second * 5)
+		streamRequest := endpoint.RequireConnection(t, time.Until(deadline))
+		for streamRequest.URL.Path == mockld.StreamingPathRokuHandshake {
+			streamRequest = endpoint.RequireConnection(t, time.Until(deadline))
+		}
+
+		// Closing the client should force the SDK to close its streaming connection. This is
+		// idempotent with the automatic close that happens at end-of-test.
+		require.NoError(t, client.Close())
+
+		h.RequireEventually(
+			t,
+			func() bool {
+				select {
+				case <-streamRequest.Context.Done():
+					return true
+				default:
+					return false
+				}
+			},
+			time.Second*3,
+			time.Millisecond*20,
+			"SDK did not close the streaming connection after the client was closed",
+		)
+	})
 }
