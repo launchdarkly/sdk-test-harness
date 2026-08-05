@@ -87,7 +87,14 @@ func doClientSideStreamConnectionLifecycleTests(t *ldtest.T) {
 
 		client := NewSDKClient(t, streamTests.baseSDKConfigurationPlus(configurers...)...)
 
-		streamRequest := stream.Endpoint().RequireConnection(t, time.Second*5)
+		// Skip Roku's short-lived POST /handshake to the streaming endpoint (its Context is already
+		// cancelled once the handler returns) so we assert against the long-lived SSE connection.
+		endpoint := stream.Endpoint()
+		deadline := time.Now().Add(time.Second * 5)
+		streamRequest := endpoint.RequireConnection(t, time.Until(deadline))
+		for streamRequest.URL.Path == mockld.StreamingPathRokuHandshake {
+			streamRequest = endpoint.RequireConnection(t, time.Until(deadline))
+		}
 
 		// Closing the client should force the SDK to close its streaming connection. This is
 		// idempotent with the automatic close that happens at end-of-test.
