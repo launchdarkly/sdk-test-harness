@@ -2,6 +2,15 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.39.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.38.2...v2.39.0) (2026-08-12)
+
+
+### Features
+
+* add client-side streaming retry and error-recovery contract tests ([#395](https://github.com/launchdarkly/sdk-test-harness/issues/395)) ([5e512a0](https://github.com/launchdarkly/sdk-test-harness/commit/5e512a0c338947dc345e959c6e8cb7364ff921d1))
+* Add contract test for streaming connection close on client shutdown ([#377](https://github.com/launchdarkly/sdk-test-harness/issues/377)) ([35acfd4](https://github.com/launchdarkly/sdk-test-harness/commit/35acfd48c2730c266de7311bfb1578f592dd5f05))
+* Add hook-environment-id capability and test ([#410](https://github.com/launchdarkly/sdk-test-harness/issues/410)) ([dae3bcd](https://github.com/launchdarkly/sdk-test-harness/commit/dae3bcd357ca45e5a04d8ee2542e1f1e438cd406))
+
 ## [2.38.2](https://github.com/launchdarkly/sdk-test-harness/compare/v2.38.1...v2.38.2) (2026-07-21)
 
 
