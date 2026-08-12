@@ -640,7 +640,14 @@ func evaluationSeriesContextIncludesEnvironmentID(t *ldtest.T) {
 		runTest(t)
 	})
 
-	if t.Capabilities().HasAny(servicedef.CapabilityClientSide, servicedef.CapabilityServerSidePolling) {
+	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
+		// Client-side SDKs use connection modes, so a top-level polling option would be ignored.
+		t.Run("polling", func(t *ldtest.T) {
+			runTest(t,
+				DataSystemOptionConnectionMode("polling", DataSystemOptionPolling()),
+				DataSystemOptionInitialConnectionMode("polling"))
+		})
+	} else if t.Capabilities().Has(servicedef.CapabilityServerSidePolling) {
 		t.Run("polling", func(t *ldtest.T) {
 			runTest(t, DataSystemOptionPolling())
 		})
