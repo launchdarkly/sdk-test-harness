@@ -21,7 +21,8 @@ type SDKDataSource struct {
 }
 
 type sdkDataSourceConfig struct {
-	polling o.Maybe[bool] // true, false, or "undefined, use the default"
+	polling       o.Maybe[bool] // true, false, or "undefined, use the default"
+	environmentID o.Maybe[string]
 }
 
 // SDKDataSourceOption is the interface for options to NewSDKDataSource.
@@ -39,6 +40,15 @@ func DataSourceOptionPolling() SDKDataSourceOption {
 func DataSourceOptionStreaming() SDKDataSourceOption {
 	return helpers.ConfigOptionFunc[sdkDataSourceConfig](func(c *sdkDataSourceConfig) error {
 		c.polling = o.Some(false)
+		return nil
+	})
+}
+
+// DataSourceOptionEnvironmentID makes an SDKDataSource report an environment ID in the
+// X-LD-EnvID response header, as LaunchDarkly does.
+func DataSourceOptionEnvironmentID(environmentID string) SDKDataSourceOption {
+	return helpers.ConfigOptionFunc[sdkDataSourceConfig](func(c *sdkDataSourceConfig) error {
+		c.environmentID = o.Some(environmentID)
 		return nil
 	})
 }
@@ -65,6 +75,12 @@ func NewSDKDataSource(t *ldtest.T, data mockld.SDKData, options ...SDKDataSource
 	isPolling := d.pollingService != nil
 	handler := helpers.IfElse[http.Handler](isPolling, d.pollingService, d.streamingService)
 	description := helpers.IfElse(isPolling, "polling service", "streaming service")
+
+	var config sdkDataSourceConfig
+	_ = helpers.ApplyOptions(&config, options...)
+	if config.environmentID.IsDefined() {
+		handler = withEnvironmentIDHeader(handler, config.environmentID.Value())
+	}
 
 	d.endpoint = requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
 		harness.MockEndpointDescription(description))
@@ -98,6 +114,13 @@ func NewSDKDataSourceWithoutEndpoint(t *ldtest.T, data mockld.SDKData, options .
 	t.Debug("setting SDK data to: %s", string(data.Serialize()))
 
 	return d
+}
+
+func withEnvironmentIDHeader(handler http.Handler, environmentID string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(environmentIDHeader, environmentID)
+		handler.ServeHTTP(w, r)
+	})
 }
 
 // Endpoint returns the low-level object that manages incoming requests.
