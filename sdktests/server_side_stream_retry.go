@@ -326,14 +326,26 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		streamEndpoint := makeStreamEndpoint(t, httphelpers.HandlerWithStatus(401))
 		t.Defer(streamEndpoint.Close)
 
-		_ = NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{InitCanFail: true}),
+		// StartWaitTimeMs is set to a tiny value so that NewSDKClient returns quickly. With the
+		// default 5 s wait, several extended-regime retries would buffer in the endpoint before
+		// the loop runs, allowing a permanently-stopped SDK to trivially satisfy the drain.
+		_ = NewSDKClient(t,
+			WithConfig(servicedef.SDKConfigParams{InitCanFail: true, StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(1))}),
 			WithStreamingConfig(retryConformanceStreamConfig(streamEndpoint)))
 
-		// Observe at least 3 connections at extended-regime timing. Each takes ~500 ms; with
-		// doubling, total ~3.5 s in the worst case. Generous per-connection timeout.
-		for i := 0; i < 3; i++ {
-			_ = streamEndpoint.RequireConnection(t, extendedRegimeConnectionTimeout)
+		// Extended-regime backoff doubles from 500 ms with no compressed cap, so the inter-attempt
+		// gap grows: 500, 1000, 2000, 4000, 8000 ms. Per-connection timeout must cover the largest
+		// gap we expect to observe (attempt 6 -> ~8 s) with margin for CI jitter.
+		sustainedRetryConnectionTimeout := time.Second * 12
+
+		// Observe 5 connections at extended-regime timing (proves repeated retry).
+		for i := 0; i < 5; i++ {
+			_ = streamEndpoint.RequireConnection(t, sustainedRetryConnectionTimeout)
 		}
+
+		// One more live connection after the loop -- proves the SDK is still retrying at the end
+		// and hasn't stopped after producing a handful of attempts.
+		_ = streamEndpoint.RequireConnection(t, sustainedRetryConnectionTimeout)
 	})
 
 	// The following two "do not retry" tests describe legacy behavior for SDKs that have not yet
