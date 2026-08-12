@@ -602,36 +602,48 @@ func executesAfterEvaluationHooksInReverseRegistrationOrder(t *ldtest.T) {
 func evaluationSeriesContextIncludesEnvironmentID(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityHookEnvironmentID)
 
-	hookName := "evaluationSeriesContextIncludesEnvironmentID"
-	environmentID := "env-12345"
+	runTest := func(t *ldtest.T, dataSourceMode SDKDataSourceOption) {
+		hookName := "evaluationSeriesContextIncludesEnvironmentID"
+		environmentID := "env-12345"
 
-	context := ldcontext.New("user-key")
-	flagContext := o.Some(context)
-	configurers := []SDKConfigurer{}
+		context := ldcontext.New("user-key")
+		flagContext := o.Some(context)
+		configurers := []SDKConfigurer{}
 
-	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
-		configurers = append(configurers, WithClientSideInitialContext(context))
-		flagContext = o.None[ldcontext.Context]()
+		if t.Capabilities().Has(servicedef.CapabilityClientSide) {
+			configurers = append(configurers, WithClientSideInitialContext(context))
+			flagContext = o.None[ldcontext.Context]()
+		}
+
+		client, hooks := createClientForHooksWithDataSourceOptions(t, []string{hookName}, nil, nil,
+			[]SDKDataSourceOption{DataSourceOptionEnvironmentID(environmentID), dataSourceMode}, configurers...)
+		defer hooks.Close()
+
+		client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+			FlagKey:      "bool-flag",
+			Context:      flagContext,
+			ValueType:    servicedef.ValueTypeBool,
+			DefaultValue: ldvalue.Bool(false),
+		})
+
+		hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
+			if payload.Stage.Value() != servicedef.AfterEvaluation {
+				return false
+			}
+			assert.Equal(t, o.Some(environmentID), payload.EvaluationSeriesContext.Value().EnvironmentID)
+			return true
+		})
 	}
 
-	client, hooks := createClientForHooksWithDataSourceOptions(t, []string{hookName}, nil, nil,
-		[]SDKDataSourceOption{DataSourceOptionEnvironmentID(environmentID)}, configurers...)
-	defer hooks.Close()
-
-	client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
-		FlagKey:      "bool-flag",
-		Context:      flagContext,
-		ValueType:    servicedef.ValueTypeBool,
-		DefaultValue: ldvalue.Bool(false),
+	t.Run("streaming", func(t *ldtest.T) {
+		runTest(t, DataSourceOptionStreaming())
 	})
 
-	hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
-		if payload.Stage.Value() != servicedef.AfterEvaluation {
-			return false
-		}
-		assert.Equal(t, o.Some(environmentID), payload.EvaluationSeriesContext.Value().EnvironmentID)
-		return true
-	})
+	if t.Capabilities().HasAny(servicedef.CapabilityClientSide, servicedef.CapabilityServerSidePolling) {
+		t.Run("polling", func(t *ldtest.T) {
+			runTest(t, DataSourceOptionPolling())
+		})
+	}
 }
 
 func createClientForHooks(t *ldtest.T, instances []string,
