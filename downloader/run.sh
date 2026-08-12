@@ -85,7 +85,9 @@ if [ ! -x "${EXECUTABLE}" ]; then
   rm -rf "${TEMP_DIR}"
   mkdir "${TEMP_DIR}"
   echo "Downloading ${DOWNLOAD_URL}"
-  curl --fail -s -L -o "${TEMP_DIR}/archive.${EXTENSION}" "${DOWNLOAD_URL}" || (echo "Download failed" >&2; exit 1)
+  curl --fail -sS -L --retry 5 --retry-delay 2 \
+    -o "${TEMP_DIR}/archive.${EXTENSION}" "${DOWNLOAD_URL}" \
+    || { echo "Download failed" >&2; exit 1; }
   if [ "${EXTENSION}" = "zip" ]; then
     unzip "${TEMP_DIR}/archive.${EXTENSION}" -d "${TEMP_DIR}"
   else
