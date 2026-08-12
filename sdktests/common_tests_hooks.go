@@ -37,6 +37,7 @@ func doEvaluationSeriesTests(t *ldtest.T) {
 		executesAfterEvaluationHooksInReverseRegistrationOrder)
 
 	t.Run("data propagates from before to after", beforeEvaluationDataPropagatesToAfter)
+	t.Run("provides the environment ID", evaluationSeriesContextIncludesEnvironmentID)
 	t.RequireCapability(servicedef.CapabilityMigrations)
 	t.Run("data propagates from before to after for migrations", beforeEvaluationDataPropagatesToAfterMigration)
 }
@@ -598,6 +599,54 @@ func executesAfterEvaluationHooksInReverseRegistrationOrder(t *ldtest.T) {
 		"afterEvaluation hooks must execute in the reverse of the order of hook registration")
 }
 
+func evaluationSeriesContextIncludesEnvironmentID(t *ldtest.T) {
+	t.RequireCapability(servicedef.CapabilityHookEnvironmentID)
+
+	runTest := func(t *ldtest.T, dataSystemOptions ...SDKDataSystemOption) {
+		hookName := "evaluationSeriesContextIncludesEnvironmentID"
+		environmentID := "env-12345"
+
+		context := ldcontext.New("user-key")
+		flagContext := o.Some(context)
+		configurers := []SDKConfigurer{}
+
+		if t.Capabilities().Has(servicedef.CapabilityClientSide) {
+			configurers = append(configurers, WithClientSideInitialContext(context))
+			flagContext = o.None[ldcontext.Context]()
+		}
+
+		client, hooks := createClientForHooksWithDataSystemOptions(t, []string{hookName}, nil, nil,
+			append([]SDKDataSystemOption{DataSystemOptionEnvironmentID(environmentID)}, dataSystemOptions...),
+			configurers...)
+		defer hooks.Close()
+
+		client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+			FlagKey:      "bool-flag",
+			Context:      flagContext,
+			ValueType:    servicedef.ValueTypeBool,
+			DefaultValue: ldvalue.Bool(false),
+		})
+
+		hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
+			if payload.Stage.Value() != servicedef.AfterEvaluation {
+				return false
+			}
+			assert.Equal(t, o.Some(environmentID), payload.EvaluationSeriesContext.Value().EnvironmentID)
+			return true
+		})
+	}
+
+	t.Run("default data source", func(t *ldtest.T) {
+		runTest(t)
+	})
+
+	if t.Capabilities().HasAny(servicedef.CapabilityClientSide, servicedef.CapabilityServerSidePolling) {
+		t.Run("polling", func(t *ldtest.T) {
+			runTest(t, DataSystemOptionPolling())
+		})
+	}
+}
+
 func createClientForHooks(t *ldtest.T, instances []string,
 	hookData map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData,
 	configurers ...SDKConfigurer) (*SDKClient, *Hooks) {
@@ -607,6 +656,13 @@ func createClientForHooks(t *ldtest.T, instances []string,
 func createClientForHooksWithErrors(t *ldtest.T, instances []string,
 	hookData map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData,
 	hookErrors map[servicedef.HookStage]o.Maybe[string], configurers ...SDKConfigurer) (*SDKClient, *Hooks) {
+	return createClientForHooksWithDataSystemOptions(t, instances, hookData, hookErrors, nil, configurers...)
+}
+
+func createClientForHooksWithDataSystemOptions(t *ldtest.T, instances []string,
+	hookData map[servicedef.HookStage]servicedef.SDKConfigEvaluationHookData,
+	hookErrors map[servicedef.HookStage]o.Maybe[string], dataSystemOptions []SDKDataSystemOption,
+	configurers ...SDKConfigurer) (*SDKClient, *Hooks) {
 	boolFlag := ldbuilders.NewFlagBuilder("bool-flag").
 		Variations(ldvalue.Bool(false), ldvalue.Bool(true)).
 		FallthroughVariation(1).On(true).Build()
@@ -643,11 +699,11 @@ func createClientForHooksWithErrors(t *ldtest.T, instances []string,
 		for _, flag := range flags {
 			dataBuilder.Flag(flag.Key, mockld.ClientSDKFlag{Value: flag.Variations[1]})
 		}
-		dataSystem = NewSDKDataSystem(t, dataBuilder.Build())
+		dataSystem = NewSDKDataSystem(t, dataBuilder.Build(), dataSystemOptions...)
 	} else {
 		dataBuilder := mockld.NewServerSDKDataBuilder()
 		dataBuilder.Flag(flags...)
-		dataSystem = NewSDKDataSystem(t, dataBuilder.Build())
+		dataSystem = NewSDKDataSystem(t, dataBuilder.Build(), dataSystemOptions...)
 	}
 
 	hooks := NewHooks(requireContext(t).harness, t.DebugLogger(), instances, hookData, hookErrors)

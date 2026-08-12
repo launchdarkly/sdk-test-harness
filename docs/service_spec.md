@@ -218,6 +218,19 @@ A test hook must:
       * `stage` (string, optional): If executing a stage, for example `beforeEvaluation`, this should be the stage.
   - Return data from the stages as specified via the `data` configuration. For instance the return value from the `beforeEvaluation` hook should be `data['beforeEvaluation']` merged with the input data for the stage.
 
+#### Capability `"hook-environment-id"`
+
+This means that the SDK propagates the environment ID reported by LaunchDarkly, in the `X-LD-EnvID` response
+header of streaming or polling responses, into the hook series contexts.
+
+If this capability is set, the test harness will send an `X-LD-EnvID` header in its streaming and polling
+responses, and the test hook must include the environment ID of the `EvaluationSeriesContext` as the
+`environmentId` property of the `evaluationSeriesContext` payload object (and of the `trackSeriesContext`
+payload object if the `track-hooks` capability is also supported).
+
+The environment ID is only asserted on the `afterEvaluation` stage, since SDKs which fetch flag data during
+evaluation rather than during initialization cannot know it before the evaluation has happened.
+
 #### Capability `"flag-change-listeners"`
 
 This means that the SDK has support for general flag change listeners — listeners that are notified when any flag's configuration changes. When a flag changes, the SDK test service should POST notification data to the callback URI provided during listener registration.
