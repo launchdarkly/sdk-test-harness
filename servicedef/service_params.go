@@ -41,6 +41,7 @@ const (
 	CapabilityPollingGzip                 = "polling-gzip"
 	CapabilityEvaluationHooks             = "evaluation-hooks"
 	CapabilityTrackHooks                  = "track-hooks"
+	CapabilityHookEnvironmentID           = "hook-environment-id"
 	CapabilityClientPrereqEvents          = "client-prereq-events"
 	CapabilityClientPrereqCycleDetection  = "client-prereq-cycle-detection"
 	CapabilityPersistentDataStoreRedis    = "persistent-data-store-redis"
