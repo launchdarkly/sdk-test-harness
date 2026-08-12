@@ -2,6 +2,26 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.2.0-alpha.6](https://github.com/launchdarkly/sdk-test-harness/compare/v3.1.1-alpha.6...v3.2.0-alpha.6) (2026-08-12)
+
+
+### Features
+
+* Add contract test for streaming connection close on client shutdown ([#403](https://github.com/launchdarkly/sdk-test-harness/issues/403)) ([0f91b2a](https://github.com/launchdarkly/sdk-test-harness/commit/0f91b2a4d27970bc4b603f21c6a8d7925c2aa7c6))
+* Add contract tests for client-side secure mode hash (h query param) ([#376](https://github.com/launchdarkly/sdk-test-harness/issues/376)) ([3e3012c](https://github.com/launchdarkly/sdk-test-harness/commit/3e3012caf59352c8f800d76b4d184fb41635c986))
+* Add hook-environment-id capability and test ([#412](https://github.com/launchdarkly/sdk-test-harness/issues/412)) ([922989a](https://github.com/launchdarkly/sdk-test-harness/commit/922989a6808e5d30ec08da66d952f788013af95a))
+* Add migration op event context redaction tests ([#385](https://github.com/launchdarkly/sdk-test-harness/issues/385)) ([34d68e9](https://github.com/launchdarkly/sdk-test-harness/commit/34d68e9a15d1450b98317b91bc8d7119bd1f7f5b))
+* add tests for handling redacting attributes prefixed with `/` correctly ([#381](https://github.com/launchdarkly/sdk-test-harness/issues/381)) ([ff6929d](https://github.com/launchdarkly/sdk-test-harness/commit/ff6929d9d51b6f87b168a25e32473cad7f2075b4))
+* Verify the in operator keeps booleans and numbers distinct ([fac2879](https://github.com/launchdarkly/sdk-test-harness/commit/fac287936f2f8f8d566318fa55dd1b88a87b9028))
+
+
+### Bug Fixes
+
+* Correct privateAttributes JSON tag in context comparison params ([#392](https://github.com/launchdarkly/sdk-test-harness/issues/392)) ([d9d2c01](https://github.com/launchdarkly/sdk-test-harness/commit/d9d2c01293721f3d5d88da03cbd1e5c818ee9c61))
+* Fix capability guarding custom event redaction ([#387](https://github.com/launchdarkly/sdk-test-harness/issues/387)) ([4d3419b](https://github.com/launchdarkly/sdk-test-harness/commit/4d3419b3aa6303c0d107e856fd82be4e7868a80d))
+* Only expect custom-event anonymous redaction for server SDKs ([#389](https://github.com/launchdarkly/sdk-test-harness/issues/389)) ([032ae14](https://github.com/launchdarkly/sdk-test-harness/commit/032ae1443dee122febeaa0cbe817d435587fac8b))
+* prevent client side wrapper test datasystem from colliding with primary connection mode ([#394](https://github.com/launchdarkly/sdk-test-harness/issues/394)) ([fb40bc6](https://github.com/launchdarkly/sdk-test-harness/commit/fb40bc62168889e1acb4cbf0857e5a8255865cd6))
+
 ## [3.1.1-alpha.6](https://github.com/launchdarkly/sdk-test-harness/compare/v3.1.0-alpha.6...v3.1.1-alpha.6) (2026-06-05)
 
 
