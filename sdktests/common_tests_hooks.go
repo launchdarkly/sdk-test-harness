@@ -602,7 +602,7 @@ func executesAfterEvaluationHooksInReverseRegistrationOrder(t *ldtest.T) {
 func evaluationSeriesContextIncludesEnvironmentID(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityHookEnvironmentID)
 
-	runTest := func(t *ldtest.T, dataSourceMode SDKDataSourceOption) {
+	runTest := func(t *ldtest.T, dataSourceOptions ...SDKDataSourceOption) {
 		hookName := "evaluationSeriesContextIncludesEnvironmentID"
 		environmentID := "env-12345"
 
@@ -616,7 +616,8 @@ func evaluationSeriesContextIncludesEnvironmentID(t *ldtest.T) {
 		}
 
 		client, hooks := createClientForHooksWithDataSourceOptions(t, []string{hookName}, nil, nil,
-			[]SDKDataSourceOption{DataSourceOptionEnvironmentID(environmentID), dataSourceMode}, configurers...)
+			append([]SDKDataSourceOption{DataSourceOptionEnvironmentID(environmentID)}, dataSourceOptions...),
+			configurers...)
 		defer hooks.Close()
 
 		client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
@@ -635,8 +636,8 @@ func evaluationSeriesContextIncludesEnvironmentID(t *ldtest.T) {
 		})
 	}
 
-	t.Run("streaming", func(t *ldtest.T) {
-		runTest(t, DataSourceOptionStreaming())
+	t.Run("default data source", func(t *ldtest.T) {
+		runTest(t)
 	})
 
 	if t.Capabilities().HasAny(servicedef.CapabilityClientSide, servicedef.CapabilityServerSidePolling) {
