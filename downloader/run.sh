@@ -27,9 +27,10 @@ fi
 # Github rate-limits requests, both to its APIs and to the release asset download endpoints. The
 # effect is that sometimes the contract test step in CI fails spuriously. Authenticated requests get
 # a substantially higher limit, so the token is used for every request that accepts it.
+AUTH_TOKEN="${GITHUB_TOKEN}"
 github_curl() {
-  if [ -n "${GITHUB_TOKEN}" ]; then
-    curl -sS -L --retry 5 --retry-delay 2 -H "Authorization: Bearer ${GITHUB_TOKEN}" "$@"
+  if [ -n "${AUTH_TOKEN}" ]; then
+    curl -sS -L --retry 5 --retry-delay 2 -H "Authorization: Bearer ${AUTH_TOKEN}" "$@"
   else
     curl -sS -L --retry 5 --retry-delay 2 "$@"
   fi
@@ -79,6 +80,8 @@ if [ ! -x "${EXECUTABLE}" ]; then
       DOWNLOAD_ACCEPT="application/octet-stream"
     else
       echo "Unable to find asset '${EXECUTABLE_ARCHIVE_NAME}' in release ${VERSION_TO_DOWNLOAD}; falling back to an unauthenticated download" >&2
+      # The public download URL does not need credentials, and a rejected token would fail it.
+      AUTH_TOKEN=""
     fi
   fi
 
