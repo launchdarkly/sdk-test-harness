@@ -626,7 +626,7 @@ func evaluationSeriesContextIncludesEnvironmentID(t *ldtest.T) {
 	})
 
 	hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
-		if payload.Stage.Value() != servicedef.BeforeEvaluation {
+		if payload.Stage.Value() != servicedef.AfterEvaluation {
 			return false
 		}
 		assert.Equal(t, o.Some(environmentID), payload.EvaluationSeriesContext.Value().EnvironmentID)

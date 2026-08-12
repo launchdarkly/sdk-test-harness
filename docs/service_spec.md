@@ -210,6 +210,9 @@ responses, and the test hook must include the environment ID of the `EvaluationS
 `environmentId` property of the `evaluationSeriesContext` payload object (and of the `trackSeriesContext`
 payload object if the `track-hooks` capability is also supported).
 
+The environment ID is only asserted on the `afterEvaluation` stage, since SDKs which fetch flag data during
+evaluation rather than during initialization cannot know it before the evaluation has happened.
+
 #### Capability `"track-hooks"`
 
 This means that the SDK has support for hooks and has the ability to register track hooks.
