@@ -24,6 +24,7 @@ type sdkDataSystemConfig struct {
 	pollingSynchronizerOpts []DataSynchronizerOption
 	connectionModes         []connectionModeEntry
 	initialConnectionMode   string
+	environmentID           o.Maybe[string]
 }
 
 // SDKDataSystemOption is the interface for options to NewSDKDataSystem.
@@ -64,6 +65,16 @@ func DataSystemOptionPollInterval(interval time.Duration) SDKDataSystemOption {
 	})
 }
 
+// DataSystemOptionEnvironmentID makes every mock service of the data system report an environment
+// ID in the X-LD-EnvID response header, as LaunchDarkly does. It must be specified at the top level;
+// it applies to all connection modes.
+func DataSystemOptionEnvironmentID(environmentID string) SDKDataSystemOption {
+	return helpers.ConfigOptionFunc[sdkDataSystemConfig](func(c *sdkDataSystemConfig) error {
+		c.environmentID = o.Some(environmentID)
+		return nil
+	})
+}
+
 // DataSystemOptionConnectionMode defines a named connection mode with its own set of
 // initializers and synchronizers. The inner options (e.g. DataSystemOptionPolling,
 // DataSystemOptionStreaming) control what mock services the mode contains. If no inner
@@ -98,6 +109,7 @@ type SDKDataSystem struct {
 	Synchronizers         []DataSynchronizer
 	connectionModes       map[string]*dataSystemMode
 	initialConnectionMode string
+	environmentID         o.Maybe[string]
 }
 
 // ConnectionMode returns the named connection mode, or nil if it doesn't exist.
@@ -350,10 +362,10 @@ func NewSDKDataSystemCustom(
 func (s *SDKDataSystem) CreateEndpoints() {
 	if len(s.connectionModes) > 0 {
 		for _, mode := range s.connectionModes {
-			createEndpoints(s.t, mode.initializers, mode.synchronizers)
+			createEndpoints(s.t, mode.initializers, mode.synchronizers, s.environmentID)
 		}
 	} else {
-		createEndpoints(s.t, s.Initializers, s.Synchronizers)
+		createEndpoints(s.t, s.Initializers, s.Synchronizers, s.environmentID)
 	}
 }
 
@@ -408,7 +420,7 @@ func buildDataSystem(t *ldtest.T, data mockld.SDKData, options []SDKDataSystemOp
 	var config sdkDataSystemConfig
 	_ = helpers.ApplyOptions(&config, options...)
 
-	d := &SDKDataSystem{t: t}
+	d := &SDKDataSystem{t: t, environmentID: config.environmentID}
 
 	if len(config.connectionModes) > 0 {
 		d.connectionModes = make(map[string]*dataSystemMode)
@@ -452,14 +464,20 @@ func buildDataSystem(t *ldtest.T, data mockld.SDKData, options []SDKDataSystemOp
 	return d
 }
 
-func createEndpoints(t *ldtest.T, initializers []DataInitializer, synchronizers []DataSynchronizer) {
+func createEndpoints(
+	t *ldtest.T,
+	initializers []DataInitializer,
+	synchronizers []DataSynchronizer,
+	environmentID o.Maybe[string],
+) {
 	for i := range initializers {
 		init := &initializers[i]
 		if init.pollingService == nil {
 			continue
 		}
 		init.endpoint =
-			requireContext(t).harness.NewMockEndpoint(init.pollingService, t.DebugLogger(),
+			requireContext(t).harness.NewMockEndpoint(
+				withEnvironmentIDHeader(init.pollingService, environmentID), t.DebugLogger(),
 				harness.MockEndpointDescription("polling initializer"))
 		t.Defer(init.endpoint.Close)
 	}
@@ -468,10 +486,23 @@ func createEndpoints(t *ldtest.T, initializers []DataInitializer, synchronizers 
 		sync := &synchronizers[i]
 		isPolling := sync.polling != nil
 		handler := helpers.IfElse[http.Handler](isPolling, sync.polling, sync.streaming)
-		sync.endpoint = requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
+		sync.endpoint = requireContext(t).harness.NewMockEndpoint(
+			withEnvironmentIDHeader(handler, environmentID), t.DebugLogger(),
 			harness.MockEndpointDescription("synchronizer service"))
 		t.Defer(sync.endpoint.Close)
 	}
+}
+
+// withEnvironmentIDHeader wraps a handler so that its responses carry the X-LD-EnvID header.
+// If no environment ID is defined, the handler is returned unchanged.
+func withEnvironmentIDHeader(handler http.Handler, environmentID o.Maybe[string]) http.Handler {
+	if !environmentID.IsDefined() {
+		return handler
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(environmentIDHeader, environmentID.Value())
+		handler.ServeHTTP(w, r)
+	})
 }
 
 func setDataOnServices(initializers []DataInitializer, synchronizers []DataSynchronizer, data mockld.SDKData) {

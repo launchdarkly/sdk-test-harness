@@ -43,6 +43,7 @@ const (
 	CapabilityFlagChangeListeners         = "flag-change-listeners"
 	CapabilityFlagValueChangeListeners    = "flag-value-change-listeners"
 	CapabilityTrackHooks                  = "track-hooks"
+	CapabilityHookEnvironmentID           = "hook-environment-id"
 	CapabilityClientPrereqEvents          = "client-prereq-events"
 	CapabilityPersistentDataStoreRedis    = "persistent-data-store-redis"
 	CapabilityPersistentDataStoreConsul   = "persistent-data-store-consul"
