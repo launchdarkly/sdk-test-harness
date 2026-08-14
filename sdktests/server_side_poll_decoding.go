@@ -65,8 +65,9 @@ func doServerSidePollUndecodablePayloadTests(t *ldtest.T) {
 	// InitCanFail lets the client be created even when the data source never initializes, so that a
 	// correct (strict) SDK can still answer evaluations with the default. A short start-wait keeps the
 	// strict SDK from blocking for a long time while its first poll fails.
+	sdkKey := "my-sdk-key"
 	client := NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{
-		Credential:      "my-sdk-key",
+		Credential:      sdkKey,
 		InitCanFail:     true,
 		StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(2000)),
 		Polling: o.Some(servicedef.SDKConfigPollingParams{
