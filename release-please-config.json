@@ -4,7 +4,7 @@
       "draft": true,
       "release-type": "go",
       "bump-minor-pre-major": true,
-      "versioning": "default",
+      "versioning": "prerelease",
       "include-component-in-tag": false,
       "prerelease": true,
       "prerelease-type": "alpha",
