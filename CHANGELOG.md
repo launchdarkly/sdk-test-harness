@@ -2,6 +2,18 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.2.0-alpha.7](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.6...v3.2.0-alpha.7) (2026-08-14)
+
+
+### Features
+
+* Assert the FDv2 polling request sends the basis query parameter ([#420](https://github.com/launchdarkly/sdk-test-harness/issues/420)) ([18aa931](https://github.com/launchdarkly/sdk-test-harness/commit/18aa931e7b8d402ba269d8158c1875fb80ed67d4))
+
+
+### Bug Fixes
+
+* Retry the test harness download and surface curl errors ([#413](https://github.com/launchdarkly/sdk-test-harness/issues/413)) ([a11c518](https://github.com/launchdarkly/sdk-test-harness/commit/a11c51843916f729ce40b3e8632fe91bba469a32))
+
 ## [3.2.0-alpha.6](https://github.com/launchdarkly/sdk-test-harness/compare/v3.1.1-alpha.6...v3.2.0-alpha.6) (2026-08-12)
 
 
