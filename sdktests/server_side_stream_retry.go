@@ -239,12 +239,13 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 				t.Defer(streamEndpoint.Close)
 
 				client := NewSDKClient(t, WithStreamingConfig(retryConformanceStreamConfig(streamEndpoint)))
-				result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
-				m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 				for i := 0; i < 3; i++ { // expect three requests
 					_ = streamEndpoint.RequireConnection(t, extendedRegimeConnectionTimeout)
 				}
+
+				result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
+				m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 			})
 		}
 	})
@@ -265,14 +266,15 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 				t.Defer(streamEndpoint.Close)
 
 				client := NewSDKClient(t, WithStreamingConfig(retryConformanceStreamConfig(streamEndpoint)))
+
+				// Confirm initial connection succeeded, then verify V1 is live
+				request1 := streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
 				result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 				m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
-				// Cause the initial stream to close; triggers reconnect
-				request1 := streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
+				// Cause the initial stream to close; triggers reconnect. Then two error responses,
+				// then a successful reconnect at extended-regime timing.
 				request1.Cancel()
-
-				// Two error responses, then a successful reconnect at extended-regime timing
 				_ = streamEndpoint.RequireConnection(t, extendedRegimeConnectionTimeout) // 2nd (error)
 				_ = streamEndpoint.RequireConnection(t, extendedRegimeConnectionTimeout) // 3rd (error)
 				_ = streamEndpoint.RequireConnection(t, extendedRegimeConnectionTimeout) // 4th (success)
