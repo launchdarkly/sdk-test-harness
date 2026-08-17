@@ -65,6 +65,10 @@ This means that the SDK supports Big Segments and can be configured with a custo
 
 For tests that involve Big Segments, the test harness will provide parameters in the `bigSegments` property of the configuration object, including a `callbackUri` that points to one of the test harness's callback services (see [Callback endpoints](#callback-endpoints)). The test service should configure the SDK with its own implementation of a Big Segment store, where every method of the store delegates to a corresponding endpoint in the callback service.
 
+#### Capability `"bootstrap"`
+
+For client-side SDKs only. This means the SDK can be configured with pre-fetched flag data ("bootstrap" data) which it applies to its flag store at start time, before making any network requests. See the `bootstrap` property of the `clientSide` configuration object for the JSON shape and detailed behavior. When this capability is present, the test harness may set `bootstrap` in the client-side configuration. Bootstrap data comes from the calling application, not from a data source or persistent store.
+
 #### Capability `"client-prereq-events"`
 
 This means that the SDK supports client-side prerequisite events.
@@ -220,13 +224,13 @@ A test hook must:
 
 #### Capability `"flag-change-listeners"`
 
-This means that the SDK has support for general flag change listeners — listeners that are notified when any flag's configuration changes. When a flag changes, the SDK test service should POST notification data to the callback URI provided during listener registration.
+This means that the SDK has support for general flag change listeners, listeners that are notified when any flag's configuration changes. When a flag changes, the SDK test service should POST notification data to the callback URI provided during listener registration.
 
 For details on the commands and callback payloads, see the `registerFlagChangeListener` and `unregisterListener` commands.
 
 #### Capability `"flag-value-change-listeners"`
 
-This means that the SDK has a native API for flag *value* change listeners — listeners that are notified when a specific flag's evaluated value changes for a given context. Not all SDKs provide this API; for example, the Node.js server SDK only supports general flag change listeners.
+This means that the SDK has a native API for flag *value* change listeners, listeners that are notified when a specific flag's evaluated value changes for a given context. Not all SDKs provide this API; for example, the Node.js server SDK only supports general flag change listeners.
 
 For details on the commands and callback payloads, see the `registerFlagValueChangeListener` and `unregisterListener` commands.
 
@@ -345,6 +349,9 @@ A `POST` request indicates that the test harness wants to start an instance of t
     * `initialUser` (object, optional): Can be specified instead of `initialContext` to use an old-style user JSON representation.
     * `evaluationReasons`, `useReport` (boolean, optional): These correspond to the SDK configuration properties of the same names.
     * `hash` (string, optional): If present, a secure mode hash value that the SDK should use when connecting to the streaming and polling services. When set, the SDK must include this value as the `h` query parameter on streaming and polling requests. This field is only used by test services that declare the `"secure-mode-hash"` capability.
+    * `bootstrap` (object, optional): If present, pre-fetched flag data that the SDK should apply to its flag store at start time, before making any network requests, and which should satisfy the SDK's initialization condition without waiting for a network response. This field is only used by test services that declare the `"bootstrap"` capability. Once the SDK receives its first flag data from its streaming or polling data source, that data replaces the bootstrap data. This is the JSON shape produced by serializing a server-side SDK's `allFlagsState` result: every key that does not begin with `$` is a flag key whose value is that flag's variation value, plus two reserved keys:
+      * `$flagsState` (object, optional): An object mapping each flag key to its metadata: `variation`, `version`, `trackEvents`, `trackReason`, `debugEventsUntilDate`, `reason`, `prerequisites`. Any of these metadata fields may be absent. `$flagsState` itself may be absent entirely, in which case the SDK should still ingest the flag values.
+      * `$valid` (boolean, optional): If absent, treat it as `true`. If `false`, the SDK should still ingest whatever data is present and must not refuse to initialize.
   * `hooks` (object, optional): If specified this has the configuration for hooks.
     * `hooks` (array, required): Contains configuration of one or more hooks, each item is an object with the following parameters.
       * `name` (string, required): A name to associate with the hook.
