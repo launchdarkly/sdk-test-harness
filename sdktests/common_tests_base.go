@@ -3,7 +3,6 @@ package sdktests
 import (
 	"encoding/json"
 	"fmt"
-	"regexp"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
@@ -41,51 +40,6 @@ const (
 	flagRequestGET    flagRequestMethod = "GET"
 	flagRequestREPORT flagRequestMethod = "REPORT"
 )
-
-// Represents a key identifying a filtered environment. This key is passed into
-// SDKs when configuring the polling or streaming data source, and should be
-// appended to the end of streaming/polling requests as a URL query parameter
-// named "filter".
-//
-// Example: "foo" -> "?filter=foo"
-type environmentFilter struct {
-	o.Maybe[string]
-}
-
-// IsValid returns true if the filter key is a valid environment key.
-//
-// In this context, valid means either is missing, or passes the required regex.
-func (p environmentFilter) IsValid() bool {
-	if !p.IsDefined() {
-		return true
-	}
-
-	regex := regexp.MustCompile(`^[a-zA-Z0-9][._\-a-zA-Z0-9]*$`)
-	return regex.MatchString(p.Value())
-}
-
-// String returns a human-readable representation of the filter key,
-// suitable for test output.
-func (p environmentFilter) String() string {
-	return fmt.Sprintf("environment_filter_key=\"%s\"", p.Value())
-}
-
-// Matcher checks that if the filter is present, the query parameter map contains a parameter
-// named "filter" with its value.
-// If the filter is not present, it checks that the query parameter map *does not* contain
-// a parameter named "filter".
-func (p environmentFilter) Matcher(strict bool) m.Matcher {
-	hasFilter := m.MapIncluding(
-		m.KV("filter", m.Equal(p.Value())),
-	)
-
-	if !p.IsDefined() {
-		hasFilter = m.Not(hasFilter)
-	} else if strict && !p.IsValid() {
-		hasFilter = m.Not(hasFilter)
-	}
-	return UniqueQueryParameters().Should(hasFilter)
-}
 
 func newCommonTestsBase(t *ldtest.T, testName string, baseSDKConfigurers ...SDKConfigurer) commonTestsBase {
 	c := commonTestsBase{
@@ -203,16 +157,6 @@ func (c commonTestsBase) withAvailableTransports(t *ldtest.T) []transportProtoco
 			requireContext(t).harness.CertificateAuthorityFile()))
 	}
 	return configurers
-}
-
-// Returns a set of environment filters for testing, along with a filter representing
-// "no filter".
-func (c commonTestsBase) environmentFilters() []environmentFilter {
-	return []environmentFilter{
-		{o.None[string]()},
-		{o.Some("encoding_not_necessary")},
-		{o.Some("encoding necessary +! %& ( )")},
-	}
 }
 
 func (c commonTestsBase) withFlagRequestMethod(method flagRequestMethod) SDKConfigurer {

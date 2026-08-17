@@ -94,17 +94,6 @@ func WithServiceEndpoints(endpoints servicedef.SDKConfigServiceEndpointsParams) 
 	})
 }
 
-// WithPayloadFilter is used to with StartSDKClient to apply a non-default payload filter configuration
-func WithPayloadFilter(filter environmentFilter) SDKConfigurer {
-	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
-		dataSystem := configOut.DataSystem.OrElse(servicedef.DataSystem{})
-		dataSystem.PayloadFilter = filter.Maybe
-
-		configOut.DataSystem = o.Some(dataSystem)
-		return nil
-	})
-}
-
 // WithDataSynchronizer is used with StartSDKClient to add a data synchronizer configuration.
 // Synchronizers are used in order: the first added is the primary, second is secondary, etc.
 func WithDataSynchronizer(synchronizer servicedef.DataSynchronizer) SDKConfigurer {

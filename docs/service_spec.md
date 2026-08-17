@@ -181,19 +181,6 @@ For tests that involve tags, the test harness will set the `tags` property of th
 
 This means that the SDK has a type corresponding to the old-style user model, and supports directly passing such user data to SDK methods as an alternative to context data. If this capability is present, the test harness may send a `user` property with old-style user JSON for test commands that would normally take a `context` property. If this capability is absent, `user` will never be set.
 
-#### Capability `"filtering"`
-
-This means that the SDK supports the "filter" configuration option for streaming/polling data sources,
-and will send a `?filter=name` query parameter along with streaming/polling requests.
-
-For tests that involve filtering, the test harness will set the `payloadFilter` property of the `dataSystem` configuration object. The property will either be omitted if no filter is requested, or a non-empty string if requested.
-
-#### Capability `"filtering-strict"`
-
-When initially adding support for the `filtering` capability, the test harness assumed there were no character restrictions on the payload filter key. Later investigation has determined this is not the case.
-
-If this capability is set, the test harness will send a filter key that contains a character that is not allowed in a filter key. The test service should ignore the invalid key and connect as if no filter was specified.
-
 #### Capability `"evaluation-hooks"`
 
 This means that the SDK has support for hooks and has the ability to register evaluation hooks.
@@ -398,7 +385,6 @@ A `POST` request indicates that the test harness wants to start an instance of t
     * `synchronizers` (array, optional): A list of data synchronizers. Each synchronizer has:
       * `streaming` (object, optional): Streaming configuration (`baseUri`, `initialRetryDelayMs`).
       * `polling` (object, optional): Polling configuration (`baseUri`, `pollIntervalMs`).
-    * `payloadFilter` (string, optional): If set, the SDK should include this value as a `?filter=` query parameter on streaming/polling requests. See the `"filtering"` capability.
     * `connectionModeConfig` (object, optional): Connection mode configuration. Properties are:
       * `initialConnectionMode` (string, optional): The connection mode the SDK should start in (e.g. `"streaming"`, `"polling"`, `"offline"`, `"background"`, `"one-shot"`). For client-side FDv2, the test harness sends exactly one of `useDefaultDataSystem` (at the `dataSystem` level) or `initialConnectionMode`; it cannot send both but must send one.
       * `customConnectionModes` (object, optional): A map of custom connection mode names to their definitions. Each definition has:

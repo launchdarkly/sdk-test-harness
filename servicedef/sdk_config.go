@@ -56,7 +56,6 @@ type DataSystem struct {
 	Initializers         []DataInitializer               `json:"initializers"`
 	Synchronizers        []DataSynchronizer              `json:"synchronizers"`
 	FDv1Fallback         o.Maybe[SDKConfigPollingParams] `json:"fdv1Fallback,omitempty"`
-	PayloadFilter        o.Maybe[string]                 `json:"payloadFilter,omitempty"`
 	ConnectionModeConfig o.Maybe[ConnectionModeConfig]   `json:"connectionModeConfig,omitempty"`
 }
 
