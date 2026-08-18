@@ -17,6 +17,7 @@ type commandParams struct {
 	debug                  bool
 	debugAll               bool
 	enablePersistenceTests bool
+	enableLongRunningTests bool
 	jUnitFile              string
 	recordFailures         string
 	skipFile               string
@@ -36,6 +37,8 @@ func (c *commandParams) Read(args []string) bool {
 	fs.BoolVar(&c.debugAll, "debug-all", false, "enable debug logging for all tests")
 	fs.BoolVar(&c.enablePersistenceTests, "enable-persistence-tests", false,
 		"enable tests that require external persistence support")
+	fs.BoolVar(&c.enableLongRunningTests, "enable-long-running-tests", false,
+		"enable tests that take a long time to run (10+ seconds)")
 	fs.StringVar(&c.jUnitFile, "junit", "", "write JUnit XML output to the specified path")
 	fs.StringVar(&c.recordFailures, "record-failures", "", "record failed test IDs to the given file.\n"+
 		"recorded tests can be skipped by the next run of the harness via -skip-from")
