@@ -48,34 +48,12 @@ type SDKConfigStreamingParams struct {
 	BaseURI             string                              `json:"baseUri,omitempty"`
 	InitialRetryDelayMS o.Maybe[ldtime.UnixMillisecondTime] `json:"initialRetryDelayMs,omitempty"`
 	Filter              o.Maybe[string]                     `json:"filter,omitempty"`
-
-	// ExtendedInitialDelayMS overrides the initial delay of the RETRY specification's extended
-	// regime (default 5 minutes in the SDK). Used by retry-conformance tests to compress the
-	// extended regime into an observable window. Only meaningful when the SDK declares
-	// CapabilityRetryConformanceFDv1Streaming.
-	ExtendedInitialDelayMS o.Maybe[ldtime.UnixMillisecondTime] `json:"extendedInitialDelayMs,omitempty"`
-
-	// ResetThresholdMS overrides the reset threshold that returns the streaming data source from
-	// the extended regime back to the normal regime (default 60 seconds in the SDK, measured as
-	// continuous healthy operation). Used by retry-conformance tests to compress the reset window
-	// into an observable duration. Only meaningful when the SDK declares
-	// CapabilityRetryConformanceFDv1Streaming.
-	ResetThresholdMS o.Maybe[ldtime.UnixMillisecondTime] `json:"resetThresholdMs,omitempty"`
 }
 
 type SDKConfigPollingParams struct {
 	BaseURI        string                              `json:"baseUri,omitempty"`
 	PollIntervalMS o.Maybe[ldtime.UnixMillisecondTime] `json:"pollIntervalMs,omitempty"`
 	Filter         o.Maybe[string]                     `json:"filter,omitempty"`
-
-	// ExtendedInitialDelayMS overrides the initial delay of the RETRY specification's extended
-	// regime (default 5 minutes in the SDK, floored at PollInterval). Used by retry-conformance
-	// tests to compress the extended regime into an observable window. Only meaningful when the
-	// SDK declares CapabilityRetryConformanceFDv1Polling.
-	//
-	// Polling's reset condition is count-based (two consecutive successful poll responses) rather
-	// than time-based, so no ResetThresholdMS is needed on the polling params.
-	ExtendedInitialDelayMS o.Maybe[ldtime.UnixMillisecondTime] `json:"extendedInitialDelayMs,omitempty"`
 }
 
 type SDKConfigEventParams struct {

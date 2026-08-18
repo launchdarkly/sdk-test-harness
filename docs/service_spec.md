@@ -138,15 +138,15 @@ This means the SDK is requesting gzip compression support on polling payloads. T
 
 This means that the SDK's FDv1 streaming data source conforms to the RETRY specification: no HTTP response and no transport-level failure causes the data source to permanently cease operation. In particular, `401` / `403` / other `4xx` statuses and TLS/certificate validation failures trigger an extended-regime backoff (retry with a longer delay) instead of a permanent stop.
 
-SDKs declaring this capability MUST also honor the extended-regime timing knobs `extendedInitialDelayMs` and `resetThresholdMs` on the `streaming` configuration object; the test harness sets these to compress the extended regime into an observable window. See `streaming` configuration below.
+The retry-conformance subtests gated by this capability are marked long-running: they exercise the SDK's production 5-minute extended-regime delay directly. They only run when `-enable-long-running-tests` is set.
 
-The capability gates the new retry-conformance subtests. Legacy "do not retry after unexpected HTTP error" subtests are only run when this capability is absent; both sets of tests can be decommissioned once every SDK reports the capability.
+Legacy "do not retry after unexpected HTTP error" subtests are only run when this capability is absent; both sets of tests can be decommissioned once every SDK reports the capability.
 
 #### Capability `"retry-conformance-fdv1-polling"`
 
 This means that the SDK's FDv1 polling data source conforms to the RETRY specification: no HTTP response and no transport-level failure causes the data source to permanently cease operation. `401` / `403` / other `4xx` statuses and TLS/certificate validation failures trigger an extended-regime backoff floored at the customer-configured `pollIntervalMs`.
 
-SDKs declaring this capability MUST also honor the extended-regime timing knob `extendedInitialDelayMs` on the `polling` configuration object. This capability is scoped to the polling data source independently of `"retry-conformance-fdv1-streaming"`, so an SDK can partially adopt.
+The retry-conformance subtests gated by this capability are marked long-running and only run when `-enable-long-running-tests` is set.
 
 #### Capability `"secure-mode-hash"`
 
@@ -315,13 +315,10 @@ A `POST` request indicates that the test harness wants to start an instance of t
     * `baseUri` (string, optional): The base URI for the streaming service. For contract testing, this will be the URI of a simulated streaming endpoint that the test harness provides. If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.streaming` if any, or if that is not set either, connect to the real LaunchDarkly streaming service.
     * `initialRetryDelayMs` (number, optional): The initial stream retry delay in milliseconds. If omitted, use the SDK's default value.
     * `filter` (string, optional): The key for a filtered environment. If omitted, do not configure the SDK with a filter.
-    * `extendedInitialDelayMs` (number, optional): Overrides the initial delay of the RETRY specification's extended regime (SDK default: 5 minutes). Used by retry-conformance tests to compress the extended regime into an observable window. Only meaningful when the SDK declares the `"retry-conformance-fdv1-streaming"` capability.
-    * `resetThresholdMs` (number, optional): Overrides the reset threshold that returns the streaming data source from the extended regime back to the normal regime (SDK default: 60 seconds of continuous healthy operation). Used by retry-conformance tests to compress the reset window into an observable duration. Only meaningful when the SDK declares the `"retry-conformance-fdv1-streaming"` capability.
   * `polling` (object, optional): Enables polling mode and provides polling configuration. Properties are:
     * `baseUri` (string, optional): The base URI for the polling service. For contract testing, this will be the URI of a simulated polling endpoint that the test harness provides. If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.polling` if any, or if that is not set either, connect to the real LaunchDarkly polling service.
     * `pollIntervalMs` (number, optional): The polling interval in milliseconds. If omitted, use the SDK's default value. For mobile SDKs that are configured with both streaming and polling enabled, this should be interpreted as the _background_ polling interval.
     * `filter` (string, optional): The key for a filtered environment. If omitted, do not configure the SDK with a filter.
-    * `extendedInitialDelayMs` (number, optional): Overrides the initial delay of the RETRY specification's extended regime for polling (SDK default: 5 minutes, floored at `pollIntervalMs`). Used by retry-conformance tests to compress the extended regime into an observable window. Only meaningful when the SDK declares the `"retry-conformance-fdv1-polling"` capability.
   * `events` (object, optional): Enables events and provides events configuration, or disables events if it is omitted or null. Properties are:
     * `baseUri` (string, optional): The base URI for the events service. For contract testing, this will be the URI of a simulated event-recorder endpoint that the test harness provides.  If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.events` if any, or if that is not set either, connect to the real LaunchDarkly events service.
     * `capacity` (number, optional): If specified and greater than zero, the event buffer capacity should be set to this value.

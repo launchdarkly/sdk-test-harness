@@ -7,12 +7,10 @@ import (
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
-	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 
 	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
@@ -20,14 +18,13 @@ import (
 
 // doServerSidePollRetryTests exercises the RETRY specification's non-permanent-stop guarantee
 // for the FDv1 server-side polling data source. Server-side polling enforces a PollInterval
-// minimum of 30 seconds, so tests here inherently take tens of seconds per iteration.
-//
-// This first pass covers the core guarantee (no permanent stop after an unexpected HTTP error);
-// additional polling scenarios (extended-regime shape, reset after 2 consecutive successful
-// polls) are deferred to follow-up work.
+// minimum of 30 seconds, and the RETRY spec's extended-regime initial delay is 5 minutes in
+// the SDK's production configuration. Tests here run at real production timing and are marked
+// long-running.
 func doServerSidePollRetryTests(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityServerSidePolling)
 	t.RequireCapability(servicedef.CapabilityRetryConformanceFDv1Polling)
+	t.LongRunning()
 
 	unexpectedErrors := []int{401, 403, 405}
 
@@ -37,36 +34,24 @@ func doServerSidePollRetryTests(t *ldtest.T) {
 	dataV1 := mockld.NewServerSDKDataBuilder().Flag(flagV1).Build()
 	context := ldcontext.New("user-key")
 
-	// pollingRecoveryTimeout is a generous ceiling for observing the second poll request after
-	// an unexpected error. Effective delay is max(ExtendedInitialDelayMS, PollInterval); with
-	// PollInterval floored at the server-side minimum of 30 s, the second poll arrives within
-	// ~30 s of the first (jitter can shorten it, the wait floor pins it back to 30 s). 90 s
-	// gives generous headroom for jitter, scheduling, and platform variance.
-	pollingRecoveryTimeout := 90 * time.Second
+	// extendedRegimePollTimeout is the observation window for the retry poll after an
+	// unexpected error. Effective delay is max(extendedInitialDelay, PollInterval); with
+	// SDK production defaults that's max(5 min, 30 s) = 5 min.  10 seconds extra gives
+	// margin over the 5-min ceiling.
+	extendedRegimePollTimeout := 5*time.Minute + 10*time.Second
 
 	// initialPollTimeout bounds the SDK's initial poll (no backoff involved; happens on client
 	// construction).
 	initialPollTimeout := 15 * time.Second
-
-	// compressedExtendedInitialDelay is passed to the SDK so that the extended-regime base
-	// delay is below the polling wait floor (PollInterval). With this in place the observed
-	// gap between polls will be exactly PollInterval (30 s), the smallest observable window
-	// for these tests.
-	compressedExtendedInitialDelay := ldtime.UnixMillisecondTime(1)
 
 	makePollEndpoint := func(t *ldtest.T, handler http.Handler) *harness.MockEndpoint {
 		return requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
 			harness.MockEndpointDescription("polling service"))
 	}
 
-	// basePollConfig sets ExtendedInitialDelayMS to a small value so the effective retry gap
-	// after an unexpected error is exactly PollInterval — the smallest observable window,
-	// since the polling wait floor pins retry timing to PollInterval regardless of a smaller
-	// extended base.
 	basePollConfig := func(endpoint *harness.MockEndpoint) servicedef.SDKConfigPollingParams {
 		return servicedef.SDKConfigPollingParams{
-			BaseURI:                endpoint.BaseURL(),
-			ExtendedInitialDelayMS: o.Some(compressedExtendedInitialDelay),
+			BaseURI: endpoint.BaseURL(),
 		}
 	}
 
@@ -87,9 +72,9 @@ func doServerSidePollRetryTests(t *ldtest.T) {
 				// First poll -> error
 				_ = pollEndpoint.RequireConnection(t, initialPollTimeout)
 
-				// Second poll should arrive within the extended-regime window, proving the SDK
-				// did not permanently stop after the unexpected error.
-				_ = pollEndpoint.RequireConnection(t, pollingRecoveryTimeout)
+				// Second poll arrives after the extended-regime wait, proving the SDK did not
+				// permanently stop after the unexpected error.
+				_ = pollEndpoint.RequireConnection(t, extendedRegimePollTimeout)
 
 				// RequireConnection returns as soon as the harness accepts the request; the SDK
 				// still needs to read the response body, parse it, and populate its store. Poll
@@ -97,5 +82,52 @@ func doServerSidePollRetryTests(t *ldtest.T) {
 				pollUntilFlagValueUpdated(t, client, flagKey, context, ldvalue.Null(), expectedValue, ldvalue.Null())
 			})
 		}
+	})
+
+	t.Run("returns to normal-regime cadence after two consecutive successful polls", func(t *ldtest.T) {
+		// Verify RETRY §1.8.1: after the extended regime engages, two consecutive successful polls
+		// return the SDK to normal-regime cadence.
+		//
+		// Flow:
+		//   1. SDK polls, gets 401 -> enters extended regime.
+		//   2. Poll 2 (~2.5-5 min later) succeeds.
+		//   3. Poll 3 (~30 s later) succeeds. Two consecutive successes -> regime resets.
+		//   4. Poll 4 returns 401 to induce a fresh fault at NORMAL-regime timing.
+		//   5. Poll 5 should arrive within the normal PollInterval (30 s), not the extended
+		//      window (~5 min). Under the extended regime, poll 5 would arrive ~5 min later.
+		pollSource1 := NewSDKDataSourceWithoutEndpoint(t, dataV1, DataSourceOptionPolling())
+		pollSource2 := NewSDKDataSourceWithoutEndpoint(t, dataV1, DataSourceOptionPolling())
+		pollSource3 := NewSDKDataSourceWithoutEndpoint(t, dataV1, DataSourceOptionPolling())
+		handler := httphelpers.SequentialHandler(
+			httphelpers.HandlerWithStatus(401), // 1st: unexpected error -> extended regime
+			pollSource1.PollingService(),       // 2nd: success (extended-regime retry)
+			pollSource2.PollingService(),       // 3rd: success -> two consecutive successes reset
+			httphelpers.HandlerWithStatus(401), // 4th: fault at normal-regime timing
+			pollSource3.PollingService(),       // 5th: normal-regime retry (~30 s, not ~5 min)
+		)
+		pollEndpoint := makePollEndpoint(t, handler)
+		t.Defer(pollEndpoint.Close)
+
+		_ = NewSDKClient(t, WithConfig(servicedef.SDKConfigParams{InitCanFail: true}),
+			WithPollingConfig(basePollConfig(pollEndpoint)))
+
+		// 1st poll: 401 -> extended regime
+		_ = pollEndpoint.RequireConnection(t, initialPollTimeout)
+
+		// 2nd poll: extended-regime retry (~2.5-5 min)
+		_ = pollEndpoint.RequireConnection(t, extendedRegimePollTimeout)
+
+		// 3rd poll: arrives at normal PollInterval cadence (30 s server-side minimum).
+		normalRegimePollTimeout := 60 * time.Second
+		_ = pollEndpoint.RequireConnection(t, normalRegimePollTimeout)
+
+		// 4th poll: fault at normal-regime timing (SDK is now back in normal regime after
+		// two consecutive successes, so this poll happens ~30 s after poll 3).
+		_ = pollEndpoint.RequireConnection(t, normalRegimePollTimeout)
+
+		// 5th poll: normal-regime retry after the 4th poll's 401. Should arrive within
+		// PollInterval (30 s), NOT extended-regime timing (~5 min). If the regime hadn't
+		// reset, this timeout would fail and the test surfaces the bug.
+		_ = pollEndpoint.RequireConnection(t, normalRegimePollTimeout)
 	})
 }
