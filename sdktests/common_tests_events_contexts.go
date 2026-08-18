@@ -378,4 +378,125 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 			}
 		}
 	}
+
+	c.eventContextPrivateAttributeScoping(t, dataSource)
+}
+
+// eventContextPrivateAttributeScoping verifies that private attributes declared by a context in
+// _meta.privateAttributes are applied only to that context, and not to any other context that the
+// same client subsequently sends events for. An SDK that merges them into its configured private
+// attribute list - rather than into a per-context copy of it - redacts attributes from contexts
+// that never declared them private.
+//
+// The globally configured private attribute is included in every expectation so that an SDK cannot
+// pass these subtests by discarding its configured private attributes along with the per-context ones.
+func (c CommonEventTests) eventContextPrivateAttributeScoping(t *ldtest.T, dataSource SDKConfigurer) {
+	eventsConfig := servicedef.SDKConfigEventParams{GlobalPrivateAttributes: []string{"globallyPrivate"}}
+
+	setAttributes := func(b *ldcontext.Builder) {
+		b.SetString("selfPrivate", "1")
+		b.SetString("globallyPrivate", "2")
+		b.SetString("visible", "3")
+	}
+	withSelfPrivate := func(b *ldcontext.Builder) {
+		setAttributes(b)
+		b.Private("selfPrivate")
+	}
+	redactAttrs := func(context ldcontext.Context, attrs ...string) ldcontext.Context {
+		builder := ldcontext.NewBuilderFromContext(context)
+		for _, attr := range attrs {
+			builder.SetValue(attr, ldvalue.Null())
+		}
+		return builder.Build()
+	}
+
+	newClientAndSink := func(t *ldtest.T, initialContext ldcontext.Context) (*SDKClient, *SDKEventSink) {
+		events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
+		client := NewSDKClient(t, c.baseSDKConfigurationPlus(
+			WithClientSideInitialContext(initialContext),
+			WithEventsConfig(eventsConfig),
+			dataSource,
+			events)...)
+		if c.isClientSide {
+			// Consume the identify event that a client-side SDK sends for its initial context
+			client.FlushEvents(t)
+			_ = events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+		}
+		return client, events
+	}
+
+	expectIdentifyEvent := func(
+		t *ldtest.T, client *SDKClient, events *SDKEventSink,
+		context ldcontext.Context, expectedContext ldcontext.Context, redactedShouldBe redactedAttrsByKind,
+	) {
+		client.FlushEvents(t)
+		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+		m.In(t).Assert(payload, m.Items(
+			m.AllOf(
+				IsIdentifyEventForContext(context),
+				m.JSONProperty("context").Should(JSONMatchesEventContext(expectedContext, redactedShouldBe)),
+			),
+		))
+	}
+
+	t.Run("private attributes of one context are not applied to later contexts", func(t *ldtest.T) {
+		selfPrivateContexts := data.NewContextFactory("EventContextPrivateScopingSelf", withSelfPrivate)
+		noPrivateContexts := data.NewContextFactory("EventContextPrivateScopingNone", setAttributes)
+
+		client, events := newClientAndSink(t, noPrivateContexts.NextUniqueContext())
+
+		selfPrivateContext := selfPrivateContexts.NextUniqueContext()
+		client.SendIdentifyEvent(t, selfPrivateContext)
+		expectIdentifyEvent(t, client, events, selfPrivateContext,
+			redactAttrs(selfPrivateContext, "selfPrivate", "globallyPrivate"),
+			redactedAttrsByKind{"user": {"selfPrivate", "globallyPrivate"}})
+
+		noPrivateContext := noPrivateContexts.NextUniqueContext()
+		client.SendIdentifyEvent(t, noPrivateContext)
+		expectIdentifyEvent(t, client, events, noPrivateContext,
+			redactAttrs(noPrivateContext, "globallyPrivate"),
+			redactedAttrsByKind{"user": {"globallyPrivate"}})
+	})
+
+	// A multi-kind context is filtered one kind at a time, so private attributes declared by one kind
+	// must not be applied to the other kinds of the same context. Both orderings are covered because
+	// SDKs may filter the individual contexts in either order.
+	for _, kindWithPrivate := range []ldcontext.Kind{"org", "user"} {
+		kindWithPrivate := kindWithPrivate
+		t.Run("private attributes of one kind are not applied to other kinds of the same context"+
+			" (declared by "+string(kindWithPrivate)+")", func(t *ldtest.T) {
+			makeFactory := func(kind ldcontext.Kind) *data.ContextFactory {
+				builderAction := setAttributes
+				if kind == kindWithPrivate {
+					builderAction = withSelfPrivate
+				}
+				return data.NewContextFactory(
+					"EventContextPrivateScoping-"+string(kindWithPrivate)+"-"+string(kind),
+					func(b *ldcontext.Builder) {
+						b.Kind(kind)
+						builderAction(b)
+					})
+			}
+			orgContexts, userContexts := makeFactory("org"), makeFactory("user")
+
+			client, events := newClientAndSink(t, data.NewContextFactory(
+				"EventContextPrivateScopingInitial-"+string(kindWithPrivate), setAttributes).NextUniqueContext())
+
+			orgContext, userContext := orgContexts.NextUniqueContext(), userContexts.NextUniqueContext()
+			multiContext := ldcontext.NewMultiBuilder().Add(orgContext).Add(userContext).Build()
+
+			redactedShouldBe := redactedAttrsByKind{
+				"org":  {"globallyPrivate"},
+				"user": {"globallyPrivate"},
+			}
+			redactedShouldBe[string(kindWithPrivate)] = []string{"selfPrivate", "globallyPrivate"}
+			expectedContext := ldcontext.NewMultiBuilder().
+				Add(redactAttrs(orgContext, redactedShouldBe["org"]...)).
+				Add(redactAttrs(userContext, redactedShouldBe["user"]...)).
+				Build()
+
+			client.SendIdentifyEvent(t, multiContext)
+			expectIdentifyEvent(t, client, events, multiContext, expectedContext, redactedShouldBe)
+		})
+	}
 }
