@@ -41,6 +41,9 @@ type TestConfiguration struct {
 
 	// Capabilities is a list of strings which are used T.RequireCapability.
 	Capabilities []string
+
+	// EnableLongRunningTests indicates whether tests marked with LongRunning() should be run.
+	EnableLongRunningTests bool
 }
 
 // Run starts a top-level test scope.
@@ -136,6 +139,15 @@ func (t *T) Run(name string, action func(*T)) {
 // a non-zero exit code on termination, as regular failures do.
 func (t *T) NonCritical(explanation string) {
 	t.nonCritical = explanation
+}
+
+// LongRunning indicates that this test takes a long time to run (10+ seconds or minutes).
+// If EnableLongRunningTests is false in the test configuration, the test will be skipped.
+// Use the -enable-long-running-tests flag to run these tests.
+func (t *T) LongRunning() {
+	if !t.env.config.EnableLongRunningTests {
+		t.SkipWithReason("use -enable-long-running-tests to run")
+	}
 }
 
 // Errorf reports a test failure. It is equivalent to Go's testing.T.Errorf. It does not cause the test
