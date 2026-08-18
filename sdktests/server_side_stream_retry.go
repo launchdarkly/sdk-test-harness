@@ -233,8 +233,10 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 				// rather than permanently stopping.
 				_ = streamEndpoint.RequireConnection(t, extendedRegimeConnectionTimeout)
 
-				result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
-				m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
+				// RequireConnection returns as soon as the harness accepts the request; the SDK
+				// still needs to read the SSE payload and populate its store. Poll until the
+				// flag value reflects the second stream's data.
+				pollUntilFlagValueUpdated(t, client, flagKey, context, ldvalue.Null(), expectedValueV1, ldvalue.Null())
 			})
 		}
 	})

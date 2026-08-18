@@ -88,22 +88,27 @@ func doServerSidePollRetryTests(t *ldtest.T) {
 		// Verify RETRY §1.8.1: after the extended regime engages, two consecutive successful polls
 		// return the SDK to normal-regime cadence.
 		//
+		// We prove the reset by observing a post-reset poll arriving at normal PollInterval
+		// cadence (~30 s) rather than extended-regime cadence (~5 min). We deliberately do NOT
+		// inject another 401 after the reset: a 401 would immediately re-enter the extended
+		// regime under RETRY, so the following poll would arrive ~5 min later — that would be
+		// spec-conformant behavior, not a bug.
+		//
 		// Flow:
-		//   1. SDK polls, gets 401 -> enters extended regime.
-		//   2. Poll 2 (~2.5-5 min later) succeeds.
-		//   3. Poll 3 (~30 s later) succeeds. Two consecutive successes -> regime resets.
-		//   4. Poll 4 returns 401 to induce a fresh fault at NORMAL-regime timing.
-		//   5. Poll 5 should arrive within the normal PollInterval (30 s), not the extended
-		//      window (~5 min). Under the extended regime, poll 5 would arrive ~5 min later.
+		//   1. SDK polls, gets 401 -> extended regime.
+		//   2. Poll 2 succeeds; arrives at extended-regime cadence (~2.5-5 min).
+		//   3. Poll 3 succeeds; timing is interpretation-dependent, so we allow up to the
+		//      extended window. The two consecutive successes complete §1.8.1's reset.
+		//   4. Poll 4 succeeds; MUST arrive at normal PollInterval cadence (~30 s). If the
+		//      regime hadn't reset, this poll would take ~5 min and the assertion fails.
 		pollSource1 := NewSDKDataSourceWithoutEndpoint(t, dataV1, DataSourceOptionPolling())
 		pollSource2 := NewSDKDataSourceWithoutEndpoint(t, dataV1, DataSourceOptionPolling())
 		pollSource3 := NewSDKDataSourceWithoutEndpoint(t, dataV1, DataSourceOptionPolling())
 		handler := httphelpers.SequentialHandler(
 			httphelpers.HandlerWithStatus(401), // 1st: unexpected error -> extended regime
-			pollSource1.PollingService(),       // 2nd: success (extended-regime retry)
-			pollSource2.PollingService(),       // 3rd: success -> two consecutive successes reset
-			httphelpers.HandlerWithStatus(401), // 4th: fault at normal-regime timing
-			pollSource3.PollingService(),       // 5th: normal-regime retry (~30 s, not ~5 min)
+			pollSource1.PollingService(),       // 2nd: success 1 (extended-regime cadence)
+			pollSource2.PollingService(),       // 3rd: success 2 -> §1.8.1 reset
+			pollSource3.PollingService(),       // 4th: success at normal-regime cadence (proof)
 		)
 		pollEndpoint := makePollEndpoint(t, handler)
 		t.Defer(pollEndpoint.Close)
@@ -114,20 +119,18 @@ func doServerSidePollRetryTests(t *ldtest.T) {
 		// 1st poll: 401 -> extended regime
 		_ = pollEndpoint.RequireConnection(t, initialPollTimeout)
 
-		// 2nd poll: extended-regime retry (~2.5-5 min)
+		// 2nd poll: first success, arrives at extended-regime cadence
 		_ = pollEndpoint.RequireConnection(t, extendedRegimePollTimeout)
 
-		// 3rd poll: arrives at normal PollInterval cadence (30 s server-side minimum).
+		// 3rd poll: second success. Whether this arrives at extended or normal cadence
+		// depends on when the SDK internally applies the reset (after 1st or 2nd success),
+		// so we allow up to the extended window either way. The reset is complete by the
+		// end of this poll per §1.8.1.
+		_ = pollEndpoint.RequireConnection(t, extendedRegimePollTimeout)
+
+		// 4th poll: MUST be at normal PollInterval cadence. This is the reset proof: if the
+		// regime hadn't reset, this poll would take ~5 min instead of ~30 s.
 		normalRegimePollTimeout := 60 * time.Second
-		_ = pollEndpoint.RequireConnection(t, normalRegimePollTimeout)
-
-		// 4th poll: fault at normal-regime timing (SDK is now back in normal regime after
-		// two consecutive successes, so this poll happens ~30 s after poll 3).
-		_ = pollEndpoint.RequireConnection(t, normalRegimePollTimeout)
-
-		// 5th poll: normal-regime retry after the 4th poll's 401. Should arrive within
-		// PollInterval (30 s), NOT extended-regime timing (~5 min). If the regime hadn't
-		// reset, this timeout would fail and the test surfaces the bug.
 		_ = pollEndpoint.RequireConnection(t, normalRegimePollTimeout)
 	})
 }
