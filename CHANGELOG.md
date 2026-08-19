@@ -2,6 +2,18 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.40.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.39.0...v2.40.0) (2026-08-19)
+
+
+### Features
+
+* add RETRY-conformance contract tests for FDv1 streaming and polling ([#404](https://github.com/launchdarkly/sdk-test-harness/issues/404)) ([ee4d85f](https://github.com/launchdarkly/sdk-test-harness/commit/ee4d85f5847ba039b36f9f90a3e338f330011997))
+
+
+### Bug Fixes
+
+* Retry the test harness download and surface curl errors ([#411](https://github.com/launchdarkly/sdk-test-harness/issues/411)) ([2a7533b](https://github.com/launchdarkly/sdk-test-harness/commit/2a7533b4ea4ed3d660cb42ea7b30262ce6203da2))
+
 ## [2.39.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.38.2...v2.39.0) (2026-08-12)
 
 
