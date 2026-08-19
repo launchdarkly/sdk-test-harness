@@ -19,7 +19,7 @@ import (
 
 const (
 	defaultPort          = 8111
-	versionString string = "3.2.0-alpha.7" // {{ x-release-please-version }}
+	versionString string = "3.2.0-alpha.8" // {{ x-release-please-version }}
 )
 
 func main() {
