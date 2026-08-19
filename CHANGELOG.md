@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.2.0-alpha.9](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.8...v3.2.0-alpha.9) (2026-08-19)
+
+
+### Features
+
+* Remove FDv2 payload-filter test scenarios ([#431](https://github.com/launchdarkly/sdk-test-harness/issues/431)) ([628fd54](https://github.com/launchdarkly/sdk-test-harness/commit/628fd540bca597b44ed27a2b8148c291d3693470))
+
 ## [3.2.0-alpha.8](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.7...v3.2.0-alpha.8) (2026-08-19)
 
 
