@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.2.0-alpha.8](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.7...v3.2.0-alpha.8) (2026-08-19)
+
+
+### Features
+
+* Verify per-context private attributes are not applied to other contexts ([#429](https://github.com/launchdarkly/sdk-test-harness/issues/429)) ([0a35294](https://github.com/launchdarkly/sdk-test-harness/commit/0a35294aa920b9bdd35943a94b1e6073fcfb79a6))
+
 ## [3.2.0-alpha.7](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.6...v3.2.0-alpha.7) (2026-08-14)
 
 
