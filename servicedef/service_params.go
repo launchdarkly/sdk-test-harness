@@ -81,6 +81,28 @@ const (
 	// CapabilityHTTPProxy indicates that the SDK supports setting an HTTP proxy, through which the SDK will
 	// make all requests.
 	CapabilityHTTPProxy = "http-proxy"
+
+	// CapabilityRetryConformanceFDv1Streaming indicates that the SDK's FDv1 streaming data source
+	// conforms to the RETRY specification: no HTTP response and no transport-level failure causes
+	// the data source to permanently cease operation. In particular, `401` / `403` / other `4xx`
+	// statuses and TLS/certificate validation failures now trigger an extended-regime backoff
+	// instead of a permanent stop.
+	//
+	// The capability gates the "retry-conformance" subtests, which are also marked long-running
+	// and only run when `-enable-long-running-tests` is set. Legacy "do not retry after unexpected
+	// HTTP error" subtests are only run when this capability is absent.
+	CapabilityRetryConformanceFDv1Streaming = "retry-conformance-fdv1-streaming"
+
+	// CapabilityRetryConformanceFDv1Polling indicates that the SDK's FDv1 polling data source
+	// conforms to the RETRY specification: no HTTP response and no transport-level failure causes
+	// the data source to permanently cease operation. `401` / `403` / other `4xx` statuses and
+	// TLS/certificate validation failures trigger an extended-regime backoff floored at the
+	// customer-configured `PollInterval`.
+	//
+	// The capability gates the "retry-conformance" subtests, which are also marked long-running
+	// and only run when `-enable-long-running-tests` is set. Legacy "do not retry after unexpected
+	// HTTP error" subtests are only run when this capability is absent.
+	CapabilityRetryConformanceFDv1Polling = "retry-conformance-fdv1-polling"
 )
 
 type StatusRep struct {

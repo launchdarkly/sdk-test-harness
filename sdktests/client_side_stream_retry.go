@@ -189,6 +189,14 @@ func doClientSideStreamRetryTests(t *ldtest.T) {
 	})
 
 	t.Run("do not retry after unrecoverable HTTP error on initial connect", func(t *ldtest.T) {
+		// Legacy "do not retry" behavior for SDKs that have not adopted the RETRY
+		// specification. SDKs declaring retry-conformance-fdv1-streaming retry after
+		// unexpected HTTP errors per the spec; skip the legacy test for them.
+		if t.Capabilities().Has(servicedef.CapabilityRetryConformanceFDv1Streaming) {
+			t.SkipWithReason("SDK reports " + servicedef.CapabilityRetryConformanceFDv1Streaming +
+				"; legacy permanent-stop behavior does not apply")
+			return
+		}
 		// Distinguishing unrecoverable HTTP errors requires the SDK's EventSource to expose
 		// response status codes; browser-native EventSource cannot, so SDKs without this
 		// capability treat every stream error as retryable.
@@ -214,6 +222,14 @@ func doClientSideStreamRetryTests(t *ldtest.T) {
 	})
 
 	t.Run("do not retry after unrecoverable HTTP error on reconnect", func(t *ldtest.T) {
+		// Legacy "do not retry" behavior for SDKs that have not adopted the RETRY
+		// specification. SDKs declaring retry-conformance-fdv1-streaming retry after
+		// unexpected HTTP errors per the spec; skip the legacy test for them.
+		if t.Capabilities().Has(servicedef.CapabilityRetryConformanceFDv1Streaming) {
+			t.SkipWithReason("SDK reports " + servicedef.CapabilityRetryConformanceFDv1Streaming +
+				"; legacy permanent-stop behavior does not apply")
+			return
+		}
 		t.RequireCapability(servicedef.CapabilityClientEventSourceHTTPErrors)
 		for _, status := range unrecoverableErrors {
 			t.Run(fmt.Sprintf("error %d", status), func(t *ldtest.T) {

@@ -134,6 +134,20 @@ docker run -p 6379:6379 redis
 
 This means the SDK is requesting gzip compression support on polling payloads. The SDK is expected to set the `Accept-Encoding` header to `gzip` in addition to enabling this capability.
 
+#### Capability `"retry-conformance-fdv1-streaming"`
+
+This means that the SDK's FDv1 streaming data source conforms to the RETRY specification: no HTTP response and no transport-level failure causes the data source to permanently cease operation. In particular, `401` / `403` / other `4xx` statuses and TLS/certificate validation failures trigger an extended-regime backoff (retry with a longer delay) instead of a permanent stop.
+
+The retry-conformance subtests gated by this capability are marked long-running: they exercise the SDK's production 5-minute extended-regime delay directly. They only run when `-enable-long-running-tests` is set.
+
+Legacy "do not retry after unexpected HTTP error" subtests are only run when this capability is absent; both sets of tests can be decommissioned once every SDK reports the capability.
+
+#### Capability `"retry-conformance-fdv1-polling"`
+
+This means that the SDK's FDv1 polling data source conforms to the RETRY specification: no HTTP response and no transport-level failure causes the data source to permanently cease operation. `401` / `403` / other `4xx` statuses and TLS/certificate validation failures trigger an extended-regime backoff floored at the customer-configured `pollIntervalMs`.
+
+The retry-conformance subtests gated by this capability are marked long-running and only run when `-enable-long-running-tests` is set.
+
 #### Capability `"secure-mode-hash"`
 
 This means that the SDK has a function/method for computing a secure mode hash from a context.
