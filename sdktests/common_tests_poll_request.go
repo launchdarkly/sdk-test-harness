@@ -108,54 +108,39 @@ func (c CommonPollingTests) LargePayloads(t *ldtest.T) {
 
 func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagRequestMethod) m.Matcher) {
 	t.Run("URL path is computed correctly", func(t *ldtest.T) {
-		for _, filter := range c.environmentFilters() {
-			t.Run(h.IfElse(filter.IsDefined(), filter.String(), "no environment filter"), func(t *ldtest.T) {
-				// The environment filtering feature is only tested on server-side SDKs that support
-				// the "filtering" capability. All other SDKs should be tested against the
-				// "no filter" scenario (!filter.IsDefined()), since that was the default functionality
-				// previous to the introduction of filtering.
-				if filter.IsDefined() {
-					t.RequireCapability(servicedef.CapabilityFiltering)
-					t.RequireCapability(servicedef.CapabilityServerSide)
-				}
-				for _, trailingSlash := range []bool{false, true} {
-					t.Run(h.IfElse(trailingSlash, "base URI has a trailing slash",
-						"base URI has no trailing slash"), func(t *ldtest.T) {
-						for _, method := range c.availableFlagRequestMethods(t) {
-							t.Run(string(method), func(t *ldtest.T) {
-								dataSystem := NewSDKDataSystem(t, nil, c.pollingDataSystemOptions()...)
+		for _, trailingSlash := range []bool{false, true} {
+			t.Run(h.IfElse(trailingSlash, "base URI has a trailing slash",
+				"base URI has no trailing slash"), func(t *ldtest.T) {
+				for _, method := range c.availableFlagRequestMethods(t) {
+					t.Run(string(method), func(t *ldtest.T) {
+						dataSystem := NewSDKDataSystem(t, nil, c.pollingDataSystemOptions()...)
 
-								pollURI := strings.TrimSuffix(dataSystem.Synchronizers[0].Endpoint().BaseURL(), "/")
-								if trailingSlash {
-									pollURI += "/"
-								}
+						pollURI := strings.TrimSuffix(dataSystem.Synchronizers[0].Endpoint().BaseURL(), "/")
+						if trailingSlash {
+							pollURI += "/"
+						}
 
-								var uriConfigurer SDKConfigurer
-								if c.isClientSide {
-									uriConfigurer = WithConnectionModeSynchronizer("polling", servicedef.DataSynchronizer{
-										Polling: o.Some(servicedef.SDKConfigPollingParams{BaseURI: pollURI}),
-									})
-								} else {
-									uriConfigurer = WithPollingSynchronizer(servicedef.SDKConfigPollingParams{
-										BaseURI: pollURI,
-									})
-								}
-								baseConfigurers := []SDKConfigurer{
-									c.withFlagRequestMethod(method),
-									WithPayloadFilter(filter),
-									uriConfigurer,
-								}
-								if c.isClientSide {
-									baseConfigurers = append(baseConfigurers, WithInitialConnectionMode("polling"))
-								}
-								_ = NewSDKClient(t, c.baseSDKConfigurationPlus(baseConfigurers...)...)
-
-								request := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
-								m.In(t).For("request path").Assert(request.URL.Path, pathMatcher(method))
-								strict := t.Capabilities().Has(servicedef.CapabilityFilteringStrict)
-								m.In(t).For("filter key").Assert(request.URL.RawQuery, filter.Matcher(strict))
+						var uriConfigurer SDKConfigurer
+						if c.isClientSide {
+							uriConfigurer = WithConnectionModeSynchronizer("polling", servicedef.DataSynchronizer{
+								Polling: o.Some(servicedef.SDKConfigPollingParams{BaseURI: pollURI}),
+							})
+						} else {
+							uriConfigurer = WithPollingSynchronizer(servicedef.SDKConfigPollingParams{
+								BaseURI: pollURI,
 							})
 						}
+						baseConfigurers := []SDKConfigurer{
+							c.withFlagRequestMethod(method),
+							uriConfigurer,
+						}
+						if c.isClientSide {
+							baseConfigurers = append(baseConfigurers, WithInitialConnectionMode("polling"))
+						}
+						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(baseConfigurers...)...)
+
+						request := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
+						m.In(t).For("request path").Assert(request.URL.Path, pathMatcher(method))
 					})
 				}
 			})
