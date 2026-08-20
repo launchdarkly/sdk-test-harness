@@ -1,7 +1,7 @@
 package servicedef
 
 import (
-	"github.com/launchdarkly/sdk-test-harness/v2/serviceinfo"
+	"github.com/launchdarkly/sdk-test-harness/v3/serviceinfo"
 )
 
 const (

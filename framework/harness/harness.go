@@ -9,10 +9,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
-	"github.com/launchdarkly/sdk-test-harness/v2/serviceinfo"
+	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v3/serviceinfo"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework"
 )
 
 //go:embed certificate/leaf_public.pem

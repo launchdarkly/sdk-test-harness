@@ -1,7 +1,7 @@
 package sdktests
 
 import (
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
 )
 
 func doServerSideTagsTests(t *ldtest.T) {

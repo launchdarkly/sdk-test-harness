@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"sync/atomic"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/harness"
+	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 )
 
 type HookCallbackService struct {

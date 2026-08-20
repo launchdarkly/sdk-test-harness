@@ -11,10 +11,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
-	"github.com/launchdarkly/sdk-test-harness/v2/serviceinfo"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v3/serviceinfo"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework"
 )
 
 // TestServiceEntity represents some kind of entity that we have asked the test service to create,

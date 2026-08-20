@@ -3,10 +3,10 @@ package sdktests
 import (
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	h "github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 )
 
 func doClientSideEventTests(t *ldtest.T) {

@@ -1,9 +1,9 @@
 package data
 
 import (
-	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	o "github.com/launchdarkly/sdk-test-harness/v3/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldmodel"
 )

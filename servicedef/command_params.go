@@ -3,7 +3,7 @@ package servicedef
 import (
 	"encoding/json"
 
-	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	o "github.com/launchdarkly/sdk-test-harness/v3/framework/opt"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldmigration"

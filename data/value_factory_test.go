@@ -3,7 +3,7 @@ package data
 import (
 	"testing"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"

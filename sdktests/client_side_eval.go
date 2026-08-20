@@ -3,11 +3,11 @@ package sdktests
 import (
 	"fmt"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/data/testmodel"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v3/data/testmodel"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v3/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
 )

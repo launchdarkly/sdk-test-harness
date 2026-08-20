@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/serviceinfo"
+	"github.com/launchdarkly/sdk-test-harness/v3/serviceinfo"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework"
-	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework"
+	o "github.com/launchdarkly/sdk-test-harness/v3/framework/opt"
 )
 
 type JUnitTestLogger struct {

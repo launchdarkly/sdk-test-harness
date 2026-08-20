@@ -6,7 +6,7 @@ import (
 	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 
-	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
+	o "github.com/launchdarkly/sdk-test-harness/v3/framework/opt"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 )

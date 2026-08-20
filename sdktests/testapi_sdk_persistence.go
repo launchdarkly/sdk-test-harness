@@ -3,8 +3,8 @@ package sdktests
 import (
 	"errors"
 
-	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	o "github.com/launchdarkly/sdk-test-harness/v3/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 )
 
 type Persistence struct {

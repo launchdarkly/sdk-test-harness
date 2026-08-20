@@ -3,7 +3,7 @@ package sdktests
 import (
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 )

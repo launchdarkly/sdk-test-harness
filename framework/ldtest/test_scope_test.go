@@ -3,8 +3,8 @@ package ldtest
 import (
 	"testing"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest/internal"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest/internal"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
