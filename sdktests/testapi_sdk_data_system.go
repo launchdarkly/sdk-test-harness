@@ -282,6 +282,13 @@ func WithInitialConnectionMode(modeName string) SDKConfigurer {
 	})
 }
 
+// withOfflineDataSystem returns an SDKConfigurer that puts the SDK in its "offline"
+// connection mode, so it has no initializer and no synchronizer and therefore makes no
+// network calls for flag data.
+func withOfflineDataSystem() SDKConfigurer {
+	return WithInitialConnectionMode("offline")
+}
+
 type DataInitializer struct {
 	pollingService *mockld.PollingService
 	endpoint       *harness.MockEndpoint
