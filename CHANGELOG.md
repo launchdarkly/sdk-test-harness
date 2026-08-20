@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.2.0-alpha.10](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.9...v3.2.0-alpha.10) (2026-08-20)
+
+
+### Bug Fixes
+
+* Correct module path to v3 ([#435](https://github.com/launchdarkly/sdk-test-harness/issues/435)) ([8f3ce46](https://github.com/launchdarkly/sdk-test-harness/commit/8f3ce46dba0079c44d17fc4444bb3e98ced319a5))
+
 ## [3.2.0-alpha.9](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.8...v3.2.0-alpha.9) (2026-08-19)
 
 
