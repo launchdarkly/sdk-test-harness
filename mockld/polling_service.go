@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework"
 
 	"github.com/gorilla/mux"
 )

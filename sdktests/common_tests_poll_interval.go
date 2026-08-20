@@ -5,10 +5,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/harness"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 )
 
 const pollIntervalEpsilon = 2 * time.Second

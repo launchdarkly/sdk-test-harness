@@ -1,7 +1,7 @@
 // Package serviceinfo provides a data model for information provided by a service under test.
 package serviceinfo
 
-import "github.com/launchdarkly/sdk-test-harness/v2/framework"
+import "github.com/launchdarkly/sdk-test-harness/v3/framework"
 
 // TestServiceInfo is status information returned by the test service from the initial status query.
 type TestServiceInfo struct {

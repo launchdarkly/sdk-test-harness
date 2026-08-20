@@ -26,16 +26,16 @@ import (
 	consul "github.com/hashicorp/consul/api"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
-	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
-	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/harness"
+	h "github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
+	o "github.com/launchdarkly/sdk-test-harness/v3/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldbuilders"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 )
 
 const (

@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
 )
 
 // Filter is an object that can determine whether to run a specific test or not.

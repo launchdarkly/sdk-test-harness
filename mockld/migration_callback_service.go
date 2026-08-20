@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldmigration"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/harness"
 )
 
 type CallHistory struct {

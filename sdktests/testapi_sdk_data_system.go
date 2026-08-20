@@ -5,12 +5,12 @@ import (
 	"time"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/harness"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v3/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 )
 
 type connectionModeEntry struct {

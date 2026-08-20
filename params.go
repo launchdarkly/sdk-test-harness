@@ -4,8 +4,8 @@ import (
 	"flag"
 	"os"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
 )
 
 type commandParams struct {

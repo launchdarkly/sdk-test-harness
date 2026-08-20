@@ -5,9 +5,9 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/harness"
+	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 )
 
 // ListenerCallbackService is a mock HTTP server that receives flag change listener notifications

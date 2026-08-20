@@ -6,8 +6,8 @@ import (
 
 	consul "github.com/hashicorp/consul/api"
 
-	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	o "github.com/launchdarkly/sdk-test-harness/v3/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 )
 
 type ConsulPersistentStore struct {

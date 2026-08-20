@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework"
-	cf "github.com/launchdarkly/sdk-test-harness/v2/servicedef/callbackfixtures"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework"
+	cf "github.com/launchdarkly/sdk-test-harness/v3/servicedef/callbackfixtures"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 )

@@ -4,11 +4,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 
-	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
-	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
+	h "github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
+	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
 
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 
