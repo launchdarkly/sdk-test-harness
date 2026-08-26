@@ -97,6 +97,10 @@ const (
 	// implement the behavior can opt out, and so the tests can be decommissioned by dropping the
 	// capability from all SDK test services once it is ubiquitous.
 	CapabilityFDv1Fallback = "fdv1-fallback"
+
+	// CapabilityFlagOverrides means the SDK supports reading flag and segment overrides from local
+	// JSON/YAML files that are overlaid on LaunchDarkly data per-key at evaluation time.
+	CapabilityFlagOverrides = "flag-overrides"
 )
 
 type StatusRep struct {

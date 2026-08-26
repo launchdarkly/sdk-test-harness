@@ -499,6 +499,19 @@ func flagCounter(value interface{}, variation int, version int, count int) m.Mat
 	)
 }
 
+// overrideFlagCounter is the same as flagCounter, but for a flag whose evaluation was overridden
+// by the flag overrides feature: the counter must additionally carry "override": true so that
+// override evaluations are aggregated separately from ordinary ones.
+func overrideFlagCounter(value interface{}, variation int, version int, count int) m.Matcher {
+	return m.MapOf(
+		m.KV("value", m.JSONEqual(value)),
+		m.KV("variation", m.Equal(variation)),
+		m.KV("version", m.Equal(version)),
+		m.KV("count", m.Equal(count)),
+		m.KV("override", m.Equal(true)),
+	)
+}
+
 func flagCounterWithAnyCount(value interface{}, variation int, version int) m.Matcher {
 	return m.MapOf(
 		m.KV("value", m.JSONEqual(value)),
