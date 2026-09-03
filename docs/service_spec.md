@@ -105,6 +105,10 @@ Browser-native `EventSource` does not expose HTTP status codes or response heade
 
 For client-side SDKs only. This means the SDK can be configured to issue streaming and polling flag requests using the HTTP `REPORT` method (which carries the evaluation context in the request body) instead of `GET`. SDKs lacking this capability will only have their `GET` request variants exercised, and tests that hardcode `REPORT` will be skipped. Server-side SDKs do not need to declare this capability.
 
+#### Capability `"client-use-post"`
+
+For client-side SDKs only. This means the SDK can be configured to issue streaming and polling flag requests using the HTTP `POST` method (which carries the evaluation context in the request body) instead of `GET`. This is the FDv2 counterpart of `"client-use-report"`: the test harness sets `usePost` in the `clientSide` configuration and expects the request to use the FDv2 `POST` paths. SDKs lacking this capability will not have their `POST` request variants exercised. Tests that need the evaluation context in the request body use `REPORT` when the SDK declares `"client-use-report"`, otherwise `POST` when it declares this capability, and are skipped when it declares neither. Server-side SDKs do not need to declare this capability.
+
 #### Capability `"client-independence"`
 
 For client-side SDKs only. This means the SDK can run multiple client instances at the same time, with each instance maintaining independent flag data and evaluation state. Tests cover same-environment consistency, cross-environment isolation, and non-interference between instances (identify calls, close operations).
@@ -344,6 +348,7 @@ A `POST` request indicates that the test harness wants to start an instance of t
     * `initialContext` (object, optional): The context properties to initialize the SDK with (unless `initialUser` is specified instead). The test service for a client-side SDK can assume that the test harness will _always_ set this: if the test logic does not explicitly provide a value, the test harness will add a default one.
     * `initialUser` (object, optional): Can be specified instead of `initialContext` to use an old-style user JSON representation.
     * `evaluationReasons`, `useReport` (boolean, optional): These correspond to the SDK configuration properties of the same names.
+    * `usePost` (boolean, optional): If true, the SDK should send streaming and polling flag requests with the `POST` method and the evaluation context in the request body. This field is only used by test services that declare the `"client-use-post"` capability.
     * `hash` (string, optional): If present, a secure mode hash value that the SDK should use when connecting to the streaming and polling services. When set, the SDK must include this value as the `h` query parameter on streaming and polling requests. This field is only used by test services that declare the `"secure-mode-hash"` capability.
   * `hooks` (object, optional): If specified this has the configuration for hooks.
     * `hooks` (array, required): Contains configuration of one or more hooks, each item is an object with the following parameters.

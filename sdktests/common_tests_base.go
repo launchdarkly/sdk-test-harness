@@ -39,7 +39,14 @@ type flagRequestMethod string
 const (
 	flagRequestGET    flagRequestMethod = "GET"
 	flagRequestREPORT flagRequestMethod = "REPORT"
+	flagRequestPOST   flagRequestMethod = "POST"
 )
+
+// sendsContextInBody is true for the request methods that carry the evaluation context in the
+// request body rather than base64url-encoded in the URL path.
+func (m flagRequestMethod) sendsContextInBody() bool {
+	return m != flagRequestGET
+}
 
 func newCommonTestsBase(t *ldtest.T, testName string, baseSDKConfigurers ...SDKConfigurer) commonTestsBase {
 	c := commonTestsBase{
@@ -74,10 +81,32 @@ func (c commonTestsBase) authorizationHeaderMatcher(credential string) m.Matcher
 }
 
 func (c commonTestsBase) availableFlagRequestMethods(t *ldtest.T) []flagRequestMethod {
-	if c.isClientSide && t.Capabilities().Has(servicedef.CapabilityClientUseReport) {
-		return []flagRequestMethod{flagRequestGET, flagRequestREPORT}
+	methods := []flagRequestMethod{flagRequestGET}
+	if !c.isClientSide {
+		return methods
 	}
-	return []flagRequestMethod{flagRequestGET}
+	if t.Capabilities().Has(servicedef.CapabilityClientUseReport) {
+		methods = append(methods, flagRequestREPORT)
+	}
+	if t.Capabilities().Has(servicedef.CapabilityClientUsePost) {
+		methods = append(methods, flagRequestPOST)
+	}
+	return methods
+}
+
+// requireBodyFlagRequestMethod skips the test unless the SDK can send the evaluation context in the
+// request body, and returns the method to use for that: REPORT when the SDK declares
+// client-use-report, otherwise POST when it declares client-use-post.
+func (c commonTestsBase) requireBodyFlagRequestMethod(t *ldtest.T) flagRequestMethod {
+	if t.Capabilities().Has(servicedef.CapabilityClientUseReport) {
+		return flagRequestREPORT
+	}
+	if t.Capabilities().Has(servicedef.CapabilityClientUsePost) {
+		return flagRequestPOST
+	}
+	t.SkipWithReason(fmt.Sprintf("test service has neither capability %q nor %q",
+		servicedef.CapabilityClientUseReport, servicedef.CapabilityClientUsePost))
+	return flagRequestGET // unreachable: SkipWithReason ends the test
 }
 
 // transportProtocol represents the protocol used to communicate between the test harness and service under test:
@@ -160,14 +189,19 @@ func (c commonTestsBase) withAvailableTransports(t *ldtest.T) []transportProtoco
 }
 
 func (c commonTestsBase) withFlagRequestMethod(method flagRequestMethod) SDKConfigurer {
-	if !c.isClientSide || (method != flagRequestREPORT) {
+	if !c.isClientSide || !method.sendsContextInBody() {
 		return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
 			return nil
 		})
 	}
 	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
 		clientSideConfig := configOut.ClientSide.Value()
-		clientSideConfig.UseReport = o.Some(true)
+		switch method {
+		case flagRequestREPORT:
+			clientSideConfig.UseReport = o.Some(true)
+		case flagRequestPOST:
+			clientSideConfig.UsePost = o.Some(true)
+		}
 		configOut.ClientSide = o.Some(clientSideConfig)
 		return nil
 	})
