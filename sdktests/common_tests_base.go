@@ -188,6 +188,8 @@ func (c commonTestsBase) withAvailableTransports(t *ldtest.T) []transportProtoco
 	return configurers
 }
 
+// withFlagRequestMethod configures the SDK to use the given flag request method. It sets at most one
+// of useReport and usePost: the service spec promises test services that the two are never combined.
 func (c commonTestsBase) withFlagRequestMethod(method flagRequestMethod) SDKConfigurer {
 	if !c.isClientSide || !method.sendsContextInBody() {
 		return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
