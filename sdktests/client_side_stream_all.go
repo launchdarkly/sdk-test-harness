@@ -41,7 +41,7 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 				mockld.StreamingPathFDv2ClientGet,
 				mockld.StreamingPathContextBase64Param, // details of base64-encoded context data are tested separately
 			)
-			return h.IfElse(method == flagRequestREPORT,
+			return h.IfElse(method.sendsContextInBody(),
 				m.Equal(mockld.StreamingPathFDv2ClientPost),
 				m.StringHasPrefix(getPathPrefix))
 		case mockld.RokuSDK:

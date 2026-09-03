@@ -197,8 +197,8 @@ func clientSideAutoEnvModeOptions() [][]SDKDataSystemOption {
 
 // start tests for streaming/polling
 func doClientSideAutoEnvAttributesRequestingNoCollisionsTests(t *ldtest.T) {
-	t.RequireCapability(servicedef.CapabilityClientUseReport)
 	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesPollNoCollisionsTests")
+	method := base.requireBodyFlagRequestMethod(t)
 	for _, modeOpts := range clientSideAutoEnvModeOptions() {
 		contextFactories := data.NewContextFactoriesForSingleAndMultiKind(base.contextFactory.Prefix())
 		for _, contexts := range contextFactories {
@@ -209,7 +209,7 @@ func doClientSideAutoEnvAttributesRequestingNoCollisionsTests(t *ldtest.T) {
 				_ = NewSDKClient(t, base.baseSDKConfigurationPlus(
 					WithClientSideConfig(servicedef.SDKConfigClientSideParams{IncludeEnvironmentAttributes: opt.Some(true)}),
 					WithClientSideInitialContext(context),
-					base.withFlagRequestMethod(flagRequestREPORT),
+					base.withFlagRequestMethod(method),
 					dataSystem,
 				)...)
 
@@ -227,8 +227,8 @@ func doClientSideAutoEnvAttributesRequestingNoCollisionsTests(t *ldtest.T) {
 }
 
 func doClientSideAutoEnvAttributesRequestingCollisionsTests(t *ldtest.T) {
-	t.RequireCapability(servicedef.CapabilityClientUseReport)
 	base := newCommonTestsBase(t, "doClientSideAutoEnvAttributesPollCollisionsTests")
+	method := base.requireBodyFlagRequestMethod(t)
 	for _, modeOpts := range clientSideAutoEnvModeOptions() {
 		f1 := data.NewContextFactory(base.contextFactory.Prefix(), func(b *ldcontext.Builder) { b.Kind("ld_application") })
 		f2 := data.NewMultiContextFactory(base.contextFactory.Prefix(), []ldcontext.Kind{"ld_application", "other"})
@@ -241,7 +241,7 @@ func doClientSideAutoEnvAttributesRequestingCollisionsTests(t *ldtest.T) {
 				_ = NewSDKClient(t, base.baseSDKConfigurationPlus(
 					WithClientSideConfig(servicedef.SDKConfigClientSideParams{IncludeEnvironmentAttributes: opt.Some(true)}),
 					WithClientSideInitialContext(context),
-					base.withFlagRequestMethod(flagRequestREPORT),
+					base.withFlagRequestMethod(method),
 					dataSystem,
 				)...)
 

@@ -41,7 +41,7 @@ func doClientSidePollRequestTest(t *ldtest.T) {
 				mockld.PollingPathFDv2ClientGet,
 				mockld.PollingPathContextBase64Param, // details of base64-encoded context data are tested separately
 			)
-			return h.IfElse(method == flagRequestREPORT,
+			return h.IfElse(method.sendsContextInBody(),
 				m.Equal(mockld.PollingPathFDv2ClientPost),
 				m.StringHasPrefix(getPathPrefix))
 
