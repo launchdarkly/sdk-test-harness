@@ -80,6 +80,10 @@ This means that the SDK has the ability to construct and compare two contexts fo
 
 This means that the SDK supports caching of the e-tag header between client restarts. Typical SDKs track the polling e-tag header and send it between subsequent requests. SDKs supporting this capability are able to persist that e-tag header for use even between complete client restarts.
 
+#### Capability `"evaluate-batch"`
+
+This means that the test service supports the `evaluateBatch` command, which evaluates many flags in one request and reports the time taken by each evaluation. The test harness uses this command for performance measurement only; it does not run the command unless the capability is present.
+
 #### Capability `"event-gzip"`
 
 This means that the SDK supports gzip compression of event payloads.
@@ -435,6 +439,66 @@ The response should be a JSON object with a single property, `state`. The value 
     },
     "$valid": true
   }
+}
+```
+
+#### Evaluate a batch of flags
+
+If `command` is `"evaluateBatch"`, the test service should perform many feature flag evaluations in one call and report how long each evaluation took. The test harness only sends this command if the test service has the capability `"evaluate-batch"`. The purpose is performance measurement: because the evaluations run inside the test service process, the measurements do not include the HTTP round trips between the test harness and the test service.
+
+The `evaluateBatch` property in the request body will be a JSON object with these properties:
+
+* `evaluations` (array): The evaluations to perform, in order. The array will never be empty. Each element is a JSON object with these properties, which have the same meaning as in the `evaluate` command:
+  * `flagKey` (string): The flag key.
+  * `valueType` (string): One of `"bool"`, `"int"`, `"double"`, `"string"`, or `"any"`, indicating which typed `Variation` method to use. For weakly-typed SDKs, it can be ignored. Any other value is an error.
+  * `defaultValue` (any): A JSON value whose type corresponds to `valueType`, used as the application default/fallback parameter.
+* `context` (object, optional): The context to use for every evaluation in the batch.
+  * For client-side SDKs, this is always omitted.
+  * For server-side SDKs, this is required unless `user` is provided instead.
+* `user` (object, optional): Can be sent instead of `context` to use an old-style user JSON representation. The test harness will only set this if the test service has the capability `"user-type"`.
+* `iterations` (number): The number of passes to perform. This will always be at least 1. Each pass evaluates every element of `evaluations` once, in array order, using `Variation` (not `VariationDetail`). If an element's flag does not exist, the SDK returns the default value and the evaluation is still timed and reported.
+
+The test service must follow these rules so that measurements are comparable across SDKs:
+
+* Decode the request, construct the context, and convert each `defaultValue` to the SDK's native type before starting any timing. Do not repeat this work inside the passes.
+* Measure each individual evaluation with a monotonic clock. The measured interval must contain only the SDK's evaluation call.
+* Perform the evaluations sequentially on a single thread. Do not add delays between them.
+* Build the response only after the final pass has completed.
+
+The response should be a JSON object with the following properties:
+
+* `results` (array): One element for each element of `evaluations`, in the same order. Each element is a JSON object with these properties:
+  * `value` (any): The JSON value of the result from the final pass.
+  * `totalNs` (number): The sum of the measured durations of this evaluation across all passes, as an integer number of nanoseconds.
+  * `minNs` (number): The smallest single measured duration of this evaluation across all passes, in nanoseconds.
+  * `maxNs` (number): The largest single measured duration of this evaluation across all passes, in nanoseconds.
+* `durationNs` (number): The wall-clock time for the whole batch, as an integer number of nanoseconds, measured from immediately before the first evaluation of the first pass until immediately after the last evaluation of the final pass. This includes the per-evaluation timing overhead, so it will be greater than or equal to the sum of all `totalNs` values.
+
+Example request:
+
+```json
+{
+  "command": "evaluateBatch",
+  "evaluateBatch": {
+    "evaluations": [
+      { "flagKey": "flag-a", "valueType": "bool", "defaultValue": false },
+      { "flagKey": "flag-b", "valueType": "string", "defaultValue": "none" }
+    ],
+    "context": { "kind": "user", "key": "user-key" },
+    "iterations": 1000
+  }
+}
+```
+
+Example response:
+
+```json
+{
+  "results": [
+    { "value": true, "totalNs": 1240000, "minNs": 910, "maxNs": 41200 },
+    { "value": "variant-b", "totalNs": 2875000, "minNs": 2310, "maxNs": 88400 }
+  ],
+  "durationNs": 4300000
 }
 ```
 
