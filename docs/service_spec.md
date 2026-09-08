@@ -161,7 +161,7 @@ This means that the SDK has a function/method for computing a secure mode hash f
 
 For a server-side SDK, this means that the SDK can be configured to use polling mode instead of streaming mode.
 
-All server-side SDKs do support polling mode, but since it was not included in the original test service specification, it is an opt-in capability to indicate that the test service understands the `polling` configuration options.
+All server-side SDKs do support polling mode, but since it was not included in the original test service specification, it is an opt-in capability to indicate that the test service understands the polling configuration options in `dataSystem`.
 
 #### Capability `"service-endpoints"`
 
@@ -169,7 +169,7 @@ This means that the SDK supports setting the base URIs for the streaming, pollin
 
 Certain tests are only possible to do if the SDK's configuration API works in this way. For instance, to test whether events can be disabled, the test harness has to be able to create a mock endpoint that _would_ receive events if they were sent, and then configure the SDK to know the base URI of that endpoint, while also telling the SDK not to send events. Such tests will use the `serviceEndpoints` part of the configuration object. They will be skipped if the capability is not present.
 
-Note that even if this capability is present, the test harness may still choose to use the other method of setting base URIs per service (that is, specifying a `baseUri` property within `streaming` or `events`) since that is guaranteed to work for all test service implementations.
+Note that even if this capability is present, the test harness may still choose to use the other method of setting base URIs per service (that is, specifying a `baseUri` property within `events`, or within a `dataSystem` initializer or synchronizer) since that is guaranteed to work for all test service implementations.
 
 #### Capability `"tags"`
 
@@ -320,12 +320,6 @@ A `POST` request indicates that the test harness wants to start an instance of t
   * `initCanFail` (boolean, optional): If true, the test service should _not_ return an error for client initialization failing in a way that still makes the client instance available (for instance, due to a timeout or a 401 error). See discussion of error handling below.
   * `serviceEndpoints` (object, optional): See notes on the `"service-endpoints"` capability. If this object is present, the test service should use it to set the corresponding service URIs in the SDK.
     * `streaming`, `polling`, `events` (string, optional): Each of these, if set, is the base URI for the corresponding service.
-  * `streaming` (object, optional): Enables streaming mode and provides streaming configuration. If this is omitted _and_ `polling` is also omitted, then the test service can use streaming as a default; but if `streaming` is omitted and `polling` is provided, then streaming should be disabled. Properties are:
-    * `baseUri` (string, optional): The base URI for the streaming service. For contract testing, this will be the URI of a simulated streaming endpoint that the test harness provides. If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.streaming` if any, or if that is not set either, connect to the real LaunchDarkly streaming service.
-    * `initialRetryDelayMs` (number, optional): The initial stream retry delay in milliseconds. If omitted, use the SDK's default value.
-  * `polling` (object, optional): Enables polling mode and provides polling configuration. Properties are:
-    * `baseUri` (string, optional): The base URI for the polling service. For contract testing, this will be the URI of a simulated polling endpoint that the test harness provides. If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.polling` if any, or if that is not set either, connect to the real LaunchDarkly polling service.
-    * `pollIntervalMs` (number, optional): The polling interval in milliseconds. If omitted, use the SDK's default value. For mobile SDKs that are configured with both streaming and polling enabled, this should be interpreted as the _background_ polling interval.
   * `events` (object, optional): Enables events and provides events configuration, or disables events if it is omitted or null. Properties are:
     * `baseUri` (string, optional): The base URI for the events service. For contract testing, this will be the URI of a simulated event-recorder endpoint that the test harness provides.  If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.events` if any, or if that is not set either, connect to the real LaunchDarkly events service.
     * `capacity` (number, optional): If specified and greater than zero, the event buffer capacity should be set to this value.
@@ -334,16 +328,18 @@ A `POST` request indicates that the test harness wants to start an instance of t
     * `globalPrivateAttributes` (array, optional): Corresponds to the `privateAttributes` property in the SDK configuration (rather than in an individual context).
     * `flushIntervalMs` (number, optional): The event flush interval in milliseconds. If omitted or zero, use the SDK's default value.
     * `enableGzip` (bool, optional): If true, the SDK should enable gzip compression of event payloads. If false or omitted, the SDK should not enable gzip compression.
+    * `omitAnonymousContexts` (boolean, optional): If true, the SDK should filter anonymous contexts out of index and identify events. The test harness will only set this option if the test service has the capability `"omit-anonymous-contexts"`.
   * `bigSegments` (object, optional): Enables and configures Big Segments. Properties are:
     * `callbackUri` (string, required): The base URI for the big segments store callback fixture. See [Callback fixtures](#callback-fixtures).
-    * `userCacheSize`, `userCacheTimeMs`, `statusPollIntervalMS`, `staleAfterMs`: These correspond to the standard optional configuration parameters for every SDK that supports Big Segments.
+    * `userCacheSize`, `userCacheTimeMs`, `statusPollIntervalMs`, `staleAfterMs`: These correspond to the standard optional configuration parameters for every SDK that supports Big Segments.
   * `tags` (object, optional): If specified, this has options for metadata/tags (that is, values that are translated into an `X-LaunchDarkly-Tags` header):
     * `applicationId` (string, optional): If present and non-null, the SDK should set the "application ID" property to this string.
     * `applicationVersion` (string, optional): If present and non-null, the SDK should set the "application version" property to this string.
   * `clientSide` (object): This is omitted for server-side SDKs, and required for client-side SDKs. Properties are:
     * `initialContext` (object, optional): The context properties to initialize the SDK with (unless `initialUser` is specified instead). The test service for a client-side SDK can assume that the test harness will _always_ set this: if the test logic does not explicitly provide a value, the test harness will add a default one.
     * `initialUser` (object, optional): Can be specified instead of `initialContext` to use an old-style user JSON representation.
-    * `evaluationReasons`, `useReport` (boolean, optional): These correspond to the SDK configuration properties of the same names.
+    * `evaluationReasons`, `useReport` (boolean, optional): These correspond to the SDK configuration properties of the same names. The test harness will only set `useReport` if the test service has the capability `"client-use-report"`.
+    * `includeEnvironmentAttributes` (boolean, optional): Enables or disables automatic addition of environment attributes to evaluation contexts. The test harness will only set this option if the test service has the capability `"auto-env-attributes"`.
     * `hash` (string, optional): If present, a secure mode hash value that the SDK should use when connecting to the streaming and polling services. When set, the SDK must include this value as the `h` query parameter on streaming and polling requests. This field is only used by test services that declare the `"secure-mode-hash"` capability.
   * `hooks` (object, optional): If specified this has the configuration for hooks.
     * `hooks` (array, required): Contains configuration of one or more hooks, each item is an object with the following parameters.
@@ -380,17 +376,18 @@ A `POST` request indicates that the test harness wants to start an instance of t
     * `store` (object, optional): Persistent data store configuration.
       * `persistentDataStore` (object, optional): See the `persistentDataStore` property definition elsewhere in this spec.
     * `storeMode` (number, optional): `0` for read-only, `1` for read-write. Controls whether data from initializers/synchronizers is written back to the store.
-    * `initializers` (array, optional): A list of data initializers. Each initializer has:
-      * `polling` (object, optional): Polling configuration for the initializer, with the same shape as the top-level `polling` property (`baseUri`, `pollIntervalMs`).
-    * `synchronizers` (array, optional): A list of data synchronizers. Each synchronizer has:
-      * `streaming` (object, optional): Streaming configuration (`baseUri`, `initialRetryDelayMs`).
-      * `polling` (object, optional): Polling configuration (`baseUri`, `pollIntervalMs`).
+    * `initializers` (array, optional): A list of data initializers, in the order the SDK should try them. Each initializer has:
+      * `polling` (object, optional): Polling configuration for the initializer. See [Polling configuration object](#polling-configuration-object).
+    * `synchronizers` (array, optional): A list of data synchronizers. The first entry is the primary synchronizer and the second, if present, is the fallback synchronizer used for the heuristic failover described in the Data System spec. Each synchronizer has:
+      * `streaming` (object, optional): Streaming configuration. See [Streaming configuration object](#streaming-configuration-object).
+      * `polling` (object, optional): Polling configuration. See [Polling configuration object](#polling-configuration-object).
+    * `fdv1Fallback` (object, optional): Polling configuration for the SDK's FDv1 Fallback Synchronizer. See [Polling configuration object](#polling-configuration-object). This is *not* one of the `synchronizers` above: it is engaged only in response to a server-directed FDv1 fallback directive (an `X-LD-FD-Fallback: true` response header), and once engaged it becomes the SDK's sole data source for the remainder of the client's lifetime. Streaming is not a valid transport for FDv1 fallback. The test harness will only set this if the test service has the capability `"fdv1-fallback"`.
     * `connectionModeConfig` (object, optional): Connection mode configuration. Properties are:
       * `initialConnectionMode` (string, optional): The connection mode the SDK should start in (e.g. `"streaming"`, `"polling"`, `"offline"`, `"background"`, `"one-shot"`). For client-side FDv2, the test harness sends exactly one of `useDefaultDataSystem` (at the `dataSystem` level) or `initialConnectionMode`; it cannot send both but must send one.
       * `customConnectionModes` (object, optional): A map of custom connection mode names to their definitions. Each definition has:
         * `initializers` (array, optional): Same shape as `dataSystem.initializers`.
         * `synchronizers` (array, optional): Same shape as `dataSystem.synchronizers`.
-  
+
 The response to a valid request is any HTTP `2xx` status, with a `Location` header whose value is the URL of the test service resource representing this SDK client instance (that is, the one that would be used for "Close client" or "Send command" as described below).
 
 If any parameters are invalid, return HTTP `400`.
@@ -400,6 +397,20 @@ If client initialization fails, the desired behavior depends on how it failed an
 * If `initCanFail` was set to true, then the test service should tolerate any kind of initialization failure where the client instance is still available. For instance, if initialization times out, or stops immediately due to getting a 401 error from LaunchDarkly, all of our SDKs still allow the application to continue using the client instance even though it may not have valid flag data; that might be an expected condition in a test, in which case `initCanFail` will be true.
 * If `initCanFail` was not set to true, then errors of that kind should be treated as unexpected failures and return an HTTP `500` error, preferably with some descriptive text in the response body that can be logged by the test harness.
 * Any kind of error that does _not_ make the client instance available should always cause a `500`. For instance, in languages that support exceptions, if an exception is thrown from the constructor then there is no client instance.
+
+#### Streaming configuration object
+
+Wherever the configuration above calls for a streaming configuration object, it has these properties:
+
+* `baseUri` (string, optional): The base URI for the streaming service. For contract testing, this will be the URI of a simulated streaming endpoint that the test harness provides. If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.streaming` if any, or if that is not set either, connect to the real LaunchDarkly streaming service.
+* `initialRetryDelayMs` (number, optional): The initial stream retry delay in milliseconds. If omitted, use the SDK's default value.
+
+#### Polling configuration object
+
+Wherever the configuration above calls for a polling configuration object, it has these properties:
+
+* `baseUri` (string, optional): The base URI for the polling service. For contract testing, this will be the URI of a simulated polling endpoint that the test harness provides. If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.polling` if any, or if that is not set either, connect to the real LaunchDarkly polling service.
+* `pollIntervalMs` (number, optional): The polling interval in milliseconds. If omitted, use the SDK's default value. For mobile SDKs that are configured with both streaming and polling enabled, this should be interpreted as the _background_ polling interval.
 
 ### Send command: `POST <URL of SDK client instance>`
 
@@ -444,7 +455,7 @@ The `evaluateAll` property in the request body will be a JSON object with these 
 * `clientSideOnly` (boolean, optional): If true, enables the SDK option for filtering the result to only include flags that are enabled for client-side use. The test harness will only set this option if the test service has the capability `"all-flags-client-side-only"`.
 * `detailsOnlyForTrackedFlags` (boolean, optional): If true, enables the SDK option for filtering the result to only include evaluation reason data if the SDK will need it for events (due to event tracking or debugging or an experiment). The test harness will only set this option if the test service has the capability `"all-flags-details-only-for-tracked-flags"`.
 
-The response should be a JSON object with a single property, `state`. The value of `state` is the JSON representation that the SDK provides for the result of the `AllFlagsState` call into JSON, in the format that is expected by the JS browser SDK: a JSON object where there is a key-value pair for each flag key and flag value, plus a `$flagMetadata` key containing additional metadata. Example:
+The response should be a JSON object with a single property, `state`. The value of `state` is the JSON representation that the SDK provides for the result of the `AllFlagsState` call into JSON, in the format that is expected by the JS browser SDK: a JSON object where there is a key-value pair for each flag key and flag value, plus a `$flagsState` key containing additional metadata. Example:
 
 ```json
 {
@@ -496,7 +507,7 @@ The response should be an empty 2xx response.
 
 #### Flush events
 
-If `command` is `"flush"`, the test service should tell the SDK to initiate an event flush.
+If `command` is `"flushEvents"`, the test service should tell the SDK to initiate an event flush.
 
 The request body, if any, is irrelevant.
 
@@ -514,16 +525,6 @@ The `secureModeHash` property in the request body will be a JSON object with the
 * `user` (object, optional): Can be sent instead of `context` to use an old-style user JSON representation.
 
 The response should be a JSON object with a single property, `result`, which is the computed hash as a string.
-
-#### Get big segment store status
-
-If `command` is `""`, the test service should ask the SDK for the big segment store status.
-
-The test harness will only send this command if the test service has the `"big-segments"` capability.
-
-The request body, if any, is irrelevant.
-
-The response should be a JSON object with two boolean properties, `available` and `stale`, corresponding to the standard properties of this status object in all SDKs that support Big Segments.
 
 #### Build a context
 
@@ -584,17 +585,19 @@ The response should be a JSON object with these properties:
 
 #### Get big segment store status
 
-If `command` is "getBigSegmentStoreStatus", the test service should tell the SDK to report on the status of the configured big segment store.
+If `command` is `"getBigSegmentStoreStatus"`, the test service should tell the SDK to report on the status of the configured big segment store.
+
+The test harness will only send this command if the test service has the `"big-segments"` capability.
 
 The request body, if any, is irrelevant.
 
-The response should be a JSON object with two boolean properties, `available` and `stale`.
+The response should be a JSON object with two boolean properties, `available` and `stale`, corresponding to the standard properties of this status object in all SDKs that support Big Segments.
 
 #### Migration variation
 
-If `command` is "migrationVariation", the test service should tell the SDK to report the current migration stage.
+If `command` is `"migrationVariation"`, the test service should tell the SDK to report the current migration stage.
 
-The request body will contain the following properties:
+The `migrationVariation` property in the request body will be a JSON object with these properties:
 
 * `key` (string, required) The migration flag key
 * `context` (object, required) The context used to determine the migration
@@ -604,9 +607,9 @@ The response is a JSON payload with a single property `result` which contains th
 
 #### Migration operation
 
-If `command` is "migrationOperation", the test service should instrument the SDK's migration kit and execute either a read or write option.
+If `command` is `"migrationOperation"`, the test service should instrument the SDK's migration kit and execute either a read or write option.
 
-The request body will contain the following properties:
+The `migrationOperation` property in the request body will be a JSON object with these properties:
 
 * `key` (string, required) The migration flag key
 * `context` (object, required) The context used to determine the migration
@@ -625,6 +628,56 @@ The response is a JSON payload with a single property `result`.
 * If the operation fails, `result` should contain an error description.
 * If the migration operation was a `read`, the `result` field should contain the result of the read method.
 * If the operation was a `write`, the `result` field should contain the result of the authoritative write.
+
+#### Register a flag change listener
+
+If `command` is `"registerFlagChangeListener"`, the test service should register a general flag change listener with the SDK — a listener that is notified whenever any flag's configuration changes, whether or not the flag's evaluated value changed.
+
+The test harness will only send this command if the test service has the `"flag-change-listeners"` capability.
+
+The `registerFlagChangeListener` property in the request body will be a JSON object with these properties:
+
+* `listenerId` (string, required): An identifier that the test service should associate with this listener, so that it can later be removed by the `unregisterListener` command. The test service should echo it back in every notification for this listener.
+* `callbackUri` (string, required): The URI that the test service should POST a notification to whenever the listener fires. See [Listener notifications](#listener-notifications).
+
+The response should be an empty 2xx response.
+
+#### Register a flag value change listener
+
+If `command` is `"registerFlagValueChangeListener"`, the test service should register a flag *value* change listener with the SDK — a listener that is notified when the evaluated value of one specific flag changes for one specific context.
+
+The test harness will only send this command if the test service has the `"flag-value-change-listeners"` capability. Not all SDKs provide this API; an SDK that only has general flag change listeners should declare `"flag-change-listeners"` and omit this capability.
+
+The `registerFlagValueChangeListener` property in the request body will be a JSON object with these properties:
+
+* `listenerId` (string, required): An identifier that the test service should associate with this listener, so that it can later be removed by the `unregisterListener` command. The test service should echo it back in every notification for this listener.
+* `flagKey` (string, required): The key of the flag to watch.
+* `context` (object, required): The evaluation context to evaluate the flag for.
+* `defaultValue` (any): A JSON value to use as the application default/fallback for the evaluations that the listener performs.
+* `callbackUri` (string, required): The URI that the test service should POST a notification to whenever the listener fires. See [Listener notifications](#listener-notifications).
+
+The response should be an empty 2xx response.
+
+#### Unregister a listener
+
+If `command` is `"unregisterListener"`, the test service should remove a listener that was previously registered by `registerFlagChangeListener` or `registerFlagValueChangeListener`, using whatever the SDK's equivalent of an unregister/close operation is. After this command completes, the test service must not POST any further notifications for that listener.
+
+The `unregisterListener` property in the request body will be a JSON object with these properties:
+
+* `listenerId` (string, required): The identifier that was passed when the listener was registered.
+
+The response should be an empty 2xx response.
+
+#### Listener notifications
+
+When a registered listener fires, the test service should POST a JSON object to the `callbackUri` that was provided when the listener was registered, with these properties:
+
+* `listenerId` (string, required): The identifier that was passed when the listener was registered.
+* `flagKey` (string, required): The key of the flag that changed.
+* `oldValue` (any, optional): The previous evaluated value of the flag. Only present for notifications from a flag *value* change listener (`registerFlagValueChangeListener`).
+* `newValue` (any, optional): The new evaluated value of the flag. Only present for notifications from a flag *value* change listener (`registerFlagValueChangeListener`).
+
+For a general flag change listener (`registerFlagChangeListener`), only `listenerId` and `flagKey` are sent; `oldValue` and `newValue` should be omitted, since that listener reports configuration changes rather than value changes and the SDK does not evaluate the flag on its behalf.
 
 ### Close client: `DELETE <URL of SDK client instance>`
 
