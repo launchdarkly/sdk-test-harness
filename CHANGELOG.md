@@ -2,6 +2,19 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.2.0-alpha.10](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.9...v3.2.0-alpha.10) (2026-09-08)
+
+
+### Features
+
+* Add client-use-post capability and POST request variants ([#445](https://github.com/launchdarkly/sdk-test-harness/issues/445)) ([377a9ac](https://github.com/launchdarkly/sdk-test-harness/commit/377a9acc00b97392f453d2df35d811c58c6bd5fd))
+
+
+### Bug Fixes
+
+* Authenticate release asset downloads with GITHUB_TOKEN ([#418](https://github.com/launchdarkly/sdk-test-harness/issues/418)) ([b0f6e5e](https://github.com/launchdarkly/sdk-test-harness/commit/b0f6e5e07c228c175704624c56f39422371fb45a))
+* Correct module path to v3 ([#435](https://github.com/launchdarkly/sdk-test-harness/issues/435)) ([8f3ce46](https://github.com/launchdarkly/sdk-test-harness/commit/8f3ce46dba0079c44d17fc4444bb3e98ced319a5))
+
 ## [3.2.0-alpha.9](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.8...v3.2.0-alpha.9) (2026-08-19)
 
 
