@@ -205,7 +205,7 @@ func (c CommonPollingTests) RequestContextProperties(t *ldtest.T, getPath string
 
 						request := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
 
-						if method == flagRequestREPORT {
+						if method.sendsContextInBody() {
 							m.In(t).For("request body").Assert(request.Body, m.AllOf(
 								m.Not(m.BeNil()),
 								contextJSONMatcher))

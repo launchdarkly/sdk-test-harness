@@ -78,6 +78,14 @@ const (
 	// server-side SDKs do not need to declare it.
 	CapabilityClientUseReport = "client-use-report"
 
+	// CapabilityClientUsePost indicates that a client-side SDK can be configured to issue
+	// streaming and polling flag requests using the POST HTTP method instead of GET, with the
+	// evaluation context in the request body. This is the FDv2 counterpart of
+	// CapabilityClientUseReport. SDKs that lack this capability will not have their POST request
+	// variants exercised. Only checked for client-side SDKs; server-side SDKs do not need to
+	// declare it.
+	CapabilityClientUsePost = "client-use-post"
+
 	CapabilityOmitAnonymousContexts = "omit-anonymous-contexts"
 
 	// CapabilityWrapper indicates that the SDK supports setting wrapper name and version and including them in request
