@@ -136,6 +136,7 @@ type SDKConfigClientSideParams struct {
 	InitialUser                  json.RawMessage            `json:"initialUser,omitempty"`
 	EvaluationReasons            o.Maybe[bool]              `json:"evaluationReasons,omitempty"`
 	UseReport                    o.Maybe[bool]              `json:"useReport,omitempty"`
+	UsePost                      o.Maybe[bool]              `json:"usePost,omitempty"`
 	IncludeEnvironmentAttributes o.Maybe[bool]              `json:"includeEnvironmentAttributes,omitempty"`
 	Hash                         o.Maybe[string]            `json:"hash,omitempty"`
 }
