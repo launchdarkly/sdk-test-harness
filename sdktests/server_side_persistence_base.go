@@ -240,6 +240,8 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 				time.Second, time.Millisecond*20, "failed to serve defaults after flag deletion")
 		})
 
+		t.Run("tombstones", s.doTombstoneTests)
+
 		t.Run("caches flag for duration", func(t *ldtest.T) {
 			persistence := NewPersistence()
 			persistence.SetStore(servicedef.SDKConfigPersistentStore{
