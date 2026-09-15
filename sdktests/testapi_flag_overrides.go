@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v3/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 
@@ -69,9 +69,9 @@ func WithFileOverrides(params servicedef.SDKConfigOverridesParams) SDKConfigurer
 }
 
 // evaluateFlagRawReasonResponse is the same as servicedef.EvaluateFlagResponse except that the
-// reason is kept as raw JSON. The typed ldreason.EvaluationReason drops JSON properties it does
-// not know about-- such as the "isOverride" marker set by the flag overrides feature-- so tests
-// that need to assert on such properties must use this representation instead.
+// reason is kept as raw JSON. The typed ldreason.EvaluationReason drops JSON properties that it
+// does not know, such as the "overrideAffected" indicator that the flag overrides feature sets.
+// Tests that assert on such properties must use this representation.
 type evaluateFlagRawReasonResponse struct {
 	Value          ldvalue.Value   `json:"value"`
 	VariationIndex o.Maybe[int]    `json:"variationIndex,omitempty"`

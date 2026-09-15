@@ -499,16 +499,17 @@ func flagCounter(value interface{}, variation int, version int, count int) m.Mat
 	)
 }
 
-// overrideFlagCounter is the same as flagCounter, but for a flag whose evaluation was overridden
-// by the flag overrides feature: the counter must additionally carry "override": true so that
-// override evaluations are aggregated separately from ordinary ones.
-func overrideFlagCounter(value interface{}, variation int, version int, count int) m.Matcher {
+// overrideAffectedFlagCounter is the same as flagCounter, but for evaluations that the flag
+// overrides feature marked as override-affected. The counter carries "overrideAffected": true.
+// The marker is part of the aggregation key, so the SDK keeps these evaluations in a separate
+// counter from ordinary evaluations of the same flag, variation, and version.
+func overrideAffectedFlagCounter(value interface{}, variation int, version int, count int) m.Matcher {
 	return m.MapOf(
 		m.KV("value", m.JSONEqual(value)),
 		m.KV("variation", m.Equal(variation)),
 		m.KV("version", m.Equal(version)),
 		m.KV("count", m.Equal(count)),
-		m.KV("override", m.Equal(true)),
+		m.KV("overrideAffected", m.Equal(true)),
 	)
 }
 
