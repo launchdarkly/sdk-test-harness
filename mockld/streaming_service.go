@@ -124,6 +124,7 @@ func (s *StreamingService) makeXferFull() []eventsource.Event {
 	fdv2SdkData, ok := s.initialData.(FDv2SDKData)
 	if !ok {
 		s.debugLogger.Println("streamer cannot handle non-fdv2 sdk data at this time")
+		s.lock.RUnlock()
 		return nil
 	}
 
