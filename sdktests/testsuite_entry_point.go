@@ -116,6 +116,7 @@ func doAllClientSideTests(t *ldtest.T) {
 	t.Run("hooks", doCommonHooksTests)
 	t.Run("wrapper", doClientSideWrapperTests)
 	t.Run("secure mode hash", doClientSideSecureModeHashTests)
+	t.Run("bootstrap", doClientSideBootstrapTests)
 }
 
 func doAllPHPTests(t *ldtest.T) {

@@ -41,7 +41,7 @@ const (
 
 // DataSystem describes the SDK's data acquisition configuration.
 //
-// FDv1Fallback configures the SDK's FDv1 Fallback Synchronizer — a polling-only
+// FDv1Fallback configures the SDK's FDv1 Fallback Synchronizer, a polling-only
 // data source engaged only in response to a server-directed FDv1 Fallback
 // Directive (section 1.6 of the Data System spec). It is architecturally distinct
 // from the Primary/Fallback FDv2 synchronizers listed in Synchronizers: those
@@ -139,6 +139,12 @@ type SDKConfigClientSideParams struct {
 	UsePost                      o.Maybe[bool]              `json:"usePost,omitempty"`
 	IncludeEnvironmentAttributes o.Maybe[bool]              `json:"includeEnvironmentAttributes,omitempty"`
 	Hash                         o.Maybe[string]            `json:"hash,omitempty"`
+
+	// Bootstrap is a raw map rather than a typed struct because tests need to produce wire
+	// shapes a typed struct cannot represent: a null flag value, a missing "$flagsState",
+	// or "$valid": false. See bootstrapPayloadBuilder in the sdktests package for how tests
+	// build this value.
+	Bootstrap o.Maybe[map[string]ldvalue.Value] `json:"bootstrap,omitempty"`
 }
 
 type SDKConfigEvaluationHookData map[string]ldvalue.Value
