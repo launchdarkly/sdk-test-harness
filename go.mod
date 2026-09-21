@@ -1,6 +1,6 @@
 module github.com/launchdarkly/sdk-test-harness/v2
 
-go 1.26
+go 1.26.7
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.47.0
@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.67.0
 	github.com/fatih/color v1.19.0
 	github.com/gorilla/mux v1.8.1
-	github.com/hashicorp/consul/api v1.34.4
+	github.com/hashicorp/consul/api v1.34.5
 	github.com/launchdarkly/eventsource v1.14.0
 	github.com/launchdarkly/go-jsonstream/v3 v3.1.3
 	github.com/launchdarkly/go-sdk-common/v3 v3.5.1
@@ -55,5 +55,5 @@ require (
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
 )
