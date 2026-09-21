@@ -18,7 +18,13 @@ const (
 	CapabilityAllFlagsClientSideOnly             = "all-flags-client-side-only"
 	CapabilityAllFlagsDetailsOnlyForTrackedFlags = "all-flags-details-only-for-tracked-flags"
 
-	CapabilityBigSegments                 = "big-segments"
+	CapabilityBigSegments = "big-segments"
+
+	// CapabilityBootstrap indicates a client-side SDK can be configured with pre-fetched flag
+	// data ("bootstrap" data) that it applies to its flag store at start time, before making
+	// any network requests, and that alone satisfies the SDK's initialization condition.
+	CapabilityBootstrap = "bootstrap"
+
 	CapabilityContextType                 = "context-type"
 	CapabilityContextComparison           = "context-comparison"
 	CapabilitySecureModeHash              = "secure-mode-hash"
