@@ -35,8 +35,7 @@ type SDKConfigParams struct {
 type SDKConfigOverridesParams struct {
 	FilePaths             []string        `json:"filePaths"`
 	DuplicateKeysHandling o.Maybe[string] `json:"duplicateKeysHandling,omitempty"` // "fail" | "ignore"
-	Watch                 o.Maybe[bool]   `json:"watch,omitempty"`                 // default true
-	Poll                  o.Maybe[bool]   `json:"poll,omitempty"`                  // default false
+	ChangeDetection       o.Maybe[string] `json:"changeDetection,omitempty"`       // "polling" | "watching"
 	PollIntervalMS        o.Maybe[int]    `json:"pollIntervalMs,omitempty"`
 }
 

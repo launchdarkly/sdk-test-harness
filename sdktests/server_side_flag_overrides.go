@@ -339,15 +339,17 @@ func doServerSideFlagOverridesHotReloadTests(t *ldtest.T) {
 		name       string
 		makeParams func(paths ...string) servicedef.SDKConfigOverridesParams
 	}{
-		{"watch mode", func(paths ...string) servicedef.SDKConfigOverridesParams {
-			return servicedef.SDKConfigOverridesParams{FilePaths: paths} // watch is the default
-		}},
-		{"poll mode", func(paths ...string) servicedef.SDKConfigOverridesParams {
+		{"watching mode", func(paths ...string) servicedef.SDKConfigOverridesParams {
 			return servicedef.SDKConfigOverridesParams{
-				FilePaths:      paths,
-				Watch:          o.Some(false),
-				Poll:           o.Some(true),
-				PollIntervalMS: o.Some(1000),
+				FilePaths:       paths,
+				ChangeDetection: o.Some("watching"),
+			}
+		}},
+		{"polling mode", func(paths ...string) servicedef.SDKConfigOverridesParams {
+			return servicedef.SDKConfigOverridesParams{
+				FilePaths:       paths,
+				ChangeDetection: o.Some("polling"),
+				PollIntervalMS:  o.Some(1000),
 			}
 		}},
 	}
