@@ -5,12 +5,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/launchdarkly/sdk-test-harness/v2/data"
-	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
-	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
-	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
-	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
-	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
+	"github.com/launchdarkly/sdk-test-harness/v3/data"
+	h "github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v3/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
+	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
 	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
@@ -448,7 +448,8 @@ func doClientSideBootstrapNullFlagValueTest(t *ldtest.T) {
 //
 // initCanFail is true because "$valid": false does not have to satisfy the SDK's
 // initialization condition: an SDK that stays uninitialized here is still compliant, as
-// long as it comes up and serves defaults.
+// long as the client starts and evaluates the ingested data (see the "$valid" entry in
+// docs/service_spec.md).
 func doClientSideBootstrapInvalidPayloadTest(t *ldtest.T) {
 	const unknownFlagKey = "bootstrap-absent-flag"
 	unknownFlagFallback := ldvalue.String("invalid-payload-fallback")
