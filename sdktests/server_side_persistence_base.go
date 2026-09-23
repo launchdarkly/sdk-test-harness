@@ -472,7 +472,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 
 		cacheConfigs := []servicedef.SDKConfigPersistentCache{
 			{Mode: servicedef.CacheModeInfinite},
-			{Mode: servicedef.CacheModeTTL, TTL: o.Some(1)},
+			{Mode: servicedef.CacheModeTTL, TTL: o.Some(5)},
 		}
 
 		for _, cacheConfig := range cacheConfigs {
@@ -574,12 +574,13 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 								ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default")),
 							time.Millisecond*500, time.Millisecond*20, "uncached-flag-key was incorrectly cached")
 					case servicedef.CacheModeTTL:
-						// This key was already cached, so it shouldn't see the change above.
+						// This key was already cached, so it shouldn't see the change above. The check
+						// window plus all setup steps must fit inside the cache TTL; keep it short so
+						// a slow test runner cannot push the check past the cache expiry.
 						h.RequireNever(t,
 							checkForUpdatedValue(t, client, "flag-key", context,
 								ldvalue.String("value"), ldvalue.String("new-value"), ldvalue.String("default")),
-							time.Duration(
-								int(time.Second)*cacheConfig.TTL.Value()/2),
+							time.Millisecond*500,
 							time.Millisecond*20,
 							"flag-key was incorrectly updated")
 
@@ -623,7 +624,8 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 						h.RequireEventually(t,
 							checkForUpdatedValue(t, client, "flag-key", context,
 								ldvalue.String("value"), ldvalue.String("default"), ldvalue.String("default")),
-							time.Second, time.Millisecond*20, "flag-key was incorrectly cached")
+							time.Duration(int(time.Second)*cacheConfig.TTL.Value()),
+							time.Millisecond*20, "flag-key was incorrectly cached")
 					}
 				})
 			})
