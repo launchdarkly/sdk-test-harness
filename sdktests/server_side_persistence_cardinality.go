@@ -51,7 +51,7 @@ func (s *ServerSidePersistentTests) doCollectionCardinalityTests(t *ldtest.T) {
 		require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features",
 			map[string]string{"flag-key": s.initialFlags["flag-key"]}))
 
-		client := NewSDKClient(t, s.storeOnlyPersistence())
+		client := NewSDKClient(t, s.uncachedDaemonModePersistence())
 
 		// Reading the record by key works on a store that cannot read the
 		// collection, which keeps the two failures apart.
@@ -74,7 +74,7 @@ func (s *ServerSidePersistentTests) doCollectionCardinalityTests(t *ldtest.T) {
 		require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features",
 			map[string]string{deletedOnlyFlagKey: tombstone}))
 
-		client := NewSDKClient(t, s.storeOnlyPersistence())
+		client := NewSDKClient(t, s.uncachedDaemonModePersistence())
 
 		requireEmptyAllFlagsState(t, client, context)
 		requireFlagNotFound(t, client, deletedOnlyFlagKey, context)
@@ -82,16 +82,16 @@ func (s *ServerSidePersistentTests) doCollectionCardinalityTests(t *ldtest.T) {
 
 	s.runWithEmptyStore(t, "collection holds no flags", func(t *ldtest.T) {
 		// Nothing is written, so this is a store the SDK has never used.
-		client := NewSDKClient(t, s.storeOnlyPersistence())
+		client := NewSDKClient(t, s.uncachedDaemonModePersistence())
 
 		requireEmptyAllFlagsState(t, client, context)
 		requireFlagNotFound(t, client, "flag-key", context)
 	})
 }
 
-// storeOnlyPersistence configures daemon mode: the store is the only source of
-// data, and the cache is off so every read reaches it.
-func (s *ServerSidePersistentTests) storeOnlyPersistence() *Persistence {
+// uncachedDaemonModePersistence configures daemon mode with no cache: the store is
+// the only source of data, and every read reaches it.
+func (s *ServerSidePersistentTests) uncachedDaemonModePersistence() *Persistence {
 	persistence := NewPersistence()
 	persistence.SetStore(servicedef.SDKConfigPersistentStore{
 		Type: s.persistentStore.Type(),
