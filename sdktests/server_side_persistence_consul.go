@@ -11,13 +11,21 @@ import (
 )
 
 type ConsulPersistentStore struct {
-	consul *consul.Client
+	consul  *consul.Client
+	address string
 }
 
 func (c *ConsulPersistentStore) DSN() string {
-	//nolint:godox  // I'm working on it
-	// TODO: Fix this address lookup
-	return consul.DefaultConfig().Address
+	return c.DSNFor(c.Addr())
+}
+
+func (c *ConsulPersistentStore) Addr() string {
+	return c.address
+}
+
+func (c *ConsulPersistentStore) DSNFor(addr string) string {
+	// A Consul DSN is just the bare host:port; there is no scheme to add
+	return addr
 }
 
 func (c *ConsulPersistentStore) Type() servicedef.SDKConfigPersistentType {
