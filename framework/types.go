@@ -61,9 +61,8 @@ type ErrorEvent struct {
 type Heartbeat struct{}
 
 type Goodbye struct {
-	Reason      string `json:"reason"`
-	Silent      bool   `json:"silent"`
-	Catastrophe bool   `json:"catastrophe"`
-	//nolint:godox
-	// TODO: Might later include some advice or backoff information
+	Reason              string `json:"reason"`
+	Silent              bool   `json:"silent"`
+	Catastrophe         bool   `json:"catastrophe"`
+	ProtocolFallbackTTL *int   `json:"protocolFallbackTTL,omitempty"`
 }

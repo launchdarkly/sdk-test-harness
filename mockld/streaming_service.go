@@ -263,6 +263,17 @@ func (s *StreamingService) PushGoodbye(reason string, silent, catastrophe bool) 
 	})
 }
 
+// PushGoodbyeWithFallback sends a goodbye event carrying a protocolFallbackTTL
+// field, which signals the SDK to fall back from FDv2 to FDv1 (see FDV2PL spec
+// §3.7 and CSFDV2 spec §8.3.4). ttlSeconds is the duration in seconds the SDK
+// should remain on FDv1 before attempting recovery; 0 means indefinite.
+func (s *StreamingService) PushGoodbyeWithFallback(reason string, ttlSeconds int) {
+	s.PushEvent("goodbye", framework.Goodbye{
+		Reason:              reason,
+		ProtocolFallbackTTL: &ttlSeconds,
+	})
+}
+
 func (s *StreamingService) PushPayloadTransferred(state string, version int) {
 	eventData := framework.PayloadTransferred{
 		State:   state,
