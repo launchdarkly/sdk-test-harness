@@ -1,9 +1,9 @@
 package sdktests
 
 import (
-	"path/filepath"
 	"encoding/json"
 	"os"
+	"path/filepath"
 
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
