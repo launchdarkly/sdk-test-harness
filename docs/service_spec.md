@@ -454,8 +454,7 @@ The `evaluateBatch` property in the request body will be a JSON object with thes
   * `defaultValue` (any): A JSON value whose type corresponds to `valueType`, used as the application default/fallback parameter.
 * `context` (object, optional): The context to use for every evaluation in the batch.
   * For client-side SDKs, this is always omitted.
-  * For server-side SDKs, this is required unless `user` is provided instead.
-* `user` (object, optional): Can be sent instead of `context` to use an old-style user JSON representation. The test harness will only set this if the test service has the capability `"user-type"`.
+  * For server-side SDKs, this is required.
 * `iterations` (number): The number of passes to perform. This will always be at least 1. Each pass evaluates every element of `evaluations` once, in array order, using `Variation` (not `VariationDetail`). If an element's flag does not exist, the SDK returns the default value and the evaluation is still timed and reported.
 
 The test service must follow these rules so that measurements are comparable across SDKs:
