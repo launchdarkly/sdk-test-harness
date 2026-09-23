@@ -297,6 +297,16 @@ func doServerSideFlagOverridesMultiFileTest(t *ldtest.T) {
 		value := basicEvaluateFlag(t, client, "second-file-flag", context, defaultValue)
 		m.In(t).Assert(value, m.JSONEqual(ldvalue.String("second-file-value")))
 	})
+
+	t.Run("a configured file that does not exist contributes no overrides", func(t *ldtest.T) {
+		missing := NewMissingOverrideFile(t)
+		clientWithMissing := NewSDKClient(t, dataSystem,
+			WithFileOverrides(servicedef.SDKConfigOverridesParams{
+				FilePaths: []string{file1.Path, missing.Path},
+			}))
+		value := basicEvaluateFlag(t, clientWithMissing, "multi-flag", context, defaultValue)
+		m.In(t).Assert(value, m.JSONEqual(ldvalue.String("first-value")))
+	})
 }
 
 func doServerSideFlagOverridesYAMLTest(t *ldtest.T) {
@@ -394,6 +404,22 @@ func doServerSideFlagOverridesHotReloadTests(t *ldtest.T) {
 				requireValue(t, client, overrideValueB)
 				overrideFile.Clear(t)
 				awaitValue(t, client, overrideValueB, ldValue)
+			})
+
+			t.Run("deleting the file removes its overrides", func(t *ldtest.T) {
+				overrideFile, client := setup(t, docWith(overrideValueB))
+				requireValue(t, client, overrideValueB)
+				overrideFile.Delete(t)
+				awaitValue(t, client, overrideValueB, ldValue)
+			})
+
+			t.Run("a file that does not exist yet takes effect when it appears", func(t *ldtest.T) {
+				dataSystem := NewSDKDataSystem(t, data)
+				overrideFile := NewMissingOverrideFile(t)
+				client := NewSDKClient(t, dataSystem, WithFileOverrides(mode.makeParams(overrideFile.Path)))
+				requireValue(t, client, ldValue)
+				overrideFile.Replace(t, docWith(overrideValueB))
+				awaitValue(t, client, ldValue, overrideValueB)
 			})
 
 			t.Run("malformed file retains last good overrides", func(t *ldtest.T) {

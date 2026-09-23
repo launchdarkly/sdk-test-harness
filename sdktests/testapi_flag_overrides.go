@@ -1,6 +1,7 @@
 package sdktests
 
 import (
+	"path/filepath"
 	"encoding/json"
 	"os"
 
@@ -57,6 +58,22 @@ func (f *OverrideFile) Replace(t *ldtest.T, contents string) {
 // Clear overwrites the file with an empty overrides document.
 func (f *OverrideFile) Clear(t *ldtest.T) {
 	f.Replace(t, "{}")
+}
+
+// Delete removes the file. A configured file that does not exist contributes no overrides.
+func (f *OverrideFile) Delete(t *ldtest.T) {
+	require.NoError(t, os.Remove(f.Path))
+}
+
+// NewMissingOverrideFile returns a path in a temporary directory where no file exists yet.
+// Replace creates the file. The directory is removed when the test scope exits.
+func NewMissingOverrideFile(t *ldtest.T) *OverrideFile {
+	dir, err := os.MkdirTemp("", "sdk-test-harness-overrides-dir*")
+	require.NoError(t, err)
+	t.Defer(func() {
+		_ = os.RemoveAll(dir)
+	})
+	return &OverrideFile{Path: filepath.Join(dir, "overrides.json")}
 }
 
 // WithFileOverrides is used with StartSDKClient to enable the SDK's file-based flag overrides

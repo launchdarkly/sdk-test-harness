@@ -234,6 +234,12 @@ This means that the SDK has a native API for flag *value* change listeners — l
 
 For details on the commands and callback payloads, see the `registerFlagValueChangeListener` and `unregisterListener` commands.
 
+#### Capability `"flag-overrides"`
+
+This means the SDK supports flag and segment overrides read from local files, as defined in the OVERRIDE specification. Overrides take precedence over LaunchDarkly data at evaluation time on a per-key basis, are served even before the client has received data from LaunchDarkly, and change on a running client when the files change. An evaluation affected by an override, directly or through a prerequisite or segment, carries `overrideAffected: true` in its evaluation reason, produces no individual feature or debug event, and is counted in a summary counter that carries `overrideAffected: true`.
+
+If specified, the SDK will send an `overrides` object in the SDK configuration. The test harness writes override documents to files on a filesystem shared with the test service, in the same way as the TLS custom CA file. See the `overrides` property of the SDK configuration for the object's properties.
+
 #### Capability `"track-hooks"`
 
 This means that the SDK has support for hooks and has the ability to register track hooks.
@@ -402,6 +408,11 @@ If client initialization fails, the desired behavior depends on how it failed an
 * If `initCanFail` was set to true, then the test service should tolerate any kind of initialization failure where the client instance is still available. For instance, if initialization times out, or stops immediately due to getting a 401 error from LaunchDarkly, all of our SDKs still allow the application to continue using the client instance even though it may not have valid flag data; that might be an expected condition in a test, in which case `initCanFail` will be true.
 * If `initCanFail` was not set to true, then errors of that kind should be treated as unexpected failures and return an HTTP `500` error, preferably with some descriptive text in the response body that can be logged by the test harness.
 * Any kind of error that does _not_ make the client instance available should always cause a `500`. For instance, in languages that support exceptions, if an exception is thrown from the constructor then there is no client instance.
+  * `overrides` (object, optional): If specified, enables the SDK's file-based flag overrides (see the `flag-overrides` capability).
+    * `filePaths` (array of strings, required): Absolute paths of the override files, in precedence order. Each file is a JSON or YAML document in the file data source format, with optional `flags`, `flagValues`, and `segments` properties. A configured file that does not exist contributes no overrides. A file that exists but cannot be parsed fails that reload, and the SDK keeps the last good overrides.
+    * `duplicateKeysHandling` (string, optional): What to do when the same key appears in more than one file. `fail` (the default) rejects the reload; `ignore` keeps the entry from the first file that defines the key.
+    * `changeDetection` (string, optional): How the SDK detects file changes: `polling` or `watching`. If omitted, the SDK uses its default.
+    * `pollIntervalMs` (number, optional): The interval between file examinations in polling mode, in milliseconds. The SDK may raise it to its minimum.
 
 #### Streaming configuration object
 
