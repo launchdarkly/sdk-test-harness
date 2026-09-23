@@ -15,7 +15,15 @@ type RedisPersistentStore struct {
 }
 
 func (r *RedisPersistentStore) DSN() string {
-	return fmt.Sprintf("redis://%s", r.redis.Options().Addr)
+	return r.DSNFor(r.Addr())
+}
+
+func (r *RedisPersistentStore) Addr() string {
+	return r.redis.Options().Addr
+}
+
+func (r *RedisPersistentStore) DSNFor(addr string) string {
+	return fmt.Sprintf("redis://%s", addr)
 }
 
 func (r *RedisPersistentStore) Type() servicedef.SDKConfigPersistentType {

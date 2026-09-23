@@ -153,6 +153,12 @@ docker run -p 8500:8500 hashicorp/consul
 docker run -p 6379:6379 redis
 ```
 
+#### Capability `"persistent-data-store-recovery"`
+
+This means the SDK detects persistent data store outages and recovers from them: while the store is unreachable the SDK continues to serve evaluations from its in-memory data, it monitors the store for availability, and when the store is reachable again it writes its entire in-memory state back to the store (so that data deleted during the outage does not reappear). If the write back fails, the SDK returns to monitoring and tries again.
+
+Tests gated on this capability also require one of the `persistent-data-store-{integration}` capabilities and the `-enable-persistence-tests` flag.
+
 #### Capability `"polling-gzip"`
 
 This means the SDK is requesting gzip compression support on polling payloads. The SDK is expected to set the `Accept-Encoding` header to `gzip` in addition to enabling this capability.

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -32,6 +33,15 @@ type DynamoDBPersistentStore struct {
 
 func (d *DynamoDBPersistentStore) DSN() string {
 	return d.endpoint
+}
+
+func (d *DynamoDBPersistentStore) Addr() string {
+	// Local DynamoDB test endpoints are always http, so a plain TrimPrefix is safe here
+	return strings.TrimPrefix(d.endpoint, "http://")
+}
+
+func (d *DynamoDBPersistentStore) DSNFor(addr string) string {
+	return "http://" + addr
 }
 
 func (d *DynamoDBPersistentStore) Type() servicedef.SDKConfigPersistentType {
