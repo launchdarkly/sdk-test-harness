@@ -73,7 +73,7 @@ func doServerSideFlagOverridesStaticTests(t *ldtest.T) {
 	ldFlagPrecedence := ldbuilders.NewFlagBuilder("flag-precedence").Version(100).
 		On(false).OffVariation(0).Variations(ldvalue.String("ld-value")).Build()
 	ldFlagNormal := ldbuilders.NewFlagBuilder("flag-normal").Version(100).
-		On(false).OffVariation(0).Variations(ldvalue.String("normal-value")).Build()
+		On(false).OffVariation(0).Variations(ldvalue.String("normal-value")).TrackEvents(true).Build()
 	ldSegment := ldbuilders.NewSegmentBuilder("overridden-segment").Version(100).Build() // does not include the context
 
 	// Full flag definitions and segment provided by the override file. The overridden segment
@@ -84,6 +84,7 @@ func doServerSideFlagOverridesStaticTests(t *ldtest.T) {
 		AddRule(ldbuilders.NewRuleBuilder().ID("override-rule").Variation(1).Clauses(
 			ldbuilders.Clause(ldattr.KeyAttr, ldmodel.OperatorIn, ldvalue.String(context.Key())),
 		)).
+		TrackEvents(true).DebugEventsUntilDate(ldtime.UnixMillisNow() + 100000).
 		Build()
 	overrideSegmentFlag := makeFlagToCheckSegmentMatch("flag-segment-check", "overridden-segment",
 		ldvalue.String("not-included"), ldvalue.String("included"))
@@ -153,6 +154,25 @@ func doServerSideFlagOverridesStaticTests(t *ldtest.T) {
 			EvalAllFlagsValueForKeyShouldEqual(overrideRuleFlag.Key, ldvalue.String("rule-value")),
 			EvalAllFlagsValueForKeyShouldEqual(overrideSegmentFlag.Key, ldvalue.String("included")),
 		))
+	})
+
+	t.Run("evaluate all flags turns off event tracking for overridden flags", func(t *ldtest.T) {
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
+			Context: o.Some(context),
+		})
+		noTracking := m.AllOf(
+			m.JSONOptProperty("trackEvents").Should(m.BeNil()),
+			m.JSONOptProperty("trackReason").Should(m.BeNil()),
+			m.JSONOptProperty("debugEventsUntilDate").Should(m.BeNil()),
+		)
+		m.In(t).Assert(result, EvalAllFlagsStateMap().Should(m.ValueForKey("$flagsState").Should(m.AllOf(
+			// The override sets trackEvents and debugEventsUntilDate, and the state drops both.
+			m.JSONProperty(overrideRuleFlag.Key).Should(noTracking),
+			// A value-only override is also override-affected.
+			m.JSONProperty(ldFlagPrecedence.Key).Should(noTracking),
+			// A flag with no override keeps its tracking.
+			m.JSONProperty(ldFlagNormal.Key).Should(m.JSONProperty("trackEvents").Should(m.Equal(true))),
+		))))
 	})
 }
 
