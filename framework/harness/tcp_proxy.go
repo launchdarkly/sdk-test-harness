@@ -140,6 +140,11 @@ func (p *TCPProxy) dropConnsLocked() {
 // cut close to the byte boundary.
 const copyChunkSize = 4096
 
+// backendDialTimeout bounds the backend dial. Loopback backends connect
+// at once. The bound stops a dial to an unreachable backend from holding
+// a goroutine until the operating system's own connect timeout.
+const backendDialTimeout = 5 * time.Second
+
 // burstIdleGap is the idle gap between reads that starts a new burst
 // for BreakAfterBytes accounting. A sustained transfer, such as a store
 // write back, has sub-millisecond gaps between reads on loopback. It
@@ -242,16 +247,24 @@ func (p *TCPProxy) acceptLoop() {
 }
 
 func (p *TCPProxy) handleConn(clientConn net.Conn) {
+	// Register the client connection before the backend dial. Break and
+	// Close can then drop it while the dial is still in flight. Without
+	// this, a connection stuck mid-dial would stay open and invisible to
+	// dropConnsLocked until the dial timed out.
 	p.mu.Lock()
 	if p.broken || p.closed {
 		p.mu.Unlock()
 		_ = clientConn.Close()
 		return
 	}
+	p.conns[clientConn] = struct{}{}
 	p.mu.Unlock()
 
-	backendConn, err := net.Dial("tcp", p.backendAddr)
+	backendConn, err := net.DialTimeout("tcp", p.backendAddr, backendDialTimeout)
 	if err != nil {
+		p.mu.Lock()
+		delete(p.conns, clientConn)
+		p.mu.Unlock()
 		_ = clientConn.Close()
 		return
 	}
@@ -263,6 +276,9 @@ func (p *TCPProxy) handleConn(clientConn net.Conn) {
 		_ = backendConn.Close()
 		return
 	}
+	// Re-add the client connection. A Break during the dial swaps the
+	// conns map, which removes it. In that case the client side is
+	// already closed and the copy loops below exit at once.
 	p.conns[clientConn] = struct{}{}
 	p.conns[backendConn] = struct{}{}
 	p.mu.Unlock()
