@@ -71,7 +71,8 @@ func doServerSideFlagOverridesStaticTests(t *ldtest.T) {
 
 	// Flags and segment served by the mock LaunchDarkly services.
 	ldFlagPrecedence := ldbuilders.NewFlagBuilder("flag-precedence").Version(100).
-		On(false).OffVariation(0).Variations(ldvalue.String("ld-value")).Build()
+		On(false).OffVariation(0).Variations(ldvalue.String("ld-value")).
+		TrackEvents(true).DebugEventsUntilDate(ldtime.UnixMillisNow() + 100000).Build()
 	ldFlagNormal := ldbuilders.NewFlagBuilder("flag-normal").Version(100).
 		On(false).OffVariation(0).Variations(ldvalue.String("normal-value")).TrackEvents(true).Build()
 	ldSegment := ldbuilders.NewSegmentBuilder("overridden-segment").Version(100).Build() // does not include the context
@@ -168,7 +169,8 @@ func doServerSideFlagOverridesStaticTests(t *ldtest.T) {
 		m.In(t).Assert(result, EvalAllFlagsStateMap().Should(m.ValueForKey("$flagsState").Should(m.AllOf(
 			// The override sets trackEvents and debugEventsUntilDate, and the state drops both.
 			m.JSONProperty(overrideRuleFlag.Key).Should(noTracking),
-			// A value-only override is also override-affected.
+			// The LaunchDarkly flag sets trackEvents and debugEventsUntilDate. A value-only
+			// override is also override-affected, so the state drops both.
 			m.JSONProperty(ldFlagPrecedence.Key).Should(noTracking),
 			// A flag with no override keeps its tracking.
 			m.JSONProperty(ldFlagNormal.Key).Should(m.JSONProperty("trackEvents").Should(m.Equal(true))),
