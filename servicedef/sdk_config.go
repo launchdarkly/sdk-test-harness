@@ -26,6 +26,17 @@ type SDKConfigParams struct {
 	PersistentDataStore o.Maybe[SDKConfigPersistentDataStoreParams] `json:"persistentDataStore,omitempty"`
 	DataSystem          o.Maybe[DataSystem]                         `json:"dataSystem,omitempty"`
 	ServiceEndpoints    o.Maybe[SDKConfigServiceEndpointsParams]    `json:"serviceEndpoints,omitempty"`
+	Overrides           o.Maybe[SDKConfigOverridesParams]           `json:"overrides,omitempty"`
+}
+
+// SDKConfigOverridesParams configures the SDK's file-based flag overrides feature. The files at
+// FilePaths are on a filesystem shared between the test harness and the test service (the same
+// arrangement as SDKConfigTLSParams.CustomCAFile).
+type SDKConfigOverridesParams struct {
+	FilePaths             []string        `json:"filePaths"`
+	DuplicateKeysHandling o.Maybe[string] `json:"duplicateKeysHandling,omitempty"` // "fail" | "ignore"
+	ChangeDetection       o.Maybe[string] `json:"changeDetection,omitempty"`       // "polling" | "watching"
+	PollIntervalMS        o.Maybe[int]    `json:"pollIntervalMs,omitempty"`
 }
 
 type DataStoreMode int
