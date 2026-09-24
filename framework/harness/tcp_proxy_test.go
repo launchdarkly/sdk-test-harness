@@ -2,6 +2,7 @@ package harness
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -409,4 +410,32 @@ func TestTCPProxyCloseStopsProxy(t *testing.T) {
 
 	_, err = client.roundTrip("hello")
 	assert.Error(t, err, "connections must fail after Close")
+}
+
+func TestTCPProxyBreakDropsConnectionStuckDialing(t *testing.T) {
+	// 203.0.113.1 is a documentation address (TEST-NET-3). Nothing routes
+	// to it, so the backend dial usually blocks until its timeout. On a
+	// network that rejects it fast, the dial error closes the client
+	// connection just as quickly, so the assertion holds on both paths.
+	// Only the blocking path exercises the regression: the proxy must
+	// register the client connection before the dial, so Break can drop
+	// it while the dial is still in flight.
+	proxy, err := NewTCPProxy("203.0.113.1:9")
+	require.NoError(t, err)
+	t.Cleanup(proxy.Close)
+
+	conn, err := net.Dial("tcp", proxy.Addr())
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = conn.Close() })
+
+	proxy.Break()
+
+	require.NoError(t, conn.SetReadDeadline(time.Now().Add(2*time.Second)))
+	buf := make([]byte, 1)
+	_, readErr := conn.Read(buf)
+	require.Error(t, readErr)
+	var nerr net.Error
+	if errors.As(readErr, &nerr) && nerr.Timeout() {
+		t.Fatal("read timed out: Break did not drop the mid-dial connection")
+	}
 }
