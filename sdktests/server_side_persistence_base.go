@@ -337,6 +337,8 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 					ldvalue.String("fallthrough"), ldvalue.String("default"), ldvalue.String("default")),
 				time.Millisecond*500, time.Millisecond*20, "flag value was not changed")
 		})
+
+		t.Run("collection cardinality", s.doCollectionCardinalityTests)
 	})
 
 	t.Run("read-write", func(t *ldtest.T) {
