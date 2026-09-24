@@ -133,17 +133,7 @@ func NewTestHarness(
 
 	// If we aren't running persistence tests, remove the capabilities that would enable it.
 	if !testHarnessEnablePersistenceTests {
-		filteredCapabilities := make([]string, 0, len(testServiceInfo.Capabilities))
-		for _, c := range testServiceInfo.Capabilities {
-			if c == servicedef.CapabilityPersistentDataStoreRedis ||
-				c == servicedef.CapabilityPersistentDataStoreDynamoDB ||
-				c == servicedef.CapabilityPersistentDataStoreConsul {
-				debugLogger.Printf("Disabling capability %q because persistence tests are disabled", c)
-				continue
-			}
-			filteredCapabilities = append(filteredCapabilities, c)
-		}
-		testServiceInfo.Capabilities = filteredCapabilities
+		testServiceInfo.Capabilities = stripPersistenceCapabilities(testServiceInfo.Capabilities, debugLogger)
 	}
 	h.testServiceInfo = testServiceInfo
 
@@ -260,4 +250,25 @@ func startHTTPSServer(port int, cert *certPaths, handler http.Handler) {
 			panic(err)
 		}
 	}()
+}
+
+// stripPersistenceCapabilities removes the capabilities that enable the
+// persistence tests. The harness calls this when the user did not pass
+// the -enable-persistence-tests flag.
+func stripPersistenceCapabilities(
+	capabilities framework.Capabilities, logger framework.Logger,
+) framework.Capabilities {
+	filtered := make(framework.Capabilities, 0, len(capabilities))
+	for _, c := range capabilities {
+		switch c {
+		case servicedef.CapabilityPersistentDataStoreRedis,
+			servicedef.CapabilityPersistentDataStoreDynamoDB,
+			servicedef.CapabilityPersistentDataStoreConsul,
+			servicedef.CapabilityPersistentDataStoreRecovery:
+			logger.Printf("Disabling capability %q because persistence tests are disabled", c)
+		default:
+			filtered = append(filtered, c)
+		}
+	}
+	return filtered
 }

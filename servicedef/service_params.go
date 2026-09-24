@@ -46,6 +46,7 @@ const (
 	CapabilityPersistentDataStoreRedis    = "persistent-data-store-redis"
 	CapabilityPersistentDataStoreConsul   = "persistent-data-store-consul"
 	CapabilityPersistentDataStoreDynamoDB = "persistent-data-store-dynamodb"
+	CapabilityPersistentDataStoreRecovery = "persistent-data-store-recovery"
 	CapabilityClientPerContextSummaries   = "client-per-context-summaries"
 
 	// CapabilityTLSVerifyPeer means the SDK is capable of establishing a TLS session and verifying
