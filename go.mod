@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.47.0
 	github.com/aws/aws-sdk-go-v2/config v1.33.4
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.4
-	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.68.0
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.69.0
 	github.com/fatih/color v1.19.0
 	github.com/gorilla/mux v1.8.1
 	github.com/hashicorp/consul/api v1.34.5
