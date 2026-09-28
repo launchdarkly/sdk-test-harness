@@ -12,3 +12,17 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "v3"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "gomod"
+    directory: "/"
+    target-branch: "v3"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
