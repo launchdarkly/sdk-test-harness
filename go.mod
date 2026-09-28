@@ -1,15 +1,13 @@
 module github.com/launchdarkly/sdk-test-harness/v3
 
-go 1.24
-
-toolchain go1.24.1
+go 1.25.0
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.42.1
 	github.com/aws/aws-sdk-go-v2/config v1.32.30
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.29
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.60.1
-	github.com/fatih/color v1.16.0
+	github.com/fatih/color v1.19.0
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/consul/api v1.29.5
 	github.com/launchdarkly/eventsource v1.6.2
@@ -52,13 +50,13 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/launchdarkly/go-semver v1.0.2 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
 )
