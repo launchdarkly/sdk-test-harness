@@ -10,7 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.29
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.60.1
 	github.com/fatih/color v1.16.0
-	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/mux v1.8.1
 	github.com/hashicorp/consul/api v1.29.5
 	github.com/launchdarkly/eventsource v1.6.2
 	github.com/launchdarkly/go-jsonstream/v3 v3.0.0
