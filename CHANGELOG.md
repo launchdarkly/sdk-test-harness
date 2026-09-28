@@ -2,6 +2,20 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.2.0-alpha.11](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.10...v3.2.0-alpha.11) (2026-09-28)
+
+
+### Features
+
+* Port client-side prerequisite cycle detection tests to v3 ([#473](https://github.com/launchdarkly/sdk-test-harness/issues/473)) ([7e65a58](https://github.com/launchdarkly/sdk-test-harness/commit/7e65a58b106cebfc7558fd03623637adcaa1e496))
+* port client-side streaming retry contract tests to v3 ([#475](https://github.com/launchdarkly/sdk-test-harness/issues/475)) ([f968442](https://github.com/launchdarkly/sdk-test-harness/commit/f968442f9283af7aa7f9fb2bfdc2172e27617d1c))
+
+
+### Bug Fixes
+
+* Verify all-items reads for empty and single-item collections ([#466](https://github.com/launchdarkly/sdk-test-harness/issues/466)) ([489a780](https://github.com/launchdarkly/sdk-test-harness/commit/489a780798f528bc39697dab8d8d1cc461a6e2bb))
+* Verify SDKs read all three persistent-store tombstone shapes ([#484](https://github.com/launchdarkly/sdk-test-harness/issues/484)) ([a9a0696](https://github.com/launchdarkly/sdk-test-harness/commit/a9a0696f22ad27987f296ccddfc0797ab5713828))
+
 ## [3.2.0-alpha.10](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.9...v3.2.0-alpha.10) (2026-09-08)
 
 
