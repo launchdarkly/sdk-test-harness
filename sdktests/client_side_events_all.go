@@ -24,6 +24,10 @@ func doClientSideEventTests(t *ldtest.T) {
 
 	t.RequireCapability(servicedef.CapabilityClientPrereqEvents)
 	t.Run("prerequisite events emit in order", doClientSideInOrderPrereqEventTests)
+	t.Run("prerequisite events handle cycles", func(t *ldtest.T) {
+		t.RequireCapability(servicedef.CapabilityClientPrereqCycleDetection)
+		doClientSidePrereqCycleTests(t)
+	})
 }
 
 func doClientSideEventRequestTests(t *ldtest.T) {
