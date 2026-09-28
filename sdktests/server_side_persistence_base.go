@@ -64,7 +64,8 @@ func doServerSidePersistentTests(t *ldtest.T) {
 		consul, err := consul.NewClient(config)
 		require.NoError(t, err)
 
-		t.Run("consul", newServerSidePersistentTests(t, &ConsulPersistentStore{consul: consul}, "launchdarkly").Run)
+		t.Run("consul", newServerSidePersistentTests(t,
+			&ConsulPersistentStore{consul: consul, address: config.Address}, "launchdarkly").Run)
 	}
 
 	if t.Capabilities().Has(servicedef.CapabilityPersistentDataStoreDynamoDB) {
@@ -96,7 +97,13 @@ func doServerSidePersistentTests(t *ldtest.T) {
 }
 
 type PersistentStore interface {
+	// DSN is the address the SDK under test uses to reach the store.
 	DSN() string
+	// Addr is the TCP address (host:port) of the store itself.
+	Addr() string
+	// DSNFor builds a DSN that points the SDK at a different TCP
+	// address, for example a proxy in front of the store.
+	DSNFor(addr string) string
 
 	Get(prefix, key string) (o.Maybe[string], error)
 	GetMap(prefix, key string) (map[string]string, error)
@@ -607,6 +614,11 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 				time.Millisecond*500, time.Millisecond*20,
 				"flag-key was dropped from the in-memory store after a database reset")
 		})
+	})
+
+	t.Run("store recovery", func(t *ldtest.T) {
+		t.RequireCapability(servicedef.CapabilityPersistentDataStoreRecovery)
+		s.runStoreRecoveryTests(t)
 	})
 }
 
