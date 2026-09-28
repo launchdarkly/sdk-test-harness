@@ -415,6 +415,8 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 
 	t.Run("collection cardinality", s.doCollectionCardinalityTests)
 
+	t.Run("tombstones", s.doTombstoneTests)
+
 	t.Run("read-write", func(t *ldtest.T) {
 		persistence := NewPersistence()
 		persistence.SetStoreMode(servicedef.DataStoreModeReadWrite)
