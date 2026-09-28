@@ -297,6 +297,10 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 						ldvalue.String("fallthrough"), ldvalue.String("updated"), ldvalue.String("default")),
 					time.Millisecond*1_250, time.Millisecond*20, "flag was updated despite infinite cache")
 			})
+
+			t.Run("collection cardinality", func(t *ldtest.T) {
+				s.doCollectionCardinalityTests(t, mode)
+			})
 		})
 
 		blockingEndpoint := func(closeWhenReady <-chan bool, handler http.Handler) *harness.MockEndpoint {
