@@ -117,7 +117,7 @@ func doServerSideFlagOverridesStaticTests(t *ldtest.T) {
 			FlagKey: ldFlagPrecedence.Key, Context: o.Some(context), DefaultValue: defaultValue})
 		m.In(t).Assert(result.Value, m.JSONEqual(ldvalue.String("override-value")))
 		m.In(t).Assert(result.VariationIndex, m.Equal(o.Some(0)))
-		m.In(t).Assert(result.Reason, reasonIsOverrideAffected("OFF"))
+		m.In(t).Assert(result.Reason, reasonIsOverrideAffected("FALLTHROUGH"))
 	})
 
 	t.Run("full flag override evaluates targeting rules", func(t *ldtest.T) {
@@ -201,7 +201,7 @@ func doServerSideFlagOverridesUninitializedTests(t *ldtest.T) {
 		result := evaluateFlagDetailRawReason(t, client, servicedef.EvaluateFlagParams{
 			FlagKey: "overridden-flag", Context: o.Some(context), DefaultValue: defaultValue})
 		m.In(t).Assert(result.Value, m.JSONEqual(ldvalue.String("override-value")))
-		m.In(t).Assert(result.Reason, reasonIsOverrideAffected("OFF"))
+		m.In(t).Assert(result.Reason, reasonIsOverrideAffected("FALLTHROUGH"))
 	})
 
 	t.Run("non-overridden flag returns default with client-not-ready error", func(t *ldtest.T) {
@@ -345,7 +345,7 @@ func doServerSideFlagOverridesYAMLTest(t *ldtest.T) {
 	result := evaluateFlagDetailRawReason(t, client, servicedef.EvaluateFlagParams{
 		FlagKey: "yaml-flag", Context: o.Some(context), DefaultValue: defaultValue})
 	m.In(t).Assert(result.Value, m.JSONEqual(ldvalue.String("override-value")))
-	m.In(t).Assert(result.Reason, reasonIsOverrideAffected("OFF"))
+	m.In(t).Assert(result.Reason, reasonIsOverrideAffected("FALLTHROUGH"))
 }
 
 func doServerSideFlagOverridesHotReloadTests(t *ldtest.T) {
