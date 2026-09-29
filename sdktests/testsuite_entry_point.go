@@ -99,6 +99,7 @@ func doAllServerSideTests(t *ldtest.T) {
 	t.Run("flag change listeners", doCommonListenerTests)
 	t.Run("wrapper", doServerSideWrapperTests)
 	t.Run("persistent data store", doServerSidePersistentTests)
+	t.Run("flag overrides", doServerSideFlagOverridesTests)
 }
 
 func doAllClientSideTests(t *ldtest.T) {
