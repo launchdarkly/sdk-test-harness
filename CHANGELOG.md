@@ -2,6 +2,15 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.41.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.41.0...v2.41.1) (2026-10-02)
+
+
+### Bug Fixes
+
+* Prevent cache TTL expiry from racing read-write persistence tests ([#444](https://github.com/launchdarkly/sdk-test-harness/issues/444)) ([e5f00fc](https://github.com/launchdarkly/sdk-test-harness/commit/e5f00fc7ae707402b84467a4b7601dd8c601224c))
+* Verify all-items reads for empty and single-item collections ([e27427a](https://github.com/launchdarkly/sdk-test-harness/commit/e27427af8461cac55f05a3bf163f3a39037f231c))
+* Verify SDKs read all three persistent-store tombstone shapes ([#438](https://github.com/launchdarkly/sdk-test-harness/issues/438)) ([e00f871](https://github.com/launchdarkly/sdk-test-harness/commit/e00f871f7c6eb4ad560ea6cd58a6eb801140a005))
+
 ## [2.41.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.40.0...v2.41.0) (2026-08-19)
 
 
