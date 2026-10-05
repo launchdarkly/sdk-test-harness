@@ -167,6 +167,10 @@ docker run -p 6379:6379 redis
 
 This means the SDK detects persistent data store outages and recovers from them: while the store is unreachable the SDK continues to serve evaluations from its in-memory data, it monitors the store for availability, and when the store is reachable again it writes its entire in-memory state back to the store (so that data deleted during the outage does not reappear). If the write back fails, the SDK returns to monitoring and tries again.
 
+The test service must configure its store client so that a failed write surfaces promptly as an error. A client that queues writes while the store is unreachable and retries them internally (for example, a Redis client with an offline queue enabled) can hide a short outage completely, and these tests will then misreport the SDK's behavior.
+
+These tests put a TCP proxy between the SDK and the store to simulate the outage. The proxy listens on an ephemeral port on the test harness's loopback interface, and the store DSN sent to the test service points at that port. The test service must therefore share the harness's loopback interface. The other persistence tests already require this, because the store addresses are hard-coded to `localhost`.
+
 Tests gated on this capability also require one of the `persistent-data-store-{integration}` capabilities and the `-enable-persistence-tests` flag.
 
 #### Capability `"polling-gzip"`
@@ -769,7 +773,7 @@ The response should be an empty 2xx response if successful, or 500 if the close 
 
 As part of the contract tests, the test harness may need to simulate services that are external to the SDK. This allows it to control all of the data that the SDK sees.
 
-The test harness will tell the service where to find these simulated services by passing `baseUri` or `callbackUri` parameters in the service configuration. All of these URIs will point to some endpoint created by the test harness, which is only valid during the lifetime of the specific tests(s) where it is used. They will all have the same hostname and port, the same one that is controlled by the `-port` command-line parameter; the test harness does not listen on multiple ports (so it is safe to expose just one port if it is deployed in Docker).
+The test harness will tell the service where to find these simulated services by passing `baseUri` or `callbackUri` parameters in the service configuration. All of these URIs will point to some endpoint created by the test harness, which is only valid during the lifetime of the specific tests(s) where it is used. They will all have the same hostname and port, the same one that is controlled by the `-port` command-line parameter; the test harness does not listen on multiple ports (so it is safe to expose just one port if it is deployed in Docker), with one exception: the persistent store recovery tests start a TCP proxy on an extra ephemeral loopback port (see the `persistent-data-store-recovery` capability).
 
 ### Streaming service
 

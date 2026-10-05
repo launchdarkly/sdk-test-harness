@@ -75,7 +75,7 @@ func (c *ConsulPersistentStore) WriteMap(prefix, key string, data map[string]str
 
 	// Start by reading the existing keys; we will later delete any of these
 	// that weren't in data.
-	pairs, _, err := kv.List(prefix, nil)
+	pairs, _, err := kv.List(prefix+"/"+key, nil)
 	if err != nil {
 		return fmt.Errorf("failed to get existing items prior to Init: %s", err)
 	}
@@ -94,7 +94,8 @@ func (c *ConsulPersistentStore) WriteMap(prefix, key string, data map[string]str
 	}
 
 	for k := range oldKeys {
-		op := &consul.KVTxnOp{Verb: consul.KVDelete, Key: prefix + "/" + key + "/" + k}
+		// Keys from kv.List are already full paths.
+		op := &consul.KVTxnOp{Verb: consul.KVDelete, Key: k}
 		ops = append(ops, op)
 	}
 

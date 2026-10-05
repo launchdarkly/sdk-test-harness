@@ -290,7 +290,10 @@ func TestTCPProxyBreakAfterBytesArmsExistingConnection(t *testing.T) {
 	preArm := make([]byte, 5*1024)
 	_, err = conn.Write(preArm)
 	require.NoError(t, err)
-	time.Sleep(200 * time.Millisecond) // let it clear the pipe, well past the idle gap
+	// Let the pre-arm bytes clear the pipe. The pause stays under
+	// burstIdleGap, so only the epoch change from the arm below may
+	// reset the count.
+	time.Sleep(200 * time.Millisecond)
 
 	const threshold = 8 * 1024
 	proxy.BreakAfterBytes(threshold)
@@ -374,7 +377,7 @@ func TestTCPProxyBreakAfterBytesIgnoresIdleChatter(t *testing.T) {
 	for i := 0; i < 8; i++ {
 		_, err = conn.Write(chatter)
 		require.NoError(t, err)
-		time.Sleep(250 * time.Millisecond)
+		time.Sleep(400 * time.Millisecond)
 	}
 	assert.False(t, proxy.Broken(), "periodic chatter below the threshold, spaced by idle gaps, must not trip")
 
@@ -427,6 +430,21 @@ func TestTCPProxyBreakDropsConnectionStuckDialing(t *testing.T) {
 	conn, err := net.Dial("tcp", proxy.Addr())
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = conn.Close() })
+
+	// Wait for handleConn to register the connection, so Break lands
+	// while the dial is in flight. On a network that rejects the dial
+	// fast, the entry can be gone already; the read below still fails
+	// fast on that path, so give up waiting after one second.
+	waitDeadline := time.Now().Add(time.Second)
+	for time.Now().Before(waitDeadline) {
+		proxy.mu.Lock()
+		registered := len(proxy.conns) > 0
+		proxy.mu.Unlock()
+		if registered {
+			break
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
 
 	proxy.Break()
 

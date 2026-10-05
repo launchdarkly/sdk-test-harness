@@ -47,6 +47,13 @@ const (
 	// Availability checks run roughly every 500ms. A write back follows
 	// a successful check. Use a generous window.
 	recoveryWindow = 10 * time.Second
+
+	// minOutageDuration keeps the proxy broken long enough for the SDK's
+	// store write to fail before the outage ends. A store client that
+	// retries a failed write internally can otherwise hide a very short
+	// outage: the delta write lands after Restore, no write ever fails,
+	// and no write back happens.
+	minOutageDuration = time.Second
 )
 
 // recoveryTestEnv holds the moving parts for one store recovery scenario.
@@ -217,6 +224,10 @@ func (s *ServerSidePersistentTests) runStoreRecoveryTests(t *ldtest.T) {
 				// SDK memory. The write back must remove it.
 				s.injectGhostFlag(t)
 
+				// Keep the outage open long enough for the SDK's store
+				// write to fail.
+				time.Sleep(minOutageDuration)
+
 				env.proxy.Restore()
 
 				// On recovery the SDK writes its entire in-memory state to
@@ -252,6 +263,12 @@ func (s *ServerSidePersistentTests) runStoreRecoveryTests(t *ldtest.T) {
 		// memory. The retried write back must remove it too.
 		s.injectGhostFlag(t)
 
+		// Keep the hard outage open long enough for the SDK's failed
+		// delta write to settle. The next transfer to cross the
+		// threshold is then a write back, not a late delta retry from
+		// the store client.
+		time.Sleep(minOutageDuration)
+
 		// Arm a cut partway through the next transfer. This threshold
 		// is well clear of availability-check chatter. It is also well
 		// under each store's item or transaction size limits, so only
@@ -267,10 +284,10 @@ func (s *ServerSidePersistentTests) runStoreRecoveryTests(t *ldtest.T) {
 		// key-count mismatch from the ghost.
 		//
 		// On Redis a severed full population may already have emptied
-		// the feature set before the cut lands, because its DEL runs
-		// first. This means the ghost here does not discriminate by
-		// itself. That discrimination lives in the cache-mode and
-		// repeated-outage scenarios below.
+		// the feature set before the cut lands, if the store client
+		// writes non-transactionally with a DEL first. The ghost here
+		// then does not discriminate by itself. The cache-mode and
+		// repeated-outage scenarios carry that discrimination.
 		neverMatchers := recoveryUpdatedStateMatchers(retryValue)
 		neverMatchers[recoveryGhostFlagKey] = basicFlagValidationMatcher(recoveryGhostFlagKey, 1, "ghost")
 		s.neverValidateFlagData(t, s.defaultPrefix, neverMatchers)
@@ -295,6 +312,10 @@ func (s *ServerSidePersistentTests) runStoreRecoveryTests(t *ldtest.T) {
 		// A flag that only exists directly in the store, never in SDK
 		// memory. The first write back must remove it.
 		s.injectGhostFlag(t)
+
+		// Keep the outage open long enough for the SDK's store write to
+		// fail.
+		time.Sleep(minOutageDuration)
 
 		env.proxy.Restore()
 		s.eventuallyValidateFlagDataAfterRecovery(t, s.defaultPrefix,

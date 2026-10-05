@@ -655,9 +655,7 @@ func (s *ServerSidePersistentTests) eventuallyValidateFlagData(
 func (s *ServerSidePersistentTests) neverValidateFlagData(t *ldtest.T, prefix string, matchers map[string]m.Matcher) {
 	h.RequireNever(t, func() bool {
 		data, err := s.persistentStore.GetMap(prefix, "features")
-		if err != nil {
-			return false
-		}
+		require.NoError(t, err, "could not read the store")
 
 		return validateFlagData(data, matchers)
 	}, time.Second, time.Millisecond*20, "flag data did not match")

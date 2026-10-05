@@ -1,6 +1,7 @@
 package harness
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -19,6 +20,10 @@ import (
 type TCPProxy struct {
 	backendAddr string
 	listener    net.Listener
+
+	// dialCancel aborts any in-flight backend dial when Close runs.
+	dialCtx    context.Context
+	dialCancel context.CancelFunc
 
 	mu     sync.Mutex
 	broken bool
@@ -47,6 +52,7 @@ func NewTCPProxy(backendAddr string) (*TCPProxy, error) {
 		listener:    listener,
 		conns:       make(map[net.Conn]struct{}),
 	}
+	p.dialCtx, p.dialCancel = context.WithCancel(context.Background())
 	go p.acceptLoop()
 	return p, nil
 }
@@ -75,7 +81,7 @@ func (p *TCPProxy) Break() {
 //
 // The threshold applies to a single sustained transfer on one
 // connection, not to the connection's lifetime total. An idle gap of
-// about 100ms or more between reads starts a new count from zero. This
+// about 250ms or more between reads starts a new count from zero. This
 // stops periodic small traffic, for example an availability check on a
 // keep-alive connection, from building up across gaps and tripping the
 // cut on its own.
@@ -117,6 +123,7 @@ func (p *TCPProxy) Close() {
 		return
 	}
 	p.closed = true
+	p.dialCancel()
 	_ = p.listener.Close()
 	p.dropConnsLocked()
 }
@@ -150,8 +157,11 @@ const backendDialTimeout = 5 * time.Second
 // write back, has sub-millisecond gaps between reads on loopback. It
 // still accumulates past the threshold. Periodic small traffic, for
 // example an availability check every 500ms, has gaps at or above this
-// value. It can never accumulate across gaps to trip the cut.
-const burstIdleGap = 100 * time.Millisecond
+// value. It can never accumulate across gaps to trip the cut. The gap
+// is wide enough that a short stall inside a real transfer, for example
+// a garbage-collection pause in the test service, does not restart the
+// count and suppress the cut.
+const burstIdleGap = 250 * time.Millisecond
 
 // armState returns the current threshold and epoch. A threshold of 0
 // means BreakAfterBytes is not armed.
@@ -187,6 +197,11 @@ func (p *TCPProxy) tripIfArmed(epoch int64) bool {
 // count would reach the armed threshold, it forwards only the bytes
 // needed to reach the boundary, then trips Break for the whole proxy
 // and stops.
+//
+// The backend receives at most the threshold. The RST from the trip
+// can discard bytes that still sit in a kernel buffer. On loopback
+// delivery is immediate, so in practice the cut lands on the exact
+// boundary, which the unit tests rely on.
 func (p *TCPProxy) copyClientToBackend(clientConn, backendConn net.Conn) {
 	buf := make([]byte, copyChunkSize)
 	var sinceArm int64
@@ -260,7 +275,8 @@ func (p *TCPProxy) handleConn(clientConn net.Conn) {
 	p.conns[clientConn] = struct{}{}
 	p.mu.Unlock()
 
-	backendConn, err := net.DialTimeout("tcp", p.backendAddr, backendDialTimeout)
+	dialer := net.Dialer{Timeout: backendDialTimeout}
+	backendConn, err := dialer.DialContext(p.dialCtx, "tcp", p.backendAddr)
 	if err != nil {
 		p.mu.Lock()
 		delete(p.conns, clientConn)
@@ -276,9 +292,11 @@ func (p *TCPProxy) handleConn(clientConn net.Conn) {
 		_ = backendConn.Close()
 		return
 	}
-	// Re-add the client connection. A Break during the dial swaps the
-	// conns map, which removes it. In that case the client side is
-	// already closed and the copy loops below exit at once.
+	// Re-add the client connection. A Break and then a Restore during
+	// the dial swap the conns map, which removes it. In that case the
+	// client side is already closed and the copy loops below exit at
+	// once. A Break alone never reaches this line, because the broken
+	// recheck above returns first.
 	p.conns[clientConn] = struct{}{}
 	p.conns[backendConn] = struct{}{}
 	p.mu.Unlock()
