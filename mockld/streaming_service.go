@@ -120,6 +120,7 @@ func (s *StreamingService) RefreshAll() {
 
 func (s *StreamingService) makeXferFull() []eventsource.Event {
 	s.lock.RLock()
+	defer s.lock.RUnlock()
 
 	fdv2SdkData, ok := s.initialData.(FDv2SDKData)
 	if !ok {
@@ -156,8 +157,6 @@ func (s *StreamingService) makeXferFull() []eventsource.Event {
 			Version: 1,
 		},
 	})
-
-	s.lock.RUnlock()
 
 	return events
 }
