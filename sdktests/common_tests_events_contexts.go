@@ -26,6 +26,33 @@ type eventContextTestParams struct {
 }
 
 func makeEventContextTestParams() []eventContextTestParams {
+	// Attributes that are private along with one of their own properties. Some SDKs keep the
+	// configured private attributes in an unordered set, so whether an attribute or its property
+	// is seen first varies from one SDK instance to the next. Several pairs, listed in both orders,
+	// make it very likely that both orders are exercised.
+	var nestedPrivateAttrs, nestedPrivateRefs []string
+	for i := 1; i <= 8; i++ {
+		attr := fmt.Sprintf("attr%d", i)
+		nestedPrivateAttrs = append(nestedPrivateAttrs, attr)
+		if i%2 == 0 {
+			nestedPrivateRefs = append(nestedPrivateRefs, attr, "/"+attr+"/sub")
+		} else {
+			nestedPrivateRefs = append(nestedPrivateRefs, "/"+attr+"/sub", attr)
+		}
+	}
+	setNestedPrivateAttrs := func(b *ldcontext.Builder) {
+		for _, attr := range nestedPrivateAttrs {
+			b.SetValue(attr, ldvalue.Parse([]byte(`{"sub": "x", "other": "y"}`)))
+		}
+	}
+	removeNestedPrivateAttrs := func(c ldcontext.Context) ldcontext.Context {
+		b := ldcontext.NewBuilderFromContext(c)
+		for _, attr := range nestedPrivateAttrs {
+			b.SetValue(attr, ldvalue.Null())
+		}
+		return b.Build()
+	}
+
 	ret := []eventContextTestParams{
 		// Note that in the output matchers, we can't just check for JSON equality with an entire
 		// object, because 1. unique keys are generated for each test (the test logic will check
@@ -133,6 +160,30 @@ func makeEventContextTestParams() []eventContextTestParams {
 					Build()
 			},
 			redactedShouldBe: redactedAttrsByKind{"user": {"/b/prop1", "/c/prop2/sub1"}},
+		},
+		{
+			name: "single-kind, private attributes that also have a private nested property",
+			// an attribute declared private is redacted entirely, even when one of its properties
+			// is also declared private
+			eventsConfig: servicedef.SDKConfigEventParams{
+				GlobalPrivateAttributes: nestedPrivateRefs,
+			},
+			contextFactory: func(prefix string) *data.ContextFactory {
+				return data.NewContextFactory(prefix, setNestedPrivateAttrs)
+			},
+			outputContext:    removeNestedPrivateAttrs,
+			redactedShouldBe: redactedAttrsByKind{"user": nestedPrivateAttrs},
+		},
+		{
+			name: "single-kind, per-context private attributes that also have a private nested property",
+			contextFactory: func(prefix string) *data.ContextFactory {
+				return data.NewContextFactory(prefix, func(b *ldcontext.Builder) {
+					setNestedPrivateAttrs(b)
+					b.Private(nestedPrivateRefs...)
+				})
+			},
+			outputContext:    removeNestedPrivateAttrs,
+			redactedShouldBe: redactedAttrsByKind{"user": nestedPrivateAttrs},
 		},
 	}
 	// Add some test cases to verify that all possible value types can be used for a
