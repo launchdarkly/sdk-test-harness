@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.2.0-alpha.12](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.11...v3.2.0-alpha.12) (2026-10-13)
+
+
+### Features
+
+* adding contract tests for persistent store recovery write back ([#464](https://github.com/launchdarkly/sdk-test-harness/issues/464)) ([d7d0fec](https://github.com/launchdarkly/sdk-test-harness/commit/d7d0feca997b9127933559b079899e3977573edf))
+
 ## [3.2.0-alpha.11](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.10...v3.2.0-alpha.11) (2026-10-08)
 
 
