@@ -41,6 +41,12 @@ const (
 	// own missed deltas.
 	recoveryGhostFlagKey = "ghost-flag-key"
 
+	// A second ghost key, injected after a write back has been cut.
+	// A store client that retries the cut request internally replays a
+	// request built before this key existed, so a replay cannot remove
+	// it. Only a fresh write back after recovery removes it.
+	recoverySecondGhostFlagKey = "second-ghost-flag-key"
+
 	// The delta payload pushed during an outage uses this version.
 	recoveryUpdateVersion = 2
 
@@ -133,7 +139,7 @@ func (s *ServerSidePersistentTests) pushOutageUpdates(env recoveryTestEnv, value
 // WriteMap replaces the whole map for some stores. This reads the
 // current contents first, then writes back their union with the ghost
 // flag instead of writing the ghost flag alone.
-func (s *ServerSidePersistentTests) injectGhostFlag(t *ldtest.T) {
+func (s *ServerSidePersistentTests) injectGhostFlag(t *ldtest.T, key string) {
 	current, err := s.persistentStore.GetMap(s.defaultPrefix, "features")
 	require.NoError(t, err)
 
@@ -141,7 +147,7 @@ func (s *ServerSidePersistentTests) injectGhostFlag(t *ldtest.T) {
 	for k, v := range current {
 		withGhost[k] = v
 	}
-	withGhost[recoveryGhostFlagKey] = string(s.makeFlagData(recoveryGhostFlagKey, 1, ldvalue.String("ghost")))
+	withGhost[key] = string(s.makeFlagData(key, 1, ldvalue.String("ghost")))
 
 	require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", withGhost))
 }
@@ -222,7 +228,7 @@ func (s *ServerSidePersistentTests) runStoreRecoveryTests(t *ldtest.T) {
 
 				// A flag that only exists directly in the store, never in
 				// SDK memory. The write back must remove it.
-				s.injectGhostFlag(t)
+				s.injectGhostFlag(t, recoveryGhostFlagKey)
 
 				// Keep the outage open long enough for the SDK's store
 				// write to fail.
@@ -261,7 +267,7 @@ func (s *ServerSidePersistentTests) runStoreRecoveryTests(t *ldtest.T) {
 
 		// A flag that only exists directly in the store, never in SDK
 		// memory. The retried write back must remove it too.
-		s.injectGhostFlag(t)
+		s.injectGhostFlag(t, recoveryGhostFlagKey)
 
 		// Keep the hard outage open long enough for the SDK's failed
 		// delta write to settle. The next transfer to cross the
@@ -292,9 +298,16 @@ func (s *ServerSidePersistentTests) runStoreRecoveryTests(t *ldtest.T) {
 		neverMatchers[recoveryGhostFlagKey] = basicFlagValidationMatcher(recoveryGhostFlagKey, 1, "ghost")
 		s.neverValidateFlagData(t, s.defaultPrefix, neverMatchers)
 
+		// A second ghost, injected only after the cut. A store client
+		// that retries the cut request internally replays a request
+		// built before this key existed, so a replay alone cannot
+		// remove it. Its removal proves a fresh write back ran after
+		// the store recovered.
+		s.injectGhostFlag(t, recoverySecondGhostFlagKey)
+
 		// After the store is reachable again, monitoring resumes and a
 		// write back completes. This also repairs the cut write back
-		// and removes the ghost flag.
+		// and removes both ghost flags.
 		env.proxy.Restore()
 		s.eventuallyValidateFlagDataAfterRecovery(t, s.defaultPrefix,
 			recoveryUpdatedStateMatchers(retryValue))
@@ -311,7 +324,7 @@ func (s *ServerSidePersistentTests) runStoreRecoveryTests(t *ldtest.T) {
 
 		// A flag that only exists directly in the store, never in SDK
 		// memory. The first write back must remove it.
-		s.injectGhostFlag(t)
+		s.injectGhostFlag(t, recoveryGhostFlagKey)
 
 		// Keep the outage open long enough for the SDK's store write to
 		// fail.
@@ -333,7 +346,7 @@ func (s *ServerSidePersistentTests) runStoreRecoveryTests(t *ldtest.T) {
 		// A second ghost flag, injected during the second outage. This
 		// proves a later write back still does full population, not
 		// just the first one.
-		s.injectGhostFlag(t)
+		s.injectGhostFlag(t, recoveryGhostFlagKey)
 
 		// The store never sees the third version while broken. The
 		// tombstone stays at the version of the first delete. The ghost

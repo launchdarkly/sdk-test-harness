@@ -167,7 +167,16 @@ docker run -p 6379:6379 redis
 
 This means the SDK detects persistent data store outages and recovers from them: while the store is unreachable the SDK continues to serve evaluations from its in-memory data, it monitors the store for availability, and when the store is reachable again it writes its entire in-memory state back to the store (so that data deleted during the outage does not reappear). If the write back fails, the SDK returns to monitoring and tries again.
 
-The test service must configure its store client so that a failed write surfaces promptly as an error. A client that queues writes while the store is unreachable and retries them internally (for example, a Redis client with an offline queue enabled) can hide a short outage completely, and these tests will then misreport the SDK's behavior.
+The test service must configure its store client so that a failed write surfaces as an error well within one second. The tests hold an outage open for about one second before they let the store recover; a client whose internal retry or queueing outlasts that window can hide the outage completely, and these tests will then misreport the SDK's behavior (a false pass or a false failure). Known client settings:
+
+- `aws-sdk-go-v2` (DynamoDB, Go): set `MaxAttempts` to 1 (or disable the retryer). The default retryer makes 3 attempts with several seconds of backoff, which is far too long.
+- `boto3` (DynamoDB, Python): set `retries` / `max_attempts` to 0 in the client config.
+- `@aws-sdk/client-dynamodb` (DynamoDB, Node): set `maxAttempts` to 1.
+- `ioredis` (Redis, Node): set `enableOfflineQueue: false` and `maxRetriesPerRequest` to 1 or less.
+- `go-redis` (Redis, Go): the defaults surface failures quickly and are fine.
+- Consul clients generally do not retry; the defaults are fine.
+
+For clients not listed here, the rule is the same: no offline queue, and no internal retry budget longer than one second.
 
 These tests put a TCP proxy between the SDK and the store to simulate the outage. The proxy listens on an ephemeral port on the test harness's loopback interface, and the store DSN sent to the test service points at that port. The test service must therefore share the harness's loopback interface. The other persistence tests already require this, because the store addresses are hard-coded to `localhost`.
 
