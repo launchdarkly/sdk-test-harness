@@ -167,6 +167,25 @@ docker run -p 8500:8500 hashicorp/consul
 docker run -p 6379:6379 redis
 ```
 
+#### Capability `"persistent-data-store-recovery"`
+
+This means the SDK detects persistent data store outages and recovers from them: while the store is unreachable the SDK continues to serve evaluations from its in-memory data, it monitors the store for availability, and when the store is reachable again it writes its entire in-memory state back to the store (so that data deleted during the outage does not reappear). If the write back fails, the SDK returns to monitoring and tries again.
+
+The test service must configure its store client so that a failed write surfaces as an error well within one second. The tests hold an outage open for about one second before they let the store recover; a client whose internal retry or queueing outlasts that window can hide the outage completely, and these tests will then misreport the SDK's behavior (a false pass or a false failure). Known client settings:
+
+- `aws-sdk-go-v2` (DynamoDB, Go): set `MaxAttempts` to 1 (or disable the retryer). The default retryer makes 3 attempts with several seconds of backoff, which is far too long.
+- `boto3` (DynamoDB, Python): set `retries` / `max_attempts` to 0 in the client config.
+- `@aws-sdk/client-dynamodb` (DynamoDB, Node): set `maxAttempts` to 1.
+- `ioredis` (Redis, Node): set `enableOfflineQueue: false` and `maxRetriesPerRequest` to 1 or less.
+- `go-redis` (Redis, Go): the defaults surface failures quickly and are fine.
+- Consul clients generally do not retry; the defaults are fine.
+
+For clients not listed here, the rule is the same: no offline queue, and no internal retry budget longer than one second.
+
+These tests put a TCP proxy between the SDK and the store to simulate the outage. The proxy listens on an ephemeral port on the test harness's loopback interface, and the store DSN sent to the test service points at that port. The test service must therefore share the harness's loopback interface. The other persistence tests already require this, because the store addresses are hard-coded to `localhost`.
+
+Tests gated on this capability also require one of the `persistent-data-store-{integration}` capabilities and the `-enable-persistence-tests` flag.
+
 #### Capability `"polling-gzip"`
 
 This means the SDK is requesting gzip compression support on polling payloads. The SDK is expected to set the `Accept-Encoding` header to `gzip` in addition to enabling this capability.
@@ -770,7 +789,7 @@ The response should be an empty 2xx response if successful, or 500 if the close 
 
 As part of the contract tests, the test harness may need to simulate services that are external to the SDK. This allows it to control all of the data that the SDK sees.
 
-The test harness will tell the service where to find these simulated services by passing `baseUri` or `callbackUri` parameters in the service configuration. All of these URIs will point to some endpoint created by the test harness, which is only valid during the lifetime of the specific tests(s) where it is used. They will all have the same hostname and port, the same one that is controlled by the `-port` command-line parameter; the test harness does not listen on multiple ports (so it is safe to expose just one port if it is deployed in Docker).
+The test harness will tell the service where to find these simulated services by passing `baseUri` or `callbackUri` parameters in the service configuration. All of these URIs will point to some endpoint created by the test harness, which is only valid during the lifetime of the specific tests(s) where it is used. They will all have the same hostname and port, the same one that is controlled by the `-port` command-line parameter; the test harness does not listen on multiple ports (so it is safe to expose just one port if it is deployed in Docker), with one exception: the persistent store recovery tests start a TCP proxy on an extra ephemeral loopback port (see the `persistent-data-store-recovery` capability).
 
 ### Streaming service
 

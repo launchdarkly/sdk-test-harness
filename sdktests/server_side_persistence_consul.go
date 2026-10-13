@@ -11,13 +11,21 @@ import (
 )
 
 type ConsulPersistentStore struct {
-	consul *consul.Client
+	consul  *consul.Client
+	address string
 }
 
 func (c *ConsulPersistentStore) DSN() string {
-	//nolint:godox  // I'm working on it
-	// TODO: Fix this address lookup
-	return consul.DefaultConfig().Address
+	return c.DSNFor(c.Addr())
+}
+
+func (c *ConsulPersistentStore) Addr() string {
+	return c.address
+}
+
+func (c *ConsulPersistentStore) DSNFor(addr string) string {
+	// A Consul DSN is just the bare host:port; there is no scheme to add
+	return addr
 }
 
 func (c *ConsulPersistentStore) Type() servicedef.SDKConfigPersistentType {
@@ -42,7 +50,10 @@ func (c *ConsulPersistentStore) Get(prefix, key string) (o.Maybe[string], error)
 
 func (c *ConsulPersistentStore) GetMap(prefix, key string) (map[string]string, error) {
 	kv := c.consul.KV()
-	pairs, _, err := kv.List(prefix+"/"+key, nil)
+	// The trailing slash keeps the list inside this map. Consul matches
+	// the prefix as a plain string, so a sibling key that starts with
+	// the same characters would match without it.
+	pairs, _, err := kv.List(prefix+"/"+key+"/", nil)
 
 	if err != nil {
 		return nil, fmt.Errorf("list failed for %s: %s", key, err)
@@ -66,8 +77,9 @@ func (c *ConsulPersistentStore) WriteMap(prefix, key string, data map[string]str
 	kv := c.consul.KV()
 
 	// Start by reading the existing keys; we will later delete any of these
-	// that weren't in data.
-	pairs, _, err := kv.List(prefix, nil)
+	// that weren't in data. The trailing slash keeps the list, and so the
+	// deletes, inside this map (see GetMap).
+	pairs, _, err := kv.List(prefix+"/"+key+"/", nil)
 	if err != nil {
 		return fmt.Errorf("failed to get existing items prior to Init: %s", err)
 	}
@@ -86,7 +98,8 @@ func (c *ConsulPersistentStore) WriteMap(prefix, key string, data map[string]str
 	}
 
 	for k := range oldKeys {
-		op := &consul.KVTxnOp{Verb: consul.KVDelete, Key: prefix + "/" + key + "/" + k}
+		// Keys from kv.List are already full paths.
+		op := &consul.KVTxnOp{Verb: consul.KVDelete, Key: k}
 		ops = append(ops, op)
 	}
 
