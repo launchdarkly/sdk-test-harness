@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.2.0-alpha.13](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.12...v3.2.0-alpha.13) (2026-10-15)
+
+
+### Features
+
+* add contract tests for file-based flag overrides ([#374](https://github.com/launchdarkly/sdk-test-harness/issues/374)) ([9fb28cb](https://github.com/launchdarkly/sdk-test-harness/commit/9fb28cb57749ecde0ad527c83b88d728fcaff352))
+
 ## [3.2.0-alpha.12](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.11...v3.2.0-alpha.12) (2026-10-13)
 
 
