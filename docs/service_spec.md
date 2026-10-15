@@ -144,6 +144,8 @@ This means that the SDK's FDv1 streaming data source conforms to the RETRY speci
 
 The retry-conformance subtests gated by this capability are marked long-running: they exercise the SDK's production 5-minute extended-regime delay directly. They only run when `-enable-long-running-tests` is set.
 
+The timing windows in these subtests assume this rule for the `attempts` counter: the first unexpected failure sets `attempts` to 1, so the first extended-regime wait uses the extended initial delay, and each later failure, normal or unexpected, adds 1 to `attempts`. The RETRY specification leaves this rule to the component specification.
+
 Legacy "do not retry after unexpected HTTP error" subtests are only run when this capability is absent; both sets of tests can be decommissioned once every SDK reports the capability.
 
 #### Capability `"retry-conformance-fdv1-polling"`
@@ -151,6 +153,10 @@ Legacy "do not retry after unexpected HTTP error" subtests are only run when thi
 This means that the SDK's FDv1 polling data source conforms to the RETRY specification: no HTTP response and no transport-level failure causes the data source to permanently cease operation. `401` / `403` / other `4xx` statuses and TLS/certificate validation failures trigger an extended-regime backoff floored at the customer-configured `pollIntervalMs`.
 
 The retry-conformance subtests gated by this capability are marked long-running and only run when `-enable-long-running-tests` is set.
+
+For the client-side subtests, the test service must apply `polling.pollIntervalMs` exactly as given, also when the value is below the SDK's minimum poll interval. Use an internal or test-only hook of the SDK for this. For example, the iOS test service can set `ignorePollingMinimum` through `@testable import`, and the Android test service can use `pollIntervalMillisNoMinimum` in `ComponentsImpl`. The subtests use a 1-second interval, so that normal-regime waits are short and clearly different from the extended-regime wait.
+
+The timing windows in these subtests assume this rule for the `attempts` counter: the first unexpected failure sets `attempts` to 1, so the first extended-regime wait uses the extended initial delay, and each later failure, normal or unexpected, adds 1 to `attempts`. The RETRY specification leaves this rule to the component specification.
 
 #### Capability `"secure-mode-hash"`
 

@@ -20,9 +20,10 @@ import (
 )
 
 // doClientSidePollRetryTests exercises the RETRY specification's non-permanent-stop guarantee for
-// the FDv1 client-side polling data source. Client-side SDKs commonly enforce a 5-minute minimum
-// poll interval, which is also the production extended initial delay. Tests here run at real
-// production timing and are marked long-running.
+// the FDv1 client-side polling data source. The tests use a 1-second poll interval, so that the
+// normal-regime waits are short and clearly different from the 5-minute extended initial delay.
+// The tests that wait for the extended regime run at real production timing, and all tests here
+// are marked long-running.
 func doClientSidePollRetryTests(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityRetryConformanceFDv1Polling)
 	t.LongRunning()
@@ -32,28 +33,36 @@ func doClientSidePollRetryTests(t *ldtest.T) {
 	recoverableErrors := []int{400, 408, 429, 500, 503}
 	unexpectedErrors := []int{401, 403, 405} // really all 4xx errors that aren't 400, 408, or 429
 
-	expectedValue := ldvalue.Int(1)
+	expectedValueV1 := ldvalue.Int(1)
+	expectedValueV2 := ldvalue.Int(2)
 	flagKey := "flag"
 	dataV1 := mockld.NewClientSDKDataBuilder().
-		Flag(flagKey, mockld.ClientSDKFlag{Version: 1, Value: expectedValue}).
+		Flag(flagKey, mockld.ClientSDKFlag{Version: 1, Value: expectedValueV1}).
 		Build()
-	expectedValueV2 := ldvalue.Int(2)
 	dataV2 := mockld.NewClientSDKDataBuilder().
 		Flag(flagKey, mockld.ClientSDKFlag{Version: 2, Value: expectedValueV2}).
 		Build()
 	context := ldcontext.New("user-key")
 
-	// pollInterval is the shortest interval that client-side SDKs commonly allow. We set it
-	// explicitly so that the expected timing does not depend on the SDK's default.
-	const pollInterval = 5 * time.Minute
+	// The test service must apply this interval exactly, also if it is below the SDK's minimum.
+	const pollInterval = time.Second
 
-	// pollTimingMargin allows for timing differences between the SDK and the harness. The SDK
-	// starts its timer only after it reads the previous response.
-	pollTimingMargin := 10 * time.Second
+	// A poll after a successful poll, or after a normal failure, comes one interval later. No wait
+	// is shorter than the interval. The early margin covers SDKs that time the next poll from the
+	// start of the previous poll, because the harness sees that poll a little after it starts.
+	// The late margin covers slow scheduling on CI machines.
+	intervalWaitMinimum := pollInterval - 250*time.Millisecond
+	intervalWaitMaximum := pollInterval + 5*time.Second
 
-	// A retry after an unexpected error waits max(extended initial delay, poll interval), less
-	// jitter, but never less than the poll interval. With a 5-minute interval that is 5 minutes.
-	extendedRegimeMaximumWait := max(5*time.Minute, pollInterval)
+	// A poll after an unexpected failure waits the extended initial delay of max(5 minutes, poll
+	// interval), less jitter of up to 50%, so 2.5 to 5 minutes. Jitter is optional for polling,
+	// so an SDK without jitter waits exactly 5 minutes. Each bound has 10 seconds of margin.
+	//
+	// These windows assume this attempts rule: the first unexpected failure sets attempts to 1,
+	// and each later failure, normal or unexpected, adds 1 to attempts. The RETRY specification
+	// leaves this rule to the component specification.
+	extendedWaitMinimum := 2*time.Minute + 20*time.Second
+	extendedWaitMaximum := 5*time.Minute + 10*time.Second
 
 	// initialPollTimeout bounds the SDK's initial poll, which happens when the client starts.
 	initialPollTimeout := 15 * time.Second
@@ -66,6 +75,9 @@ func doClientSidePollRetryTests(t *ldtest.T) {
 	// A failed poll does not make a client-side SDK unusable, and under the RETRY specification
 	// initialization may not complete until the retry succeeds. So we let initialization fail,
 	// and we do not make the test service wait for it.
+	//
+	// Each client gets a unique context, so that flag data that an SDK cached for an earlier
+	// client cannot delay the first poll or satisfy the flag checks.
 	makeClient := func(t *ldtest.T, endpoint *harness.MockEndpoint) *SDKClient {
 		return NewSDKClient(t, append(
 			[]SDKConfigurer{WithConfig(servicedef.SDKConfigParams{
@@ -73,6 +85,7 @@ func doClientSidePollRetryTests(t *ldtest.T) {
 				StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(1)),
 			})},
 			c.baseSDKConfigurationPlus(
+				WithClientSideInitialContext(c.contextFactory.NextUniqueContext()),
 				WithPollingConfig(servicedef.SDKConfigPollingParams{
 					BaseURI:        endpoint.BaseURL(),
 					PollIntervalMS: o.Some(ldtime.UnixMillisecondTime(pollInterval / time.Millisecond)),
@@ -82,13 +95,15 @@ func doClientSidePollRetryTests(t *ldtest.T) {
 
 	// requireNextPollBetween fails the test if the next poll comes before minWait or after maxWait.
 	requireNextPollBetween := func(t *ldtest.T, endpoint *harness.MockEndpoint, minWait, maxWait time.Duration) {
-		endpoint.RequireNoMoreConnections(t, minWait-pollTimingMargin)
-		_ = endpoint.RequireConnection(t, maxWait-minWait+2*pollTimingMargin)
+		endpoint.RequireNoMoreConnections(t, minWait)
+		_ = endpoint.RequireConnection(t, maxWait-minWait)
 	}
 
-	// A retry after a normal failure waits the poll interval. These tests only check that the
-	// SDK keeps polling and recovers, so they allow up to the interval plus the margin.
-	normalRegimePollTimeout := pollInterval + pollTimingMargin
+	requireFlagValue := func(t *ldtest.T, client *SDKClient, value ldvalue.Value) {
+		h.RequireEventually(t, func() bool {
+			return basicEvaluateFlag(t, client, flagKey, context, ldvalue.Null()).Equal(value)
+		}, time.Second*5, time.Millisecond*50, "timed out without seeing flag data from the poll")
+	}
 
 	shouldRetryAfterErrorOnInitialPoll := func(t *ldtest.T, errorHandler http.Handler) {
 		pollSource := NewSDKDataSourceWithoutEndpoint(t, dataV1, DataSourceOptionPolling())
@@ -101,12 +116,9 @@ func doClientSidePollRetryTests(t *ldtest.T) {
 
 		client := makeClient(t, pollEndpoint)
 
-		_ = pollEndpoint.RequireConnection(t, initialPollTimeout)      // 1st (error)
-		_ = pollEndpoint.RequireConnection(t, normalRegimePollTimeout) // 2nd (success)
-
-		h.RequireEventually(t, func() bool {
-			return basicEvaluateFlag(t, client, flagKey, context, ldvalue.Null()).Equal(expectedValue)
-		}, time.Second*5, time.Millisecond*50, "timed out without seeing flag data from the poll")
+		_ = pollEndpoint.RequireConnection(t, initialPollTimeout)                         // 1st (error)
+		requireNextPollBetween(t, pollEndpoint, intervalWaitMinimum, intervalWaitMaximum) // 2nd (success)
+		requireFlagValue(t, client, expectedValueV1)
 	}
 
 	t.Run("retry after IO error on initial poll", func(t *ldtest.T) {
@@ -134,15 +146,11 @@ func doClientSidePollRetryTests(t *ldtest.T) {
 
 		client := makeClient(t, pollEndpoint)
 
-		_ = pollEndpoint.RequireConnection(t, initialPollTimeout) // 1st (success)
-		h.RequireEventually(t, func() bool {
-			return basicEvaluateFlag(t, client, flagKey, context, ldvalue.Null()).Equal(expectedValue)
-		}, time.Second*5, time.Millisecond*50, "timed out without seeing flag data from the first poll")
+		_ = pollEndpoint.RequireConnection(t, initialPollTimeout)                         // 1st (success)
+		requireNextPollBetween(t, pollEndpoint, intervalWaitMinimum, intervalWaitMaximum) // 2nd (error)
+		requireNextPollBetween(t, pollEndpoint, intervalWaitMinimum, intervalWaitMaximum) // 3rd (success)
 
-		_ = pollEndpoint.RequireConnection(t, normalRegimePollTimeout) // 2nd (error)
-		_ = pollEndpoint.RequireConnection(t, normalRegimePollTimeout) // 3rd (success)
-
-		pollUntilFlagValueUpdated(t, client, flagKey, context, expectedValue, expectedValueV2, ldvalue.Null())
+		pollUntilFlagValueUpdated(t, client, flagKey, context, expectedValueV1, expectedValueV2, ldvalue.Null())
 	}
 
 	t.Run("retry after IO error on later poll", func(t *ldtest.T) {
@@ -173,27 +181,31 @@ func doClientSidePollRetryTests(t *ldtest.T) {
 				// First poll -> error
 				_ = pollEndpoint.RequireConnection(t, initialPollTimeout)
 
-				// The second poll must not come before the poll interval, and must come by the end
-				// of the extended-regime wait. This proves that the SDK did not permanently stop.
-				requireNextPollBetween(t, pollEndpoint, pollInterval, extendedRegimeMaximumWait)
+				// The second poll must come at the extended-regime wait. An SDK that polls again at
+				// its interval fails the lower bound, and an SDK that permanently stopped fails the
+				// upper bound.
+				requireNextPollBetween(t, pollEndpoint, extendedWaitMinimum, extendedWaitMaximum)
 
 				// The SDK must also read the poll data, not only send the request.
-				h.RequireEventually(t, func() bool {
-					return basicEvaluateFlag(t, client, flagKey, context, ldvalue.Null()).Equal(expectedValue)
-				}, time.Second*5, time.Millisecond*50, "timed out without seeing flag data from the poll")
+				requireFlagValue(t, client, expectedValueV1)
 			})
 		}
 	})
 
-	t.Run("returns to normal-regime cadence after two consecutive successful polls", func(t *ldtest.T) {
+	t.Run("resets retry state after two consecutive successful polls", func(t *ldtest.T) {
 		// After the extended regime engages, two consecutive successful polls reset the retry
 		// state. We prove the reset with a second unexpected error after the two successes.
+		// After any successful poll the SDK polls at its interval, so the cadence alone does not
+		// show a reset.
 		//
-		// With a 5-minute poll interval, the first extended-regime wait is exactly 5 minutes,
-		// because jitter cannot take the wait below the interval. An SDK that reset its state
-		// waits 5 minutes after the second error. An SDK that did not reset doubles the base
-		// delay to 10 minutes, and with jitter waits 5 to 10 minutes. So a conformant SDK always
-		// passes, and an SDK that did not reset fails unless its jitter is close to the maximum.
+		// An SDK that reset its state waits the first extended-regime wait (2.5 to 5 minutes)
+		// after the second error. An SDK that did not reset waits the second extended-regime wait
+		// (5 to 10 minutes). So a conformant SDK always passes, and an SDK that did not reset
+		// fails unless its jitter is close to the maximum.
+		//
+		// This test cannot tell a reset after one success from a reset after two. That would
+		// need a 401 directly after one success, and the wait of a conformant SDK after that
+		// 401 is random between 5 and 10 minutes, so it cannot be bounded well.
 		//
 		// Flow:
 		//   1. SDK polls, gets 401, and enters the extended regime.
@@ -202,14 +214,13 @@ func doClientSidePollRetryTests(t *ldtest.T) {
 		//   4. Poll 4 gets 401 again, and the SDK enters the extended regime again.
 		//   5. Poll 5 must come at the first extended-regime wait, and it serves new data.
 		pollSource1 := NewSDKDataSourceWithoutEndpoint(t, dataV1, DataSourceOptionPolling())
-		pollSource2 := NewSDKDataSourceWithoutEndpoint(t, dataV1, DataSourceOptionPolling())
-		pollSource3 := NewSDKDataSourceWithoutEndpoint(t, dataV2, DataSourceOptionPolling())
+		pollSource2 := NewSDKDataSourceWithoutEndpoint(t, dataV2, DataSourceOptionPolling())
 		handler := httphelpers.SequentialHandler(
 			httphelpers.HandlerWithStatus(401), // 1st: unexpected error -> extended regime
 			pollSource1.PollingService(),       // 2nd: success 1 (extended-regime wait)
-			pollSource2.PollingService(),       // 3rd: success 2 -> reset
+			pollSource1.PollingService(),       // 3rd: success 2 -> reset
 			httphelpers.HandlerWithStatus(401), // 4th: unexpected error -> extended regime again
-			pollSource3.PollingService(),       // 5th: success with new data
+			pollSource2.PollingService(),       // 5th: success with new data
 		)
 		pollEndpoint := makePollEndpoint(t, handler)
 		t.Defer(pollEndpoint.Close)
@@ -220,18 +231,19 @@ func doClientSidePollRetryTests(t *ldtest.T) {
 		_ = pollEndpoint.RequireConnection(t, initialPollTimeout)
 
 		// 2nd poll: first success, after the extended-regime wait
-		requireNextPollBetween(t, pollEndpoint, pollInterval, extendedRegimeMaximumWait)
+		requireNextPollBetween(t, pollEndpoint, extendedWaitMinimum, extendedWaitMaximum)
+		requireFlagValue(t, client, expectedValueV1)
 
-		// 3rd poll: second success. After a successful poll the SDK polls at its interval.
-		requireNextPollBetween(t, pollEndpoint, pollInterval, pollInterval)
+		// 3rd poll: second success, at the poll interval
+		requireNextPollBetween(t, pollEndpoint, intervalWaitMinimum, intervalWaitMaximum)
 
 		// 4th poll: 401 at the poll interval
-		requireNextPollBetween(t, pollEndpoint, pollInterval, pollInterval)
+		requireNextPollBetween(t, pollEndpoint, intervalWaitMinimum, intervalWaitMaximum)
 
 		// 5th poll: this is the reset proof. It must come at the first extended-regime wait, not
-		// the doubled wait of an SDK that did not reset.
-		requireNextPollBetween(t, pollEndpoint, pollInterval, extendedRegimeMaximumWait)
+		// the second extended-regime wait of an SDK that did not reset.
+		requireNextPollBetween(t, pollEndpoint, extendedWaitMinimum, extendedWaitMaximum)
 
-		pollUntilFlagValueUpdated(t, client, flagKey, context, expectedValue, expectedValueV2, ldvalue.Null())
+		pollUntilFlagValueUpdated(t, client, flagKey, context, expectedValueV1, expectedValueV2, ldvalue.Null())
 	})
 }
