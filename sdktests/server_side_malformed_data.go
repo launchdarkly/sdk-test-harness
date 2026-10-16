@@ -49,11 +49,11 @@ const (
 )
 
 var malformedDataGoodFlagJSON = json.RawMessage( //nolint:gochecknoglobals
-	`{"key":"good-flag","version":1,"on":true,"variations":["good","other"],` +
+	`{"key":"good-flag","version":1,"on":true,"salt":"salt","variations":["good","other"],` +
 		`"fallthrough":{"variation":0},"offVariation":0}`)
 
 var malformedDataSentinelFlagJSON = json.RawMessage( //nolint:gochecknoglobals
-	`{"key":"sentinel-flag","version":1,"on":true,"variations":["sentinel"],` +
+	`{"key":"sentinel-flag","version":1,"on":true,"salt":"salt","variations":["sentinel"],` +
 		`"fallthrough":{"variation":0},"offVariation":0}`)
 
 type malformedDataScenario struct {
@@ -92,21 +92,21 @@ func malformedDataScenarios() []malformedDataScenario {
 	return []malformedDataScenario{
 		{
 			name:               "flag without variations",
-			flagJSON:           json.RawMessage(`{"key":"bad-flag","version":1,"on":true,"fallthrough":{"variation":0},"offVariation":0}`),
+			flagJSON:           json.RawMessage(`{"key":"bad-flag","version":1,"on":true,"salt":"salt","fallthrough":{"variation":0},"offVariation":0}`),
 			acceptableOutcomes: malformedFlagErrorOutcomes(),
 		},
 		{
 			name: "target without values",
 			// A target with no values matches nothing, so a lenient evaluator serves the
 			// fallthrough value "b".
-			flagJSON:           json.RawMessage(`{"key":"bad-flag","version":1,"on":true,"variations":["a","b"],"targets":[{"variation":0}],"fallthrough":{"variation":1},"offVariation":1}`),
+			flagJSON:           json.RawMessage(`{"key":"bad-flag","version":1,"on":true,"salt":"salt","variations":["a","b"],"targets":[{"variation":0}],"fallthrough":{"variation":1},"offVariation":1}`),
 			acceptableOutcomes: malformedFlagErrorOutcomes(servedValueOutcome("b")),
 		},
 		{
 			name: "clause without values",
 			// A clause with no values matches nothing, so a lenient evaluator serves the
 			// fallthrough value "b".
-			flagJSON:           json.RawMessage(`{"key":"bad-flag","version":1,"on":true,"variations":["a","b"],"rules":[{"variation":0,"clauses":[{"attribute":"key","op":"in"}]}],"fallthrough":{"variation":1},"offVariation":1}`),
+			flagJSON:           json.RawMessage(`{"key":"bad-flag","version":1,"on":true,"salt":"salt","variations":["a","b"],"rules":[{"variation":0,"clauses":[{"attribute":"key","op":"in"}]}],"fallthrough":{"variation":1},"offVariation":1}`),
 			acceptableOutcomes: malformedFlagErrorOutcomes(servedValueOutcome("b")),
 		},
 		{
@@ -114,7 +114,7 @@ func malformedDataScenarios() []malformedDataScenario {
 			// If an SDK drops only the malformed segment at ingest, the well-formed flag remains;
 			// its segmentMatch clause then errors (the canonical behavior) or, in a lenient
 			// evaluator that treats the clause as non-matching, falls through to "b".
-			flagJSON:           json.RawMessage(`{"key":"bad-flag","version":1,"on":true,"variations":["a","b"],"rules":[{"variation":0,"clauses":[{"attribute":"","op":"segmentMatch","values":["bad-segment"]}]}],"fallthrough":{"variation":1},"offVariation":1}`),
+			flagJSON:           json.RawMessage(`{"key":"bad-flag","version":1,"on":true,"salt":"salt","variations":["a","b"],"rules":[{"variation":0,"clauses":[{"attribute":"","op":"segmentMatch","values":["bad-segment"]}]}],"fallthrough":{"variation":1},"offVariation":1}`),
 			segmentJSON:        json.RawMessage(`{"key":"bad-segment","version":1,"included":{"user-key":true}}`),
 			acceptableOutcomes: malformedFlagErrorOutcomes(servedValueOutcome("b")),
 		},
@@ -125,7 +125,7 @@ func malformedDataScenarios() []malformedDataScenario {
 			// the context, so the rule matches and serves "a". An SDK that instead drops the
 			// segment at ingest errors on the segmentMatch clause or, in a lenient evaluator,
 			// treats it as non-matching and serves "b".
-			flagJSON:           json.RawMessage(`{"key":"bad-flag","version":1,"on":true,"variations":["a","b"],"rules":[{"variation":0,"clauses":[{"attribute":"","op":"segmentMatch","values":["bad-segment"]}]}],"fallthrough":{"variation":1},"offVariation":1}`),
+			flagJSON:           json.RawMessage(`{"key":"bad-flag","version":1,"on":true,"salt":"salt","variations":["a","b"],"rules":[{"variation":0,"clauses":[{"attribute":"","op":"segmentMatch","values":["bad-segment"]}]}],"fallthrough":{"variation":1},"offVariation":1}`),
 			segmentJSON:        json.RawMessage(`{"key":"bad-segment","version":1,"included":["user-key"],"generated_includedSet":{"user-key":true}}`),
 			acceptableOutcomes: malformedFlagErrorOutcomes(servedValueOutcome("a"), servedValueOutcome("b")),
 		},
@@ -146,7 +146,7 @@ func makeMalformedManyRulesFlagJSON(ruleCount int) json.RawMessage {
 		rules = append(rules, `{"variation":0,"clauses":[{"attribute":"key","op":"in"}]}`)
 	}
 	return json.RawMessage(fmt.Sprintf(
-		`{"key":"bad-flag","version":1,"on":true,"variations":["a","b"],"rules":[%s],`+
+		`{"key":"bad-flag","version":1,"on":true,"salt":"salt","variations":["a","b"],"rules":[%s],`+
 			`"fallthrough":{"variation":1},"offVariation":1}`,
 		strings.Join(rules, ",")))
 }
