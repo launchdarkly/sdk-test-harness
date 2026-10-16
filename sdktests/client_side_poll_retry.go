@@ -22,11 +22,11 @@ import (
 // doClientSidePollRetryTests exercises the RETRY specification's non-permanent-stop guarantee for
 // the FDv1 client-side polling data source. The tests use a 1-second poll interval, so that the
 // normal-regime waits are short and clearly different from the 5-minute extended initial delay.
-// The tests that wait for the extended regime run at real production timing, and all tests here
-// are marked long-running.
+// The IO error and recoverable HTTP error tests take seconds and run in the normal suite. The
+// tests that wait for the extended regime run at real production timing and are marked
+// long-running.
 func doClientSidePollRetryTests(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityRetryConformanceFDv1Polling)
-	t.LongRunning()
 
 	c := NewCommonPollingTests(t, "doClientSidePollRetryTests")
 
@@ -166,6 +166,7 @@ func doClientSidePollRetryTests(t *ldtest.T) {
 	})
 
 	t.Run("retry after unexpected HTTP error on initial poll", func(t *ldtest.T) {
+		t.LongRunning()
 		for _, status := range unexpectedErrors {
 			t.Run(fmt.Sprintf("error %d", status), func(t *ldtest.T) {
 				pollSource := NewSDKDataSourceWithoutEndpoint(t, dataV1, DataSourceOptionPolling())
@@ -193,6 +194,7 @@ func doClientSidePollRetryTests(t *ldtest.T) {
 	})
 
 	t.Run("resets retry state after two consecutive successful polls", func(t *ldtest.T) {
+		t.LongRunning()
 		// After the extended regime engages, two consecutive successful polls reset the retry
 		// state. We prove the reset with a second unexpected error after the two successes.
 		// After any successful poll the SDK polls at its interval, so the cadence alone does not

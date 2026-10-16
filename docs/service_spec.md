@@ -152,7 +152,7 @@ Legacy "do not retry after unexpected HTTP error" subtests are only run when thi
 
 This means that the SDK's FDv1 polling data source conforms to the RETRY specification: no HTTP response and no transport-level failure causes the data source to permanently cease operation. `401` / `403` / other `4xx` statuses and TLS/certificate validation failures trigger an extended-regime backoff floored at the customer-configured `pollIntervalMs`.
 
-The retry-conformance subtests gated by this capability are marked long-running and only run when `-enable-long-running-tests` is set.
+The client-side subtests for IO errors and recoverable HTTP errors (`400`, `408`, `429`, `500`, `503`) take seconds and run in the normal suite. The other retry-conformance subtests gated by this capability, which wait for the extended regime, are marked long-running and only run when `-enable-long-running-tests` is set.
 
 For the client-side subtests, the test service must apply `polling.pollIntervalMs` exactly as given, also when the value is below the SDK's minimum poll interval. Use an internal or test-only hook of the SDK for this. For example, the iOS test service can set `ignorePollingMinimum` through `@testable import`, and the Android test service can use `pollIntervalMillisNoMinimum` in `ComponentsImpl`. The subtests use a 1-second interval, so that normal-regime waits are short and clearly different from the extended-regime wait.
 
