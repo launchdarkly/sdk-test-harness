@@ -110,19 +110,24 @@ func malformedDataScenarios() []malformedDataScenario {
 			acceptableOutcomes: malformedFlagErrorOutcomes(servedValueOutcome("b")),
 		},
 		{
-			name:               "segment included not an array",
+			name: "segment included not an array",
+			// If an SDK drops only the malformed segment at ingest, the well-formed flag remains;
+			// its segmentMatch clause then errors (the canonical behavior) or, in a lenient
+			// evaluator that treats the clause as non-matching, falls through to "b".
 			flagJSON:           json.RawMessage(`{"key":"bad-flag","version":1,"on":true,"variations":["a","b"],"rules":[{"variation":0,"clauses":[{"attribute":"","op":"segmentMatch","values":["bad-segment"]}]}],"fallthrough":{"variation":1},"offVariation":1}`),
 			segmentJSON:        json.RawMessage(`{"key":"bad-segment","version":1,"included":{"user-key":true}}`),
-			acceptableOutcomes: malformedFlagErrorOutcomes(),
+			acceptableOutcomes: malformedFlagErrorOutcomes(servedValueOutcome("b")),
 		},
 		{
 			name: "segment with generated sets",
 			// generated_includedSet is an SDK-internal representation that must never appear in
 			// JSON data. SDKs that ignore the unknown property see a valid segment that includes
-			// the context, so the rule matches and serves "a".
+			// the context, so the rule matches and serves "a". An SDK that instead drops the
+			// segment at ingest errors on the segmentMatch clause or, in a lenient evaluator,
+			// treats it as non-matching and serves "b".
 			flagJSON:           json.RawMessage(`{"key":"bad-flag","version":1,"on":true,"variations":["a","b"],"rules":[{"variation":0,"clauses":[{"attribute":"","op":"segmentMatch","values":["bad-segment"]}]}],"fallthrough":{"variation":1},"offVariation":1}`),
 			segmentJSON:        json.RawMessage(`{"key":"bad-segment","version":1,"included":["user-key"],"generated_includedSet":{"user-key":true}}`),
-			acceptableOutcomes: malformedFlagErrorOutcomes(servedValueOutcome("a")),
+			acceptableOutcomes: malformedFlagErrorOutcomes(servedValueOutcome("a"), servedValueOutcome("b")),
 		},
 		{
 			name:               "many rules",
