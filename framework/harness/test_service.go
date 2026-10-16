@@ -106,6 +106,16 @@ func (h *TestHarness) NewTestServiceEntity(
 // to work), and also that we consistently check for HTTP errors: unlike the HTTPClient
 // methods, it returns an error if the HTTP status is not 2xx.
 func doRequest(method, url string, body []byte) ([]byte, http.Header, error) {
+	return doRequestWithClient(http.DefaultClient, method, url, body)
+}
+
+// closeEntityTimeout bounds the request that closes an SDK client. Some tests leave a client in a
+// retry backoff of up to an hour, and an SDK that waits for that backoff to end before it closes
+// would otherwise block the test run. The limit is generous, because an SDK can take some seconds
+// to close its connections and flush its events.
+const closeEntityTimeout = 2 * time.Minute
+
+func doRequestWithClient(client *http.Client, method, url string, body []byte) ([]byte, http.Header, error) {
 	var bodyReader io.Reader
 	if body != nil {
 		bodyReader = bytes.NewBuffer(body)
@@ -117,7 +127,7 @@ func doRequest(method, url string, body []byte) ([]byte, http.Header, error) {
 	if body != nil {
 		req.Header.Add("Content-Type", "application/json")
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -144,7 +154,7 @@ func (e *TestServiceEntity) Close() error {
 	var err error
 	e.closeOnce.Do(func() {
 		e.logger.Printf("Closing %s", e.resourceURL)
-		_, _, err = doRequest("DELETE", e.resourceURL, nil)
+		_, _, err = doRequestWithClient(&http.Client{Timeout: closeEntityTimeout}, "DELETE", e.resourceURL, nil)
 		if err != nil {
 			e.logger.Printf("DELETE request to test service failed: %s", err)
 		}
