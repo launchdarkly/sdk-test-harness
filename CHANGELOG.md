@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.2.0-alpha.14](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.13...v3.2.0-alpha.14) (2026-10-20)
+
+
+### Features
+
+* Add event context tests for private attributes with private nested properties ([#499](https://github.com/launchdarkly/sdk-test-harness/issues/499)) ([70ea398](https://github.com/launchdarkly/sdk-test-harness/commit/70ea398cd4b2d655607b29f6012e6c53d26cd164))
+
 ## [3.2.0-alpha.13](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.12...v3.2.0-alpha.13) (2026-10-15)
 
 
