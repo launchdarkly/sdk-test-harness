@@ -10,7 +10,7 @@ require (
 	github.com/fatih/color v1.19.0
 	github.com/gorilla/mux v1.8.1
 	github.com/hashicorp/consul/api v1.34.5
-	github.com/launchdarkly/eventsource v1.14.0
+	github.com/launchdarkly/eventsource v1.14.1
 	github.com/launchdarkly/go-jsonstream/v3 v3.1.3
 	github.com/launchdarkly/go-sdk-common/v3 v3.5.2-0.20260915210143-e960a8e76a91
 	github.com/launchdarkly/go-server-sdk-evaluation/v3 v3.1.0
