@@ -63,6 +63,7 @@ func doServerSideFlagOverridesTests(t *ldtest.T) {
 	t.Run("multiple files", doServerSideFlagOverridesMultiFileTest)
 	t.Run("YAML document", doServerSideFlagOverridesYAMLTest)
 	t.Run("hot reload", doServerSideFlagOverridesHotReloadTests)
+	t.Run("change notifications", doServerSideFlagOverridesListenerTests)
 }
 
 func doServerSideFlagOverridesStaticTests(t *ldtest.T) {
@@ -348,6 +349,37 @@ func doServerSideFlagOverridesYAMLTest(t *ldtest.T) {
 	m.In(t).Assert(result.Reason, reasonIsOverrideAffected("FALLTHROUGH"))
 }
 
+// overrideReloadMode is one way for the SDK to detect changes to its override files, with the
+// configuration that selects it and the longest a change to a file should take to be observed.
+type overrideReloadMode struct {
+	name       string
+	makeParams func(paths ...string) servicedef.SDKConfigOverridesParams
+	// noticeWithin is an upper bound on the time between a change to a file and the SDK's reload of
+	// it: the settle window for watching, the poll interval for polling, plus processing time. A
+	// test that expects nothing to happen after a change must wait at least this long.
+	noticeWithin time.Duration
+}
+
+// overrideReloadModes returns the change detection modes that the reload tests run under:
+// watching the files, and polling them once a second.
+func overrideReloadModes() []overrideReloadMode {
+	return []overrideReloadMode{
+		{"watching mode", func(paths ...string) servicedef.SDKConfigOverridesParams {
+			return servicedef.SDKConfigOverridesParams{
+				FilePaths:       paths,
+				ChangeDetection: o.Some("watching"),
+			}
+		}, time.Second},
+		{"polling mode", func(paths ...string) servicedef.SDKConfigOverridesParams {
+			return servicedef.SDKConfigOverridesParams{
+				FilePaths:       paths,
+				ChangeDetection: o.Some("polling"),
+				PollIntervalMS:  o.Some(1000),
+			}
+		}, 2 * time.Second},
+	}
+}
+
 func doServerSideFlagOverridesHotReloadTests(t *ldtest.T) {
 	const reloadTimeout = 10 * time.Second
 	const reloadPollInterval = 100 * time.Millisecond
@@ -367,26 +399,7 @@ func doServerSideFlagOverridesHotReloadTests(t *ldtest.T) {
 		return overrideDocument{FlagValues: map[string]ldvalue.Value{flagKey: value}}.String()
 	}
 
-	modes := []struct {
-		name       string
-		makeParams func(paths ...string) servicedef.SDKConfigOverridesParams
-	}{
-		{"watching mode", func(paths ...string) servicedef.SDKConfigOverridesParams {
-			return servicedef.SDKConfigOverridesParams{
-				FilePaths:       paths,
-				ChangeDetection: o.Some("watching"),
-			}
-		}},
-		{"polling mode", func(paths ...string) servicedef.SDKConfigOverridesParams {
-			return servicedef.SDKConfigOverridesParams{
-				FilePaths:       paths,
-				ChangeDetection: o.Some("polling"),
-				PollIntervalMS:  o.Some(1000),
-			}
-		}},
-	}
-
-	for _, mode := range modes {
+	for _, mode := range overrideReloadModes() {
 		t.Run(mode.name, func(t *ldtest.T) {
 			setup := func(t *ldtest.T, initialContents string) (*OverrideFile, *SDKClient) {
 				dataSystem := NewSDKDataSystem(t, data)

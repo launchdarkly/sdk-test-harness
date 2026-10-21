@@ -162,6 +162,13 @@ func (lc *ListenerCallback) ExpectValueChangeNotification(
 // Use this to verify that a listener did NOT fire (e.g., because the flag value did not change).
 // The flagKey parameter is used only in the failure message if a notification unexpectedly arrives.
 func (lc *ListenerCallback) ExpectNoNotification(t *ldtest.T, flagKey string) {
-	helpers.RequireNoMoreValuesWithMessage(t, lc.service.CallChannel, listenerNoNotificationTimeout,
+	lc.ExpectNoNotificationFor(t, flagKey, listenerNoNotificationTimeout)
+}
+
+// ExpectNoNotificationFor is ExpectNoNotification with a caller-chosen wait, for cases where the
+// SDK could legitimately take longer than listenerNoNotificationTimeout to react to the change
+// that must not produce a notification.
+func (lc *ListenerCallback) ExpectNoNotificationFor(t *ldtest.T, flagKey string, timeout time.Duration) {
+	helpers.RequireNoMoreValuesWithMessage(t, lc.service.CallChannel, timeout,
 		"received unexpected listener notification for flag %q", flagKey)
 }
