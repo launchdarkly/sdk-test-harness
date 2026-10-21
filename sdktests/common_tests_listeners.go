@@ -24,6 +24,7 @@ func doFlagChangeListenerTests(t *ldtest.T) {
 	t.Run("receives notification when flag changes", flagChangeListenerReceivesNotification)
 	t.Run("fires on config change even when value unchanged", flagChangeListenerFiresOnConfigChange)
 	t.Run("receives notifications for different flags", flagChangeListenerReceivesDifferentFlags)
+	t.Run("dependent flags", doFlagChangeListenerDependencyTests)
 }
 
 func doFlagValueChangeListenerTests(t *ldtest.T) {
@@ -33,6 +34,7 @@ func doFlagValueChangeListenerTests(t *ldtest.T) {
 	t.Run("multiple listeners both receive notification", flagValueChangeListenerMultipleBothNotified)
 	t.Run("is context specific", flagValueChangeListenerIsContextSpecific)
 	t.Run("reports correct old and new JSON values", flagValueChangeListenerJSONValues)
+	t.Run("dependent flags", doFlagValueChangeListenerDependencyTests)
 }
 
 // makeFlagForFlagChangeListenerTests builds a server-side feature flag for listener tests. The flag
