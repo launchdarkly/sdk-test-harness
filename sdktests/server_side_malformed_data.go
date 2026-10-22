@@ -49,11 +49,13 @@ const (
 )
 
 var malformedDataGoodFlagJSON = json.RawMessage( //nolint:gochecknoglobals
-	`{"key":"good-flag","version":1,"on":true,"salt":"salt","targets":[],"rules":[],"prerequisites":[],"variations":["good","other"],` +
+	`{"key":"good-flag","version":1,"on":true,"salt":"salt","targets":[],"rules":[],"prerequisites":[],` +
+		`"variations":["good","other"],` +
 		`"fallthrough":{"variation":0},"offVariation":0}`)
 
 var malformedDataSentinelFlagJSON = json.RawMessage( //nolint:gochecknoglobals
-	`{"key":"sentinel-flag","version":1,"on":true,"salt":"salt","targets":[],"rules":[],"prerequisites":[],"variations":["sentinel"],` +
+	`{"key":"sentinel-flag","version":1,"on":true,"salt":"salt","targets":[],"rules":[],"prerequisites":[],` +
+		`"variations":["sentinel"],` +
 		`"fallthrough":{"variation":0},"offVariation":0}`)
 
 type malformedDataScenario struct {
@@ -143,10 +145,12 @@ func malformedDataScenarios() []malformedDataScenario {
 func makeMalformedManyRulesFlagJSON(ruleCount int) json.RawMessage {
 	rules := make([]string, 0, ruleCount)
 	for i := 0; i < ruleCount; i++ {
-		rules = append(rules, fmt.Sprintf(`{"id":"rule-%d","variation":0,"trackEvents":false,"clauses":[{"attribute":"key","op":"in"}]}`, i))
+		rules = append(rules, fmt.Sprintf(
+			`{"id":"rule-%d","variation":0,"trackEvents":false,"clauses":[{"attribute":"key","op":"in"}]}`, i))
 	}
 	return json.RawMessage(fmt.Sprintf(
-		`{"key":"bad-flag","version":1,"on":true,"salt":"salt","variations":["a","b"],"targets":[],"prerequisites":[],"rules":[%s],`+
+		`{"key":"bad-flag","version":1,"on":true,"salt":"salt","variations":["a","b"],"targets":[],"prerequisites":[],`+
+			`"rules":[%s],`+
 			`"fallthrough":{"variation":1},"offVariation":1}`,
 		strings.Join(rules, ",")))
 }
