@@ -106,7 +106,7 @@ func malformedDataScenarios() []malformedDataScenario {
 			name: "clause without values",
 			// A clause with no values matches nothing, so a lenient evaluator serves the
 			// fallthrough value "b".
-			flagJSON:           json.RawMessage(`{"key":"bad-flag","version":1,"on":true,"salt":"salt","variations":["a","b"],"rules":[{"variation":0,"clauses":[{"attribute":"key","op":"in"}]}],"fallthrough":{"variation":1},"offVariation":1}`),
+			flagJSON:           json.RawMessage(`{"key":"bad-flag","version":1,"on":true,"salt":"salt","variations":["a","b"],"rules":[{"id":"rule-0","variation":0,"clauses":[{"attribute":"key","op":"in"}]}],"fallthrough":{"variation":1},"offVariation":1}`),
 			acceptableOutcomes: malformedFlagErrorOutcomes(servedValueOutcome("b")),
 		},
 		{
@@ -114,7 +114,7 @@ func malformedDataScenarios() []malformedDataScenario {
 			// If an SDK drops only the malformed segment at ingest, the well-formed flag remains;
 			// its segmentMatch clause then errors (the canonical behavior) or, in a lenient
 			// evaluator that treats the clause as non-matching, falls through to "b".
-			flagJSON:           json.RawMessage(`{"key":"bad-flag","version":1,"on":true,"salt":"salt","variations":["a","b"],"rules":[{"variation":0,"clauses":[{"attribute":"","op":"segmentMatch","values":["bad-segment"]}]}],"fallthrough":{"variation":1},"offVariation":1}`),
+			flagJSON:           json.RawMessage(`{"key":"bad-flag","version":1,"on":true,"salt":"salt","variations":["a","b"],"rules":[{"id":"rule-0","variation":0,"clauses":[{"attribute":"","op":"segmentMatch","values":["bad-segment"]}]}],"fallthrough":{"variation":1},"offVariation":1}`),
 			segmentJSON:        json.RawMessage(`{"key":"bad-segment","version":1,"included":{"user-key":true}}`),
 			acceptableOutcomes: malformedFlagErrorOutcomes(servedValueOutcome("b")),
 		},
@@ -125,7 +125,7 @@ func malformedDataScenarios() []malformedDataScenario {
 			// the context, so the rule matches and serves "a". An SDK that instead drops the
 			// segment at ingest errors on the segmentMatch clause or, in a lenient evaluator,
 			// treats it as non-matching and serves "b".
-			flagJSON:           json.RawMessage(`{"key":"bad-flag","version":1,"on":true,"salt":"salt","variations":["a","b"],"rules":[{"variation":0,"clauses":[{"attribute":"","op":"segmentMatch","values":["bad-segment"]}]}],"fallthrough":{"variation":1},"offVariation":1}`),
+			flagJSON:           json.RawMessage(`{"key":"bad-flag","version":1,"on":true,"salt":"salt","variations":["a","b"],"rules":[{"id":"rule-0","variation":0,"clauses":[{"attribute":"","op":"segmentMatch","values":["bad-segment"]}]}],"fallthrough":{"variation":1},"offVariation":1}`),
 			segmentJSON:        json.RawMessage(`{"key":"bad-segment","version":1,"included":["user-key"],"generated_includedSet":{"user-key":true}}`),
 			acceptableOutcomes: malformedFlagErrorOutcomes(servedValueOutcome("a"), servedValueOutcome("b")),
 		},
@@ -143,7 +143,7 @@ func malformedDataScenarios() []malformedDataScenario {
 func makeMalformedManyRulesFlagJSON(ruleCount int) json.RawMessage {
 	rules := make([]string, 0, ruleCount)
 	for i := 0; i < ruleCount; i++ {
-		rules = append(rules, `{"variation":0,"clauses":[{"attribute":"key","op":"in"}]}`)
+		rules = append(rules, fmt.Sprintf(`{"id":"rule-%d","variation":0,"clauses":[{"attribute":"key","op":"in"}]}`, i))
 	}
 	return json.RawMessage(fmt.Sprintf(
 		`{"key":"bad-flag","version":1,"on":true,"salt":"salt","variations":["a","b"],"rules":[%s],`+
