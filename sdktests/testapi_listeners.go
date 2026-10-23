@@ -1,8 +1,10 @@
 package sdktests
 
 import (
+	"sort"
 	"time"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/sdk-test-harness/v3/framework"
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/harness"
@@ -55,6 +57,41 @@ func (lc *ListenerCallback) Close() {
 	lc.service.Close()
 }
 
+// registerFlagChangeListener registers a general flag change listener with the SDK client and
+// returns the callback that receives its notifications. The callback is closed when the test
+// scope exits.
+func registerFlagChangeListener(t *ldtest.T, client *SDKClient) *ListenerCallback {
+	callback := NewListenerCallback(requireContext(t).harness, t.DebugLogger())
+	t.Defer(callback.Close)
+	client.RegisterFlagChangeListener(t, servicedef.RegisterFlagChangeListenerParams{
+		ListenerID:  "listener-1",
+		CallbackURI: callback.GetURL(),
+	})
+	return callback
+}
+
+// registerFlagValueChangeListener registers a flag value change listener for one flag and context
+// with the SDK client and returns the callback that receives its notifications. The callback is
+// closed when the test scope exits.
+func registerFlagValueChangeListener(
+	t *ldtest.T,
+	client *SDKClient,
+	flagKey string,
+	context ldcontext.Context,
+	defaultValue ldvalue.Value,
+) *ListenerCallback {
+	callback := NewListenerCallback(requireContext(t).harness, t.DebugLogger())
+	t.Defer(callback.Close)
+	client.RegisterFlagValueChangeListener(t, servicedef.RegisterFlagValueChangeListenerParams{
+		ListenerID:   "listener-1",
+		FlagKey:      flagKey,
+		Context:      context,
+		DefaultValue: defaultValue,
+		CallbackURI:  callback.GetURL(),
+	})
+	return callback
+}
+
 // ExpectFlagChangeNotification waits up to listenerReceiveTimeout for a general flag change
 // notification for the given flag key. It fails the test if no notification arrives within the
 // timeout, or if the notification's flag key does not match. Returns the notification for
@@ -72,6 +109,28 @@ func (lc *ListenerCallback) ExpectFlagChangeNotification(
 		"flag change notification had unexpected flag key")
 
 	return notification
+}
+
+// ExpectFlagChangeNotifications waits for one general flag change notification per expected flag
+// key and asserts that, taken together and in any order, they are for exactly those keys. It then
+// asserts that no further notification arrives within listenerNoNotificationTimeout, so a flag
+// that should not have been notified fails the test as well.
+func (lc *ListenerCallback) ExpectFlagChangeNotifications(t *ldtest.T, flagKeys ...string) {
+	received := make([]string, 0, len(flagKeys))
+	for range flagKeys {
+		notification := helpers.RequireValueWithMessage(
+			t, lc.service.CallChannel, listenerReceiveTimeout,
+			"timed out waiting for flag change notifications; expected %v, received %v so far", flagKeys, received,
+		)
+		received = append(received, notification.FlagKey)
+	}
+	expected := append([]string(nil), flagKeys...)
+	sort.Strings(expected)
+	sort.Strings(received)
+	assert.Equal(t, expected, received, "flag change notifications were for unexpected flags")
+
+	helpers.RequireNoMoreValuesWithMessage(t, lc.service.CallChannel, listenerNoNotificationTimeout,
+		"received a flag change notification beyond the expected ones for %v", flagKeys)
 }
 
 // ExpectValueChangeNotification waits up to listenerReceiveTimeout for a value change
