@@ -100,6 +100,7 @@ func doAllServerSideTests(t *ldtest.T) {
 	t.Run("wrapper", doServerSideWrapperTests)
 	t.Run("persistent data store", doServerSidePersistentTests)
 	t.Run("flag overrides", doServerSideFlagOverridesTests)
+	t.Run("malformed data", doServerSideMalformedDataTests)
 }
 
 func doAllClientSideTests(t *ldtest.T) {
