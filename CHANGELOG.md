@@ -2,6 +2,15 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.2.0-alpha.15](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.14...v3.2.0-alpha.15) (2026-10-23)
+
+
+### Features
+
+* Add change notification tests for flag overrides ([#515](https://github.com/launchdarkly/sdk-test-harness/issues/515)) ([7f2ed95](https://github.com/launchdarkly/sdk-test-harness/commit/7f2ed95619a79185388e2602d601b60264bdfbaf))
+* add contract tests for malformed flag and segment definitions ([#503](https://github.com/launchdarkly/sdk-test-harness/issues/503)) ([0d49bb9](https://github.com/launchdarkly/sdk-test-harness/commit/0d49bb9a16907e8c22bb162e4f8083962875eae8))
+* Add flag change listener tests for dependent flags ([#514](https://github.com/launchdarkly/sdk-test-harness/issues/514)) ([15f3bb0](https://github.com/launchdarkly/sdk-test-harness/commit/15f3bb05ddadbcfc1f13aa4ec5b259d755cf198b))
+
 ## [3.2.0-alpha.14](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.13...v3.2.0-alpha.14) (2026-10-20)
 
 
