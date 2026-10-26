@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/harness"
+	h "github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v2/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v2/mockld"
@@ -348,7 +349,7 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		streamEndpoint := makeStreamEndpoint(t, handler)
 		t.Defer(streamEndpoint.Close)
 
-		_ = NewSDKClient(t,
+		client := NewSDKClient(t,
 			WithConfig(servicedef.SDKConfigParams{InitCanFail: true, StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(1))}),
 			WithStreamingConfig(baseStreamConfig(streamEndpoint)))
 
@@ -358,11 +359,16 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		// 2nd connection: extended-regime retry succeeds (~2.5-5 min later)
 		request2 := streamEndpoint.RequireConnection(t, extendedRegimeConnectionTimeout)
 
+		// activeSince is set on the first stream event, so confirm that the stream data arrived.
+		h.RequireEventually(t, func() bool {
+			return basicEvaluateFlag(t, client, flagKey, context, ldvalue.Null()).Equal(expectedValueV1)
+		}, time.Second*5, time.Millisecond*50, "timed out without seeing flag data from the stream")
+
 		// Keep the stream open >= 60 s so that when the next reconnect is triggered, at least
 		// 60 s will have elapsed since activeSince was set on the initial stream event. Give
 		// 75 s to be safe. Silent stream is fine here: the spec sets activeSince on the FIRST
-		// SSE event received, not on every event.
-		time.Sleep(75 * time.Second)
+		// SSE event received, not on every event. The SDK must not reconnect in this time.
+		streamEndpoint.RequireNoMoreConnections(t, 75*time.Second)
 
 		// Induce a fresh fault. On this reconnection attempt, the SDK evaluates the reset
 		// condition and (since >= 60 s have elapsed since activeSince) returns to the normal
