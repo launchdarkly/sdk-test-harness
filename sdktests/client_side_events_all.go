@@ -21,6 +21,7 @@ func doClientSideEventTests(t *ldtest.T) {
 	t.Run("context properties", doClientSideEventContextTests)
 	t.Run("event capacity", doClientSideEventBufferTests)
 	t.Run("disabling", doClientSideEventDisableTests)
+	t.Run("delivery cooldown", doClientSideEventCooldownTests)
 
 	t.RequireCapability(servicedef.CapabilityClientPrereqEvents)
 	t.Run("prerequisite events emit in order", doClientSideInOrderPrereqEventTests)
@@ -85,6 +86,11 @@ func doClientSideEventBufferTests(t *ldtest.T) {
 func doClientSideEventDisableTests(t *ldtest.T) {
 	NewCommonEventTests(t, "doClientSideEventDisableTests").
 		DisablingEvents(t)
+}
+
+func doClientSideEventCooldownTests(t *ldtest.T) {
+	NewCommonEventTests(t, "doClientSideEventCooldownTests").
+		EventDeliveryCooldown(t)
 }
 
 func doClientSideGzipEventRequestTests(t *ldtest.T) {

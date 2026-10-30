@@ -28,6 +28,8 @@ type EventsService struct {
 	sdkKind                SDKKind
 	ignoreDuplicatePayload bool
 	hostTimeOverride       time.Time
+	responseStatus         int
+	responseStatusCount    int
 	payloadIDsSeen         map[string]bool
 	handler                http.Handler
 	logger                 framework.Logger
@@ -115,6 +117,41 @@ func (s *EventsService) SetIgnoreDuplicatePayload(ignore bool) {
 	s.lock.Unlock()
 }
 
+// SetResponseStatus makes the events endpoint return the given HTTP status code for all subsequent
+// analytics event posts, without recording the payload, until it is called again with a different
+// value. A value of 0 (the default) restores normal behavior (accept with 202). Tests use this to
+// exercise SDK behavior on delivery failures, such as the event-processor cooldown after an
+// unexpected error, where the failure must persist for the duration of the cooldown window.
+func (s *EventsService) SetResponseStatus(code int) {
+	s.lock.Lock()
+	s.responseStatus = code
+	s.responseStatusCount = -1 // indefinite
+	s.lock.Unlock()
+}
+
+// SetResponseStatusForNextPosts makes the events endpoint return the given HTTP status code for the
+// next count analytics event posts (without recording their payloads), after which it automatically
+// resumes normal behavior (accept with 202). Unlike SetResponseStatus, this needs no follow-up reset
+// call, so the point at which the endpoint starts accepting again is deterministic rather than racing
+// a test-side SetResponseStatus(0): the first count posts fail and every post after that succeeds,
+// regardless of when the SDK happens to make them. Tests use it for failures that should affect only
+// a bounded number of attempts, such as a single dropped or recoverable post.
+//
+// A count of zero or less is treated as "fail no posts" and restores normal behavior, rather than
+// leaving an indefinite failure (which is SetResponseStatus's role) -- so "fail the next N" never
+// becomes an accidental permanent failure for a degenerate N.
+func (s *EventsService) SetResponseStatusForNextPosts(code int, count int) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if count <= 0 {
+		s.responseStatus = 0
+		s.responseStatusCount = 0
+		return
+	}
+	s.responseStatus = code
+	s.responseStatusCount = count
+}
+
 func (s *EventsService) postEvents(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -133,10 +170,33 @@ func (s *EventsService) postEvents(w http.ResponseWriter, r *http.Request) {
 	hostTime := s.hostTimeOverride
 	ignoreDuplicatePayload := s.ignoreDuplicatePayload
 	seenPayloadID := s.payloadIDsSeen[payloadID]
-	if payloadID != "" {
+	responseStatus := s.responseStatus
+	if responseStatus != 0 {
+		// A bounded injected failure (see SetResponseStatusForNextPosts) consumes one of its remaining
+		// posts and clears itself once exhausted; an indefinite one (count -1) is left untouched.
+		if s.responseStatusCount > 0 {
+			s.responseStatusCount--
+			if s.responseStatusCount == 0 {
+				s.responseStatus = 0
+			}
+		}
+	} else if payloadID != "" {
+		// Only record the payload ID for posts we actually accept, so an injected failure does not
+		// poison dedup for a later retry that reuses the same payload ID.
 		s.payloadIDsSeen[payloadID] = true
 	}
 	s.lock.Unlock()
+
+	// If a response status has been injected (see SetResponseStatus / SetResponseStatusForNextPosts),
+	// return it instead of accepting the payload, and do not record the payload. This lets tests
+	// exercise SDK behavior on delivery failures, such as the event-processor cooldown after an
+	// unexpected error. The endpoint still registers the connection, so connection-level assertions
+	// continue to observe the attempt.
+	if responseStatus != 0 {
+		w.WriteHeader(responseStatus)
+		s.logger.Printf("Returning injected HTTP status %d for event post (payload ID %q)", responseStatus, payloadID)
+		return
+	}
 
 	if !hostTime.IsZero() {
 		w.Header().Set("Date", hostTime.UTC().Format(http.TimeFormat))
