@@ -273,6 +273,24 @@ This means the SDK supports flag and segment overrides read from local files, as
 
 If specified, the SDK will send an `overrides` object in the SDK configuration. The test harness writes override documents to files on a filesystem shared with the test service, in the same way as the TLS custom CA file. See the `overrides` property of the SDK configuration for the object's properties.
 
+#### Capability `"file-data-source"`
+
+This means the SDK can use its file data source as an initializer or synchronizer of the data system. If specified, the test harness may send a `file` object in an entry of `dataSystem.initializers` or `dataSystem.synchronizers`. The test harness writes the data files on a filesystem shared with the test service, in the same way as override files (see the `flag-overrides` capability). Each file is a JSON document in the file data source format, and its name ends in `.json`. As a synchronizer, the data source must reload the files when they change, by watching them or by checking them at an interval of a few seconds at most.
+
+The file data source does not request persistence: with a persistent store in read-write mode, the SDK serves the file data from memory and does not write it to the store. The persistence tests verify this; see the `data-source-persist-opt-in` capability for the option to request it.
+
+#### Capability `"test-data-source"`
+
+This means the SDK can use its test data source (the data source that SDKs provide for application tests, with an API for setting flag values programmatically) as an initializer or synchronizer of the data system. If specified, the test harness may send a `testData` object in an entry of `dataSystem.initializers` or `dataSystem.synchronizers`, and the `updateTestData` command.
+
+The test service creates one test data source for each SDK client that is configured with a `testData` object. For each entry of `flags`, it configures the flag to serve the entry's value to every context, with the test data source's option for that (named `valueForAll` or similar in the SDKs). The `updateTestData` command changes one flag the same way, which the SDK applies as an update.
+
+The test data source does not request persistence by default: with a persistent store in read-write mode, the SDK serves the test data, including later updates, from memory and does not write it to the store. The persistence tests verify this. An SDK whose test data source is persisted by default must not declare this capability.
+
+#### Capability `"data-source-persist-opt-in"`
+
+This means the file data source and the test data source can be configured to request persistence, so that with a persistent store in read-write mode the SDK writes their data, including reloads and updates, to the store. If specified, the test harness may set `persist` to `true` in a `file` or `testData` object. The tests for each data source also require the `"file-data-source"` or `"test-data-source"` capability.
+
 #### Capability `"track-hooks"`
 
 This means that the SDK has support for hooks and has the ability to register track hooks.
@@ -425,9 +443,13 @@ A `POST` request indicates that the test harness wants to start an instance of t
     * `storeMode` (number, optional): `0` for read-only, `1` for read-write. Controls whether data from initializers/synchronizers is written back to the store.
     * `initializers` (array, optional): A list of data initializers, in the order the SDK should try them. Each initializer has:
       * `polling` (object, optional): Polling configuration for the initializer. See [Polling configuration object](#polling-configuration-object).
+      * `file` (object, optional): Configuration for the SDK's file data source. See [File data configuration object](#file-data-configuration-object). The test harness will only set this if the test service has the capability `"file-data-source"`.
+      * `testData` (object, optional): Configuration for the SDK's test data source. See [Test data configuration object](#test-data-configuration-object). The test harness will only set this if the test service has the capability `"test-data-source"`.
     * `synchronizers` (array, optional): A list of data synchronizers. The first entry is the primary synchronizer and the second, if present, is the fallback synchronizer used for the heuristic failover described in the Data System spec. Each synchronizer has:
       * `streaming` (object, optional): Streaming configuration. See [Streaming configuration object](#streaming-configuration-object).
       * `polling` (object, optional): Polling configuration. See [Polling configuration object](#polling-configuration-object).
+      * `file` (object, optional): Configuration for the SDK's file data source, which reloads the files when they change. See [File data configuration object](#file-data-configuration-object). The test harness will only set this if the test service has the capability `"file-data-source"`.
+      * `testData` (object, optional): Configuration for the SDK's test data source. See [Test data configuration object](#test-data-configuration-object). The test harness will only set this if the test service has the capability `"test-data-source"`.
     * `fdv1Fallback` (object, optional): Polling configuration for the SDK's FDv1 Fallback Synchronizer. See [Polling configuration object](#polling-configuration-object). This is *not* one of the `synchronizers` above: it is engaged only in response to a server-directed FDv1 fallback directive (an `X-LD-FD-Fallback: true` response header), and once engaged it becomes the SDK's sole data source for the remainder of the client's lifetime. Streaming is not a valid transport for FDv1 fallback. The test harness will only set this if the test service has the capability `"fdv1-fallback"`.
     * `connectionModeConfig` (object, optional): Connection mode configuration. Properties are:
       * `initialConnectionMode` (string, optional): The connection mode the SDK should start in (e.g. `"streaming"`, `"polling"`, `"offline"`, `"background"`, `"one-shot"`). For client-side FDv2, the test harness sends exactly one of `useDefaultDataSystem` (at the `dataSystem` level) or `initialConnectionMode`; it cannot send both but must send one.
@@ -463,6 +485,20 @@ Wherever the configuration above calls for a polling configuration object, it ha
 
 * `baseUri` (string, optional): The base URI for the polling service. For contract testing, this will be the URI of a simulated polling endpoint that the test harness provides. If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.polling` if any, or if that is not set either, connect to the real LaunchDarkly polling service.
 * `pollIntervalMs` (number, optional): The polling interval in milliseconds. If omitted, use the SDK's default value. For mobile SDKs that are configured with both streaming and polling enabled, this should be interpreted as the _background_ polling interval.
+
+#### File data configuration object
+
+Wherever the configuration above calls for a file data configuration object, it has these properties:
+
+* `filePaths` (array of strings, required): Absolute paths of the data files. Each file is a JSON document in the file data source format.
+* `persist` (boolean, optional): If true, the data source requests that the data system writes its data to a persistent store. If omitted, the SDK's default applies, which is not to persist. The test harness will only set this if the test service has the capability `"data-source-persist-opt-in"`.
+
+#### Test data configuration object
+
+Wherever the configuration above calls for a test data configuration object, it has these properties:
+
+* `flags` (object, optional): A map from flag key to a JSON value. Each flag serves its value to every context.
+* `persist` (boolean, optional): If true, the data source requests that the data system writes its data, including later updates, to a persistent store. If omitted, the SDK's default applies, which is not to persist. The test harness will only set this if the test service has the capability `"data-source-persist-opt-in"`.
 
 ### Send command: `POST <URL of SDK client instance>`
 
@@ -776,6 +812,17 @@ If `command` is `"unregisterListener"`, the test service should remove a listene
 The `unregisterListener` property in the request body will be a JSON object with these properties:
 
 * `listenerId` (string, required): The identifier that was passed when the listener was registered.
+
+The response should be an empty 2xx response.
+
+#### Update test data
+
+If `command` is `"updateTestData"`, the test service should change a flag of the test data source it created for this SDK client, so that the flag serves the given value to every context. The test harness only sends this command if the test service has the capability `"test-data-source"`, to an SDK client that was configured with a `testData` object.
+
+The `updateTestData` property in the request body will be a JSON object with these properties:
+
+* `flagKey` (string, required): The key of the flag to change. The flag may or may not already exist in the test data source.
+* `value` (any, required): The value that the flag serves.
 
 The response should be an empty 2xx response.
 

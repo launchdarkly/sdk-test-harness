@@ -28,6 +28,7 @@ const (
 	CommandRegisterFlagChangeListener      = "registerFlagChangeListener"
 	CommandRegisterFlagValueChangeListener = "registerFlagValueChangeListener"
 	CommandUnregisterListener              = "unregisterListener"
+	CommandUpdateTestData                  = "updateTestData"
 )
 
 type ValueType string
@@ -55,6 +56,7 @@ type CommandParams struct {
 	RegisterFlagChangeListener      o.Maybe[RegisterFlagChangeListenerParams]      `json:"registerFlagChangeListener,omitempty"`      //nolint:lll
 	RegisterFlagValueChangeListener o.Maybe[RegisterFlagValueChangeListenerParams] `json:"registerFlagValueChangeListener,omitempty"` //nolint:lll
 	UnregisterListener              o.Maybe[UnregisterListenerParams]              `json:"unregisterListener,omitempty"`
+	UpdateTestData                  o.Maybe[UpdateTestDataParams]                  `json:"updateTestData,omitempty"`
 }
 
 type EvaluateFlagParams struct {
@@ -251,6 +253,14 @@ type RegisterFlagValueChangeListenerParams struct {
 // UnregisterListenerParams defines parameters for unregistering a previously registered listener.
 type UnregisterListenerParams struct {
 	ListenerID string `json:"listenerId"`
+}
+
+// UpdateTestDataParams sets the value that a flag of the client's test data source serves to
+// every context. The harness sends it only if the test service has the "test-data-source"
+// capability.
+type UpdateTestDataParams struct {
+	FlagKey string        `json:"flagKey"`
+	Value   ldvalue.Value `json:"value"`
 }
 
 // ListenerNotification is the JSON payload POSTed by the SDK test service to a callback URI
