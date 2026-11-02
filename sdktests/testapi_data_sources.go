@@ -2,7 +2,6 @@ package sdktests
 
 import (
 	"os"
-	"path/filepath"
 
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
@@ -38,21 +37,11 @@ func NewDataSourceFile(t *ldtest.T, contents string) *DataSourceFile {
 	return &DataSourceFile{Path: path}
 }
 
-// Replace replaces the file's contents in one operation: it writes them to a new file in the same
-// directory and renames that file over this one, as the SDKs' file data source documentation
-// recommends, so that an SDK never reads a partly written file.
+// Replace overwrites the file with new contents. Like OverrideFile.Replace, this is deliberately a
+// plain truncate-and-write rather than an atomic rename: applications rewrite these files in place,
+// so the SDK must tolerate reading a file while it is being written.
 func (f *DataSourceFile) Replace(t *ldtest.T, contents string) {
-	replacement, err := os.CreateTemp(filepath.Dir(f.Path), "sdk-test-harness-data-replacement*.json")
-	require.NoError(t, err)
-	replacementPath := replacement.Name()
-	_, writeErr := replacement.WriteString(contents)
-	closeErr := replacement.Close()
-	if writeErr != nil || closeErr != nil {
-		_ = os.Remove(replacementPath)
-	}
-	require.NoError(t, writeErr)
-	require.NoError(t, closeErr)
-	require.NoError(t, os.Rename(replacementPath, f.Path))
+	require.NoError(t, os.WriteFile(f.Path, []byte(contents), 0600))
 }
 
 // WithDataInitializer is used with StartSDKClient to add a data initializer configuration.
