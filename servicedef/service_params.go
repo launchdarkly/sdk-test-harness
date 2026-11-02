@@ -123,8 +123,8 @@ const (
 	// with the test service.
 	CapabilityFileDataSource = "file-data-source"
 
-	// CapabilityTestDataSource means the SDK can use its test data source as an initializer or
-	// synchronizer of the data system, and update its flags with the updateTestData command.
+	// CapabilityTestDataSource means the SDK can use its test data source as a synchronizer of the
+	// data system, and update its flags with the updateTestData command.
 	CapabilityTestDataSource = "test-data-source"
 
 	// CapabilityDataSourcePersistOptIn means the file and test data sources can be configured to

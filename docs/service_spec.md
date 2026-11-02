@@ -169,7 +169,7 @@ docker run -p 6379:6379 redis
 
 #### Capability `"persistent-data-store-recovery"`
 
-This means the SDK detects persistent data store outages and recovers from them: while the store is unreachable the SDK continues to serve evaluations from its in-memory data, it monitors the store for availability, and when the store is reachable again it writes its entire in-memory state back to the store (so that data deleted during the outage does not reappear). If the write back fails, the SDK returns to monitoring and tries again.
+This means the SDK detects persistent data store outages and recovers from them: while the store is unreachable the SDK continues to serve evaluations from its in-memory data, it monitors the store for availability, and when the store is reachable again it writes its entire in-memory state back to the store (so that data deleted during the outage does not reappear), unless the data it holds last came from a data source that does not request persistence. If the write back fails, the SDK returns to monitoring and tries again.
 
 The test service must configure its store client so that a failed write surfaces as an error well within one second. The tests hold an outage open for about one second before they let the store recover; a client whose internal retry or queueing outlasts that window can hide the outage completely, and these tests will then misreport the SDK's behavior (a false pass or a false failure). Known client settings:
 
@@ -275,21 +275,21 @@ If specified, the SDK will send an `overrides` object in the SDK configuration. 
 
 #### Capability `"file-data-source"`
 
-This means the SDK can use its file data source as an initializer or synchronizer of the data system. If specified, the test harness may send a `file` object in an entry of `dataSystem.initializers` or `dataSystem.synchronizers`. The test harness writes the data files on a filesystem shared with the test service, in the same way as override files (see the `flag-overrides` capability). Each file is a JSON document in the file data source format, and its name ends in `.json`. As a synchronizer, the data source must reload the files when they change, by watching them or by checking them at an interval of a few seconds at most.
+This means the SDK can use its file data source as an initializer or synchronizer of the data system. If specified, the test harness may send a `file` object in an entry of `dataSystem.initializers` or `dataSystem.synchronizers`. The test harness writes the data files on a filesystem shared with the test service, in the same way as override files (see the `flag-overrides` capability). Each file is a JSON document in the file data source format, and its name ends in `.json`. The harness changes a file by renaming a new file over it. As a synchronizer, the data source must reload the files within ten seconds of a change, by watching them or by checking them at an interval. A reload replaces all of the data source's data with the files' contents; the harness gives each flag in a changed file a higher version.
 
-The file data source does not request persistence: with a persistent store in read-write mode, the SDK serves the file data from memory and does not write it to the store. The persistence tests verify this; see the `data-source-persist-opt-in` capability for the option to request it.
+The file data source does not request persistence: with a persistent store in read-write mode, the SDK serves the file data from memory and does not write it to the store, including after a store outage. The persistence tests verify this; see the `data-source-persist-opt-in` capability for the option to request it. The tests that use this capability are part of the persistence suite, so they also need one of the `persistent-data-store-{integration}` capabilities and the `-enable-persistence-tests` flag; the store recovery test also needs `persistent-data-store-recovery`.
 
 #### Capability `"test-data-source"`
 
-This means the SDK can use its test data source (the data source that SDKs provide for application tests, with an API for setting flag values programmatically) as an initializer or synchronizer of the data system. If specified, the test harness may send a `testData` object in an entry of `dataSystem.initializers` or `dataSystem.synchronizers`, and the `updateTestData` command.
+This means the SDK can use its test data source (the data source that SDKs provide for application tests, with an API for setting flag values programmatically) as a synchronizer of the data system. If specified, the test harness may send a `testData` object in one entry of `dataSystem.synchronizers`, and the `updateTestData` command.
 
-The test service creates one test data source for each SDK client that is configured with a `testData` object. For each entry of `flags`, it configures the flag to serve the entry's value to every context, with the test data source's option for that (named `valueForAll` or similar in the SDKs). The `updateTestData` command changes one flag the same way, which the SDK applies as an update.
+The test service creates a test data source for an SDK client that is configured with a `testData` object. For each entry of `flags`, it configures the flag to serve the entry's value to every context, with the test data source's option for that (named `valueForAll` or similar in the SDKs). The `updateTestData` command changes one flag the same way, which the SDK applies as an update.
 
-The test data source does not request persistence by default: with a persistent store in read-write mode, the SDK serves the test data, including later updates, from memory and does not write it to the store. The persistence tests verify this. An SDK whose test data source is persisted by default must not declare this capability.
+The test data source does not request persistence by default: with a persistent store in read-write mode, the SDK serves the test data, including later updates, from memory and does not write it to the store. The persistence tests verify this. An SDK whose test data source is persisted by default must not declare this capability. Like the `file-data-source` tests, these tests are part of the persistence suite.
 
 #### Capability `"data-source-persist-opt-in"`
 
-This means the file data source and the test data source can be configured to request persistence, so that with a persistent store in read-write mode the SDK writes their data, including reloads and updates, to the store. If specified, the test harness may set `persist` to `true` in a `file` or `testData` object. The tests for each data source also require the `"file-data-source"` or `"test-data-source"` capability.
+This means the file data source and the test data source can be configured to request persistence, so that with a persistent store in read-write mode the SDK writes their data, including reloads and updates, to the store. If specified, the test harness may set `persist` to `true` in a `file` or `testData` object. The tests for each data source also require the `"file-data-source"` or `"test-data-source"` capability. One of these tests checks that a read-only store is not written even when persistence is requested.
 
 #### Capability `"track-hooks"`
 
@@ -440,16 +440,15 @@ A `POST` request indicates that the test harness wants to start an instance of t
     * `useDefaultDataSystem` (boolean, optional): When `true`, signals that the SDK should use the FDv2 data system with its default connection mode.
     * `store` (object, optional): Persistent data store configuration.
       * `persistentDataStore` (object, optional): See the `persistentDataStore` property definition elsewhere in this spec.
-    * `storeMode` (number, optional): `0` for read-only, `1` for read-write. Controls whether data from initializers/synchronizers is written back to the store.
+    * `storeMode` (number, optional): `0` for read-only, `1` for read-write. Controls whether data from initializers/synchronizers is written to the store. In read-write mode, only the data of a source that requests persistence is written.
     * `initializers` (array, optional): A list of data initializers, in the order the SDK should try them. Each initializer has:
       * `polling` (object, optional): Polling configuration for the initializer. See [Polling configuration object](#polling-configuration-object).
       * `file` (object, optional): Configuration for the SDK's file data source. See [File data configuration object](#file-data-configuration-object). The test harness will only set this if the test service has the capability `"file-data-source"`.
-      * `testData` (object, optional): Configuration for the SDK's test data source. See [Test data configuration object](#test-data-configuration-object). The test harness will only set this if the test service has the capability `"test-data-source"`.
     * `synchronizers` (array, optional): A list of data synchronizers. The first entry is the primary synchronizer and the second, if present, is the fallback synchronizer used for the heuristic failover described in the Data System spec. Each synchronizer has:
       * `streaming` (object, optional): Streaming configuration. See [Streaming configuration object](#streaming-configuration-object).
       * `polling` (object, optional): Polling configuration. See [Polling configuration object](#polling-configuration-object).
       * `file` (object, optional): Configuration for the SDK's file data source, which reloads the files when they change. See [File data configuration object](#file-data-configuration-object). The test harness will only set this if the test service has the capability `"file-data-source"`.
-      * `testData` (object, optional): Configuration for the SDK's test data source. See [Test data configuration object](#test-data-configuration-object). The test harness will only set this if the test service has the capability `"test-data-source"`.
+      * `testData` (object, optional): Configuration for the SDK's test data source. See [Test data configuration object](#test-data-configuration-object). The test harness will only set this if the test service has the capability `"test-data-source"`, and in at most one entry.
     * `fdv1Fallback` (object, optional): Polling configuration for the SDK's FDv1 Fallback Synchronizer. See [Polling configuration object](#polling-configuration-object). This is *not* one of the `synchronizers` above: it is engaged only in response to a server-directed FDv1 fallback directive (an `X-LD-FD-Fallback: true` response header), and once engaged it becomes the SDK's sole data source for the remainder of the client's lifetime. Streaming is not a valid transport for FDv1 fallback. The test harness will only set this if the test service has the capability `"fdv1-fallback"`.
     * `connectionModeConfig` (object, optional): Connection mode configuration. Properties are:
       * `initialConnectionMode` (string, optional): The connection mode the SDK should start in (e.g. `"streaming"`, `"polling"`, `"offline"`, `"background"`, `"one-shot"`). For client-side FDv2, the test harness sends exactly one of `useDefaultDataSystem` (at the `dataSystem` level) or `initialConnectionMode`; it cannot send both but must send one.
@@ -490,7 +489,7 @@ Wherever the configuration above calls for a polling configuration object, it ha
 
 Wherever the configuration above calls for a file data configuration object, it has these properties:
 
-* `filePaths` (array of strings, required): Absolute paths of the data files. Each file is a JSON document in the file data source format.
+* `filePaths` (array of strings, required): Absolute paths of the data files, at least one. Each file is a JSON document in the file data source format.
 * `persist` (boolean, optional): If true, the data source requests that the data system writes its data to a persistent store. If omitted, the SDK's default applies, which is not to persist. The test harness will only set this if the test service has the capability `"data-source-persist-opt-in"`.
 
 #### Test data configuration object

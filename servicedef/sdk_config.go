@@ -85,9 +85,8 @@ type DataStore struct {
 }
 
 type DataInitializer struct {
-	Polling  o.Maybe[SDKConfigPollingParams]  `json:"polling,omitempty"`
-	File     o.Maybe[SDKConfigFileDataParams] `json:"file,omitempty"`
-	TestData o.Maybe[SDKConfigTestDataParams] `json:"testData,omitempty"`
+	Polling o.Maybe[SDKConfigPollingParams]  `json:"polling,omitempty"`
+	File    o.Maybe[SDKConfigFileDataParams] `json:"file,omitempty"`
 }
 
 type DataSynchronizer struct {
@@ -108,9 +107,9 @@ type SDKConfigFileDataParams struct {
 	Persist o.Maybe[bool] `json:"persist,omitempty"`
 }
 
-// SDKConfigTestDataParams configures the SDK's test data source as an initializer or
-// synchronizer. The harness sends it only if the test service has the "test-data-source"
-// capability.
+// SDKConfigTestDataParams configures the SDK's test data source as a synchronizer. The harness
+// sends it only if the test service has the "test-data-source" capability, and in at most one
+// synchronizer entry of a configuration.
 type SDKConfigTestDataParams struct {
 	// Flags maps each flag key to the value that the flag serves to every context.
 	Flags map[string]ldvalue.Value `json:"flags,omitempty"`
