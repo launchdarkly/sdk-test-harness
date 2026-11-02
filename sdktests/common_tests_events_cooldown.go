@@ -9,50 +9,35 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/servicedef"
 )
 
-// eventCooldownWindow is the cooldown window the event processor enters on the first unexpected
-// delivery failure, per the EVTPROC spec (Section 1.8): the extended initial delay. The SDKs do not
-// expose a way to shorten it, so any test that waits one out is long-running.
+// Cooldown window entered on the first unexpected failure (EVTPROC §1.8 extended initial delay). Not
+// shortenable, so any test that waits one out is long-running.
 const eventCooldownWindow = 5 * time.Minute
 
-// Representative HTTP statuses from each delivery-failure classification (EVTPROC Section 1.7).
-// A recoverable status is retried and must not cool down; an unexpected status triggers cooldown.
+// Representative recoverable vs. unexpected delivery-failure statuses (EVTPROC §1.7).
 const (
 	recoverableEventStatus = 503
 	unexpectedEventStatus  = 401
 )
 
-// noCooldownRetryTimeout is how long we wait, after an unexpected failure, to confirm the processor
-// made no further post. It must comfortably exceed the processor's fixed ~1s normal retry delay, so
-// that the absence of a connection means the processor entered cooldown rather than that a retry had
-// simply not fired yet.
+// Wait used to confirm no further post was made. Must exceed the fixed ~1s normal retry delay, so the
+// absence of a connection means cooldown rather than a retry that simply has not fired yet.
 const noCooldownRetryTimeout = 3 * time.Second
 
-// eventCooldownFlushInterval is the flush interval the cooldown tests configure. It must be shorter
-// than eventCooldownWindow (the extended initial delay): Requirement 1.8.2 binds the processor's
-// operating cadence to the configured flush interval, and RETRY Requirement 1.4.9 floors the wait
-// before the next attempt at that cadence -- so a longer interval would push the first cooldown window
-// past the extended initial delay and break the resumption test's timing. It must also exceed the fast
-// tests' RequireNoMoreConnections windows so that no periodic auto-flush fires during them.
+// Flush interval for the cooldown tests. Must be shorter than eventCooldownWindow: §1.8.2 ties the
+// operating cadence to the flush interval and RETRY §1.4.9 floors the window at that cadence, so a
+// larger interval would stretch the first window past the extended initial delay. Must also exceed the
+// fast tests' RequireNoMoreConnections windows so no periodic auto-flush fires during them.
 const eventCooldownFlushInterval = 60 * time.Second
 
-// inWindowSilenceCheck is how long eventCooldownResumesAfterWindow asserts the processor stays silent
-// while cooling down. RETRY jitter can only shorten a window, so a window is always at least
-// eventCooldownWindow/2; keeping this comfortably under that bound means a legitimate post-window probe
-// cannot be mistaken for an in-window cooldown violation.
+// In-window silence asserted by eventCooldownResumesAfterWindow. Jitter only shortens a window, so a
+// window is always at least eventCooldownWindow/2; staying under that keeps a legitimate post-window
+// probe from being mistaken for an in-window violation.
 const inWindowSilenceCheck = eventCooldownWindow/2 - 30*time.Second
 
-// EventDeliveryCooldown verifies the event processor's cooldown behavior after an unexpected delivery
-// failure, per EVTPROC Section 1.8: an unexpected failure must not permanently stop delivery; the
-// processor enters a bounded cooldown window during which it does not post, and resumes afterward.
-//
-// Gated on the event-delivery-cooldown capability, which an SDK advertises once it implements this
-// behavior; until then these tests skip.
-//
-// Note on coverage: the fast subtests prove that an unexpected failure causes the processor to stop
-// posting for a while; they cannot, by themselves, distinguish a cooldown from a permanent disable,
-// because that requires waiting out a real window (no time compression is available). The resumption
-// guarantee is therefore only exercised by eventCooldownResumesAfterWindow, which is long-running. SDK
-// conformance runs should enable long-running tests so that guarantee is actually checked.
+// EventDeliveryCooldown verifies the event processor's cooldown after an unexpected delivery failure
+// (EVTPROC §1.8): delivery is never permanently stopped; the processor enters a bounded window and
+// resumes afterward. Gated on the event-delivery-cooldown capability. Only the long-running resumption
+// subtest proves resumption (no time compression), so conformance runs should enable long-running tests.
 func (c CommonEventTests) EventDeliveryCooldown(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityEventDeliveryCooldown)
 
@@ -62,11 +47,8 @@ func (c CommonEventTests) EventDeliveryCooldown(t *ldtest.T) {
 	t.Run("delivery resumes after the cooldown window", c.eventCooldownResumesAfterWindow)
 }
 
-// newCooldownClient sets up a data source, an event sink, and a client configured so that the test
-// controls flushing, using eventCooldownFlushInterval -- long enough that the test drives flushing, but
-// short enough that it does not raise the cooldown window above the extended initial delay (see that
-// constant). It also clears the initial identify event that client-side SDKs send on startup, so later
-// assertions only observe events the test produced.
+// newCooldownClient builds a client whose flushing the test drives (via eventCooldownFlushInterval) and
+// clears the startup identify event that client-side SDKs send.
 func (c CommonEventTests) newCooldownClient(t *ldtest.T) (*SDKClient, *SDKEventSink) {
 	dataSource := NewSDKDataSource(t, nil)
 	events := NewSDKEventSink(t)
@@ -81,54 +63,45 @@ func (c CommonEventTests) newCooldownClient(t *ldtest.T) (*SDKClient, *SDKEventS
 	return client, events
 }
 
-// eventCooldown413DoesNotDisable verifies that a 413 drops the payload but does not disable delivery
-// or enter cooldown: a subsequent post still succeeds (EVTPROC Requirement 1.7.3.1).
+// eventCooldown413DoesNotDisable: a 413 drops the payload without retrying it or disabling delivery
+// (EVTPROC Requirement 1.7.3.1).
 func (c CommonEventTests) eventCooldown413DoesNotDisable(t *ldtest.T) {
 	client, events := c.newCooldownClient(t)
 
-	// Fail exactly the first post with a 413, after which the endpoint accepts again automatically. A
-	// bounded failure (rather than SetResponseStatus + a later reset) keeps the point at which the
-	// endpoint starts accepting deterministic, so it cannot race the failing post and let it through.
+	// Fail only the first post; a bounded failure resumes acceptance deterministically, with no reset
+	// that could race the failing post.
 	events.SetResponseStatusForNextPosts(413, 1)
 	c.sendArbitraryEvent(t, client)
 	client.FlushEvents(t)
-	events.Endpoint().RequireConnection(t, defaultEventTimeout) // the dropped post was attempted
+	events.Endpoint().RequireConnection(t, defaultEventTimeout)           // dropped post attempted
+	events.Endpoint().RequireNoMoreConnections(t, noCooldownRetryTimeout) // not retried
 
-	// The 413 payload is dropped, not retried: no further post follows it (Requirement 1.7.3.1). A
-	// non-conformant SDK that retried the dropped payload would show a second connection here.
-	events.Endpoint().RequireNoMoreConnections(t, noCooldownRetryTimeout)
-
-	// Delivery is not disabled and did not cool down: a subsequent post is delivered promptly.
+	// Delivery is not disabled: a later post still gets through.
 	c.sendArbitraryEvent(t, client)
 	client.FlushEvents(t)
 	events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 }
 
-// eventCooldownRecoverableContinues verifies that a recoverable failure does not enter cooldown:
-// delivery continues on a subsequent post (EVTPROC Requirement 1.7.2).
+// eventCooldownRecoverableContinues: a recoverable failure does not cool down; delivery continues
+// (EVTPROC Requirement 1.7.2).
 func (c CommonEventTests) eventCooldownRecoverableContinues(t *ldtest.T) {
 	client, events := c.newCooldownClient(t)
 
-	// Fail exactly the first post with a recoverable status, after which the endpoint accepts again
-	// automatically (deterministically, without a reset that could race the failing post).
 	events.SetResponseStatusForNextPosts(recoverableEventStatus, 1)
 	c.sendArbitraryEvent(t, client)
 	client.FlushEvents(t)
 	events.Endpoint().RequireConnection(t, defaultEventTimeout) // the failing post
 
-	// A recoverable failure must not cool down, so a subsequent post is delivered promptly rather than
-	// suppressed for the length of a cooldown window. This asserts that delivery continues, not the
-	// recoverable-retry mechanic itself (an SDK may also retry the failed post, which likewise delivers).
+	// A later post is delivered promptly rather than suppressed for a window. This asserts continuation,
+	// not the retry mechanic (an SDK may also retry the failed post, which likewise delivers).
 	c.sendArbitraryEvent(t, client)
 	client.FlushEvents(t)
 	events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 }
 
-// eventCooldownUnexpectedEntersCooldown verifies that an unexpected failure makes the processor enter
-// cooldown: it does not retry the failed post, and a subsequent flush during the window also no-ops
-// rather than posting (EVTPROC Requirements 1.7.3, 1.8.1, 1.8.5). Entry is observed without waiting a
-// full window: an unexpected failure produces no further post, unlike a recoverable one which would
-// retry within ~1s.
+// eventCooldownUnexpectedEntersCooldown: an unexpected failure enters cooldown -- the failed post is not
+// retried and an in-window flush is a no-op (EVTPROC Requirements 1.7.3, 1.8.1, 1.8.5). Observed without
+// a full window, since an unexpected failure (unlike a recoverable one) produces no retry.
 func (c CommonEventTests) eventCooldownUnexpectedEntersCooldown(t *ldtest.T) {
 	client, events := c.newCooldownClient(t)
 
@@ -137,55 +110,45 @@ func (c CommonEventTests) eventCooldownUnexpectedEntersCooldown(t *ldtest.T) {
 	client.FlushEvents(t)
 	events.Endpoint().RequireConnection(t, defaultEventTimeout) // the failing post
 
-	// No retry of the failed post: the processor entered cooldown rather than treating the failure as
-	// recoverable. Waiting past the normal retry delay also ensures the failure has been processed
-	// before the next flush below, so that flush genuinely lands inside the cooldown window.
+	// No retry: cooldown engaged. The wait also ensures the failure is processed before the next flush,
+	// so that flush lands inside the window.
 	events.Endpoint().RequireNoMoreConnections(t, noCooldownRetryTimeout)
 
-	// A flush during the window is a no-op: no post is made.
+	// An in-window flush is a no-op.
 	c.sendArbitraryEvent(t, client)
 	client.FlushEvents(t)
 	events.Endpoint().RequireNoMoreConnections(t, noCooldownRetryTimeout)
 }
 
-// eventCooldownResumesAfterWindow verifies that the processor does not permanently stop: after the
-// cooldown window elapses it probes again and resumes delivery (EVTPROC Requirements 1.8.1-1.8.3,
-// 1.8.6). This waits out a real window, so it is long-running.
+// eventCooldownResumesAfterWindow: the processor resumes after the window rather than stopping for good
+// (EVTPROC Requirements 1.8.1-1.8.3, 1.8.6). Waits out a real window, so it is long-running.
 func (c CommonEventTests) eventCooldownResumesAfterWindow(t *ldtest.T) {
 	t.LongRunning()
 	client, events := c.newCooldownClient(t)
 
-	// Enter cooldown with an unexpected failure.
+	// Enter cooldown.
 	events.SetResponseStatus(unexpectedEventStatus)
 	c.sendArbitraryEvent(t, client)
 	client.FlushEvents(t)
 	events.Endpoint().RequireConnection(t, defaultEventTimeout) // the failing post
 
-	// Record an event during the window WITHOUT flushing it. The record path is not gated by cooldown
-	// (only sends are), so this event is buffered rather than dropped, and must be deliverable once the
-	// processor resumes. This guarantees the post-window probe has something to deliver for every SDK.
-	// We deliberately do not flush it in-window: an in-window send is a no-op with a failure return
-	// (Requirement 1.8.5), which a non-durable SDK would drop -- Test 3 covers that path.
+	// Record (do not flush) an event during the window. Recording is not gated by cooldown, so it is
+	// buffered and must survive to the probe -- giving the probe something to deliver for every SDK.
 	c.sendArbitraryEvent(t, client)
 
-	// Assert real in-window silence: for an interval guaranteed to fall inside the cooldown window
-	// (inWindowSilenceCheck < eventCooldownWindow/2, the jitter-guaranteed minimum), the processor makes
-	// no delivery attempt. The injected failure is still in effect, so a non-conformant SDK that kept
-	// retrying through the window would both fail and be caught here. This also subsumes the "cooldown
-	// engaged" guard. (A violation in the [window/2, window] tail cannot be told apart from a legitimate
-	// probe without time compression; Test 3 covers the immediate-retry case.)
+	// Real in-window silence: over an interval guaranteed to lie inside the window, no delivery is made.
+	// The failure is still injected, so a non-conformant SDK that retries through the window is caught
+	// here. (A violation in the [window/2, window] tail is indistinguishable from a legitimate probe
+	// without time compression; Test 3 covers the immediate-retry case.)
 	events.Endpoint().RequireNoMoreConnections(t, inWindowSilenceCheck)
 
-	// Let the service accept again, then wait out the remainder of the longest possible window plus a
-	// margin before probing. Clearing the failure now (rather than holding it until the probe) keeps a
-	// conformant SDK's own window-end probe from hitting the injected failure and re-entering cooldown.
+	// Accept again, then wait past the longest possible window before probing. Clearing now (not at the
+	// probe) keeps a conformant SDK's own window-end probe from hitting the failure and re-cooling.
 	events.SetResponseStatus(0)
 	time.Sleep(eventCooldownWindow - inWindowSilenceCheck + 15*time.Second)
 
-	// The probe -- the first post after the window -- is accepted, proving the processor resumed delivery
-	// rather than permanently stopping. We assert only that a post is delivered, not its exact contents:
-	// a durable SDK may also redeliver the retained failed payload here (possibly as a separate post)
-	// while a non-durable SDK delivers only the buffered event, and both conform.
+	// The probe is accepted, proving resumption. Contents are not asserted: a durable SDK may also
+	// redeliver the retained failed payload, a non-durable one only the buffered event; both conform.
 	client.FlushEvents(t)
 	events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 }

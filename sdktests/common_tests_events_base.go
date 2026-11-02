@@ -24,11 +24,9 @@ func (c CommonEventTests) discardIdentifyEventIfClientSide(t *ldtest.T, client *
 		client.FlushEvents(t)
 		payload := events.ExpectAnalyticsEvents(t, time.Second)
 		m.In(t).Assert(payload, m.Items(IsIdentifyEvent()))
-		// Also drain the connection record for this initial identify post. ExpectAnalyticsEvents only
-		// consumes the payload; the endpoint records the connection separately (and before the payload),
-		// so without this the stale connection would offset every later RequireConnection /
-		// RequireNoMoreConnections assertion by one. The connection is already enqueued by the time the
-		// payload arrives, so this returns immediately.
+		// Also drain this identify post's connection record: ExpectAnalyticsEvents consumes only the
+		// payload, so leaving the connection would offset every later assertion by one. It is already
+		// enqueued (recorded before the payload), so this returns immediately.
 		events.Endpoint().RequireConnection(t, time.Second)
 	}
 }

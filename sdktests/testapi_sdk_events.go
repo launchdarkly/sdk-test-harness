@@ -80,14 +80,10 @@ func (e *SDKEventSink) Endpoint() *harness.MockEndpoint { return e.eventsEndpoin
 // Service returns the underlying mock events service component, for access to special options.
 func (e *SDKEventSink) Service() *mockld.EventsService { return e.eventsService }
 
-// SetResponseStatus makes the events endpoint return the given HTTP status for all subsequent event
-// posts (without recording them) until called again; 0 restores normal 202 behavior. See
-// mockld.EventsService.SetResponseStatus.
+// SetResponseStatus delegates to mockld.EventsService.SetResponseStatus.
 func (e *SDKEventSink) SetResponseStatus(code int) { e.eventsService.SetResponseStatus(code) }
 
-// SetResponseStatusForNextPosts makes the events endpoint return the given HTTP status for the next
-// count event posts (without recording them), then automatically resume normal 202 behavior. See
-// mockld.EventsService.SetResponseStatusForNextPosts.
+// SetResponseStatusForNextPosts delegates to mockld.EventsService.SetResponseStatusForNextPosts.
 func (e *SDKEventSink) SetResponseStatusForNextPosts(code int, count int) {
 	e.eventsService.SetResponseStatusForNextPosts(code, count)
 }
