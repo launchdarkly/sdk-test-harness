@@ -2,6 +2,24 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.42.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.41.1...v2.42.0) (2026-11-03)
+
+
+### Features
+
+* Add evaluation tests for a segment referenced more than once ([#544](https://github.com/launchdarkly/sdk-test-harness/issues/544)) ([071c957](https://github.com/launchdarkly/sdk-test-harness/commit/071c95787cae8b9b87bf68a578975e4994f5da32))
+* Add evaluation tests for clause values of the wrong type ([#541](https://github.com/launchdarkly/sdk-test-harness/issues/541)) ([c4c6e97](https://github.com/launchdarkly/sdk-test-harness/commit/c4c6e970747fe556be83509991f60359bf950f83))
+* Add evaluation tests for falsy and look-alike variation values ([#545](https://github.com/launchdarkly/sdk-test-harness/issues/545)) ([a615671](https://github.com/launchdarkly/sdk-test-harness/commit/a61567179a282226f565739db32d8d6f86dd879d))
+* Add evaluation tests for numbers in exponent notation ([#542](https://github.com/launchdarkly/sdk-test-harness/issues/542)) ([10f13ec](https://github.com/launchdarkly/sdk-test-harness/commit/10f13eca8be5a69f8a6606106e557ba1b63fdf5e))
+* Add evaluation tests for old user built-in attributes ([#546](https://github.com/launchdarkly/sdk-test-harness/issues/546)) ([a1f89ed](https://github.com/launchdarkly/sdk-test-harness/commit/a1f89ed6292858406ba3995b4ea25e6a6d8c8da5))
+* Add evaluation tests for rollout bucket boundaries and seeded rollouts ([#543](https://github.com/launchdarkly/sdk-test-harness/issues/543)) ([893a111](https://github.com/launchdarkly/sdk-test-harness/commit/893a11120abc73781943a814dc7996127b5062ba))
+* Add evaluation tests for the matches operator ([#538](https://github.com/launchdarkly/sdk-test-harness/issues/538)) ([3b30760](https://github.com/launchdarkly/sdk-test-harness/commit/3b30760c0cb8c6ef22f969f8c777631e941134da))
+
+
+### Bug Fixes
+
+* Make evaluation data files test what they claim ([#547](https://github.com/launchdarkly/sdk-test-harness/issues/547)) ([be46abc](https://github.com/launchdarkly/sdk-test-harness/commit/be46abc8752151885d565a79b5cfe042dccf397c))
+
 ## [2.41.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.41.0...v2.41.1) (2026-10-21)
 
 
