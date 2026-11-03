@@ -108,29 +108,17 @@ func (c CommonPollingTests) LargePayloads(t *ldtest.T) {
 
 func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagRequestMethod) m.Matcher) {
 	t.Run("URL path is computed correctly", func(t *ldtest.T) {
-		for _, trailingSlash := range []bool{false, true} {
-			t.Run(h.IfElse(trailingSlash, "base URI has a trailing slash",
-				"base URI has no trailing slash"), func(t *ldtest.T) {
-				for _, method := range c.availableFlagRequestMethods(t) {
-					t.Run(string(method), func(t *ldtest.T) {
-						dataSystem := NewSDKDataSystem(t, nil, c.pollingDataSystemOptions()...)
-
-						pollURI := strings.TrimSuffix(dataSystem.Synchronizers[0].Endpoint().BaseURL(), "/")
-						if trailingSlash {
-							pollURI += "/"
-						}
-
-						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
-							c.withFlagRequestMethod(method),
-							withPollingBaseURI(t, pollURI),
-						)...)
-
-						request := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
-						m.In(t).For("request path").Assert(request.URL.Path, pathMatcher(method))
-					})
-				}
-			})
+		if dataProtocol(t) == mockld.FDv1 {
+			// An FDv1 SDK can have a filter key, so the FDv1 tests have a level for each filter.
+			for _, filter := range c.environmentFilters() {
+				t.Run(filter.Description(), func(t *ldtest.T) {
+					filter.RequireCapabilities(t)
+					c.requestURLPathTests(t, pathMatcher, filter)
+				})
+			}
+			return
 		}
+		c.requestURLPathTests(t, pathMatcher, environmentFilter{})
 	})
 
 	if c.isClientSide {
@@ -163,6 +151,49 @@ func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagReq
 									m.AnyOf(m.Equal("false"), m.Equal("")))
 							}
 						})
+					}
+				})
+			}
+		})
+	}
+}
+
+// requestURLPathTests verifies the URL path of the poll request. For FDv1, it also verifies the filter
+// query parameter for the filter.
+func (c CommonPollingTests) requestURLPathTests(
+	t *ldtest.T,
+	pathMatcher func(flagRequestMethod) m.Matcher,
+	filter environmentFilter,
+) {
+	for _, trailingSlash := range []bool{false, true} {
+		t.Run(h.IfElse(trailingSlash, "base URI has a trailing slash",
+			"base URI has no trailing slash"), func(t *ldtest.T) {
+			for _, method := range c.availableFlagRequestMethods(t) {
+				t.Run(string(method), func(t *ldtest.T) {
+					dataSystem := NewSDKDataSystem(t, nil, c.pollingDataSystemOptions()...)
+
+					pollURI := strings.TrimSuffix(dataSystem.Synchronizers[0].Endpoint().BaseURL(), "/")
+					if trailingSlash {
+						pollURI += "/"
+					}
+
+					uriConfigurer := withPollingBaseURI(t, pollURI)
+					if dataProtocol(t) == mockld.FDv1 {
+						uriConfigurer = WithPollingConfig(servicedef.SDKConfigPollingParams{
+							BaseURI: pollURI,
+							Filter:  filter.Maybe,
+						})
+					}
+					_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
+						c.withFlagRequestMethod(method),
+						uriConfigurer,
+					)...)
+
+					request := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
+					m.In(t).For("request path").Assert(request.URL.Path, pathMatcher(method))
+					if dataProtocol(t) == mockld.FDv1 {
+						strict := t.Capabilities().Has(servicedef.CapabilityFilteringStrict)
+						m.In(t).For("filter key").Assert(request.URL.RawQuery, filter.Matcher(strict))
 					}
 				})
 			}
