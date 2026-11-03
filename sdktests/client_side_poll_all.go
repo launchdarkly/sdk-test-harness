@@ -13,6 +13,7 @@ import (
 
 func doClientSidePollTests(t *ldtest.T) {
 	t.Run("requests", doClientSidePollRequestTest)
+	t.Run("retry behavior", doClientSidePollRetryTests)
 	t.Run("interval", func(t *ldtest.T) {
 		doPollIntervalTests(t, WithCredential("my-sdk-key"))
 	})
