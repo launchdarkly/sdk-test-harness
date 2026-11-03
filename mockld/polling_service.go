@@ -102,6 +102,7 @@ func (p *PollingService) pollingHandler(getDataFn func(*PollingService, *http.Re
 
 		if p.currentData == nil || p.currentData.Serialize() == nil {
 			// This means we've deliberately configured the data source to be unavailable
+			p.lock.Unlock()
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}

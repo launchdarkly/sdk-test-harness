@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
@@ -106,4 +107,32 @@ func doPollingServiceTests(
 		require.NoError(t, err)
 		m.In(t).Assert(data, m.JSONStrEqual(string(initialData.Serialize())))
 	})
+}
+
+func TestPollingServiceKeepsRespondingAfterReportingUnavailableData(t *testing.T) {
+	testLog := ldlogtest.NewMockLog()
+	defer testLog.DumpIfTestFailed(t)
+	service := NewPollingService(BlockingUnavailableSDKData(ServerSideSDK), ServerSideSDK,
+		testLog.Loggers.ForLevel(ldlog.Debug))
+
+	// serve calls the handler directly. A handler that does not return makes the test fail instead of
+	// hang, because an httptest server would wait for the handler when it closes.
+	serve := func() int {
+		done := make(chan int, 1)
+		go func() {
+			recorder := httptest.NewRecorder()
+			service.ServeHTTP(recorder, httptest.NewRequest("GET", PollingPathServerSide, nil))
+			done <- recorder.Code
+		}()
+		select {
+		case code := <-done:
+			return code
+		case <-time.After(time.Second):
+			require.Fail(t, "the polling service did not respond")
+			return 0
+		}
+	}
+
+	require.Equal(t, http.StatusNotFound, serve(), "first request")
+	require.Equal(t, http.StatusNotFound, serve(), "second request")
 }
