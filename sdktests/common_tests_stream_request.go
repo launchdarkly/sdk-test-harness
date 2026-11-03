@@ -45,7 +45,9 @@ func (c CommonStreamingTests) RequestMethodAndHeaders(t *ldtest.T, credential st
 		c.withHTTPSTransport(t).Run(t, func(t *ldtest.T) {
 			dataSystem, configurers := c.setupDataSystems(t, nil)
 
-			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
+			// The SDK should reject the certificate, so the client cannot initialize.
+			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
+				append(configurers, WithWaitToStart(time.Millisecond, true))...)...)
 
 			_, err := dataSystem.Synchronizers[0].Endpoint().AwaitConnection(time.Second)
 			assert.Errorf(t, err, "expected connection error")
