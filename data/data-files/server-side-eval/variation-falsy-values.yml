@@ -1,0 +1,110 @@
+---
+name: variation values that are falsy (<TYPE_NAME>)
+
+# A variation value of false, 0, "" or an empty array is a real result, not a missing one: the SDK
+# must return it (with its variation index), not the caller's default value.
+# The default is used only when no variation was selected. Each default here is deliberately a
+# truthy value of the same type, so returning the default instead of the variation is visible.
+
+parameters:
+  - TYPE_NAME: bool
+    VALUE_TYPE: bool
+    FALSY_VALUE: false
+    TYPE_DEFAULT: true
+
+  - TYPE_NAME: int
+    VALUE_TYPE: int
+    FALSY_VALUE: 0
+    TYPE_DEFAULT: 7
+
+  - TYPE_NAME: double
+    VALUE_TYPE: double
+    FALSY_VALUE: 0
+    TYPE_DEFAULT: 0.5
+
+  - TYPE_NAME: string
+    VALUE_TYPE: string
+    FALSY_VALUE: ""
+    TYPE_DEFAULT: "default"
+
+  - TYPE_NAME: any false
+    VALUE_TYPE: any
+    FALSY_VALUE: false
+    TYPE_DEFAULT: "default"
+
+  - TYPE_NAME: any zero
+    VALUE_TYPE: any
+    FALSY_VALUE: 0
+    TYPE_DEFAULT: "default"
+
+  - TYPE_NAME: any empty string
+    VALUE_TYPE: any
+    FALSY_VALUE: ""
+    TYPE_DEFAULT: "default"
+
+  - TYPE_NAME: any empty array
+    VALUE_TYPE: any
+    FALSY_VALUE: []
+    TYPE_DEFAULT: "default"
+
+sdkData:
+  flags:
+    off-flag-serving-falsy-value:
+      on: false
+      variations: [ "<FALSY_VALUE>", "<TYPE_DEFAULT>" ]
+      offVariation: 0
+      fallthrough: { variation: 1 }
+
+    on-flag-serving-falsy-value:
+      on: true
+      variations: [ "<TYPE_DEFAULT>", "<FALSY_VALUE>" ]
+      offVariation: 0
+      fallthrough: { variation: 1 }
+      targets:
+        - { variation: 1, values: [ "target-key" ] }
+      rules:
+        - id: ruleid
+          variation: 1
+          clauses:
+            - { attribute: "matchme", op: "in", values: [ true ] }
+
+evaluations:
+  - name: off variation
+    flagKey: off-flag-serving-falsy-value
+    context: { kind: "user", key: "user-key" }
+    valueType: <VALUE_TYPE>
+    default: "<TYPE_DEFAULT>"
+    expect:
+      value: "<FALSY_VALUE>"
+      variationIndex: 0
+      reason: { kind: "OFF" }
+
+  - name: fallthrough
+    flagKey: on-flag-serving-falsy-value
+    context: { kind: "user", key: "user-key" }
+    valueType: <VALUE_TYPE>
+    default: "<TYPE_DEFAULT>"
+    expect:
+      value: "<FALSY_VALUE>"
+      variationIndex: 1
+      reason: { kind: "FALLTHROUGH" }
+
+  - name: target match
+    flagKey: on-flag-serving-falsy-value
+    context: { kind: "user", key: "target-key" }
+    valueType: <VALUE_TYPE>
+    default: "<TYPE_DEFAULT>"
+    expect:
+      value: "<FALSY_VALUE>"
+      variationIndex: 1
+      reason: { kind: "TARGET_MATCH" }
+
+  - name: rule match
+    flagKey: on-flag-serving-falsy-value
+    context: { kind: "user", key: "user-key", matchme: true }
+    valueType: <VALUE_TYPE>
+    default: "<TYPE_DEFAULT>"
+    expect:
+      value: "<FALSY_VALUE>"
+      variationIndex: 1
+      reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "ruleid" }
