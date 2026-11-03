@@ -257,7 +257,8 @@ func validateSDKConfig(config servicedef.SDKConfigParams, protocol mockld.DataPr
 				"neither streaming nor polling was enabled-- did you forget to include the SDKDataSource as a parameter?")
 		}
 	}
-	if config.Events.IsDefined() && config.Events.Value().BaseURI == "" {
+	if config.Events.IsDefined() && config.Events.Value().BaseURI == "" &&
+		config.ServiceEndpoints.Value().Events == "" {
 		return errors.New("events were enabled but base URI was not set--" +
 			" did you forget to include the SDKEventSink as a parameter?")
 	}
