@@ -1,0 +1,56 @@
+---
+name: old user built-in attributes
+
+# The old user model had built-in string attributes firstName, lastName, email, avatar, country
+# and ip. In a context they are ordinary attributes, and a clause can refer to them by name. For
+# SDKs that accept old-style users, each case also runs with the equivalent old user, where these
+# attributes are top-level properties rather than custom attributes; the result must be the same.
+
+constants:
+  IS_MATCH:
+    value: true
+    variationIndex: 0
+    reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "ruleid" }
+  IS_NOT_MATCH:
+    value: false
+    variationIndex: 1
+    reason: { kind: "FALLTHROUGH" }
+
+parameters:
+  - ATTR: firstName
+  - ATTR: lastName
+  - ATTR: email
+  - ATTR: avatar
+  - ATTR: country
+  - ATTR: ip
+
+sdkData:
+  flags:
+    test-flag:
+      on: true
+      fallthrough: { variation: 1 }
+      variations: [ true, false ]
+      rules:
+        - id: ruleid
+          variation: 0
+          clauses:
+            - { attribute: "<ATTR>", op: in, values: [ "expected-value" ] }
+
+evaluations:
+  - name: <ATTR> matches
+    flagKey: test-flag
+    context: { kind: "user", key: "user-key", "<ATTR>": "expected-value" }
+    default: false
+    expect: <IS_MATCH>
+
+  - name: <ATTR> does not match a different value
+    flagKey: test-flag
+    context: { kind: "user", key: "user-key", "<ATTR>": "other-value" }
+    default: false
+    expect: <IS_NOT_MATCH>
+
+  - name: <ATTR> missing does not match
+    flagKey: test-flag
+    context: { kind: "user", key: "user-key" }
+    default: false
+    expect: <IS_NOT_MATCH>
