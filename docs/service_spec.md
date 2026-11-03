@@ -355,6 +355,20 @@ library capabilities, such as setting an environment variable (like `http_proxy`
 
 This indicates that a client-side SDK will emit a summary event per identified context which has evaluated flags.
 
+### Capability `"retry-conformance-fdv1-streaming"`
+
+This means that the SDK's FDv1 streaming data source conforms to the RETRY specification: no HTTP response and no transport-level failure causes the data source to permanently cease operation. In particular, `401` / `403` / other `4xx` statuses and TLS/certificate validation failures trigger an extended-regime backoff (retry with a longer delay) instead of a permanent stop. The capability applies to the tests in the `fdv1` branch.
+
+The retry-conformance subtests gated by this capability are marked long-running: they exercise the SDK's production 5-minute extended-regime delay directly. They only run when `-enable-long-running-tests` is set.
+
+Legacy "do not retry after unexpected HTTP error" subtests are only run when this capability is absent; both sets of tests can be decommissioned once every SDK reports the capability.
+
+### Capability `"retry-conformance-fdv1-polling"`
+
+This means that the SDK's FDv1 polling data source conforms to the RETRY specification: no HTTP response and no transport-level failure causes the data source to permanently cease operation. `401` / `403` / other `4xx` statuses and TLS/certificate validation failures trigger an extended-regime backoff floored at the customer-configured `pollIntervalMs`. The capability applies to the tests in the `fdv1` branch.
+
+The retry-conformance subtests gated by this capability are marked long-running and only run when `-enable-long-running-tests` is set.
+
 ### Capability `"fdv1-fallback"`
 
 This means the SDK supports the server-directed FDv1 fallback behavior.
