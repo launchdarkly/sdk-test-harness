@@ -800,6 +800,14 @@ func (c CommonStreamingTests) DirectiveWithoutFDv1ConfiguredHaltsDataSystem(t *l
 		harness.MockEndpointDescription("streaming service"))
 	t.Defer(endpoint.Close)
 
+	// An SDK that adds an FDv1 fallback of its own when none is configured sends it to
+	// the top-level polling endpoint. Point that endpoint here so such a fallback is
+	// visible to the test instead of going to the default LaunchDarkly endpoint.
+	pollHandler, pollChannel := httphelpers.RecordingHandler(httphelpers.HandlerWithStatus(500))
+	pollEndpoint := requireContext(t).harness.NewMockEndpoint(pollHandler, t.DebugLogger(),
+		harness.MockEndpointDescription("polling service (must not be contacted)"))
+	t.Defer(pollEndpoint.Close)
+
 	// Only a streaming synchronizer is configured; FDv1Fallback is intentionally
 	// left unset, which is the "no FDv1 Fallback Synchronizer configured" branch
 	// of Requirement 1.6.3(4).
@@ -812,6 +820,10 @@ func (c CommonStreamingTests) DirectiveWithoutFDv1ConfiguredHaltsDataSystem(t *l
 			InitCanFail:     true,
 			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(1)),
 		}),
+		WithServiceEndpoints(servicedef.SDKConfigServiceEndpointsParams{
+			Streaming: endpoint.BaseURL(),
+			Polling:   pollEndpoint.BaseURL(),
+		}),
 		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 			BaseURI:             endpoint.BaseURL(),
 			InitialRetryDelayMS: o.Some(briefDelay),
@@ -820,20 +832,24 @@ func (c CommonStreamingTests) DirectiveWithoutFDv1ConfiguredHaltsDataSystem(t *l
 	// Wait for the first connection so we know the SDK has seen the directive.
 	_, err := endpoint.AwaitConnection(time.Second)
 	require.NoError(t, err)
-	// Drain that first request.
-	select {
-	case <-channel:
-	default:
-	}
 
-	// Drain any retry attempts made in the brief window between the directive
-	// being observed and the data system actually halting. After that grace period,
-	// no further attempts should arrive — if they do, the SDK is still running its
-	// ordinary retry/fallback loop instead of halting.
+	// Drain the first request and any retry attempts made in the brief window between
+	// the directive being observed and the data system actually halting. After that
+	// grace period, no further attempts should arrive. If they do, the SDK is still
+	// running its ordinary retry/fallback loop instead of halting.
+	//
+	// None of these requests may be an FDv1 poll. Some test services point an FDv1
+	// fallback that the harness did not configure at the first synchronizer's base URI,
+	// and its first request arrives within the grace period.
 	drainDeadline := time.Now().Add(time.Millisecond * 500)
 	for time.Now().Before(drainDeadline) {
 		select {
-		case <-channel:
+		case req := <-channel:
+			if fdv1FallbackPollPathMatches(c.sdkKind, req.Request.URL.Path) {
+				require.Fail(t, "SDK sent an FDv1 polling request to the streaming endpoint after directive "+
+					"with no FDv1 fallback configured; expected the data system to halt without engaging "+
+					"an FDv1 fallback", "%s %s", req.Request.Method, req.Request.URL.Path)
+			}
 		case <-time.After(time.Millisecond * 50):
 		}
 	}
@@ -848,6 +864,18 @@ func (c CommonStreamingTests) DirectiveWithoutFDv1ConfiguredHaltsDataSystem(t *l
 	}, time.Second, time.Millisecond*20,
 		"SDK continued making connections after directive with no FDv1 fallback configured — "+
 			"expected the data system to halt per Requirement 1.6.3(4)")
+
+	// The polling endpoint must not have been contacted at any point in the test,
+	// including the grace period above. An FDv1 fallback sends its first request
+	// within milliseconds of the directive, and its next one only after its poll
+	// interval, so a check that skipped the grace period would miss it.
+	select {
+	case req := <-pollChannel:
+		require.Fail(t, "SDK contacted the polling endpoint after directive with no FDv1 fallback "+
+			"configured; expected the data system to halt without engaging an FDv1 fallback",
+			"%s %s", req.Request.Method, req.Request.URL.Path)
+	default:
+	}
 }
 
 // DirectedFallbackIsTerminal verifies Requirement 1.6.4: once the Data System has
