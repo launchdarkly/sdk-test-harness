@@ -17,6 +17,7 @@ import (
 
 func doClientSideStreamTests(t *ldtest.T) {
 	t.Run("requests", doClientSideStreamRequestTest)
+	t.Run("updates", doClientSideStreamUpdateTests)
 	t.Run("fdv2", doClientSideFDv2StreamTests)
 	t.Run("retry behavior", doClientSideStreamRetryTests)
 	t.Run("connection lifecycle", doClientSideStreamConnectionLifecycleTests)
@@ -65,6 +66,10 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 		mockld.StreamingPathMobileGet,
 		mockld.StreamingPathFDv2ClientGet)
 	streamTests.RequestContextProperties(t, getPath)
+}
+
+func doClientSideStreamUpdateTests(t *ldtest.T) {
+	NewCommonStreamingTests(t, "doClientSideStreamUpdateTests").Updates(t)
 }
 
 func doClientSideFDv2StreamTests(t *ldtest.T) {

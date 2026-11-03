@@ -15,6 +15,7 @@ import (
 
 func doServerSideStreamTests(t *ldtest.T) {
 	t.Run("requests", doServerSideStreamRequestTests)
+	t.Run("updates", doServerSideStreamUpdateTests)
 	t.Run("retry behavior", doServerSideStreamRetryTests)
 	t.Run("validation", doServerSideStreamValidationTests)
 
@@ -40,6 +41,10 @@ func doServerSideStreamRequestTests(t *ldtest.T) {
 		return m.Equal(h.IfElse(dataProtocol(t) == mockld.FDv1,
 			mockld.StreamingPathFDv1ServerSide, mockld.StreamingPathServerSide))
 	})
+}
+
+func doServerSideStreamUpdateTests(t *ldtest.T) {
+	NewCommonStreamingTests(t, "doServerSideStreamUpdateTests").Updates(t)
 }
 
 func doServerSideFDv2StreamTests(t *ldtest.T) {
