@@ -1,0 +1,104 @@
+---
+name: rollout bucket values close to a weight boundary
+
+# A context whose bucket value is just below the cumulative weight of a rollout bucket is in that
+# bucket, and one just above it is in the next. The keys below were found by searching with the
+# bucketing algorithm from the evaluation spec: for the hash input
+# "precision-flag.precision-salt.<key>" (or "precision-segment.precision-salt.<key>" for the
+# segment) their bucket values differ from the boundary 0.61699 (weight 61699) by between 3e-9 and
+# 1e-7, but they are far enough from it that single-precision and double-precision arithmetic agree.
+#
+#   key            flag bucket - 0.61699     segment bucket - 0.61699
+#   user-41897751  -7.7e-08
+#   user-162147    +3.9e-08
+#   user-22191102  +3.3e-09
+#   user-3172252                             -6.5e-08
+#   user-1696198                             +7.2e-08
+#   user-19754381                            +2.9e-08
+
+constants:
+  IN_FIRST_BUCKET:
+    value: "first bucket"
+    variationIndex: 0
+    reason: { kind: "FALLTHROUGH" }
+  IN_SECOND_BUCKET:
+    value: "second bucket"
+    variationIndex: 1
+    reason: { kind: "FALLTHROUGH" }
+  IN_SEGMENT:
+    value: "in segment"
+    variationIndex: 1
+    reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "ruleid" }
+  NOT_IN_SEGMENT:
+    value: "not in segment"
+    variationIndex: 0
+    reason: { kind: "FALLTHROUGH" }
+
+sdkData:
+  flags:
+    precision-flag:
+      on: true
+      salt: "precision-salt"
+      variations: [ "first bucket", "second bucket" ]
+      offVariation: 0
+      fallthrough:
+        rollout:
+          variations:
+            - { variation: 0, weight: 61699 }
+            - { variation: 1, weight: 38301 }
+
+    flag-using-precision-segment:
+      on: true
+      variations: [ "not in segment", "in segment" ]
+      offVariation: 0
+      fallthrough: { variation: 0 }
+      rules:
+        - id: ruleid
+          variation: 1
+          clauses:
+            - { attribute: "", op: "segmentMatch", values: [ "precision-segment" ] }
+
+  segments:
+    precision-segment:
+      salt: "precision-salt"
+      rules:
+        - clauses:
+            - { attribute: "key", op: "in", values: [ "" ], negate: true }
+          weight: 61699
+
+evaluations:
+  - name: flag rollout bucket value 7.7e-8 below the boundary
+    flagKey: precision-flag
+    context: { key: "user-41897751" }
+    default: "default"
+    expect: <IN_FIRST_BUCKET>
+
+  - name: flag rollout bucket value 3.9e-8 above the boundary
+    flagKey: precision-flag
+    context: { key: "user-162147" }
+    default: "default"
+    expect: <IN_SECOND_BUCKET>
+
+  - name: flag rollout bucket value 3.3e-9 above the boundary
+    flagKey: precision-flag
+    context: { key: "user-22191102" }
+    default: "default"
+    expect: <IN_SECOND_BUCKET>
+
+  - name: segment rule bucket value 6.5e-8 below the weight
+    flagKey: flag-using-precision-segment
+    context: { key: "user-3172252" }
+    default: "default"
+    expect: <IN_SEGMENT>
+
+  - name: segment rule bucket value 7.2e-8 above the weight
+    flagKey: flag-using-precision-segment
+    context: { key: "user-1696198" }
+    default: "default"
+    expect: <NOT_IN_SEGMENT>
+
+  - name: segment rule bucket value 2.9e-8 above the weight
+    flagKey: flag-using-precision-segment
+    context: { key: "user-19754381" }
+    default: "default"
+    expect: <NOT_IN_SEGMENT>
