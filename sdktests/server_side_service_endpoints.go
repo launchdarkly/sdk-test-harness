@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v3/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 
@@ -57,6 +58,29 @@ func doServerSideServiceEndpointsTests(t *ldtest.T) {
 			func(events *SDKEventSink) SDKConfigurer {
 				return WithEventsConfig(servicedef.SDKConfigEventParams{
 					BaseURI: events.Endpoint().BaseURL(),
+				})
+			},
+		)
+	})
+
+	t.Run("using separate service endpoints properties", func(t *ldtest.T) {
+		// An FDv2 SDK gets its data source URIs from the data system configuration, so only FDv1
+		// SDKs can stream with only the service endpoints configuration.
+		requireDataProtocol(t, mockld.FDv1)
+		t.RequireCapability(servicedef.CapabilityServiceEndpoints)
+		doTest(
+			t,
+			func(dataSource *SDKDataSystem) SDKConfigurer {
+				return WithServiceEndpoints(servicedef.SDKConfigServiceEndpointsParams{
+					Streaming: dataSource.Synchronizers[0].Endpoint().BaseURL(),
+				})
+			},
+			func(events *SDKEventSink) SDKConfigurer {
+				return WithConfig(servicedef.SDKConfigParams{
+					Events: o.Some(servicedef.SDKConfigEventParams{}),
+					ServiceEndpoints: o.Some(servicedef.SDKConfigServiceEndpointsParams{
+						Events: events.Endpoint().BaseURL(),
+					}),
 				})
 			},
 		)

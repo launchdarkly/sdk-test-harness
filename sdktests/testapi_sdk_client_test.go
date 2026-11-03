@@ -35,6 +35,13 @@ func TestValidateSDKConfigChecksDataProtocol(t *testing.T) {
 		{"FDv2 streaming", mockld.FDv2, servicedef.SDKConfigParams{Streaming: streaming, DataSystem: dataSystem}, false},
 		{"FDv2 polling", mockld.FDv2, servicedef.SDKConfigParams{Polling: polling, DataSystem: dataSystem}, false},
 		{"FDv2 no data source", mockld.FDv2, servicedef.SDKConfigParams{}, false},
+		{"events without base URI", mockld.FDv1, servicedef.SDKConfigParams{
+			Streaming: streaming, Events: o.Some(servicedef.SDKConfigEventParams{}),
+		}, false},
+		{"events base URI from service endpoints", mockld.FDv1, servicedef.SDKConfigParams{
+			Streaming: streaming, Events: o.Some(servicedef.SDKConfigEventParams{}),
+			ServiceEndpoints: o.Some(servicedef.SDKConfigServiceEndpointsParams{Events: "http://localhost/events"}),
+		}, true},
 	} {
 		t.Run(p.name, func(t *testing.T) {
 			err := validateSDKConfig(p.config, p.protocol)
