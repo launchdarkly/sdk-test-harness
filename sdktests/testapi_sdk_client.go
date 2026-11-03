@@ -95,6 +95,24 @@ func WithServiceEndpoints(endpoints servicedef.SDKConfigServiceEndpointsParams) 
 	})
 }
 
+// WithStreamingConfig sets the top-level streaming configuration, which only FDv1 tests use. An
+// SDKDataSystem that comes after it in the configurers sets the base URI and keeps the other properties.
+func WithStreamingConfig(streamingConfig servicedef.SDKConfigStreamingParams) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		configOut.Streaming = o.Some(streamingConfig)
+		return nil
+	})
+}
+
+// WithPollingConfig sets the top-level polling configuration, which only FDv1 tests use. An
+// SDKDataSystem that comes after it in the configurers sets the base URI and keeps the other properties.
+func WithPollingConfig(pollingConfig servicedef.SDKConfigPollingParams) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		configOut.Polling = o.Some(pollingConfig)
+		return nil
+	})
+}
+
 // WithDataSynchronizer is used with StartSDKClient to add a data synchronizer configuration.
 // Synchronizers are used in order: the first added is the primary, second is secondary, etc.
 func WithDataSynchronizer(synchronizer servicedef.DataSynchronizer) SDKConfigurer {
