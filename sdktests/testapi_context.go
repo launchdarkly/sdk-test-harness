@@ -1,6 +1,8 @@
 package sdktests
 
 import (
+	"fmt"
+
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
@@ -60,10 +62,15 @@ func dataProtocol(t *ldtest.T) mockld.DataProtocol {
 	return protocol
 }
 
-// requireFDv2 skips the test unless it runs in the fdv2 branch of the test tree. Use it for a test of
-// behavior that exists only in FDv2.
-func requireFDv2(t *ldtest.T) {
-	if dataProtocol(t) != mockld.FDv2 {
-		t.SkipWithReason("this test applies only to FDv2")
+// requireDataProtocol skips the test unless it runs in the branch of the test tree for the specified
+// protocol. Use it for a test of behavior that exists only in that protocol.
+func requireDataProtocol(t *ldtest.T, protocol mockld.DataProtocol) {
+	if dataProtocol(t) != protocol {
+		t.SkipWithReason(fmt.Sprintf("this test applies only to the %s branch", protocol))
 	}
+}
+
+// requireFDv2 skips the test unless it runs in the fdv2 branch of the test tree.
+func requireFDv2(t *ldtest.T) {
+	requireDataProtocol(t, mockld.FDv2)
 }
