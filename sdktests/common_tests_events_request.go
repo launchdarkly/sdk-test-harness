@@ -55,7 +55,8 @@ func (c CommonEventTests) RequestMethodAndHeaders(t *ldtest.T, credential string
 			//// data source is being configured because it is required by the harness.
 			dataSource := NewSDKDataSource(t, nil)
 			events := NewSDKEventSink(t)
-			client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events)...)
+			client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, events,
+				WithWaitToStart(time.Millisecond, true))...)
 
 			c.sendArbitraryEvent(t, client)
 			client.FlushEvents(t)
