@@ -42,14 +42,11 @@ func RunSDKTestSuite(
 		fmt.Println("Running client-side (JS) SDK test suite")
 		sdkKind = mockld.JSClientSDK
 	default:
+		// The summary of failed tests does not show errors, so the logger shows this one.
+		err := errors.New(`test service has neither "client-side" nor "server-side" capability`)
+		testLogger.TestError(nil, err)
 		return ldtest.Results{
-			Failures: []ldtest.TestResult{
-				{
-					Errors: []error{
-						errors.New(`test service has neither "client-side" nor "server-side" capability`),
-					},
-				},
-			},
+			Failures: []ldtest.TestResult{{Errors: []error{err}}},
 		}
 	}
 
