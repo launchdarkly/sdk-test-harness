@@ -1,0 +1,141 @@
+---
+name: operators - matches
+
+# The "matches" operator is true if the regular expression matches anywhere in the attribute value;
+# it is not implicitly anchored at the start or at both ends. Anchors in the pattern still apply.
+# A clause value that is not a valid regular expression never matches, and it must not cause an
+# evaluation error: the evaluation continues with the next clause value and the next rule.
+#
+# The flag's first rule has the "matches" clause, and its second rule always matches, so a match is
+# reported as rule 0 and a non-match as rule 1. An SDK that fails the evaluation instead of treating
+# the clause as a non-match returns an error reason instead of rule 1.
+#
+# Regular expression syntax differs between platforms, so these cases only use syntax that every
+# common regex dialect supports.
+
+constants:
+  IS_MATCH:
+    value: "regex-rule"
+    variationIndex: 1
+    reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "regex-rule" }
+  IS_NOT_MATCH:
+    value: "always-rule"
+    variationIndex: 2
+    reason: { kind: "RULE_MATCH", ruleIndex: 1, ruleId: "always-rule" }
+
+parameters:
+  # partial matches
+  - NAME: pattern matches a substring in the middle of the value
+    USER_VALUE: "xxabcxx"
+    CLAUSE_VALUES: [ "abc" ]
+    EXPECT: <IS_MATCH>
+
+  - NAME: character class matches a substring in the middle of the value
+    USER_VALUE: "abc123def"
+    CLAUSE_VALUES: [ "[0-9]+" ]
+    EXPECT: <IS_MATCH>
+
+  - NAME: pattern matches at the end of the value
+    USER_VALUE: "abc"
+    CLAUSE_VALUES: [ "bc" ]
+    EXPECT: <IS_MATCH>
+
+  - NAME: wildcard pattern matches a substring
+    USER_VALUE: "xxabcxx"
+    CLAUSE_VALUES: [ "a.c" ]
+    EXPECT: <IS_MATCH>
+
+  - NAME: digit escape matches a substring
+    USER_VALUE: "order-123"
+    CLAUSE_VALUES: [ "\\d{3}" ]
+    EXPECT: <IS_MATCH>
+
+  - NAME: alternation matches a substring
+    USER_VALUE: "zzabczz"
+    CLAUSE_VALUES: [ "xyz|abc" ]
+    EXPECT: <IS_MATCH>
+
+  - NAME: wildcard pattern requires a character
+    USER_VALUE: "ac"
+    CLAUSE_VALUES: [ "a.c" ]
+    EXPECT: <IS_NOT_MATCH>
+
+  - NAME: pattern is case-sensitive
+    USER_VALUE: "abc"
+    CLAUSE_VALUES: [ "ABC" ]
+    EXPECT: <IS_NOT_MATCH>
+
+  # anchors
+  - NAME: end anchor matches at the end
+    USER_VALUE: "xxabc"
+    CLAUSE_VALUES: [ "abc$" ]
+    EXPECT: <IS_MATCH>
+
+  - NAME: end anchor does not match before the end
+    USER_VALUE: "abcxx"
+    CLAUSE_VALUES: [ "abc$" ]
+    EXPECT: <IS_NOT_MATCH>
+
+  - NAME: start anchor does not match after the start
+    USER_VALUE: "xabc"
+    CLAUSE_VALUES: [ "^abc" ]
+    EXPECT: <IS_NOT_MATCH>
+
+  - NAME: both anchors match the whole value
+    USER_VALUE: "abc"
+    CLAUSE_VALUES: [ "^abc$" ]
+    EXPECT: <IS_MATCH>
+
+  - NAME: both anchors do not match a longer value
+    USER_VALUE: "abcx"
+    CLAUSE_VALUES: [ "^abc$" ]
+    EXPECT: <IS_NOT_MATCH>
+
+  # invalid regular expressions
+  - NAME: unclosed character class is a non-match
+    USER_VALUE: "["
+    CLAUSE_VALUES: [ "[" ]
+    EXPECT: <IS_NOT_MATCH>
+
+  - NAME: unclosed group is a non-match
+    USER_VALUE: "(abc"
+    CLAUSE_VALUES: [ "(abc" ]
+    EXPECT: <IS_NOT_MATCH>
+
+  - NAME: quantifier without operand is a non-match
+    USER_VALUE: "*abc"
+    CLAUSE_VALUES: [ "*abc" ]
+    EXPECT: <IS_NOT_MATCH>
+
+  - NAME: invalid pattern does not prevent a later valid pattern from matching
+    USER_VALUE: "abc"
+    CLAUSE_VALUES: [ "[", "abc" ]
+    EXPECT: <IS_MATCH>
+
+  - NAME: invalid pattern after a non-matching pattern is a non-match
+    USER_VALUE: "abc"
+    CLAUSE_VALUES: [ "xyz", "(" ]
+    EXPECT: <IS_NOT_MATCH>
+
+sdkData:
+  flags:
+    test-flag:
+      on: true
+      variations: [ "fallthrough", "regex-rule", "always-rule" ]
+      fallthrough: { variation: 0 }
+      rules:
+        - id: regex-rule
+          variation: 1
+          clauses:
+            - { attribute: attrname, op: matches, values: <CLAUSE_VALUES> }
+        - id: always-rule
+          variation: 2
+          clauses:
+            - { attribute: key, op: in, values: [ "" ], negate: true }
+
+evaluations:
+  - name: <NAME>
+    flagKey: test-flag
+    context: { key: "user-key", custom: { attrname: "<USER_VALUE>" } }
+    default: "default"
+    expect: <EXPECT>
