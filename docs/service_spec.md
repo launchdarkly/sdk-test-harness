@@ -414,7 +414,7 @@ A `POST` request indicates that the test harness wants to start an instance of t
        The error message itself is not tested by the framework at this time, as it is not a specified behavior.
         * `beforeEvaluation` (string, optional): The error/exception message that should be generated in the `beforeEvaluation` stage of the test hook. 
         * `afterEvaluation` (string, optional): The error/exception message that should be generated in the `afterEvaluation` stage of the test hook. 
-  * `persistentDataStore` (object, optional): If present, contains the configuration for driving a persistent data store instance.
+  * `persistentDataStore` (object, optional): Only in tests in the `fdv1` branch (see the `"fdv1"` capability); the `fdv2` branch sets `dataSystem.store` instead. If present, contains the configuration for driving a persistent data store instance.
     * `store` (object, required): Contains the configuration for the persistent data store.
         * `type` (string, required): The type of the persistent data store. This will be one of the following values: `consul`, `dynamodb`, `redis`.
         * `prefix` (string, optional): If present, this prefix should be used as the prefix for all persistent store keys. If it is not set, the SDK should use its configured default.
