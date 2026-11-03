@@ -231,6 +231,20 @@ For tests that involve tags, the test harness will set the `tags` property of th
 
 This means that the SDK has a type corresponding to the old-style user model, and supports directly passing such user data to SDK methods as an alternative to context data. If this capability is present, the test harness may send a `user` property with old-style user JSON for test commands that would normally take a `context` property. If this capability is absent, `user` will never be set.
 
+#### Capability `"filtering"`
+
+This means that the SDK supports the "filter" configuration option for streaming/polling data sources,
+and will send a `?filter=name` query parameter along with streaming/polling requests.
+
+For tests that involve filtering, the test harness will set the `filter` property of the top-level `streaming` or `polling` configuration
+object, in the `fdv1` branch. The property will either be omitted if no filter is requested, or a non-empty string if requested.
+
+#### Capability `"filtering-strict"`
+
+When initially adding support for the `filtering` capability, the test harness assumed there were no character restrictions on the payload filter key. Later investigation has determined this is not the case.
+
+If this capability is set, the test harness will send a filter key that contains a character that is not allowed in a filter key. The test service should ignore the invalid key and connect as if no filter was specified.
+
 #### Capability `"evaluation-hooks"`
 
 This means that the SDK has support for hooks and has the ability to register evaluation hooks.
@@ -471,6 +485,7 @@ Wherever the configuration above calls for a streaming configuration object, it 
 
 * `baseUri` (string, optional): The base URI for the streaming service. For contract testing, this will be the URI of a simulated streaming endpoint that the test harness provides. If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.streaming` if any, or if that is not set either, connect to the real LaunchDarkly streaming service.
 * `initialRetryDelayMs` (number, optional): The initial stream retry delay in milliseconds. If omitted, use the SDK's default value.
+* `filter` (string, optional): Only in the top-level `streaming` property. The key for a filtered environment. If omitted, do not configure the SDK with a filter. See the `"filtering"` capability.
 
 #### Polling configuration object
 
@@ -478,6 +493,7 @@ Wherever the configuration above calls for a polling configuration object, it ha
 
 * `baseUri` (string, optional): The base URI for the polling service. For contract testing, this will be the URI of a simulated polling endpoint that the test harness provides. If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.polling` if any, or if that is not set either, connect to the real LaunchDarkly polling service.
 * `pollIntervalMs` (number, optional): The polling interval in milliseconds. If omitted, use the SDK's default value. For mobile SDKs that are configured with both streaming and polling enabled, this should be interpreted as the _background_ polling interval.
+* `filter` (string, optional): Only in the top-level `polling` property. The key for a filtered environment. If omitted, do not configure the SDK with a filter. See the `"filtering"` capability.
 
 ### Send command: `POST <URL of SDK client instance>`
 

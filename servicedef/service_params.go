@@ -46,6 +46,8 @@ const (
 	CapabilityServiceEndpoints            = "service-endpoints"
 	CapabilityTags                        = "tags"
 	CapabilityUserType                    = "user-type"
+	CapabilityFiltering                   = "filtering"
+	CapabilityFilteringStrict             = "filtering-strict"
 	CapabilityAutoEnvAttributes           = "auto-env-attributes"
 	CapabilityMigrations                  = "migrations"
 	CapabilityEventSampling               = "event-sampling"
