@@ -2,6 +2,24 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.2.0-alpha.16](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.15...v3.2.0-alpha.16) (2026-11-03)
+
+
+### Features
+
+* Add evaluation tests for a segment referenced more than once ([#553](https://github.com/launchdarkly/sdk-test-harness/issues/553)) ([96e64a8](https://github.com/launchdarkly/sdk-test-harness/commit/96e64a8ac0d1f127e40c4824b779d7889282a836))
+* Add evaluation tests for clause values of the wrong type ([#550](https://github.com/launchdarkly/sdk-test-harness/issues/550)) ([e5abd40](https://github.com/launchdarkly/sdk-test-harness/commit/e5abd40ac22546daf105dca70027c121552f65b2))
+* Add evaluation tests for falsy and look-alike variation values ([#554](https://github.com/launchdarkly/sdk-test-harness/issues/554)) ([57692bd](https://github.com/launchdarkly/sdk-test-harness/commit/57692bd83803ebd7a821594bc87861e96492edc1))
+* Add evaluation tests for numbers in exponent notation ([#551](https://github.com/launchdarkly/sdk-test-harness/issues/551)) ([e5788fe](https://github.com/launchdarkly/sdk-test-harness/commit/e5788fede05c0d706930da71aca488852170119b))
+* Add evaluation tests for old user built-in attributes ([#555](https://github.com/launchdarkly/sdk-test-harness/issues/555)) ([411a4df](https://github.com/launchdarkly/sdk-test-harness/commit/411a4df258927b4191e2695a04823a1b0dd269d8))
+* Add evaluation tests for rollout bucket boundaries and seeded rollouts ([#552](https://github.com/launchdarkly/sdk-test-harness/issues/552)) ([c17486a](https://github.com/launchdarkly/sdk-test-harness/commit/c17486ac516290b25cbb5cd82d2a5092a25d9703))
+* Add flag override tests for a client whose store holds flags without the init key ([#539](https://github.com/launchdarkly/sdk-test-harness/issues/539)) ([3c1ba64](https://github.com/launchdarkly/sdk-test-harness/commit/3c1ba64a3329bc424aa27d46163eabe031860e81))
+
+
+### Bug Fixes
+
+* Make evaluation data files test what they claim ([#556](https://github.com/launchdarkly/sdk-test-harness/issues/556)) ([e3b844d](https://github.com/launchdarkly/sdk-test-harness/commit/e3b844d5cac80915d5e3843f27459cb95b0d665b))
+
 ## [3.2.0-alpha.15](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.14...v3.2.0-alpha.15) (2026-10-23)
 
 
