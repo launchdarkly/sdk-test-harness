@@ -220,6 +220,15 @@ func doServerSideFlagOverridesUninitializedTests(t *ldtest.T) {
 				EqualReason(ldreason.NewEvalReasonError(ldreason.EvalErrorClientNotReady))),
 		))
 	})
+
+	t.Run("evaluate all flags returns only the override flags as a valid state", func(t *ldtest.T) {
+		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
+		m.In(t).Assert(canonicalizeAllFlagsData(result.State), m.MapOf(
+			m.KV("$valid", m.JSONEqual(true)),
+			m.KV("$flagsState", m.Not(m.BeNil())),
+			m.KV("overridden-flag", m.JSONEqual("override-value")),
+		))
+	})
 }
 
 func doServerSideFlagOverridesSummaryEventTest(t *ldtest.T) {
