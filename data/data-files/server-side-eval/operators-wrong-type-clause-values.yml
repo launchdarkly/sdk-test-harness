@@ -1,0 +1,65 @@
+---
+name: operators - clause values of the wrong type
+
+# A clause value whose type does not suit the operator (a string, boolean, null, object or array
+# for a numeric operator; a number, boolean, null, object or array for a string operator) simply
+# does not match. It must not fail the evaluation: the remaining clause values are still checked,
+# and if the clause does not match, the next rule is evaluated. The flag's second rule always
+# matches, so a non-match is reported as rule 1 and an evaluation error as an error reason.
+
+constants:
+  IS_MATCH:
+    value: "first-rule"
+    variationIndex: 1
+    reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "first-rule" }
+  IS_NOT_MATCH:
+    value: "always-rule"
+    variationIndex: 2
+    reason: { kind: "RULE_MATCH", ruleIndex: 1, ruleId: "always-rule" }
+
+parameters:
+  - { OP: lessThan, USER_VALUE: 5, CLAUSE_VALUES: [ "100" ], EXPECT: <IS_NOT_MATCH> }
+  - { OP: lessThan, USER_VALUE: 5, CLAUSE_VALUES: [ true ], EXPECT: <IS_NOT_MATCH> }
+  - { OP: lessThan, USER_VALUE: 5, CLAUSE_VALUES: [ null ], EXPECT: <IS_NOT_MATCH> }
+  - { OP: lessThan, USER_VALUE: 5, CLAUSE_VALUES: [ { a: 100 } ], EXPECT: <IS_NOT_MATCH> }
+  - { OP: lessThan, USER_VALUE: 5, CLAUSE_VALUES: [ [ 100 ] ], EXPECT: <IS_NOT_MATCH> }
+  - { OP: lessThan, USER_VALUE: 5, CLAUSE_VALUES: [ "100", null, true, 100 ], EXPECT: <IS_MATCH> }
+  - { OP: greaterThanOrEqual, USER_VALUE: 5, CLAUSE_VALUES: [ "1" ], EXPECT: <IS_NOT_MATCH> }
+  - { OP: greaterThanOrEqual, USER_VALUE: 5, CLAUSE_VALUES: [ {}, 1 ], EXPECT: <IS_MATCH> }
+  - { OP: startsWith, USER_VALUE: "99 bottles", CLAUSE_VALUES: [ 99 ], EXPECT: <IS_NOT_MATCH> }
+  - { OP: startsWith, USER_VALUE: "true story", CLAUSE_VALUES: [ true ], EXPECT: <IS_NOT_MATCH> }
+  - { OP: startsWith, USER_VALUE: "null value", CLAUSE_VALUES: [ null ], EXPECT: <IS_NOT_MATCH> }
+  - { OP: startsWith, USER_VALUE: "abc", CLAUSE_VALUES: [ [ "a" ] ], EXPECT: <IS_NOT_MATCH> }
+  - { OP: startsWith, USER_VALUE: "abc", CLAUSE_VALUES: [ 1, null, "a" ], EXPECT: <IS_MATCH> }
+  - { OP: endsWith, USER_VALUE: "bottles 99", CLAUSE_VALUES: [ 99 ], EXPECT: <IS_NOT_MATCH> }
+  - { OP: endsWith, USER_VALUE: "abc", CLAUSE_VALUES: [ { c: 1 } ], EXPECT: <IS_NOT_MATCH> }
+  - { OP: contains, USER_VALUE: "a99b", CLAUSE_VALUES: [ 99 ], EXPECT: <IS_NOT_MATCH> }
+  - { OP: contains, USER_VALUE: "a null b", CLAUSE_VALUES: [ null ], EXPECT: <IS_NOT_MATCH> }
+  - { OP: matches, USER_VALUE: "99", CLAUSE_VALUES: [ 99 ], EXPECT: <IS_NOT_MATCH> }
+  - { OP: matches, USER_VALUE: "abc", CLAUSE_VALUES: [ null, "b" ], EXPECT: <IS_MATCH> }
+  - { OP: in, USER_VALUE: "x", CLAUSE_VALUES: [ null, "x" ], EXPECT: <IS_MATCH> }
+  - { OP: in, USER_VALUE: "x", CLAUSE_VALUES: [ null ], EXPECT: <IS_NOT_MATCH> }
+  - { OP: in, USER_VALUE: 1, CLAUSE_VALUES: [ [ 1 ] ], EXPECT: <IS_NOT_MATCH> }
+
+sdkData:
+  flags:
+    test-flag:
+      on: true
+      variations: [ "fallthrough", "first-rule", "always-rule" ]
+      fallthrough: { variation: 0 }
+      rules:
+        - id: first-rule
+          variation: 1
+          clauses:
+            - { attribute: attrname, op: "<OP>", values: <CLAUSE_VALUES> }
+        - id: always-rule
+          variation: 2
+          clauses:
+            - { attribute: key, op: in, values: [ "" ], negate: true }
+
+evaluations:
+  - name: '<USER_VALUE> <OP> <CLAUSE_VALUES>'
+    flagKey: test-flag
+    context: { key: "user-key", custom: { attrname: "<USER_VALUE>" } }
+    default: "default"
+    expect: <EXPECT>
