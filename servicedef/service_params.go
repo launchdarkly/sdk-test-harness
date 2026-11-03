@@ -118,6 +118,27 @@ const (
 	// make all requests.
 	CapabilityHTTPProxy = "http-proxy"
 
+	// CapabilityRetryConformanceFDv1Streaming indicates that the SDK's FDv1 streaming data source
+	// conforms to the RETRY specification: no HTTP response and no transport-level failure causes
+	// the data source to permanently cease operation. In particular, `401` / `403` / other `4xx`
+	// statuses and TLS/certificate validation failures now trigger an extended-regime backoff
+	// instead of a permanent stop.
+	//
+	// The capability gates the "retry-conformance" subtests in the fdv1 branch, which are also marked
+	// long-running and only run when `-enable-long-running-tests` is set. Legacy "do not retry after
+	// unexpected HTTP error" subtests are only run when this capability is absent.
+	CapabilityRetryConformanceFDv1Streaming = "retry-conformance-fdv1-streaming"
+
+	// CapabilityRetryConformanceFDv1Polling indicates that the SDK's FDv1 polling data source
+	// conforms to the RETRY specification: no HTTP response and no transport-level failure causes
+	// the data source to permanently cease operation. `401` / `403` / other `4xx` statuses and
+	// TLS/certificate validation failures trigger an extended-regime backoff floored at the
+	// customer-configured `PollInterval`.
+	//
+	// The capability gates the "retry-conformance" subtests in the fdv1 branch, which are also marked
+	// long-running and only run when `-enable-long-running-tests` is set.
+	CapabilityRetryConformanceFDv1Polling = "retry-conformance-fdv1-polling"
+
 	// CapabilityFDv1Fallback indicates that the SDK honors the server-directed FDv1 Fallback Directive
 	// described in section 1.6 of the Data System spec. When an FDv2 endpoint returns an
 	// `X-LD-FD-Fallback: true` response header, an SDK with this capability halts its configured FDv2
