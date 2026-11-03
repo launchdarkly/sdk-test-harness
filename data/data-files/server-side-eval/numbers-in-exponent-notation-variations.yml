@@ -1,0 +1,46 @@
+---
+name: numbers in exponent notation - variation values
+
+# Variation values that the harness writes in exponent notation (see numbers-in-exponent-notation.yml)
+# must be returned as the numbers they denote. Very large values are not used here, because the
+# harness cannot reliably read back an integer literal beyond the 64-bit range in an SDK response.
+
+sdkData:
+  flags:
+    flag-with-exponent-variations:
+      on: true
+      fallthrough: { variation: 0 }
+      variations: [ 0.00001, 0.00000015, 1234567.5, -0.000025 ]
+      targets:
+        - { variation: 1, values: [ "key1" ] }
+        - { variation: 2, values: [ "key2" ] }
+        - { variation: 3, values: [ "key3" ] }
+
+evaluations:
+  - name: variation 0.00001
+    flagKey: flag-with-exponent-variations
+    context: { key: "key0" }
+    valueType: double
+    default: 0.5
+    expect: { value: 0.00001, variationIndex: 0, reason: { kind: "FALLTHROUGH" } }
+
+  - name: variation 0.00000015
+    flagKey: flag-with-exponent-variations
+    context: { key: "key1" }
+    valueType: double
+    default: 0.5
+    expect: { value: 0.00000015, variationIndex: 1, reason: { kind: "TARGET_MATCH" } }
+
+  - name: variation 1234567.5
+    flagKey: flag-with-exponent-variations
+    context: { key: "key2" }
+    valueType: double
+    default: 0.5
+    expect: { value: 1234567.5, variationIndex: 2, reason: { kind: "TARGET_MATCH" } }
+
+  - name: variation -0.000025
+    flagKey: flag-with-exponent-variations
+    context: { key: "key3" }
+    valueType: double
+    default: 0.5
+    expect: { value: -0.000025, variationIndex: 3, reason: { kind: "TARGET_MATCH" } }
