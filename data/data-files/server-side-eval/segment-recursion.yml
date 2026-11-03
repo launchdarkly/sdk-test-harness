@@ -109,7 +109,7 @@ sdkData:
       rules:
         - clauses:
             - { op: "segmentMatch", values: [ "segment-with-rule-a" ] }
-        - clauss:
+        - clauses:
             - { op: "segmentMatch", values: [ "segment-with-rule-b" ] }
 
 evaluations:
