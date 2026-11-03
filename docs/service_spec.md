@@ -31,6 +31,19 @@ These capabilities tell the test harness which type of SDK is under test: server
 * Otherwise, if `"client-side"` is present without `"mobile"`, this is a JavaScript-based client-side SDK.
 * If none of the above are true, no tests can be run.
 
+#### Data protocol capabilities: `"fdv1"`, `"fdv2"`
+
+These capabilities tell the test harness how the SDK can get flag data. The test service must declare at least one of them. If it declares neither, the test harness runs no tests and reports a failure.
+
+* `"fdv1"` means the SDK can get flag data from the FDv1 streaming and polling services.
+* `"fdv2"` means the SDK can get flag data from the FDv2 data system.
+
+The first component of every test name is the data protocol: `fdv1` or `fdv2`. The test harness runs the tests in the `fdv1` branch only if the test service declares `"fdv1"`, and it runs the tests in the `fdv2` branch only if the test service declares `"fdv2"`. Tests that do not depend on the protocol, such as the evaluation tests, run in both branches. Each branch also has tests for behavior that exists only in its protocol.
+
+In the `fdv1` branch, the test harness configures the data source with the top-level `streaming` and `polling` properties, and the SDK configuration never has `dataSystem`. In the `fdv2` branch, the test harness configures the data source with `dataSystem`, and the SDK configuration never has the top-level `streaming` or `polling` properties. A test service for an SDK that has both protocols can therefore use the presence of `dataSystem` to choose the protocol.
+
+A `-run` or `-skip` pattern must match the protocol component. For example, `fdv2/streaming/retry behavior` selects a test in one branch, and `fdv[12]/events` selects the same test in both branches.
+
 #### Capability `"singleton"`
 
 This means that the SDK only allows a single client instance to be active at any time.
@@ -363,6 +376,8 @@ A `POST` request indicates that the test harness wants to start an instance of t
   * `initCanFail` (boolean, optional): If true, the test service should _not_ return an error for client initialization failing in a way that still makes the client instance available (for instance, due to a timeout or a 401 error). See discussion of error handling below.
   * `serviceEndpoints` (object, optional): See notes on the `"service-endpoints"` capability. If this object is present, the test service should use it to set the corresponding service URIs in the SDK.
     * `streaming`, `polling`, `events` (string, optional): Each of these, if set, is the base URI for the corresponding service.
+  * `streaming` (object, optional): Only in tests in the `fdv1` branch (see the `"fdv1"` capability). Enables streaming mode and provides streaming configuration. If this is omitted _and_ `polling` is also omitted, then the test service can use streaming as a default; but if `streaming` is omitted and `polling` is provided, then streaming should be disabled. See [Streaming configuration object](#streaming-configuration-object).
+  * `polling` (object, optional): Only in tests in the `fdv1` branch (see the `"fdv1"` capability). Enables polling mode and provides polling configuration. See [Polling configuration object](#polling-configuration-object). A client-side SDK can have both `streaming` and `polling`: it streams, and the polling configuration gives the base URI of the polling service that some SDKs get their initial data from.
   * `events` (object, optional): Enables events and provides events configuration, or disables events if it is omitted or null. Properties are:
     * `baseUri` (string, optional): The base URI for the events service. For contract testing, this will be the URI of a simulated event-recorder endpoint that the test harness provides.  If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.events` if any, or if that is not set either, connect to the real LaunchDarkly events service.
     * `capacity` (number, optional): If specified and greater than zero, the event buffer capacity should be set to this value.
@@ -418,7 +433,7 @@ A `POST` request indicates that the test harness wants to start an instance of t
     * `version`: The version of the wrapper.
   * `proxy` (object, optional): If specified contains proxy configuration.
     * `httpProxy` (string, optional): An HTTP proxy, of the form `http://host:port`.
-  * `dataSystem` (object, optional): Data system configuration. For **server-side** SDKs, this may contain `initializers` and `synchronizers` describing polling/streaming data sources; the test harness sets base URIs there so the SDK connects to simulated endpoints. For **client-side FDv2**, the test harness sends a data system with `useDefaultDataSystem` or `connectionModeConfig.initialConnectionMode` (see below), and sets endpoint base URIs via the top-level `serviceEndpoints` property instead. Properties are:
+  * `dataSystem` (object, optional): Only in tests in the `fdv2` branch (see the `"fdv2"` capability). Data system configuration. For **server-side** SDKs, this may contain `initializers` and `synchronizers` describing polling/streaming data sources; the test harness sets base URIs there so the SDK connects to simulated endpoints. For **client-side FDv2**, the test harness sends a data system with `useDefaultDataSystem` or `connectionModeConfig.initialConnectionMode` (see below), and sets endpoint base URIs via the top-level `serviceEndpoints` property instead. Properties are:
     * `useDefaultDataSystem` (boolean, optional): When `true`, signals that the SDK should use the FDv2 data system with its default connection mode.
     * `store` (object, optional): Persistent data store configuration.
       * `persistentDataStore` (object, optional): See the `persistentDataStore` property definition elsewhere in this spec.

@@ -18,6 +18,7 @@ type environment struct {
 type T struct {
 	env         *environment
 	id          TestID
+	context     interface{}
 	debugLogger framework.CapturingLogger
 	nonCritical string
 	failed      bool
@@ -37,6 +38,7 @@ type TestConfiguration struct {
 	TestLogger TestLogger
 
 	// Context is an optional value of any type defined by the application which can be accessed from tests.
+	// It is the context of the top-level test scope. T.RunWithContext gives a subtest a different context.
 	Context interface{}
 
 	// Capabilities is a list of strings which are used T.RequireCapability.
@@ -57,7 +59,7 @@ func Run(
 	env := &environment{
 		config: config,
 	}
-	t := &T{env: env}
+	t := &T{env: env, context: config.Context}
 	t.run(action)
 	return env.results
 }
@@ -112,6 +114,12 @@ func (t *T) ID() TestID {
 //
 // This is equivalent to Go's testing.T.Run.
 func (t *T) Run(name string, action func(*T)) {
+	t.RunWithContext(name, t.context, action)
+}
+
+// RunWithContext is the same as Run, but the subtest and its own subtests get the specified value from
+// Context instead of the value in this scope.
+func (t *T) RunWithContext(name string, context interface{}, action func(*T)) {
 	id := t.id.Plus(name)
 
 	t.env.config.TestLogger.TestStarted(id)
@@ -120,8 +128,9 @@ func (t *T) Run(name string, action func(*T)) {
 		return
 	}
 	c1 := &T{
-		id:  id,
-		env: t.env,
+		id:      id,
+		env:     t.env,
+		context: context,
 	}
 	t.debugLogger.AddChildLogger(&c1.debugLogger) // see comments on t.DebugLogger()
 	result := c1.run(action)
@@ -212,10 +221,11 @@ func (t *T) Defer(cleanupFn func()) {
 	t.cleanups = append(t.cleanups, cleanupFn)
 }
 
-// Context returns the application-defined context value, if any, that was specified in the
-// TestConfiguration.
+// Context returns the application-defined context value, if any, for this test scope. This is the value
+// that was specified in the TestConfiguration, unless this scope or a parent scope was started with
+// RunWithContext.
 func (t *T) Context() interface{} {
-	return t.env.config.Context
+	return t.context
 }
 
 // Capabilities returns the capabilities reported by the test service.

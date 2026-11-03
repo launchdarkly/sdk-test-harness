@@ -18,6 +18,8 @@ import (
 )
 
 func doServerSideStreamValidationTests(t *ldtest.T) {
+	// These tests send malformed or unknown FDv2 events.
+	requireFDv2(t)
 	expectedValueV1 := ldvalue.Int(1)
 	expectedValueV2 := ldvalue.Int(2)
 	flagKey := "flag"

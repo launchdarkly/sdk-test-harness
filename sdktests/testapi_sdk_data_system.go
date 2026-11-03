@@ -11,6 +11,8 @@ import (
 	o "github.com/launchdarkly/sdk-test-harness/v3/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
+
+	"github.com/stretchr/testify/require"
 )
 
 type connectionModeEntry struct {
@@ -103,8 +105,18 @@ type dataSystemMode struct {
 	synchronizers []DataSynchronizer
 }
 
+// SDKDataSystem is a test fixture that simulates the LaunchDarkly services that deliver flag data to the
+// SDK, and configures the SDK to connect to them.
+//
+// It uses the data protocol of the current branch of the test tree. In the fdv2 branch, it has the
+// initializers and synchronizers of an FDv2 data system, and its Configure method sets the "dataSystem"
+// property of the SDK configuration. In the fdv1 branch, its only synchronizer is the FDv1 streaming or
+// polling service, and its Configure method sets the top-level "streaming" and "polling" properties. A
+// client-side SDK that uses FDv1 streaming can also have one polling initializer, which is the polling
+// service that it gets its initial data from.
 type SDKDataSystem struct {
 	t                     *ldtest.T
+	protocol              mockld.DataProtocol
 	Initializers          []DataInitializer
 	Synchronizers         []DataSynchronizer
 	connectionModes       map[string]*dataSystemMode
@@ -207,6 +219,9 @@ func (s *SDKDataSystem) buildServiceDefComponents(
 // defined, it emits config.DataSystem.ConnectionModeConfig; otherwise it emits top-level
 // config.DataSystem.Initializers/Synchronizers.
 func (s *SDKDataSystem) Configure(config *servicedef.SDKConfigParams) error {
+	if s.protocol == mockld.FDv1 {
+		return s.configureFDv1(config)
+	}
 	if len(s.connectionModes) > 0 {
 		return s.configureWithConnectionModes(config)
 	}
@@ -225,6 +240,33 @@ func (s *SDKDataSystem) configureTopLevel(config *servicedef.SDKConfigParams) er
 	}
 	config.DataSystem = o.Some(dataSystem)
 
+	return nil
+}
+
+// configureFDv1 sets the base URIs of the FDv1 streaming and polling services, and the polling interval.
+// It keeps the other streaming and polling properties that a previous configurer set.
+func (s *SDKDataSystem) configureFDv1(config *servicedef.SDKConfigParams) error {
+	initializers, synchronizers := s.buildServiceDefComponents(s.Initializers, s.Synchronizers)
+	for _, initializer := range initializers {
+		polling := config.Polling.Value()
+		polling.BaseURI = initializer.Polling.Value().BaseURI
+		config.Polling = o.Some(polling)
+	}
+	for _, sync := range synchronizers {
+		if sync.Streaming.IsDefined() {
+			streaming := config.Streaming.Value()
+			streaming.BaseURI = sync.Streaming.Value().BaseURI
+			config.Streaming = o.Some(streaming)
+		}
+		if sync.Polling.IsDefined() {
+			polling := config.Polling.Value()
+			polling.BaseURI = sync.Polling.Value().BaseURI
+			if sync.Polling.Value().PollIntervalMS.IsDefined() {
+				polling.PollIntervalMS = sync.Polling.Value().PollIntervalMS
+			}
+			config.Polling = o.Some(polling)
+		}
+	}
 	return nil
 }
 
@@ -389,11 +431,19 @@ func convertData(t *ldtest.T, data mockld.SDKData) mockld.SDKData {
 // data is used to create a polling initializer so the SDK can receive data with a selector
 // during initialization.
 //
-// Client-side SDKs get a "streaming" connection mode with a polling initializer and streaming
+// In FDv2, client-side SDKs get a "streaming" connection mode with a polling initializer and streaming
 // synchronizer. Server-side SDKs get a top-level polling initializer and synchronizer
-// (streaming for most, polling for PHP).
+// (streaming for most, polling for PHP). In FDv1, SDKs get a single streaming or polling service.
 func defaultDataSystemOptions(t *ldtest.T, data mockld.SDKData) []SDKDataSystemOption {
 	sdkKind := requireContext(t).sdkKind
+	if dataProtocol(t) == mockld.FDv1 {
+		// FDv1 SDKs have no initializers. JS-based client-side SDKs and the PHP SDK poll by default, and the
+		// other SDKs stream by default.
+		if sdkKind == mockld.JSClientSDK || sdkKind == mockld.PHPSDK {
+			return []SDKDataSystemOption{DataSystemOptionPolling()}
+		}
+		return []SDKDataSystemOption{DataSystemOptionStreaming()}
+	}
 	if sdkKind.IsClientSide() {
 		return []SDKDataSystemOption{
 			DataSystemOptionConnectionMode("streaming",
@@ -416,13 +466,21 @@ func defaultDataSystemOptions(t *ldtest.T, data mockld.SDKData) []SDKDataSystemO
 // It expects already-converted data and processes options without adding any implicit defaults.
 func buildDataSystem(t *ldtest.T, data mockld.SDKData, options []SDKDataSystemOption) *SDKDataSystem {
 	sdkKind := requireContext(t).sdkKind
+	protocol := dataProtocol(t)
 
 	var config sdkDataSystemConfig
 	_ = helpers.ApplyOptions(&config, options...)
 
-	d := &SDKDataSystem{t: t, environmentID: config.environmentID}
+	d := &SDKDataSystem{t: t, protocol: protocol, environmentID: config.environmentID}
 
-	if len(config.connectionModes) > 0 {
+	switch {
+	case protocol == mockld.FDv1 && len(config.connectionModes) > 0:
+		// FDv1 has no connection modes. The initial connection mode supplies the data services.
+		mode := findConnectionMode(t, config)
+		built := buildMode(t, data, sdkKind, mode.options)
+		d.Initializers = built.initializers
+		d.Synchronizers = built.synchronizers
+	case len(config.connectionModes) > 0:
 		d.connectionModes = make(map[string]*dataSystemMode)
 		d.initialConnectionMode = config.initialConnectionMode
 
@@ -435,19 +493,17 @@ func buildDataSystem(t *ldtest.T, data mockld.SDKData, options []SDKDataSystemOp
 			d.Synchronizers = mode.synchronizers
 			d.Initializers = mode.initializers
 		}
-	} else {
+	default:
 		for _, initializer := range config.pollingInitializers {
 			d.Initializers = append(d.Initializers, DataInitializer{
-				pollingService: mockld.NewPollingService(convertData(t, initializer), sdkKind, t.DebugLogger()).
-					WithGzipCompression(t.Capabilities().Has(servicedef.CapabilityPollingGzip)),
+				pollingService: newMockPollingService(t, convertData(t, initializer)),
 			})
 		}
 
 		if config.polling.IsDefined() {
 			if config.polling.Value() {
 				sync := DataSynchronizer{
-					polling: mockld.NewPollingService(data, sdkKind, t.DebugLogger()).
-						WithGzipCompression(t.Capabilities().Has(servicedef.CapabilityPollingGzip)),
+					polling: newMockPollingService(t, data),
 				}
 				for _, opt := range config.pollingSynchronizerOpts {
 					opt(&sync)
@@ -455,13 +511,56 @@ func buildDataSystem(t *ldtest.T, data mockld.SDKData, options []SDKDataSystemOp
 				d.AddDataSynchronizer(sync)
 			} else {
 				d.AddDataSynchronizer(DataSynchronizer{
-					streaming: mockld.NewStreamingService(data, sdkKind, t.DebugLogger()),
+					streaming: newMockStreamingService(t, data),
 				})
 			}
 		}
 	}
 
+	if protocol == mockld.FDv1 {
+		requireFDv1DataServices(t, d)
+	}
 	return d
+}
+
+// findConnectionMode returns the initial connection mode of the configuration. It fails the test if
+// there is no such mode.
+func findConnectionMode(t *ldtest.T, config sdkDataSystemConfig) connectionModeEntry {
+	for _, mode := range config.connectionModes {
+		if mode.name == config.initialConnectionMode {
+			return mode
+		}
+	}
+	require.Failf(t, "test logic error", "the data system has no initial connection mode %q",
+		config.initialConnectionMode)
+	return connectionModeEntry{}
+}
+
+// requireFDv1DataServices fails the test unless an FDv1 SDK can use the data services. An FDv1 SDK has one
+// streaming or polling service. A client-side SDK that streams can also get its initial data from one
+// polling service.
+func requireFDv1DataServices(t *ldtest.T, d *SDKDataSystem) {
+	switch {
+	case len(d.Synchronizers) > 1:
+		require.Fail(t, "test logic error", "an FDv1 SDK cannot have more than one synchronizer")
+	case len(d.Initializers) == 0:
+		return
+	case len(d.Initializers) > 1 || requireContext(t).sdkKind.IsServerSide() ||
+		len(d.Synchronizers) == 0 || d.Synchronizers[0].streaming == nil:
+		require.Fail(t, "test logic error",
+			"an FDv1 SDK can have a polling initializer only if it is a client-side SDK that streams")
+	}
+}
+
+// newMockStreamingService creates a mock streaming service that uses the data protocol of the test.
+func newMockStreamingService(t *ldtest.T, data mockld.SDKData) *mockld.StreamingService {
+	return mockld.NewStreamingServiceForProtocol(dataProtocol(t), data, requireContext(t).sdkKind, t.DebugLogger())
+}
+
+// newMockPollingService creates a mock polling service that uses the data protocol of the test.
+func newMockPollingService(t *ldtest.T, data mockld.SDKData) *mockld.PollingService {
+	return mockld.NewPollingServiceForProtocol(dataProtocol(t), data, requireContext(t).sdkKind, t.DebugLogger()).
+		WithGzipCompression(t.Capabilities().Has(servicedef.CapabilityPollingGzip))
 }
 
 func createEndpoints(
@@ -531,16 +630,14 @@ func buildMode(
 
 	for _, initData := range modeConfig.pollingInitializers {
 		mode.initializers = append(mode.initializers, DataInitializer{
-			pollingService: mockld.NewPollingService(convertData(t, initData), sdkKind, t.DebugLogger()).
-				WithGzipCompression(t.Capabilities().Has(servicedef.CapabilityPollingGzip)),
+			pollingService: newMockPollingService(t, convertData(t, initData)),
 		})
 	}
 
 	defaultIsPolling := sdkKind == mockld.JSClientSDK || sdkKind == mockld.PHPSDK
 	if modeConfig.polling.Value() || (!modeConfig.polling.IsDefined() && defaultIsPolling) {
 		sync := DataSynchronizer{
-			polling: mockld.NewPollingService(data, sdkKind, t.DebugLogger()).
-				WithGzipCompression(t.Capabilities().Has(servicedef.CapabilityPollingGzip)),
+			polling: newMockPollingService(t, data),
 		}
 		for _, opt := range modeConfig.pollingSynchronizerOpts {
 			opt(&sync)
@@ -548,7 +645,7 @@ func buildMode(
 		mode.synchronizers = append(mode.synchronizers, sync)
 	} else {
 		mode.synchronizers = append(mode.synchronizers, DataSynchronizer{
-			streaming: mockld.NewStreamingService(data, sdkKind, t.DebugLogger()),
+			streaming: newMockStreamingService(t, data),
 		})
 	}
 

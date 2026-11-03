@@ -104,6 +104,7 @@ func fdv1FallbackPollPathMatches(sdkKind mockld.SDKKind, path string) bool {
 }
 
 func (c CommonStreamingTests) FDv2(t *ldtest.T) {
+	requireFDv2(t)
 	t.Run("reconnection state management", c.StateTransitions)
 	t.Run(
 		"updates are not complete until payload transferred is sent",

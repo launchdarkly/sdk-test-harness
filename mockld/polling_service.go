@@ -9,16 +9,25 @@ import (
 
 	"github.com/launchdarkly/sdk-test-harness/v3/framework"
 
+	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
+
 	"github.com/gorilla/mux"
 )
 
 const (
-	PollingPathServerSide = "/sdk/poll"
+	PollingPathServerSide     = "/sdk/poll"
+	PollingPathFDv1ServerSide = "/sdk/latest-all"
 
 	PollingPathMobileGet      = "/msdk/evalx/contexts/{context}"
 	PollingPathMobileReport   = "/msdk/evalx/context"
 	PollingPathJSClientGet    = "/sdk/evalx/{env}/contexts/{context}"
 	PollingPathJSClientReport = "/sdk/evalx/{env}/context"
+
+	// The FDv1 polling service also accepts these older paths, which have "user" in place of "context".
+	PollingPathMobileGetUser      = "/msdk/evalx/users/{context}"
+	PollingPathMobileReportUser   = "/msdk/evalx/user"
+	PollingPathJSClientGetUser    = "/sdk/evalx/{env}/users/{context}"
+	PollingPathJSClientReportUser = "/sdk/evalx/{env}/user"
 
 	PollingPathFDv2ClientGet  = "/sdk/poll/eval/{context}"
 	PollingPathFDv2ClientPost = "/sdk/poll/eval"
@@ -32,6 +41,7 @@ const (
 )
 
 type PollingService struct {
+	protocol              DataProtocol
 	sdkKind               SDKKind
 	currentData           SDKData
 	currentEtag           string
@@ -41,12 +51,24 @@ type PollingService struct {
 	lock                  sync.RWMutex
 }
 
+// NewPollingService creates a mock polling service that uses the FDv2 protocol.
 func NewPollingService(
 	initialData SDKData,
 	sdkKind SDKKind,
 	debugLogger framework.Logger,
 ) *PollingService {
+	return NewPollingServiceForProtocol(FDv2, initialData, sdkKind, debugLogger)
+}
+
+// NewPollingServiceForProtocol creates a mock polling service that uses the specified protocol.
+func NewPollingServiceForProtocol(
+	protocol DataProtocol,
+	initialData SDKData,
+	sdkKind SDKKind,
+	debugLogger framework.Logger,
+) *PollingService {
 	p := &PollingService{
+		protocol:    protocol,
 		sdkKind:     sdkKind,
 		currentData: initialData,
 		debugLogger: debugLogger,
@@ -54,6 +76,11 @@ func NewPollingService(
 
 	pollHandler := p.standardPollingHandler()
 	router := mux.NewRouter()
+	if protocol == FDv1 {
+		p.addFDv1Routes(router, pollHandler)
+		p.handler = router
+		return p
+	}
 	switch sdkKind {
 	case ServerSideSDK:
 		router.Handle(PollingPathServerSide, pollHandler).Methods("GET")
@@ -79,6 +106,27 @@ func NewPollingService(
 	p.handler = router
 
 	return p
+}
+
+func (p *PollingService) addFDv1Routes(router *mux.Router, pollHandler http.Handler) {
+	switch p.sdkKind {
+	case ServerSideSDK:
+		router.Handle(PollingPathFDv1ServerSide, pollHandler).Methods("GET")
+	case RokuSDK, MobileSDK:
+		router.Handle(PollingPathMobileGet, pollHandler).Methods("GET")
+		router.Handle(PollingPathMobileReport, pollHandler).Methods("REPORT")
+		router.Handle(PollingPathMobileGetUser, pollHandler).Methods("GET")
+		router.Handle(PollingPathMobileReportUser, pollHandler).Methods("REPORT")
+	case JSClientSDK:
+		router.Handle(PollingPathJSClientGet, pollHandler).Methods("GET")
+		router.Handle(PollingPathJSClientReport, pollHandler).Methods("REPORT")
+		router.Handle(PollingPathJSClientGetUser, pollHandler).Methods("GET")
+		router.Handle(PollingPathJSClientReportUser, pollHandler).Methods("REPORT")
+	case PHPSDK:
+		router.Handle(PollingPathPHPFlag, p.phpFlagHandler()).Methods("GET")
+		router.Handle(PollingPathPHPSegment, p.phpSegmentHandler()).Methods("GET")
+		router.Handle(PollingPathPHPAllFlags, p.phpAllFlagsHandler()).Methods("GET")
+	}
 }
 
 func (p *PollingService) WithGzipCompression(enable bool) *PollingService {
@@ -145,6 +193,9 @@ func (p *PollingService) pollingHandler(getDataFn func(*PollingService, *http.Re
 
 func (p *PollingService) standardPollingHandler() http.Handler {
 	return p.pollingHandler(func(p *PollingService, r *http.Request) []byte {
+		if p.protocol == FDv1 {
+			return fdv1Payload(p.currentData, p.sdkKind)
+		}
 		fdv2SdkData, ok := p.currentData.(FDv2SDKData)
 		if !ok {
 			p.debugLogger.Println("poller cannot handle non-fdv2 sdk data at this time")
@@ -197,6 +248,9 @@ func (p *PollingService) standardPollingHandler() http.Handler {
 
 func (p *PollingService) phpFlagHandler() http.Handler {
 	return p.pollingHandler(func(p *PollingService, r *http.Request) []byte {
+		if p.protocol == FDv1 {
+			return fdv1ServerPayload(p.currentData)["flags"][mux.Vars(r)["key"]]
+		}
 		//nolint:godox
 		// TODO: Update this logic
 		return []byte("UNSUPPORTED")
@@ -207,6 +261,9 @@ func (p *PollingService) phpFlagHandler() http.Handler {
 
 func (p *PollingService) phpSegmentHandler() http.Handler {
 	return p.pollingHandler(func(p *PollingService, r *http.Request) []byte {
+		if p.protocol == FDv1 {
+			return fdv1ServerPayload(p.currentData)["segments"][mux.Vars(r)["key"]]
+		}
 		//nolint:godox
 		// TODO: Update this logic
 		return []byte("UNSUPPORTED")
@@ -217,6 +274,9 @@ func (p *PollingService) phpSegmentHandler() http.Handler {
 
 func (p *PollingService) phpAllFlagsHandler() http.Handler {
 	return p.pollingHandler(func(p *PollingService, r *http.Request) []byte {
+		if p.protocol == FDv1 {
+			return jsonhelpers.ToJSON(fdv1ServerPayload(p.currentData)["flags"])
+		}
 		//nolint:godox
 		// TODO: Update this logic
 		return []byte("UNSUPPORTED")

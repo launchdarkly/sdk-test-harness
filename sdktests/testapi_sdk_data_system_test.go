@@ -8,8 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
+	o "github.com/launchdarkly/sdk-test-harness/v3/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 
@@ -88,8 +90,8 @@ func newTestHarnessForDataSystemTest(t *testing.T) *harness.TestHarness {
 func TestClientSideStreamModeSecondaryPollingDataSystemDoesNotCollide(t *testing.T) {
 	h := newTestHarnessForDataSystemTest(t)
 
-	ldtest.Run(ldtest.TestConfiguration{
-		Context: SDKTestContext{harness: h, sdkKind: mockld.MobileSDK},
+	results := ldtest.Run(ldtest.TestConfiguration{
+		Context: SDKTestContext{harness: h, sdkKind: mockld.MobileSDK, protocol: mockld.FDv2},
 	}, func(scope *ldtest.T) {
 		primary := NewSDKDataSystem(scope, nil, DataSystemOptionStreaming())
 		secondaryConfigurer := clientSideSecondaryPollingDataSystem(scope)
@@ -122,4 +124,93 @@ func TestClientSideStreamModeSecondaryPollingDataSystemDoesNotCollide(t *testing
 		require.True(t, pollingMode.Synchronizers[0].Polling.IsDefined(),
 			`expected the "polling" mode's synchronizer to be a polling synchronizer`)
 	})
+	require.True(t, results.OK(), "test scope failed: %+v", results.Failures)
+}
+
+// runWithFDv1Context runs action in a test scope for the FDv1 branch, and returns the results.
+func runWithFDv1Context(t *testing.T, sdkKind mockld.SDKKind, action func(*ldtest.T)) ldtest.Results {
+	h := newTestHarnessForDataSystemTest(t)
+	return ldtest.Run(ldtest.TestConfiguration{
+		Context: SDKTestContext{harness: h, sdkKind: sdkKind, protocol: mockld.FDv1},
+	}, action)
+}
+
+func TestFDv1DataSystemConfiguresOneDataService(t *testing.T) {
+	for _, p := range []struct {
+		name            string
+		sdkKind         mockld.SDKKind
+		options         []SDKDataSystemOption
+		expectStreaming bool
+		expectPolling   bool
+	}{
+		{"server-side default", mockld.ServerSideSDK, nil, true, false},
+		{"server-side polling", mockld.ServerSideSDK, []SDKDataSystemOption{DataSystemOptionPolling()}, false, true},
+		{"PHP default", mockld.PHPSDK, nil, false, true},
+		{"mobile default", mockld.MobileSDK, nil, true, false},
+		{"JS client default", mockld.JSClientSDK, nil, false, true},
+		{"client-side polling connection mode", mockld.MobileSDK, []SDKDataSystemOption{
+			DataSystemOptionConnectionMode("polling", DataSystemOptionPolling()),
+			DataSystemOptionConnectionMode("streaming", DataSystemOptionStreaming()),
+			DataSystemOptionInitialConnectionMode("polling"),
+		}, false, true},
+	} {
+		t.Run(p.name, func(t *testing.T) {
+			results := runWithFDv1Context(t, p.sdkKind, func(scope *ldtest.T) {
+				dataSystem := NewSDKDataSystem(scope, nil, p.options...)
+				var config servicedef.SDKConfigParams
+				require.NoError(t, dataSystem.Configure(&config))
+
+				require.False(t, config.DataSystem.IsDefined(), "FDv1 configuration must not have a data system")
+				require.Equal(t, p.expectStreaming, config.Streaming.IsDefined(), "streaming configuration")
+				require.Equal(t, p.expectPolling, config.Polling.IsDefined(), "polling configuration")
+				require.Len(t, dataSystem.Synchronizers, 1)
+				baseURI := dataSystem.Synchronizers[0].Endpoint().BaseURL()
+				if p.expectStreaming {
+					require.Equal(t, baseURI, config.Streaming.Value().BaseURI)
+				} else {
+					require.Equal(t, baseURI, config.Polling.Value().BaseURI)
+				}
+			})
+			require.True(t, results.OK(), "test scope failed: %+v", results.Failures)
+		})
+	}
+}
+
+func TestFDv1DataSystemConfiguresClientSideStreamingWithInitialPoll(t *testing.T) {
+	results := runWithFDv1Context(t, mockld.JSClientSDK, func(scope *ldtest.T) {
+		dataSystem := NewSDKDataSystemCustom(scope, nil,
+			DataSystemOptionPollingInitializer(nil), DataSystemOptionStreaming())
+		dataSystem.CreateEndpoints()
+		config := servicedef.SDKConfigParams{
+			Streaming: o.Some(servicedef.SDKConfigStreamingParams{InitialRetryDelayMS: o.Some(ldtime.UnixMillisecondTime(5))}),
+		}
+		require.NoError(t, dataSystem.Configure(&config))
+
+		require.Equal(t, dataSystem.Synchronizers[0].Endpoint().BaseURL(), config.Streaming.Value().BaseURI)
+		require.Equal(t, ldtime.UnixMillisecondTime(5), config.Streaming.Value().InitialRetryDelayMS.Value(),
+			"Configure must keep the streaming properties that a previous configurer set")
+		require.Equal(t, dataSystem.Initializers[0].Endpoint().BaseURL(), config.Polling.Value().BaseURI)
+	})
+	require.True(t, results.OK(), "test scope failed: %+v", results.Failures)
+}
+
+func TestFDv1DataSystemConfiguresPollInterval(t *testing.T) {
+	results := runWithFDv1Context(t, mockld.ServerSideSDK, func(scope *ldtest.T) {
+		dataSystem := NewSDKDataSystem(scope, nil, DataSystemOptionPolling(),
+			DataSystemOptionPollInterval(time.Minute))
+		var config servicedef.SDKConfigParams
+		require.NoError(t, dataSystem.Configure(&config))
+
+		require.Equal(t, ldtime.UnixMillisecondTime(60000), config.Polling.Value().PollIntervalMS.Value())
+	})
+	require.True(t, results.OK(), "test scope failed: %+v", results.Failures)
+}
+
+func TestFDv1DataSystemRejectsServerSideInitializer(t *testing.T) {
+	results := runWithFDv1Context(t, mockld.ServerSideSDK, func(scope *ldtest.T) {
+		_ = NewSDKDataSystemCustom(scope, nil, DataSystemOptionPollingInitializer(nil), DataSystemOptionStreaming())
+	})
+	require.Len(t, results.Failures, 1, "an FDv1 server-side data system with an initializer must fail the test")
+	require.Len(t, results.Failures[0].Errors, 1)
+	require.Contains(t, results.Failures[0].Errors[0].Error(), "can have a polling initializer only if")
 }

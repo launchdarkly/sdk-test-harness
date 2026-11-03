@@ -11,6 +11,7 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v3/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
@@ -200,7 +201,7 @@ func TryNewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) (*SDKClient, err
 		}
 	}
 
-	if err := validateSDKConfig(config); err != nil {
+	if err := validateSDKConfig(config, dataProtocol(t)); err != nil {
 		return nil, err
 	}
 
@@ -224,16 +225,48 @@ func TryNewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) (*SDKClient, err
 	return c, nil
 }
 
-func validateSDKConfig(config servicedef.SDKConfigParams) error {
-	if !config.DataSystem.IsDefined() && !config.PersistentDataStore.IsDefined() {
-		// Note that the default is streaming, so we don't necessarily need to set config.Streaming if there are
-		// no other customized options and if we used serviceEndpoints.streaming to set the stream URI
-		return errors.New(
-			"neither streaming nor polling was enabled-- did you forget to include the SDKDataSource as a parameter?")
+func validateSDKConfig(config servicedef.SDKConfigParams, protocol mockld.DataProtocol) error {
+	if protocol == mockld.FDv1 {
+		if err := validateFDv1SDKConfig(config); err != nil {
+			return err
+		}
+	} else {
+		if config.Streaming.IsDefined() || config.Polling.IsDefined() {
+			return errors.New("an FDv2 test set the FDv1 streaming or polling configuration")
+		}
+		if !config.DataSystem.IsDefined() && !config.PersistentDataStore.IsDefined() {
+			return errors.New(
+				"neither streaming nor polling was enabled-- did you forget to include the SDKDataSource as a parameter?")
+		}
 	}
 	if config.Events.IsDefined() && config.Events.Value().BaseURI == "" {
 		return errors.New("events were enabled but base URI was not set--" +
 			" did you forget to include the SDKEventSink as a parameter?")
+	}
+	return nil
+}
+
+// validateFDv1SDKConfig returns an error if the configuration cannot be the configuration of an FDv1 test.
+// An FDv1 test cannot have a data system. A test of FDv2 behavior must call requireFDv2.
+func validateFDv1SDKConfig(config servicedef.SDKConfigParams) error {
+	if config.DataSystem.IsDefined() {
+		return errors.New(
+			"an FDv1 test set the FDv2 dataSystem configuration-- a test of FDv2 behavior must call requireFDv2")
+	}
+	if !config.Streaming.IsDefined() && !config.Polling.IsDefined() &&
+		!config.PersistentDataStore.IsDefined() && config.ServiceEndpoints.Value().Streaming == "" {
+		// The default is streaming, so a test does not have to set config.Streaming if it has no other
+		// streaming options and it sets the stream URI in serviceEndpoints.streaming.
+		return errors.New(
+			"neither streaming nor polling was enabled-- did you forget to include the SDKDataSystem as a parameter?")
+	}
+	if config.Streaming.IsDefined() && config.Streaming.Value().BaseURI == "" &&
+		config.ServiceEndpoints.Value().Streaming == "" {
+		return errors.New("streaming was enabled but base URI was not set")
+	}
+	if config.Polling.IsDefined() && config.Polling.Value().BaseURI == "" &&
+		config.ServiceEndpoints.Value().Polling == "" {
+		return errors.New("polling was enabled but base URI was not set")
 	}
 	return nil
 }

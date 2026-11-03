@@ -43,6 +43,8 @@ const (
 )
 
 func doServerSidePersistentTests(t *ldtest.T) {
+	// These tests configure the store in the FDv2 data system, and check how the data system uses it.
+	requireFDv2(t)
 	ranAtLeastOnce := false
 
 	if t.Capabilities().Has(servicedef.CapabilityPersistentDataStoreRedis) {

@@ -35,6 +35,14 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 
 	streamTests.RequestMethodAndHeaders(t, envIDOrMobileKey)
 
+	if dataProtocol(t) == mockld.FDv1 {
+		streamTests.RequestURLPath(t, func(method flagRequestMethod) m.Matcher {
+			return fdv1ClientStreamingPathMatcher(sdkKind, envIDOrMobileKey, method)
+		})
+		streamTests.RequestContextProperties(t, fdv1ClientStreamingGetPath(sdkKind, envIDOrMobileKey))
+		return
+	}
+
 	requestPathMatcher := func(method flagRequestMethod) m.Matcher {
 		switch sdkKind {
 		case mockld.MobileSDK, mockld.JSClientSDK:
@@ -105,4 +113,33 @@ func doClientSideStreamConnectionLifecycleTests(t *ldtest.T) {
 			"SDK did not close the streaming connection after the client was closed",
 		)
 	})
+}
+
+// fdv1ClientStreamingPathMatcher matches the path of an FDv1 stream request from a client-side SDK. It does
+// not check the base64-encoded context data in the path of a GET request, which other tests check.
+func fdv1ClientStreamingPathMatcher(sdkKind mockld.SDKKind, envID string, method flagRequestMethod) m.Matcher {
+	if sdkKind == mockld.RokuSDK {
+		// The Roku SDK streams through a handshake, which this test does not support. The FDv2 matcher
+		// also rejects it.
+		panic("invalid SDK kind")
+	}
+	if sdkKind == mockld.JSClientSDK {
+		getPathPrefix := strings.TrimSuffix(
+			strings.ReplaceAll(mockld.StreamingPathJSClientGet, mockld.StreamingPathEnvIDParam, envID),
+			mockld.StreamingPathContextBase64Param)
+		reportPath := strings.ReplaceAll(mockld.StreamingPathJSClientReport, mockld.StreamingPathEnvIDParam, envID)
+		return h.IfElse(method == flagRequestREPORT, m.Equal(reportPath), m.StringHasPrefix(getPathPrefix))
+	}
+	getPathPrefix := strings.TrimSuffix(mockld.StreamingPathMobileGet, mockld.StreamingPathContextBase64Param)
+	return h.IfElse(method == flagRequestREPORT,
+		m.Equal(mockld.StreamingPathMobileReport),
+		m.StringHasPrefix(getPathPrefix))
+}
+
+// fdv1ClientStreamingGetPath returns the path template of an FDv1 GET stream request from a client-side SDK.
+func fdv1ClientStreamingGetPath(sdkKind mockld.SDKKind, envID string) string {
+	if sdkKind == mockld.JSClientSDK {
+		return strings.ReplaceAll(mockld.StreamingPathJSClientGet, mockld.StreamingPathEnvIDParam, envID)
+	}
+	return mockld.StreamingPathMobileGet
 }

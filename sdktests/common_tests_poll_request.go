@@ -120,24 +120,10 @@ func (c CommonPollingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagReq
 							pollURI += "/"
 						}
 
-						var uriConfigurer SDKConfigurer
-						if c.isClientSide {
-							uriConfigurer = WithConnectionModeSynchronizer("polling", servicedef.DataSynchronizer{
-								Polling: o.Some(servicedef.SDKConfigPollingParams{BaseURI: pollURI}),
-							})
-						} else {
-							uriConfigurer = WithPollingSynchronizer(servicedef.SDKConfigPollingParams{
-								BaseURI: pollURI,
-							})
-						}
-						baseConfigurers := []SDKConfigurer{
+						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 							c.withFlagRequestMethod(method),
-							uriConfigurer,
-						}
-						if c.isClientSide {
-							baseConfigurers = append(baseConfigurers, WithInitialConnectionMode("polling"))
-						}
-						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(baseConfigurers...)...)
+							withPollingBaseURI(t, pollURI),
+						)...)
 
 						request := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
 						m.In(t).For("request path").Assert(request.URL.Path, pathMatcher(method))
@@ -419,23 +405,10 @@ func (c CommonPollingTests) RequestViaHTTPProxy(t *ldtest.T) {
 		}
 		u.Path = ""
 
-		var uriConfigurer SDKConfigurer
-		if c.isClientSide {
-			uriConfigurer = WithConnectionModeSynchronizer("polling", servicedef.DataSynchronizer{
-				Polling: o.Some(servicedef.SDKConfigPollingParams{BaseURI: pollURI}),
-			})
-		} else {
-			uriConfigurer = WithPollingSynchronizer(servicedef.SDKConfigPollingParams{
-				BaseURI: pollURI,
-			})
-		}
-
-		configurers := []SDKConfigurer{uriConfigurer, c.withHTTPProxy(u.String())}
-		if c.isClientSide {
-			configurers = append(configurers, WithInitialConnectionMode("polling"))
-		}
-
-		_ = NewSDKClient(t, c.baseSDKConfigurationPlus(configurers...)...)
+		_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
+			withPollingBaseURI(t, pollURI),
+			c.withHTTPProxy(u.String()),
+		)...)
 
 		_, err = dataSystem.Synchronizers[0].Endpoint().AwaitConnection(time.Second)
 		assert.NoError(t, err)
