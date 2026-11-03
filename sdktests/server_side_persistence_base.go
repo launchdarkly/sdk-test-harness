@@ -43,8 +43,6 @@ const (
 )
 
 func doServerSidePersistentTests(t *ldtest.T) {
-	// These tests configure the store in the FDv2 data system, and check how the data system uses it.
-	requireFDv2(t)
 	ranAtLeastOnce := false
 
 	if t.Capabilities().Has(servicedef.CapabilityPersistentDataStoreRedis) {
@@ -120,6 +118,7 @@ type PersistentStore interface {
 
 type ServerSidePersistentTests struct {
 	CommonStreamingTests
+	protocol        mockld.DataProtocol
 	defaultPrefix   string
 	persistentStore PersistentStore
 	initialFlags    map[string]string
@@ -150,13 +149,28 @@ func newServerSidePersistentTests(
 
 	return &ServerSidePersistentTests{
 		CommonStreamingTests: NewCommonStreamingTests(t, "serverSidePersistenceTests"),
+		protocol:             dataProtocol(t),
 		defaultPrefix:        defaultPrefix,
 		persistentStore:      persistentStore,
 		initialFlags:         initialFlags,
 	}
 }
 
+// newPersistence creates a Persistence for the data protocol of the tests.
+func (s *ServerSidePersistentTests) newPersistence() *Persistence {
+	if s.protocol == mockld.FDv1 {
+		return NewFDv1Persistence()
+	}
+	return NewPersistence()
+}
+
 func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
+	// An FDv1 SDK uses the store differently from the FDv2 data system, so each protocol has its own
+	// tests.
+	if s.protocol == mockld.FDv1 {
+		s.runFDv1(t)
+		return
+	}
 	s.runWithEmptyStore(t, "uses default prefix", func(t *ldtest.T) {
 		require.NoError(t, s.persistentStore.WriteMap(s.defaultPrefix, "features", s.initialFlags))
 

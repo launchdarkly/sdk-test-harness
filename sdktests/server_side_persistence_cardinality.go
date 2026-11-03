@@ -96,7 +96,7 @@ func (s *ServerSidePersistentTests) doCollectionCardinalityTests(t *ldtest.T) {
 // caller passes it as the only configurer, so the store is the only source of
 // data and every read reaches it.
 func (s *ServerSidePersistentTests) uncachedReadModePersistence() *Persistence {
-	persistence := NewPersistence()
+	persistence := s.newPersistence()
 	persistence.SetStore(servicedef.SDKConfigPersistentStore{
 		Type: s.persistentStore.Type(),
 		DSN:  s.persistentStore.DSN(),
