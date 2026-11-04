@@ -295,7 +295,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 				h.RequireNever(t,
 					checkForUpdatedValue(t, client, "flag-key", context,
 						ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default")),
-					time.Microsecond*500, time.Millisecond*20, "flag value was updated before cache TTL")
+					time.Millisecond*500, time.Millisecond*20, "flag value was updated before cache TTL")
 
 				h.RequireEventually(t,
 					checkForUpdatedValue(t, client, "flag-key", context,
