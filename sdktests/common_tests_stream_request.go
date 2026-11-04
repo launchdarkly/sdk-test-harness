@@ -62,26 +62,15 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 				"base URI has no trailing slash"), func(t *ldtest.T) {
 				for _, method := range c.availableFlagRequestMethods(t) {
 					t.Run(string(method), func(t *ldtest.T) {
-						dataSystem, configurers := c.setupDataSystems(t, nil)
+						dataSystem, _ := c.setupDataSystems(t, nil)
 
 						streamURI := strings.TrimSuffix(dataSystem.Synchronizers[0].Endpoint().BaseURL(), "/")
 						if trailingSlash {
 							streamURI += "/"
 						}
 
-						var uriConfigurer SDKConfigurer
-						if c.isClientSide {
-							uriConfigurer = WithConnectionModeSynchronizer("streaming", servicedef.DataSynchronizer{
-								Streaming: o.Some(servicedef.SDKConfigStreamingParams{BaseURI: streamURI}),
-							})
-						} else {
-							uriConfigurer = WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
-								BaseURI: streamURI,
-							})
-						}
 						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
-							append(configurers,
-								uriConfigurer,
+							append(c.withOnlyStreamingBaseURI(streamURI),
 								c.withFlagRequestMethod(method),
 							)...)...)
 
@@ -174,7 +163,7 @@ func (c CommonStreamingTests) RequestContextProperties(t *ldtest.T, getPath stri
 
 func (c CommonStreamingTests) RequestViaHTTPProxy(t *ldtest.T) {
 	t.Run("http proxy", func(t *ldtest.T) {
-		dataSystem, configurers := c.setupDataSystems(t, nil)
+		dataSystem, _ := c.setupDataSystems(t, nil)
 
 		// The idea here is that we'll configure the SDK's service endpoints with an arbitrary host, but with the
 		// correct path that the test harness expects (like /endpoints/1). Then, we'll inject the actual test harness's
@@ -195,24 +184,27 @@ func (c CommonStreamingTests) RequestViaHTTPProxy(t *ldtest.T) {
 		}
 		u.Path = ""
 
-		var uriConfigurer SDKConfigurer
-		if c.isClientSide {
-			uriConfigurer = WithConnectionModeSynchronizer("streaming", servicedef.DataSynchronizer{
-				Streaming: o.Some(servicedef.SDKConfigStreamingParams{BaseURI: streamURI}),
-			})
-		} else {
-			uriConfigurer = WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
-				BaseURI: streamURI,
-			})
-		}
-
 		_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
-			append(configurers,
-				uriConfigurer,
+			append(c.withOnlyStreamingBaseURI(streamURI),
 				c.withHTTPProxy(u.String()),
 			)...)...)
 
 		_, err = dataSystem.Synchronizers[0].Endpoint().AwaitConnection(time.Second)
 		assert.NoError(t, err)
 	})
+}
+
+// withOnlyStreamingBaseURI returns the configurers for an SDK that has only one streaming synchronizer,
+// with the specified base URI. A client-side SDK has it in the "streaming" connection mode, and starts in
+// that mode. Do not also pass the data system to NewSDKClient: its own synchronizer would be the primary
+// one, and the SDK would not use this base URI.
+func (c CommonStreamingTests) withOnlyStreamingBaseURI(baseURI string) []SDKConfigurer {
+	streaming := servicedef.SDKConfigStreamingParams{BaseURI: baseURI}
+	if c.isClientSide {
+		return []SDKConfigurer{
+			WithConnectionModeSynchronizer("streaming", servicedef.DataSynchronizer{Streaming: o.Some(streaming)}),
+			WithInitialConnectionMode("streaming"),
+		}
+	}
+	return []SDKConfigurer{WithStreamingSynchronizer(streaming)}
 }
