@@ -525,7 +525,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			dataSystem.Synchronizers[0].streaming.PushUpdate("flag", "flag-key", 100, updateData)
 			dataSystem.Synchronizers[0].streaming.PushPayloadTransferred("updated", 3)
 			s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
-				"flag-key":          basicFlagValidationMatcher("flag-key", 1, "new-value"),
+				"flag-key":          basicFlagValidationMatcher("flag-key", 100, "new-value"),
 				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "uncached-fallthrough"),
 			})
 
@@ -671,9 +671,13 @@ func basicFlagValidationMatcher(key string, version int, value string) m.Matcher
 	)
 }
 
+// basicDeletedFlagValidationMatcher accepts the three tombstone shapes that SDKs write (see
+// server_side_persistence_tombstones.go): no key in the body, the item's own key, or a full object
+// keyed "$deleted".
 func basicDeletedFlagValidationMatcher(key string, version int) m.Matcher {
 	return m.AllOf(
 		m.AnyOf(
+			JSONPropertyNullOrAbsent("key"),
 			m.JSONProperty("key").Should(m.Equal(key)),
 			m.JSONProperty("key").Should(m.Equal("$deleted")),
 		),
