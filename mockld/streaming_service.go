@@ -82,9 +82,7 @@ func NewStreamingService(
 	case ServerSideSDK:
 		router.HandleFunc(StreamingPathServerSide, streamHandler).Methods("GET")
 	case RokuSDK:
-		rokuHandler := RokuServer{}
-		router.Path(StreamingPathRokuHandshake).Methods("POST").HandlerFunc(rokuHandler.ServeHandshake)
-		router.Path(StreamingPathRokuEvaluate).Methods("POST").Handler(rokuHandler.Wrap(s))
+		(&RokuServer{}).Route(router, s)
 		router.HandleFunc(StreamingPathMobileGet, streamHandler).Methods("GET")
 		router.HandleFunc(StreamingPathMobileReport, streamHandler).Methods("REPORT")
 		router.HandleFunc(StreamingPathFDv2ClientGet, streamHandler).Methods("GET")
