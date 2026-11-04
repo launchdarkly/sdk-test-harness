@@ -196,13 +196,8 @@ func (d *DynamoDBPersistentStore) WriteMap(prefix, key string, data map[string]s
 		})
 	}
 
-	// Now set the special key that we check in InitializedInternal()
-	requests = append(requests, types.WriteRequest{
-		PutRequest: &types.PutRequest{Item: map[string]types.AttributeValue{
-			dynamoDBTablePartitionKey: &types.AttributeValueMemberS{Value: addPrefix(prefix, persistenceInitedKey)},
-			dynamoDBTableSortKey:      &types.AttributeValueMemberS{Value: persistenceInitedKey},
-		}},
-	})
+	// The "$inited" key is not written here: like the Redis and Consul stores, WriteMap only writes
+	// the collection, so that tests can tell whether the SDK depends on the initialization flag.
 
 	if err := batchWriteRequests(d.dynamodb, dynamoDBTableName, requests); err != nil {
 		// COVERAGE: can't cause an error here in unit tests because we only get this far if the
