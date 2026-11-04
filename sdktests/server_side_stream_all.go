@@ -37,7 +37,8 @@ func doServerSideStreamRequestTests(t *ldtest.T) {
 	streamTests.RequestMethodAndHeaders(t, sdkKey)
 
 	streamTests.RequestURLPath(t, func(flagRequestMethod) m.Matcher {
-		return m.Equal(mockld.StreamingPathServerSide)
+		return m.Equal(h.IfElse(dataProtocol(t) == mockld.FDv1,
+			mockld.StreamingPathFDv1ServerSide, mockld.StreamingPathServerSide))
 	})
 }
 

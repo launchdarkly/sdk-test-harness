@@ -20,6 +20,9 @@ import (
 )
 
 func doClientSideStreamRetryTests(t *ldtest.T) {
+	// These tests check how an FDv2 streaming synchronizer handles errors. The FDv1 streaming data source
+	// handles some of these errors differently.
+	requireFDv2(t)
 	c := NewCommonStreamingTests(t, "doClientSideStreamRetryTests")
 
 	recoverableErrors := []int{400, 408, 429, 500, 503}

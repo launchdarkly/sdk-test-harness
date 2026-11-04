@@ -45,6 +45,14 @@ See documentation comments for a full description of the available API. Here is 
 * `sdktests.SDKEventSink`: Currently this only supports inspecting received lists of analytics events. In the future, it will also support inspecting diagnostic events, and verifying the HTTP request/retry behavior of the SDK.
 * `sdktests.SDKClient`: The methods of this type correspond to SDK methods that the test harness is telling the test service to call. They include evaluating flags, sending events, and flushing events.
 
+## Data protocols
+
+The test suite runs once for each data protocol that the test service declares: in the `fdv1` branch of the test tree for the `"fdv1"` capability, and in the `fdv2` branch for the `"fdv2"` capability. The `SDKDataSystem` from `NewSDKDataSystem` uses the protocol of the branch that the test runs in, both for the mock services and for the SDK configuration. So a test that only needs the SDK to get data works the same way in both branches.
+
+* To change the data in a test that does not depend on the protocol, use the `PushItemUpdate`, `PushItemDelete`, and `PushFullData` methods of the streaming service. They send a complete change in the protocol of the branch.
+* A test of behavior that exists only in FDv2, such as connection modes or `payload-transferred` events, must call `requireFDv2(t)` first. Then it is skipped in the `fdv1` branch.
+* `NewSDKClient` fails the test if the configuration does not match the branch: for instance, if an FDv1 test sets `dataSystem`.
+
 ## Test assertions
 
 Since the `ldtest.T` type implements the same basic interface as `testing.T` in terms of reporting failures, you can use any assertion framework that acts on an equivalent interface rather than specifically on `testing.T`.

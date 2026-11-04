@@ -36,7 +36,6 @@ const (
 	depSegmentOuter          = "outer"
 	depSegmentInner          = "inner"
 	depContextKey            = "user-key"
-	depPayloadState          = "updated"
 	depValueOnIndex          = 0
 	depValueOffIndex         = 1
 	depValueNotIncludedIndex = 0
@@ -115,9 +114,9 @@ func dependencySegments() []ldmodel.Segment {
 	}
 }
 
-// streamPusher pushes changes through an FDv2 streaming service. Every pushed item and every
-// payload-transferred event carries a version higher than any used before, so the SDK never
-// discards a push as stale.
+// streamPusher pushes changes through the streaming service, in the data protocol of the test. Every
+// pushed item carries a version higher than any used before, so the SDK never discards a push as
+// stale.
 type streamPusher struct {
 	streaming *mockld.StreamingService
 	version   int
@@ -136,37 +135,25 @@ func (p *streamPusher) nextVersion() int {
 	return p.version
 }
 
-// putFlag pushes the flag as a change to the current payload, using the flag's own version for
-// the payload-transferred event. Build the flag with a version from nextVersion.
+// putFlag pushes the flag as a complete change. Build the flag with a version from nextVersion.
 func (p *streamPusher) putFlag(flag ldmodel.FeatureFlag) {
-	p.streaming.PushUpdate("flag", flag.Key, flag.Version, jsonhelpers.ToJSON(flag))
-	p.streaming.PushPayloadTransferred(depPayloadState, flag.Version)
+	p.streaming.PushItemUpdate("flag", flag.Key, flag.Version, jsonhelpers.ToJSON(flag))
 }
 
 // putSegment is putFlag for a segment.
 func (p *streamPusher) putSegment(segment ldmodel.Segment) {
-	p.streaming.PushUpdate("segment", segment.Key, segment.Version, jsonhelpers.ToJSON(segment))
-	p.streaming.PushPayloadTransferred(depPayloadState, segment.Version)
+	p.streaming.PushItemUpdate("segment", segment.Key, segment.Version, jsonhelpers.ToJSON(segment))
 }
 
-// deleteItem pushes a deletion of the flag or segment as a change to the current payload.
+// deleteItem pushes a deletion of the flag or segment as a complete change.
 func (p *streamPusher) deleteItem(namespace, key string) {
-	version := p.nextVersion()
-	p.streaming.PushDelete(namespace, key, version)
-	p.streaming.PushPayloadTransferred(depPayloadState, version)
+	p.streaming.PushItemDelete(namespace, key, p.nextVersion())
 }
 
 // replaceAll pushes a full data set that replaces everything the SDK holds. An item that keeps
 // its version is unchanged; an item that is absent is removed.
 func (p *streamPusher) replaceAll(flags []ldmodel.FeatureFlag, segments []ldmodel.Segment) {
-	p.streaming.PushServerIntent("xfer-full", "stale")
-	for _, flag := range flags {
-		p.streaming.PushUpdate("flag", flag.Key, flag.Version, jsonhelpers.ToJSON(flag))
-	}
-	for _, segment := range segments {
-		p.streaming.PushUpdate("segment", segment.Key, segment.Version, jsonhelpers.ToJSON(segment))
-	}
-	p.streaming.PushPayloadTransferred(depPayloadState, p.nextVersion())
+	p.streaming.PushFullData(mockld.NewServerSDKDataBuilder().Flag(flags...).Segment(segments...).Build())
 }
 
 // dependencyListenerFixture is an SDK client started with the dependency data set, plus the

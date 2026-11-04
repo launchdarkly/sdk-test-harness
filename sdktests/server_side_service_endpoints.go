@@ -52,9 +52,7 @@ func doServerSideServiceEndpointsTests(t *ldtest.T) {
 		doTest(
 			t,
 			func(dataSource *SDKDataSystem) SDKConfigurer {
-				return WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
-					BaseURI: dataSource.Synchronizers[0].Endpoint().BaseURL(),
-				})
+				return withStreamingBaseURI(t, dataSource.Synchronizers[0].Endpoint().BaseURL())
 			},
 			func(events *SDKEventSink) SDKConfigurer {
 				return WithEventsConfig(servicedef.SDKConfigEventParams{

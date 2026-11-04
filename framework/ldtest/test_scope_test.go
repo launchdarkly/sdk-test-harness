@@ -28,6 +28,40 @@ func TestTestScopeInheritsConfiguration(t *testing.T) {
 	})
 }
 
+func TestTestScopeRunWithContextReplacesContextForSubtree(t *testing.T) {
+	config := TestConfiguration{Context: "top"}
+	var inSubtest, inNestedSubtest, inSibling, afterSubtest interface{}
+	_ = Run(config, func(ldt *T) {
+		ldt.RunWithContext("subtest", "replaced", func(ldt1 *T) {
+			inSubtest = ldt1.Context()
+			ldt1.Run("nested", func(ldt2 *T) {
+				inNestedSubtest = ldt2.Context()
+			})
+		})
+		ldt.Run("sibling", func(ldt1 *T) {
+			inSibling = ldt1.Context()
+		})
+		afterSubtest = ldt.Context()
+	})
+	assert.Equal(t, "replaced", inSubtest)
+	assert.Equal(t, "replaced", inNestedSubtest)
+	assert.Equal(t, "top", inSibling)
+	assert.Equal(t, "top", afterSubtest)
+}
+
+func TestTestScopeRunWithContextAppliesFilter(t *testing.T) {
+	executed := false
+	config := TestConfiguration{
+		Filter: FilterFunc(func(id TestID) bool { return id.String() != "excluded" }),
+	}
+	_ = Run(config, func(ldt *T) {
+		ldt.RunWithContext("excluded", "value", func(*T) {
+			executed = true
+		})
+	})
+	assert.False(t, executed)
+}
+
 func TestTestScopeExitsImmediatelyOnFailNow(t *testing.T) {
 	executed1 := false
 	executed2 := false

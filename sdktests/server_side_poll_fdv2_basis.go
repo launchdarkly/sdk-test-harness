@@ -14,6 +14,7 @@ import (
 // sends. The SDK sends the state from the selector of the most recent payload-transferred
 // event as the basis query parameter on its polling requests.
 func doServerSidePollFDv2BasisTests(t *ldtest.T) {
+	requireFDv2(t)
 	sdkKey := "my-sdk-key"
 
 	pollTests := NewCommonPollingTests(t, "doServerSidePollFDv2BasisTests",

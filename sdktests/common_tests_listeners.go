@@ -45,7 +45,7 @@ func makeFlagForFlagChangeListenerTests(key string, version int, value ldvalue.V
 }
 
 // createClientForFlagChangeListenerTests sets up a client with two flags (flag1 and flag2) pre-loaded
-// via streaming, both initially evaluating to "value1". Use dataSystem.Synchronizers[0].streaming
+// via streaming, both initially evaluating to "value1". Use pushFlagUpdateForFlagChangeListenerTests
 // to push flag updates and trigger listener notifications.
 func createClientForFlagChangeListenerTests(t *ldtest.T) (*SDKClient, *SDKDataSystem) {
 	flag1 := makeFlagForFlagChangeListenerTests("flag1", 1, ldvalue.String("value1"))
@@ -58,15 +58,12 @@ func createClientForFlagChangeListenerTests(t *ldtest.T) (*SDKClient, *SDKDataSy
 	return client, dataSystem
 }
 
-// pushFlagUpdateForFlagChangeListenerTests pushes a flag update through the streaming service and
-// signals that the payload is complete. version must increase with each call; it is used as both the
-// flag version and the payload-transferred sequence number.
+// pushFlagUpdateForFlagChangeListenerTests pushes a flag update through the streaming service as a
+// complete change. version is the flag version, and it must increase with each call.
 func pushFlagUpdateForFlagChangeListenerTests(dataSystem *SDKDataSystem, key string, version int, value ldvalue.Value) {
 	flag := makeFlagForFlagChangeListenerTests(key, version, value)
 
-	streaming := dataSystem.Synchronizers[0].streaming
-	streaming.PushUpdate("flag", key, version, jsonhelpers.ToJSON(flag))
-	streaming.PushPayloadTransferred("updated", version)
+	dataSystem.Synchronizers[0].streaming.PushItemUpdate("flag", key, version, jsonhelpers.ToJSON(flag))
 }
 
 // --- Flag change listener tests ---
@@ -251,9 +248,7 @@ func flagValueChangeListenerIsContextSpecific(t *ldtest.T) {
 		)).
 		Build()
 
-	streaming := dataSystem.Synchronizers[0].streaming
-	streaming.PushUpdate("flag", "flag1", 2, jsonhelpers.ToJSON(updatedFlag))
-	streaming.PushPayloadTransferred("updated", 2)
+	dataSystem.Synchronizers[0].streaming.PushItemUpdate("flag", "flag1", 2, jsonhelpers.ToJSON(updatedFlag))
 
 	// context1 (user-1): value changed from "value1" to "updated-value" → notification expected.
 	callback1.ExpectValueChangeNotification(t, "flag1", ldvalue.String("value1"), ldvalue.String("updated-value"))

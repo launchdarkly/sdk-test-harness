@@ -1,6 +1,7 @@
 package sdktests
 
 import (
+	h "github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
@@ -34,7 +35,8 @@ func doServerSidePollRequestTests(t *ldtest.T) {
 	}
 
 	pollTests.RequestURLPath(t, func(flagRequestMethod) m.Matcher {
-		return m.Equal(mockld.PollingPathServerSide)
+		return m.Equal(h.IfElse(dataProtocol(t) == mockld.FDv1,
+			mockld.PollingPathFDv1ServerSide, mockld.PollingPathServerSide))
 	})
 }
 

@@ -50,6 +50,16 @@ func RunSDKTestSuite(
 		}
 	}
 
+	if !capabilities.Has(servicedef.CapabilityFDv1) && !capabilities.Has(servicedef.CapabilityFDv2) {
+		// The summary of failed tests does not show errors, so the logger shows this one.
+		err := fmt.Errorf(`test service has neither %q nor %q capability; it must declare at least one`,
+			servicedef.CapabilityFDv1, servicedef.CapabilityFDv2)
+		testLogger.TestError(nil, err)
+		return ldtest.Results{
+			Failures: []ldtest.TestResult{{Errors: []error{err}}},
+		}
+	}
+
 	fmt.Println()
 	if sdf, ok := filter.(ldtest.SelfDescribingFilter); ok {
 		sdf.Describe(os.Stdout, capabilities, importantCapabilities)
@@ -67,14 +77,16 @@ func RunSDKTestSuite(
 	}
 
 	return ldtest.Run(config, func(t *ldtest.T) {
-		switch sdkKind {
-		case mockld.ServerSideSDK:
-			doAllServerSideTests(t)
-		case mockld.PHPSDK:
-			doAllPHPTests(t)
-		default:
-			doAllClientSideTests(t)
-		}
+		runForEachDataProtocol(t, func(t *ldtest.T) {
+			switch sdkKind {
+			case mockld.ServerSideSDK:
+				doAllServerSideTests(t)
+			case mockld.PHPSDK:
+				doAllPHPTests(t)
+			default:
+				doAllClientSideTests(t)
+			}
+		})
 	})
 }
 

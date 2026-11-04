@@ -178,6 +178,8 @@ func evaluateBootstrapFlagDetail(
 
 func doClientSideBootstrapTests(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityBootstrap)
+	// These tests use FDv2 connection modes, such as the offline mode.
+	requireFDv2(t)
 
 	t.Run("bootstrap flags are evaluable with no network data source",
 		doClientSideBootstrapEvaluableImmediatelyTest)

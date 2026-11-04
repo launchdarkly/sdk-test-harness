@@ -22,7 +22,8 @@ func NewCommonStreamingTests(t *ldtest.T, testName string, baseSDKConfigurers ..
 // Create a data system that can be used to push updates, and return the necessary configuration actions for
 // creating an SDK client.
 //
-// This behavior differs between SDK types as follows:
+// For FDv1, this behavior differs between SDK types as follows. For FDv2, client-side SDKs use connection
+// modes instead, as the comments in the code describe.
 //
 // - Server-side SDKs in streaming mode use *only* the streaming service.
 //
@@ -40,6 +41,17 @@ func (c CommonStreamingTests) setupDataSystems(
 
 	if d, ok := initialData.(mockld.ServerSDKData); ok {
 		initialData = d.ConvertToFDv2SDKData(t)
+	}
+
+	if dataProtocol(t) == mockld.FDv1 && c.isClientSide {
+		pollingData := initialData
+		if c.sdkKind != mockld.JSClientSDK {
+			pollingData = mockld.EmptyData(c.sdkKind)
+		}
+		dataSystem := NewSDKDataSystemCustom(t, initialData,
+			DataSystemOptionPollingInitializer(pollingData), DataSystemOptionStreaming())
+		dataSystem.CreateEndpoints()
+		return dataSystem, []SDKConfigurer{dataSystem}
 	}
 
 	var dsOptions []SDKDataSystemOption

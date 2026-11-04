@@ -55,6 +55,8 @@ func reasonIsNotOverrideAffected(kind string) m.Matcher {
 
 func doServerSideFlagOverridesTests(t *ldtest.T) {
 	t.RequireCapability(servicedef.CapabilityFlagOverrides)
+	// The override source is an option of the FDv2 data system, so FDv1 SDKs do not have overrides.
+	requireFDv2(t)
 
 	t.Run("static configuration", doServerSideFlagOverridesStaticTests)
 	t.Run("uninitialized client", doServerSideFlagOverridesUninitializedTests)

@@ -7,6 +7,7 @@ import (
 	h "github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v3/framework/opt"
+	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 
 	"github.com/stretchr/testify/assert"
@@ -147,7 +148,13 @@ func (c CommonWrapperTests) Run(t *ldtest.T) {
 // DataSystemOptionInitialConnectionMode("streaming") pins the initial connection mode
 // back to "streaming", since this data system's own Configure() call would otherwise
 // overwrite it and change which mode the SDK starts in.
+//
+// FDv1 has no connection modes, so for FDv1 it is a polling data system. Its Configure sets the
+// polling base URI and keeps the streaming base URI of the primary data system.
 func clientSideSecondaryPollingDataSystem(t *ldtest.T) SDKConfigurer {
+	if dataProtocol(t) == mockld.FDv1 {
+		return NewSDKDataSystem(t, nil, DataSystemOptionPolling())
+	}
 	pollingDataSystem := NewSDKDataSystemCustom(t, nil,
 		DataSystemOptionConnectionMode("polling", DataSystemOptionPolling()),
 		DataSystemOptionInitialConnectionMode("streaming"),

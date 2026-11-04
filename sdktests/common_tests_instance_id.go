@@ -111,6 +111,7 @@ func (c CommonInstanceIDTests) Run(t *ldtest.T) {
 	// by default.
 	if c.sdkKind.IsServerSide() {
 		t.Run("polling initializer requests", func(t *ldtest.T) {
+			requireFDv2(t)
 			initializerData := mockld.NewServerSDKDataBuilder().Build()
 			synchronizerData := mockld.FDv2SDKDataFromServerSDKData(
 				mockld.NewServerSDKDataBuilder().Build(), "none", "up-to-date", "initial")
@@ -123,6 +124,7 @@ func (c CommonInstanceIDTests) Run(t *ldtest.T) {
 		})
 
 		t.Run("secondary synchronizer requests after permanent fallback", func(t *ldtest.T) {
+			requireFDv2(t)
 			// Primary returns 401, a non-recoverable status that permanently
 			// removes it from the synchronizer chain and causes the SDK to
 			// fall through to the Secondary immediately.
@@ -161,6 +163,7 @@ func (c CommonInstanceIDTests) Run(t *ldtest.T) {
 
 	if t.Capabilities().Has(servicedef.CapabilityFDv1Fallback) {
 		t.Run("FDv1 fallback directive requests", func(t *ldtest.T) {
+			requireFDv2(t)
 			// FDv2 streaming responds with 403 + directive on every request
 			// so the SDK transitions to the FDv1 Fallback Synchronizer. The
 			// FDv1 endpoint serves an empty payload so initialization can

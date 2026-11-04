@@ -88,7 +88,8 @@ func (c commonTestsBase) availableFlagRequestMethods(t *ldtest.T) []flagRequestM
 	if t.Capabilities().Has(servicedef.CapabilityClientUseReport) {
 		methods = append(methods, flagRequestREPORT)
 	}
-	if t.Capabilities().Has(servicedef.CapabilityClientUsePost) {
+	// POST is the FDv2 counterpart of REPORT, so FDv1 SDKs do not use it.
+	if t.Capabilities().Has(servicedef.CapabilityClientUsePost) && dataProtocol(t) == mockld.FDv2 {
 		methods = append(methods, flagRequestPOST)
 	}
 	return methods
@@ -101,10 +102,10 @@ func (c commonTestsBase) requireBodyFlagRequestMethod(t *ldtest.T) flagRequestMe
 	if t.Capabilities().Has(servicedef.CapabilityClientUseReport) {
 		return flagRequestREPORT
 	}
-	if t.Capabilities().Has(servicedef.CapabilityClientUsePost) {
+	if t.Capabilities().Has(servicedef.CapabilityClientUsePost) && dataProtocol(t) == mockld.FDv2 {
 		return flagRequestPOST
 	}
-	t.SkipWithReason(fmt.Sprintf("test service has neither capability %q nor %q",
+	t.SkipWithReason(fmt.Sprintf("test service has neither capability %q nor, for FDv2, %q",
 		servicedef.CapabilityClientUseReport, servicedef.CapabilityClientUsePost))
 	return flagRequestGET // unreachable: SkipWithReason ends the test
 }
@@ -241,6 +242,51 @@ func (c commonTestsBase) emptyFDv1FallbackBody() []byte {
 		panic(fmt.Errorf("failed to marshal empty FDv1 fallback body: %w", err))
 	}
 	return bytes
+}
+
+// withStreamingBaseURI returns a configurer that sets the base URI that the SDK streams from. For FDv1, it
+// sets the base URI in the streaming configuration. For FDv2, it adds a streaming synchronizer, which is
+// in the "streaming" connection mode for a client-side SDK.
+func withStreamingBaseURI(t *ldtest.T, baseURI string) SDKConfigurer {
+	if dataProtocol(t) == mockld.FDv1 {
+		return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+			streaming := configOut.Streaming.Value()
+			streaming.BaseURI = baseURI
+			configOut.Streaming = o.Some(streaming)
+			return nil
+		})
+	}
+	if requireContext(t).sdkKind.IsClientSide() {
+		return WithConnectionModeSynchronizer("streaming", servicedef.DataSynchronizer{
+			Streaming: o.Some(servicedef.SDKConfigStreamingParams{BaseURI: baseURI}),
+		})
+	}
+	return WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{BaseURI: baseURI})
+}
+
+// withPollingBaseURI returns a configurer that sets the base URI that the SDK polls. For FDv1, it sets the
+// base URI in the polling configuration. For FDv2, it adds a polling synchronizer. For a client-side SDK,
+// the synchronizer is in the "polling" connection mode, and the SDK starts in that mode.
+func withPollingBaseURI(t *ldtest.T, baseURI string) SDKConfigurer {
+	if dataProtocol(t) == mockld.FDv1 {
+		return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+			polling := configOut.Polling.Value()
+			polling.BaseURI = baseURI
+			configOut.Polling = o.Some(polling)
+			return nil
+		})
+	}
+	if requireContext(t).sdkKind.IsClientSide() {
+		return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+			if err := WithConnectionModeSynchronizer("polling", servicedef.DataSynchronizer{
+				Polling: o.Some(servicedef.SDKConfigPollingParams{BaseURI: baseURI}),
+			}).Configure(configOut); err != nil {
+				return err
+			}
+			return WithInitialConnectionMode("polling").Configure(configOut)
+		})
+	}
+	return WithPollingSynchronizer(servicedef.SDKConfigPollingParams{BaseURI: baseURI})
 }
 
 func (c commonTestsBase) withHTTPProxy(url string) SDKConfigurer {

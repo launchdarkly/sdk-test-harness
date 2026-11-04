@@ -26,6 +26,7 @@ For `-run`, `-skip`, and tests referenced via `-skip-from`, the rules for patter
 
 * The match is done against the full path of the test. The full path is the string that appears between brackets in the test output. It may include slash-delimited subtests, such as `parent test name/subtest name/sub-subtest name`.
 * In the pattern, each slash-delimited segment is treated as a separate regular expression. So, for instance, you can write `^evaluation$/a.c` to match `evaluation/abc` and `evaluation/xaxcx` but not match `xevaluationx/abc`.
+* The first segment of every test path is the data protocol of the test, `fdv1` or `fdv2` (see the `"fdv1"` and `"fdv2"` capabilities in the [service spec](./service_spec.md)). For instance, `fdv2/streaming` matches the FDv2 streaming tests, and `fdv[12]/events` matches the event tests for both protocols.
 * However, `(` and `)` will always be treated as literal characters, not regular expression operators. This is because some tests may have parens in their names. If you want "or" behavior, instead of `-run (a|b)` just use `-run a -run b` (in other words, there is an implied "or" for multiple values).
 * If `-run` specifies a test that has subtests, then all of its subtests are also run.
 * If `-skip`/`-skip-from` specifies a test that has subtests, then all of its subtests are also skipped.

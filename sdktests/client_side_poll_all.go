@@ -34,6 +34,14 @@ func doClientSidePollRequestTest(t *ldtest.T) {
 		pollTests.RequestViaHTTPProxy(t)
 	}
 
+	if dataProtocol(t) == mockld.FDv1 {
+		pollTests.RequestURLPath(t, func(method flagRequestMethod) m.Matcher {
+			return fdv1ClientPollingPathMatcher(sdkKind, envIDOrMobileKey, method)
+		})
+		pollTests.RequestContextProperties(t, fdv1ClientPollingGetPath(sdkKind, envIDOrMobileKey))
+		return
+	}
+
 	requestPathMatcher := func(method flagRequestMethod) m.Matcher {
 		switch sdkKind {
 		case mockld.MobileSDK, mockld.JSClientSDK:
@@ -61,4 +69,28 @@ func doClientSidePollRequestTest(t *ldtest.T) {
 		mockld.PollingPathMobileGet,
 		mockld.PollingPathFDv2ClientGet)
 	pollTests.RequestContextProperties(t, getPath)
+}
+
+// fdv1ClientPollingPathMatcher matches the path of an FDv1 poll request from a client-side SDK. It does
+// not check the base64-encoded context data in the path of a GET request, which other tests check.
+func fdv1ClientPollingPathMatcher(sdkKind mockld.SDKKind, envID string, method flagRequestMethod) m.Matcher {
+	if sdkKind == mockld.JSClientSDK {
+		getPathPrefix := strings.TrimSuffix(
+			strings.ReplaceAll(mockld.PollingPathJSClientGet, mockld.PollingPathEnvIDParam, envID),
+			mockld.PollingPathContextBase64Param)
+		reportPath := strings.ReplaceAll(mockld.PollingPathJSClientReport, mockld.PollingPathEnvIDParam, envID)
+		return h.IfElse(method == flagRequestREPORT, m.Equal(reportPath), m.StringHasPrefix(getPathPrefix))
+	}
+	getPathPrefix := strings.TrimSuffix(mockld.PollingPathMobileGet, mockld.PollingPathContextBase64Param)
+	return h.IfElse(method == flagRequestREPORT,
+		m.Equal(mockld.PollingPathMobileReport),
+		m.StringHasPrefix(getPathPrefix))
+}
+
+// fdv1ClientPollingGetPath returns the path template of an FDv1 GET poll request from a client-side SDK.
+func fdv1ClientPollingGetPath(sdkKind mockld.SDKKind, envID string) string {
+	if sdkKind == mockld.JSClientSDK {
+		return strings.ReplaceAll(mockld.PollingPathJSClientGet, mockld.PollingPathEnvIDParam, envID)
+	}
+	return mockld.PollingPathMobileGet
 }

@@ -156,6 +156,8 @@ func makeMalformedManyRulesFlagJSON(ruleCount int) json.RawMessage {
 }
 
 func doServerSideMalformedDataTests(t *ldtest.T) {
+	// These tests send the malformed items in FDv2 payloads.
+	requireFDv2(t)
 	t.Run("streaming", doServerSideMalformedDataStreamingTests)
 	t.Run("polling", func(t *ldtest.T) {
 		t.RequireCapability(servicedef.CapabilityServerSidePolling)

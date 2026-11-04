@@ -14,6 +14,20 @@ const (
 	CapabilitySingleton          = "singleton"
 	CapabilityClientIndependence = "client-independence"
 
+	// CapabilityFDv1 means the SDK can get its flag data from the FDv1 streaming and polling services.
+	// The test harness then runs the tests in the "fdv1" branch of the test tree. In those tests, the
+	// SDK configuration has the top-level "streaming" and "polling" properties and no "dataSystem".
+	//
+	// A test service must declare CapabilityFDv1, CapabilityFDv2, or both.
+	CapabilityFDv1 = "fdv1"
+
+	// CapabilityFDv2 means the SDK can get its flag data from the FDv2 data system. The test harness
+	// then runs the tests in the "fdv2" branch of the test tree. In those tests, the SDK configuration
+	// has the "dataSystem" property and no top-level "streaming" or "polling".
+	//
+	// A test service must declare CapabilityFDv1, CapabilityFDv2, or both.
+	CapabilityFDv2 = "fdv2"
+
 	CapabilityAllFlagsWithReasons                = "all-flags-with-reasons"
 	CapabilityAllFlagsClientSideOnly             = "all-flags-client-side-only"
 	CapabilityAllFlagsDetailsOnlyForTrackedFlags = "all-flags-details-only-for-tracked-flags"
