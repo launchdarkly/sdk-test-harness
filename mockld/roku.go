@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 // SDK expects these fields to be present, but it will ignore these fields when
@@ -18,6 +20,21 @@ type handshakePublicBundle struct {
 type RokuServer struct {
 	user      *json.RawMessage
 	mobileKey *string
+}
+
+// NewRokuStreamHandler returns a handler that answers the Roku handshake and sends Roku stream
+// requests to h as mobile stream requests. All requests share one handshake state. Use this when h
+// can be a different handler for each request, for example a sequential handler.
+func NewRokuStreamHandler(h http.Handler) http.Handler {
+	router := mux.NewRouter()
+	(&RokuServer{}).Route(router, h)
+	return router
+}
+
+// Route adds the Roku handshake and stream paths to router. Stream requests go to h.
+func (srv *RokuServer) Route(router *mux.Router, h http.Handler) {
+	router.Path(StreamingPathRokuHandshake).Methods("POST").HandlerFunc(srv.ServeHandshake)
+	router.Path(StreamingPathRokuEvaluate).Methods("POST").Handler(srv.Wrap(h))
 }
 
 func (srv *RokuServer) Wrap(h http.Handler) http.Handler {
