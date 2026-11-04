@@ -16,12 +16,17 @@ import (
 type MockBigSegmentStoreService struct {
 	service                *callbackService
 	getMetadataFn          func() (ldtime.UnixMillisecondTime, error)
-	getContextMembershipFn func(string) (map[string]bool, error)
+	getContextMembershipFn func(string) (map[string]bool, bool, error)
 }
 
+// NewMockBigSegmentStoreService creates the mock store service. The getContextMembership function
+// returns the membership for a context hash and whether the store has a record for that context:
+// for a context with no record the response omits "values", for a nil membership it sends
+// "values": null, and otherwise it sends the map, even if it is empty. These are the three shapes
+// a test service must accept.
 func NewMockBigSegmentStoreService(
 	getMetadata func() (ldtime.UnixMillisecondTime, error),
-	getContextMembership func(string) (map[string]bool, error),
+	getContextMembership func(string) (map[string]bool, bool, error),
 	logger framework.Logger,
 ) *MockBigSegmentStoreService {
 	service := newCallbackService(logger, "BigSegmentStore")
@@ -57,14 +62,18 @@ func (m *MockBigSegmentStoreService) doGetMembership(readParams *json.Decoder) (
 	}
 
 	var membership map[string]bool
+	var found bool
 	var err error
 	if m.getContextMembershipFn != nil {
-		membership, err = m.getContextMembershipFn(params.ContextHash)
+		membership, found, err = m.getContextMembershipFn(params.ContextHash)
 	}
 
 	if err != nil {
 		return nil, err
 	}
 
+	if !found {
+		return struct{}{}, nil
+	}
 	return cf.BigSegmentStoreGetMembershipResponse{Values: membership}, nil
 }
