@@ -1,0 +1,71 @@
+---
+name: keys like built-in object members - present
+
+# Flags and segments whose keys are names of built-in object members ("constructor", "__proto__",
+# "hasOwnProperty", "toString" and so on) are stored, evaluated and listed like any others.
+
+parameters:
+  - KEY: "constructor"
+  - KEY: "__proto__"
+  - KEY: "hasOwnProperty"
+  - KEY: "toString"
+  - KEY: "valueOf"
+  - KEY: "prototype"
+  - KEY: "__class__"
+  - KEY: "__index"
+
+sdkData:
+  flags:
+    "<KEY>":
+      on: true
+      variations: [ "off", "value of <KEY>" ]
+      offVariation: 0
+      fallthrough: { variation: 1 }
+
+    flag-with-prerequisite:
+      on: true
+      variations: [ "off", "fallthrough" ]
+      offVariation: 0
+      fallthrough: { variation: 1 }
+      prerequisites:
+        - { key: "<KEY>", variation: 1 }
+
+    flag-with-segment-rule:
+      on: true
+      variations: [ "fallthrough", "rule" ]
+      offVariation: 0
+      fallthrough: { variation: 0 }
+      rules:
+        - id: ruleid
+          variation: 1
+          clauses:
+            - { attribute: "", op: "segmentMatch", values: [ "<KEY>" ] }
+
+  segments:
+    "<KEY>":
+      included: [ "included-key" ]
+
+evaluations:
+  - name: flag <KEY> is evaluated
+    flagKey: "<KEY>"
+    context: { key: "user-key" }
+    default: "default"
+    expect: { value: "value of <KEY>", variationIndex: 1, reason: { kind: "FALLTHROUGH" } }
+
+  - name: prerequisite <KEY> is met
+    flagKey: flag-with-prerequisite
+    context: { key: "user-key" }
+    default: "default"
+    expect: { value: "fallthrough", variationIndex: 1, reason: { kind: "FALLTHROUGH" } }
+
+  - name: segment <KEY> matches an included key
+    flagKey: flag-with-segment-rule
+    context: { key: "included-key" }
+    default: "default"
+    expect: { value: "rule", variationIndex: 1, reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "ruleid" } }
+
+  - name: segment <KEY> does not match another key
+    flagKey: flag-with-segment-rule
+    context: { key: "user-key" }
+    default: "default"
+    expect: { value: "fallthrough", variationIndex: 0, reason: { kind: "FALLTHROUGH" } }
