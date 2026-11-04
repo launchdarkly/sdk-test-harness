@@ -1,6 +1,9 @@
 package sdktests
 
 import (
+	"time"
+
+	"github.com/launchdarkly/sdk-test-harness/v3/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
 )
@@ -75,4 +78,19 @@ func (c CommonStreamingTests) setupDataSystems(
 
 	dataSystem := NewSDKDataSystem(t, initialData, dsOptions...)
 	return dataSystem, []SDKConfigurer{dataSystem}
+}
+
+// requireStreamConnection waits for the next stream request to the endpoint. It ignores the
+// Roku handshake request, because the Roku SDK sends it before each stream request.
+func requireStreamConnection(
+	t *ldtest.T,
+	endpoint *harness.MockEndpoint,
+	timeout time.Duration,
+) harness.IncomingRequestInfo {
+	deadline := time.Now().Add(timeout)
+	request := endpoint.RequireConnection(t, time.Until(deadline))
+	for request.URL.Path == mockld.StreamingPathRokuHandshake {
+		request = endpoint.RequireConnection(t, time.Until(deadline))
+	}
+	return request
 }
