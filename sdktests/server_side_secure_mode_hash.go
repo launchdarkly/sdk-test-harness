@@ -53,6 +53,36 @@ func doServerSideSecureModeHashTests(t *ldtest.T) {
 			context:      ldcontext.NewWithKind("other", userKey1),
 			expectedHash: "98a933ca26d2951547fc021981ebcdeda95fbca2ac3f767ae67f7042d5458f72",
 		},
+		// The multi-kind hashes come from SecureModeHash in go-server-sdk v7. The canonical key
+		// sorts the kinds and keeps the "user:" prefix for the user kind.
+		{
+			// multi-kind context with a user kind; canonical key is "org:org-key-123:user:user-key-123"
+			sdkKey: sdkKey1,
+			context: ldcontext.NewMulti(
+				ldcontext.NewWithKind("org", "org-key-123"),
+				ldcontext.New(userKey1),
+			),
+			expectedHash: "78cfa9645945109a25ab34c05536480eb133e9dc5f39f7cf2fc29c25562def18",
+		},
+		{
+			// same multi-kind context with the kinds in a different order = same result
+			sdkKey: sdkKey1,
+			context: ldcontext.NewMulti(
+				ldcontext.New(userKey1),
+				ldcontext.NewWithKind("org", "org-key-123"),
+			),
+			expectedHash: "78cfa9645945109a25ab34c05536480eb133e9dc5f39f7cf2fc29c25562def18",
+		},
+		{
+			// multi-kind context with ':' and '%' in the keys; the canonical key escapes them
+			// as "org:org%3Akey%251:user:user%3Akey%252"
+			sdkKey: sdkKey1,
+			context: ldcontext.NewMulti(
+				ldcontext.NewWithKind("org", "org:key%1"),
+				ldcontext.New("user:key%2"),
+			),
+			expectedHash: "b2404b9755e6bba6bd402611abe6760323bc0bfd8634906e840d947bb14593c0",
+		},
 	}
 
 	dataSystem := NewSDKDataSystem(t, nil)
