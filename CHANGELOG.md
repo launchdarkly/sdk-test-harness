@@ -2,6 +2,25 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.43.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.42.0...v2.43.0) (2026-11-06)
+
+
+### Features
+
+* Add evaluation tests for exact key matching ([#577](https://github.com/launchdarkly/sdk-test-harness/issues/577)) ([a54565e](https://github.com/launchdarkly/sdk-test-harness/commit/a54565e542b9bab6be751bb80c5dc1b930e653b2))
+* Add evaluation tests for keys that name built-in object members ([#585](https://github.com/launchdarkly/sdk-test-harness/issues/585)) ([8adb16e](https://github.com/launchdarkly/sdk-test-harness/commit/8adb16ed8cf41191625608b6886dcaf11b8fed7e))
+* Add evaluation tests that equality does not coerce strings and numbers ([#578](https://github.com/launchdarkly/sdk-test-harness/issues/578)) ([a187543](https://github.com/launchdarkly/sdk-test-harness/commit/a187543ae6dd731cabe4b3a5384426d6a20ea8ca))
+* Add secure mode hash tests for multi-kind contexts ([#587](https://github.com/launchdarkly/sdk-test-harness/issues/587)) ([dc926cd](https://github.com/launchdarkly/sdk-test-harness/commit/dc926cd9ebfdb66f8cf195bfc817b775350660ec))
+
+
+### Bug Fixes
+
+* Check that a daemon-mode cache miss persists for the cache TTL ([#584](https://github.com/launchdarkly/sdk-test-harness/issues/584)) ([3f28441](https://github.com/launchdarkly/sdk-test-harness/commit/3f28441e28b81c2de76991ea502d77dcabbda04a))
+* Let the client fail to initialize in the invalid TLS certificate tests ([#557](https://github.com/launchdarkly/sdk-test-harness/issues/557)) ([b4b2281](https://github.com/launchdarkly/sdk-test-harness/commit/b4b228195e527fe1d988085e350c8bb7d8028a1a))
+* Make persistence tests assert the versioning they name ([#582](https://github.com/launchdarkly/sdk-test-harness/issues/582)) ([724a9bd](https://github.com/launchdarkly/sdk-test-harness/commit/724a9bd4688ebe86b19a39f3c69d57aa4d5b0072))
+* Run the client-side streaming retry tests against Roku through its handshake ([#574](https://github.com/launchdarkly/sdk-test-harness/issues/574)) ([25bc954](https://github.com/launchdarkly/sdk-test-harness/commit/25bc9541c998ab3793f6d98c55fda350313ded48))
+* Send distinct wire shapes for big segment membership cases ([#576](https://github.com/launchdarkly/sdk-test-harness/issues/576)) ([4abbf57](https://github.com/launchdarkly/sdk-test-harness/commit/4abbf5750ddcfd450bbc2e925d933b7a4e0b1774))
+
 ## [2.42.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.41.1...v2.42.0) (2026-11-03)
 
 
