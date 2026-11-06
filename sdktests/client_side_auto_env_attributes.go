@@ -176,12 +176,8 @@ func doClientSideAutoEnvAttributesEventsCollisionsTests(t *ldtest.T) {
 // end tests for events
 
 // clientSideAutoEnvModeOptions returns the option sets for exercising the
-// polling and streaming data paths in client-side auto-env tests. A bare
-// DataSystemOptionPolling() / DataSystemOptionStreaming() would be silently
-// ignored once the default "streaming" connection mode is in the config
-// (buildDataSystem takes the connection-modes branch and never reads the
-// top-level polling field), so each option must be wrapped in a connection
-// mode and made the initial mode.
+// polling and streaming data paths in client-side auto-env tests. Each option
+// set defines a connection mode and makes it the initial mode.
 func clientSideAutoEnvModeOptions() [][]SDKDataSystemOption {
 	return [][]SDKDataSystemOption{
 		{

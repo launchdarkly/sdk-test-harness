@@ -33,8 +33,7 @@ func (c CommonInstanceIDTests) Run(t *ldtest.T) {
 		configurers := c.baseSDKConfigurationPlus(dataSystem)
 		if c.isClientSide {
 			// client-side SDKs in streaming mode may *also* need a polling data source
-			configurers = append(configurers,
-				NewSDKDataSystem(t, nil, DataSystemOptionPolling()))
+			configurers = append(configurers, clientSideSecondaryPollingDataSystem(t))
 		}
 		_ = NewSDKClient(t, configurers...)
 		check := newInstanceIDChecker(t)
@@ -81,8 +80,7 @@ func (c CommonInstanceIDTests) Run(t *ldtest.T) {
 				if c.isClientSide {
 					// client-side SDKs in streaming mode may *also* need a
 					// polling data source
-					configurers = append(configurers,
-						NewSDKDataSystem(t, nil, DataSystemOptionPolling()))
+					configurers = append(configurers, clientSideSecondaryPollingDataSystem(t))
 				}
 				_ = NewSDKClient(t, configurers...)
 				request := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
