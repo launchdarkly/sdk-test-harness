@@ -1,0 +1,126 @@
+---
+name: segment match - same segment referenced more than once
+
+# A segment can be referenced by several clauses and rules of the same flag, and from inside another
+# segment that the flag also references. Evaluating a segment a second time in one flag evaluation is
+# not a circular reference, so these evaluations must succeed rather than fail as malformed.
+
+constants:
+  boolean_flag_base: &flag_base
+    on: true
+    variations: [ "off", "fallthrough", "rule0", "rule1" ]
+    offVariation: 0
+    fallthrough: { variation: 1 }
+  IS_RULE0:
+    value: "rule0"
+    variationIndex: 2
+    reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "rule0" }
+  IS_RULE1:
+    value: "rule1"
+    variationIndex: 3
+    reason: { kind: "RULE_MATCH", ruleIndex: 1, ruleId: "rule1" }
+  IS_FALLTHROUGH:
+    value: "fallthrough"
+    variationIndex: 1
+    reason: { kind: "FALLTHROUGH" }
+
+sdkData:
+  flags:
+    flag-with-two-rules-using-same-segment:
+      <<: *flag_base
+      rules:
+        - id: rule0
+          variation: 2
+          clauses:
+            - { attribute: "", op: "segmentMatch", values: [ "segment-with-rule" ] }
+            - { attribute: "attr", op: "in", values: [ "no-such-value" ] }
+        - id: rule1
+          variation: 3
+          clauses:
+            - { attribute: "", op: "segmentMatch", values: [ "segment-with-rule" ] }
+
+    flag-with-two-clauses-using-same-segment:
+      <<: *flag_base
+      rules:
+        - id: rule0
+          variation: 2
+          clauses:
+            - { attribute: "", op: "segmentMatch", values: [ "segment-with-rule" ] }
+            - { attribute: "", op: "segmentMatch", values: [ "segment-with-rule" ] }
+
+    flag-with-segment-used-directly-and-through-another-segment:
+      <<: *flag_base
+      rules:
+        - id: rule0
+          variation: 2
+          clauses:
+            - { attribute: "", op: "segmentMatch", values: [ "segment-with-rule" ] }
+            - { attribute: "", op: "segmentMatch", values: [ "segment-using-segment-with-rule" ] }
+
+    flag-with-segment-listed-twice-in-one-clause:
+      <<: *flag_base
+      rules:
+        - id: rule0
+          variation: 2
+          clauses:
+            - { attribute: "", op: "segmentMatch", values: [ "segment-with-rule", "segment-with-rule" ] }
+
+    flag-with-prerequisite-using-same-segment:
+      <<: *flag_base
+      prerequisites:
+        - { key: "prerequisite-using-segment", variation: 2 }
+      rules:
+        - id: rule0
+          variation: 2
+          clauses:
+            - { attribute: "", op: "segmentMatch", values: [ "segment-with-rule" ] }
+
+    prerequisite-using-segment:
+      <<: *flag_base
+      rules:
+        - id: rule0
+          variation: 2
+          clauses:
+            - { attribute: "", op: "segmentMatch", values: [ "segment-with-rule" ] }
+
+  segments:
+    segment-with-rule:
+      rules:
+        - clauses:
+            - { attribute: "key", op: "in", values: [ "user-key" ] }
+
+    segment-using-segment-with-rule:
+      rules:
+        - clauses:
+            - { op: "segmentMatch", values: [ "segment-with-rule" ] }
+
+evaluations:
+  - name: second rule matches the segment after the first rule matched it but failed another clause
+    flagKey: flag-with-two-rules-using-same-segment
+    context: { kind: "user", key: "user-key" }
+    expect: <IS_RULE1>
+
+  - name: neither rule matches when the context is not in the segment
+    flagKey: flag-with-two-rules-using-same-segment
+    context: { kind: "user", key: "other-key" }
+    expect: <IS_FALLTHROUGH>
+
+  - name: two clauses in one rule match the same segment
+    flagKey: flag-with-two-clauses-using-same-segment
+    context: { kind: "user", key: "user-key" }
+    expect: <IS_RULE0>
+
+  - name: segment matches directly and through another segment
+    flagKey: flag-with-segment-used-directly-and-through-another-segment
+    context: { kind: "user", key: "user-key" }
+    expect: <IS_RULE0>
+
+  - name: segment listed twice in one clause
+    flagKey: flag-with-segment-listed-twice-in-one-clause
+    context: { kind: "user", key: "user-key" }
+    expect: <IS_RULE0>
+
+  - name: prerequisite and flag both match the same segment
+    flagKey: flag-with-prerequisite-using-same-segment
+    context: { kind: "user", key: "user-key" }
+    expect: <IS_RULE0>

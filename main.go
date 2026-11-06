@@ -18,7 +18,7 @@ import (
 )
 
 const defaultPort = 8111
-const versionString string = "2.39.0" // {{ x-release-please-version }}
+const versionString string = "2.43.0" // {{ x-release-please-version }}
 
 func main() {
 	fmt.Printf("sdk-test-harness v%s\n", strings.TrimSpace(versionString))
@@ -82,7 +82,7 @@ func run(params commandParams) (*ldtest.Results, error) {
 	countingLogger := ldtest.NewCountingTestLogger(testLogger)
 	testLogger = countingLogger
 
-	results := sdktests.RunSDKTestSuite(harness, params.filters, countingLogger)
+	results := sdktests.RunSDKTestSuite(harness, params.filters, countingLogger, params.enableLongRunningTests)
 
 	fmt.Println()
 	logErr := testLogger.EndLog(results)

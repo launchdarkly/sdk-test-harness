@@ -1,0 +1,77 @@
+---
+name: keys like built-in object members - absent
+
+# Flag and segment keys such as "constructor", "__proto__", "hasOwnProperty" or "toString" are
+# ordinary keys. When no flag or segment has such a key, looking it up must find nothing, rather
+# than a built-in member of the language's object or dictionary type: the flag is not found, a
+# prerequisite with that key is not met, and a segment with that key does not match.
+
+constants:
+  NOT_FOUND:
+    value: "default"
+    reason: { kind: "ERROR", errorKind: "FLAG_NOT_FOUND" }
+
+parameters:
+  - KEY: "constructor"
+  - KEY: "__proto__"
+  - KEY: "hasOwnProperty"
+  - KEY: "toString"
+  - KEY: "valueOf"
+  - KEY: "prototype"
+  - KEY: "__class__"
+  - KEY: "__index"
+
+sdkData:
+  flags:
+    ordinary-flag:
+      on: true
+      variations: [ "ordinary" ]
+      fallthrough: { variation: 0 }
+
+    flag-with-prerequisite:
+      on: true
+      variations: [ "off", "fallthrough" ]
+      offVariation: 0
+      fallthrough: { variation: 1 }
+      prerequisites:
+        - { key: "<KEY>", variation: 0 }
+
+    flag-with-segment-rule:
+      on: true
+      variations: [ "fallthrough", "rule" ]
+      offVariation: 0
+      fallthrough: { variation: 0 }
+      rules:
+        - id: ruleid
+          variation: 1
+          clauses:
+            - { attribute: "", op: "segmentMatch", values: [ "<KEY>" ] }
+
+evaluations:
+  - name: flag <KEY> is not found
+    flagKey: "<KEY>"
+    context: { key: "user-key" }
+    valueType: string
+    default: "default"
+    expect: <NOT_FOUND>
+
+  - name: prerequisite <KEY> is not met
+    flagKey: flag-with-prerequisite
+    context: { key: "user-key" }
+    default: "default"
+    expect:
+      value: "off"
+      variationIndex: 0
+      reason: { kind: "PREREQUISITE_FAILED", prerequisiteKey: "<KEY>" }
+
+  - name: segment <KEY> does not match
+    flagKey: flag-with-segment-rule
+    context: { key: "user-key" }
+    default: "default"
+    expect: { value: "fallthrough", variationIndex: 0, reason: { kind: "FALLTHROUGH" } }
+
+  - name: ordinary flag next to lookups of <KEY>
+    flagKey: ordinary-flag
+    context: { key: "user-key" }
+    default: "default"
+    expect: { value: "ordinary", variationIndex: 0, reason: { kind: "FALLTHROUGH" } }

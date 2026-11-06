@@ -49,7 +49,7 @@ sdkData:
 evaluations:
   - name: "<BAD_VALUE> <OPERATOR> <OK_VALUE> fails"
     flagKey: test-compare-ok-value
-    context: { key: "user-key", custom: { attrname: "<VALUE2>" } }
+    context: { key: "user-key", custom: { attrname: "<BAD_VALUE>" } }
     default: false
     expect: <IS_NOT_MATCH>
 

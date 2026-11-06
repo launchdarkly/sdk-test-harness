@@ -146,12 +146,16 @@ func (b *BigSegmentStore) doGetMetadata() (ldtime.UnixMillisecondTime, error) {
 	return 0, nil
 }
 
-func (b *BigSegmentStore) doGetMembership(contextHash string) (map[string]bool, error) {
+// doGetMembership reports a context as not found by the store if no membership function has been
+// set up, so that the mock store omits "values" from its response; a function that returns a nil
+// map makes it send an explicit null.
+func (b *BigSegmentStore) doGetMembership(contextHash string) (map[string]bool, bool, error) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 	b.membershipQueries = append(b.membershipQueries, contextHash)
 	if b.getMembership != nil {
-		return b.getMembership(contextHash)
+		membership, err := b.getMembership(contextHash)
+		return membership, true, err
 	}
-	return nil, nil
+	return nil, false, nil
 }

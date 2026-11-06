@@ -15,6 +15,8 @@ type BigSegmentStoreGetMembershipParams struct {
 	ContextHash string `json:"contextHash"`
 }
 
+// BigSegmentStoreGetMembershipResponse is the response to a membership query. A nil Values map is
+// sent as an explicit null; an empty map is sent as an empty object.
 type BigSegmentStoreGetMembershipResponse struct {
-	Values map[string]bool `json:"values,omitempty"`
+	Values map[string]bool `json:"values"`
 }

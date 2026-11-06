@@ -2,6 +2,71 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.43.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.42.0...v2.43.0) (2026-11-06)
+
+
+### Features
+
+* Add evaluation tests for exact key matching ([#577](https://github.com/launchdarkly/sdk-test-harness/issues/577)) ([a54565e](https://github.com/launchdarkly/sdk-test-harness/commit/a54565e542b9bab6be751bb80c5dc1b930e653b2))
+* Add evaluation tests for keys that name built-in object members ([#585](https://github.com/launchdarkly/sdk-test-harness/issues/585)) ([8adb16e](https://github.com/launchdarkly/sdk-test-harness/commit/8adb16ed8cf41191625608b6886dcaf11b8fed7e))
+* Add evaluation tests that equality does not coerce strings and numbers ([#578](https://github.com/launchdarkly/sdk-test-harness/issues/578)) ([a187543](https://github.com/launchdarkly/sdk-test-harness/commit/a187543ae6dd731cabe4b3a5384426d6a20ea8ca))
+* Add secure mode hash tests for multi-kind contexts ([#587](https://github.com/launchdarkly/sdk-test-harness/issues/587)) ([dc926cd](https://github.com/launchdarkly/sdk-test-harness/commit/dc926cd9ebfdb66f8cf195bfc817b775350660ec))
+
+
+### Bug Fixes
+
+* Check that a daemon-mode cache miss persists for the cache TTL ([#584](https://github.com/launchdarkly/sdk-test-harness/issues/584)) ([3f28441](https://github.com/launchdarkly/sdk-test-harness/commit/3f28441e28b81c2de76991ea502d77dcabbda04a))
+* Let the client fail to initialize in the invalid TLS certificate tests ([#557](https://github.com/launchdarkly/sdk-test-harness/issues/557)) ([b4b2281](https://github.com/launchdarkly/sdk-test-harness/commit/b4b228195e527fe1d988085e350c8bb7d8028a1a))
+* Make persistence tests assert the versioning they name ([#582](https://github.com/launchdarkly/sdk-test-harness/issues/582)) ([724a9bd](https://github.com/launchdarkly/sdk-test-harness/commit/724a9bd4688ebe86b19a39f3c69d57aa4d5b0072))
+* Run the client-side streaming retry tests against Roku through its handshake ([#574](https://github.com/launchdarkly/sdk-test-harness/issues/574)) ([25bc954](https://github.com/launchdarkly/sdk-test-harness/commit/25bc9541c998ab3793f6d98c55fda350313ded48))
+* Send distinct wire shapes for big segment membership cases ([#576](https://github.com/launchdarkly/sdk-test-harness/issues/576)) ([4abbf57](https://github.com/launchdarkly/sdk-test-harness/commit/4abbf5750ddcfd450bbc2e925d933b7a4e0b1774))
+
+## [2.42.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.41.1...v2.42.0) (2026-11-03)
+
+
+### Features
+
+* Add evaluation tests for a segment referenced more than once ([#544](https://github.com/launchdarkly/sdk-test-harness/issues/544)) ([071c957](https://github.com/launchdarkly/sdk-test-harness/commit/071c95787cae8b9b87bf68a578975e4994f5da32))
+* Add evaluation tests for clause values of the wrong type ([#541](https://github.com/launchdarkly/sdk-test-harness/issues/541)) ([c4c6e97](https://github.com/launchdarkly/sdk-test-harness/commit/c4c6e970747fe556be83509991f60359bf950f83))
+* Add evaluation tests for falsy and look-alike variation values ([#545](https://github.com/launchdarkly/sdk-test-harness/issues/545)) ([a615671](https://github.com/launchdarkly/sdk-test-harness/commit/a61567179a282226f565739db32d8d6f86dd879d))
+* Add evaluation tests for numbers in exponent notation ([#542](https://github.com/launchdarkly/sdk-test-harness/issues/542)) ([10f13ec](https://github.com/launchdarkly/sdk-test-harness/commit/10f13eca8be5a69f8a6606106e557ba1b63fdf5e))
+* Add evaluation tests for old user built-in attributes ([#546](https://github.com/launchdarkly/sdk-test-harness/issues/546)) ([a1f89ed](https://github.com/launchdarkly/sdk-test-harness/commit/a1f89ed6292858406ba3995b4ea25e6a6d8c8da5))
+* Add evaluation tests for rollout bucket boundaries and seeded rollouts ([#543](https://github.com/launchdarkly/sdk-test-harness/issues/543)) ([893a111](https://github.com/launchdarkly/sdk-test-harness/commit/893a11120abc73781943a814dc7996127b5062ba))
+* Add evaluation tests for the matches operator ([#538](https://github.com/launchdarkly/sdk-test-harness/issues/538)) ([3b30760](https://github.com/launchdarkly/sdk-test-harness/commit/3b30760c0cb8c6ef22f969f8c777631e941134da))
+
+
+### Bug Fixes
+
+* Make evaluation data files test what they claim ([#547](https://github.com/launchdarkly/sdk-test-harness/issues/547)) ([be46abc](https://github.com/launchdarkly/sdk-test-harness/commit/be46abc8752151885d565a79b5cfe042dccf397c))
+
+## [2.41.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.41.0...v2.41.1) (2026-10-21)
+
+
+### Bug Fixes
+
+* Prevent cache TTL expiry from racing read-write persistence tests ([#444](https://github.com/launchdarkly/sdk-test-harness/issues/444)) ([e5f00fc](https://github.com/launchdarkly/sdk-test-harness/commit/e5f00fc7ae707402b84467a4b7601dd8c601224c))
+* Verify all-items reads for empty and single-item collections ([e27427a](https://github.com/launchdarkly/sdk-test-harness/commit/e27427af8461cac55f05a3bf163f3a39037f231c))
+* Verify SDKs read all three persistent-store tombstone shapes ([#438](https://github.com/launchdarkly/sdk-test-harness/issues/438)) ([e00f871](https://github.com/launchdarkly/sdk-test-harness/commit/e00f871f7c6eb4ad560ea6cd58a6eb801140a005))
+
+## [2.41.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.40.0...v2.41.0) (2026-08-19)
+
+
+### Features
+
+* Verify per-context private attributes are not applied to other contexts ([#430](https://github.com/launchdarkly/sdk-test-harness/issues/430)) ([4d9b3a6](https://github.com/launchdarkly/sdk-test-harness/commit/4d9b3a6a2a98bb3d36c5be99650787bc9e0534bd))
+
+## [2.40.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.39.0...v2.40.0) (2026-08-19)
+
+
+### Features
+
+* add RETRY-conformance contract tests for FDv1 streaming and polling ([#404](https://github.com/launchdarkly/sdk-test-harness/issues/404)) ([ee4d85f](https://github.com/launchdarkly/sdk-test-harness/commit/ee4d85f5847ba039b36f9f90a3e338f330011997))
+
+
+### Bug Fixes
+
+* Retry the test harness download and surface curl errors ([#411](https://github.com/launchdarkly/sdk-test-harness/issues/411)) ([2a7533b](https://github.com/launchdarkly/sdk-test-harness/commit/2a7533b4ea4ed3d660cb42ea7b30262ce6203da2))
+
 ## [2.39.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.38.2...v2.39.0) (2026-08-12)
 
 

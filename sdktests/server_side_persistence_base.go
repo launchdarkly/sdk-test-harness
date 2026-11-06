@@ -240,6 +240,8 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 				time.Second, time.Millisecond*20, "failed to serve defaults after flag deletion")
 		})
 
+		t.Run("tombstones", s.doTombstoneTests)
+
 		t.Run("caches flag for duration", func(t *ldtest.T) {
 			persistence := NewPersistence()
 			persistence.SetStore(servicedef.SDKConfigPersistentStore{
@@ -293,7 +295,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 				h.RequireNever(t,
 					checkForUpdatedValue(t, client, "flag-key", context,
 						ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default")),
-					time.Microsecond*500, time.Millisecond*20, "flag value was updated before cache TTL")
+					time.Millisecond*500, time.Millisecond*20, "flag value was updated before cache TTL")
 
 				h.RequireEventually(t,
 					checkForUpdatedValue(t, client, "flag-key", context,
@@ -337,6 +339,8 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 					ldvalue.String("fallthrough"), ldvalue.String("default"), ldvalue.String("default")),
 				time.Millisecond*500, time.Millisecond*20, "flag value was not changed")
 		})
+
+		t.Run("collection cardinality", s.doCollectionCardinalityTests)
 	})
 
 	t.Run("read-write", func(t *ldtest.T) {
@@ -416,23 +420,23 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			stream.StreamingService().PushUpdate("flags", "flag-key", updateData)
 			s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key":          basicFlagValidationMatcher("flag-key", 1, "new-value"),
-				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "value"),
+				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "fallthrough"),
 			})
 
 			// Same versioned updates are ignored
 			updateData = s.makeFlagData("flag-key", 100, ldvalue.String("new-value"))
 			stream.StreamingService().PushUpdate("flags", "flag-key", updateData)
 			s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
-				"flag-key":          basicFlagValidationMatcher("flag-key", 1, "new-value"),
-				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "value"),
+				"flag-key":          basicFlagValidationMatcher("flag-key", 100, "new-value"),
+				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "fallthrough"),
 			})
 
 			// Higher versioned updates are applied
 			updateData = s.makeFlagData("flag-key", 200, ldvalue.String("new-value"))
 			stream.StreamingService().PushUpdate("flags", "flag-key", updateData)
-			s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
+			s.eventuallyValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key":          basicFlagValidationMatcher("flag-key", 200, "new-value"),
-				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "value"),
+				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "fallthrough"),
 			})
 		})
 
@@ -472,7 +476,7 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 
 		cacheConfigs := []servicedef.SDKConfigPersistentCache{
 			{Mode: servicedef.CacheModeInfinite},
-			{Mode: servicedef.CacheModeTTL, TTL: o.Some(1)},
+			{Mode: servicedef.CacheModeTTL, TTL: o.Some(5)},
 		}
 
 		for _, cacheConfig := range cacheConfigs {
@@ -574,12 +578,13 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 								ldvalue.String("default"), ldvalue.String("fallthrough"), ldvalue.String("default")),
 							time.Millisecond*500, time.Millisecond*20, "uncached-flag-key was incorrectly cached")
 					case servicedef.CacheModeTTL:
-						// This key was already cached, so it shouldn't see the change above.
+						// This key was already cached, so it shouldn't see the change above. The check
+						// window plus all setup steps must fit inside the cache TTL; keep it short so
+						// a slow test runner cannot push the check past the cache expiry.
 						h.RequireNever(t,
 							checkForUpdatedValue(t, client, "flag-key", context,
 								ldvalue.String("value"), ldvalue.String("new-value"), ldvalue.String("default")),
-							time.Duration(
-								int(time.Second)*cacheConfig.TTL.Value()/2),
+							time.Millisecond*500,
 							time.Millisecond*20,
 							"flag-key was incorrectly updated")
 
@@ -623,7 +628,8 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 						h.RequireEventually(t,
 							checkForUpdatedValue(t, client, "flag-key", context,
 								ldvalue.String("value"), ldvalue.String("default"), ldvalue.String("default")),
-							time.Second, time.Millisecond*20, "flag-key was incorrectly cached")
+							time.Duration(int(time.Second)*cacheConfig.TTL.Value()),
+							time.Millisecond*20, "flag-key was incorrectly cached")
 					}
 				})
 			})
@@ -676,9 +682,13 @@ func basicFlagValidationMatcher(key string, version int, value string) m.Matcher
 	)
 }
 
+// basicDeletedFlagValidationMatcher accepts the three tombstone shapes that SDKs write (see
+// server_side_persistence_tombstones.go): no key in the body, the item's own key, or a full object
+// keyed "$deleted".
 func basicDeletedFlagValidationMatcher(key string, version int) m.Matcher {
 	return m.AllOf(
 		m.AnyOf(
+			JSONPropertyNullOrAbsent("key"),
 			m.JSONProperty("key").Should(m.Equal(key)),
 			m.JSONProperty("key").Should(m.Equal("$deleted")),
 		),
