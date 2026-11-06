@@ -268,7 +268,7 @@ func (c CommonStreamingTests) RecoverableFallbackToSecondarySynchronizer(t *ldte
 	client := c.newFDv2SDKClient(t,
 		WithConfig(servicedef.SDKConfigParams{
 			// Allow initialization to eventually succeed via secondary
-			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(30 * time.Second)),
+			StartWaitTimeMS: o.Some(ldtime.UnixMillisecondTime(30 * time.Second / time.Millisecond)),
 		}),
 		WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
 			BaseURI: hangingEndpoint.BaseURL(),
