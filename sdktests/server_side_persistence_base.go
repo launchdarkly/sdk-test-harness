@@ -420,23 +420,23 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			stream.StreamingService().PushUpdate("flags", "flag-key", updateData)
 			s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key":          basicFlagValidationMatcher("flag-key", 1, "new-value"),
-				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "value"),
+				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "fallthrough"),
 			})
 
 			// Same versioned updates are ignored
 			updateData = s.makeFlagData("flag-key", 100, ldvalue.String("new-value"))
 			stream.StreamingService().PushUpdate("flags", "flag-key", updateData)
 			s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
-				"flag-key":          basicFlagValidationMatcher("flag-key", 1, "new-value"),
-				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "value"),
+				"flag-key":          basicFlagValidationMatcher("flag-key", 100, "new-value"),
+				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "fallthrough"),
 			})
 
 			// Higher versioned updates are applied
 			updateData = s.makeFlagData("flag-key", 200, ldvalue.String("new-value"))
 			stream.StreamingService().PushUpdate("flags", "flag-key", updateData)
-			s.neverValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
+			s.eventuallyValidateFlagData(t, s.defaultPrefix, map[string]m.Matcher{
 				"flag-key":          basicFlagValidationMatcher("flag-key", 200, "new-value"),
-				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "value"),
+				"uncached-flag-key": basicFlagValidationMatcher("uncached-flag-key", 100, "fallthrough"),
 			})
 		})
 
@@ -682,9 +682,13 @@ func basicFlagValidationMatcher(key string, version int, value string) m.Matcher
 	)
 }
 
+// basicDeletedFlagValidationMatcher accepts the three tombstone shapes that SDKs write (see
+// server_side_persistence_tombstones.go): no key in the body, the item's own key, or a full object
+// keyed "$deleted".
 func basicDeletedFlagValidationMatcher(key string, version int) m.Matcher {
 	return m.AllOf(
 		m.AnyOf(
+			JSONPropertyNullOrAbsent("key"),
 			m.JSONProperty("key").Should(m.Equal(key)),
 			m.JSONProperty("key").Should(m.Equal("$deleted")),
 		),
