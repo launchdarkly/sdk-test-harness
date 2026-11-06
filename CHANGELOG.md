@@ -2,6 +2,30 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.2.0-alpha.17](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.16...v3.2.0-alpha.17) (2026-11-06)
+
+
+### Features
+
+* Add evaluation tests for exact key matching ([#580](https://github.com/launchdarkly/sdk-test-harness/issues/580)) ([294fc9c](https://github.com/launchdarkly/sdk-test-harness/commit/294fc9c99e92a4411490a011357f8bed080bde5b))
+* Add evaluation tests for keys that name built-in object members ([#586](https://github.com/launchdarkly/sdk-test-harness/issues/586)) ([5ded137](https://github.com/launchdarkly/sdk-test-harness/commit/5ded137444ed6b5bb6107c1a987112e8054975e8))
+* Add evaluation tests for the matches operator ([#549](https://github.com/launchdarkly/sdk-test-harness/issues/549)) ([449cc3c](https://github.com/launchdarkly/sdk-test-harness/commit/449cc3cf54c84848affcad8192a5336eb17a00c8))
+* Add evaluation tests that equality does not coerce strings and numbers ([#581](https://github.com/launchdarkly/sdk-test-harness/issues/581)) ([6a85a49](https://github.com/launchdarkly/sdk-test-harness/commit/6a85a49e92130baf31df63bf4ffafb728348311c))
+* Add persistence tests for the file and test data sources ([#537](https://github.com/launchdarkly/sdk-test-harness/issues/537)) ([bac24a7](https://github.com/launchdarkly/sdk-test-harness/commit/bac24a74e3be304df1ee37cd1d12eb8f78fe6193))
+
+
+### Bug Fixes
+
+* Detect an FDv1 fallback in the test for a directive without a configured fallback ([#559](https://github.com/launchdarkly/sdk-test-harness/issues/559)) ([90294ca](https://github.com/launchdarkly/sdk-test-harness/commit/90294ca528395c0b91d7176acbe6ba901584df06))
+* Let the client fail to initialize in the invalid TLS certificate tests ([#558](https://github.com/launchdarkly/sdk-test-harness/issues/558)) ([98de463](https://github.com/launchdarkly/sdk-test-harness/commit/98de46331861ff104f62c7aa15a76c218ac7b906))
+* Make persistence tests assert the versioning they name ([#583](https://github.com/launchdarkly/sdk-test-harness/issues/583)) ([a8c73d9](https://github.com/launchdarkly/sdk-test-harness/commit/a8c73d999d638c5cd7bb8ca5131327b4e254b40e))
+* Make the stream URL path and proxy tests use the base URI under test (V2/V3 consolidation) ([#565](https://github.com/launchdarkly/sdk-test-harness/issues/565)) ([8341d88](https://github.com/launchdarkly/sdk-test-harness/commit/8341d88f0c27ce76d347bf680b8a6c569e350724))
+* Run the client-side streaming retry tests against Roku through its handshake ([#575](https://github.com/launchdarkly/sdk-test-harness/issues/575)) ([70e961e](https://github.com/launchdarkly/sdk-test-harness/commit/70e961e1f58a1cdada345225556fc201d46263eb))
+* Send a start wait of 30 seconds, not 30 billion milliseconds, in the recoverable FDv2 fallback test ([#589](https://github.com/launchdarkly/sdk-test-harness/issues/589)) ([c35ba8c](https://github.com/launchdarkly/sdk-test-harness/commit/c35ba8ca504566f5bddd39d1c57b9aa7b653ee6a))
+* Send distinct wire shapes for big segment membership cases ([#579](https://github.com/launchdarkly/sdk-test-harness/issues/579)) ([5b0d79d](https://github.com/launchdarkly/sdk-test-harness/commit/5b0d79deea31eff02d00f5bb8a06d40858fd65fd))
+* Show why the test suite cannot run when the SDK type is unknown ([#564](https://github.com/launchdarkly/sdk-test-harness/issues/564)) ([f35a835](https://github.com/launchdarkly/sdk-test-harness/commit/f35a835c0d9b34a0c86fcdb377ab9bfbcde3f088))
+* Stop the mock polling service from hanging after it reports unavailable data ([#563](https://github.com/launchdarkly/sdk-test-harness/issues/563)) ([1338d95](https://github.com/launchdarkly/sdk-test-harness/commit/1338d9534243ac298e7a16c4cfc92879000a3d49))
+
 ## [3.2.0-alpha.16](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.15...v3.2.0-alpha.16) (2026-11-03)
 
 
