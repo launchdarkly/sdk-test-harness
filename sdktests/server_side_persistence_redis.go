@@ -38,7 +38,11 @@ func (r *RedisPersistentStore) Reset() error {
 func (r *RedisPersistentStore) Get(prefix, key string) (o.Maybe[string], error) {
 	var ctx = context.Background()
 	result, err := r.redis.Get(ctx, prefix+":"+key).Result()
-	if err == redis.Nil || err != nil {
+	if err == redis.Nil {
+		// A missing key is not an error, as for the other stores.
+		return o.None[string](), nil
+	}
+	if err != nil {
 		return o.None[string](), err
 	}
 

@@ -626,6 +626,8 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 		t.RequireCapability(servicedef.CapabilityPersistentDataStoreRecovery)
 		s.runStoreRecoveryTests(t)
 	})
+
+	t.Run("data source persistence", s.runDataSourcePersistenceTests)
 }
 
 func (s *ServerSidePersistentTests) runWithEmptyStore(t *ldtest.T, testName string, action func(*ldtest.T)) {

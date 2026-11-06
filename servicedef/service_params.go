@@ -117,6 +117,20 @@ const (
 	// CapabilityFlagOverrides means the SDK supports reading flag and segment overrides from local
 	// JSON/YAML files that are overlaid on LaunchDarkly data per-key at evaluation time.
 	CapabilityFlagOverrides = "flag-overrides"
+
+	// CapabilityFileDataSource means the SDK can use its file data source as an initializer or
+	// synchronizer of the data system. The harness writes the data files on a filesystem shared
+	// with the test service.
+	CapabilityFileDataSource = "file-data-source"
+
+	// CapabilityTestDataSource means the SDK can use its test data source as a synchronizer of the
+	// data system, and update its flags with the updateTestData command.
+	CapabilityTestDataSource = "test-data-source"
+
+	// CapabilityDataSourcePersistOptIn means the file and test data sources can be configured to
+	// request that the data system writes their data to a persistent store, which they do not do
+	// by default.
+	CapabilityDataSourcePersistOptIn = "data-source-persist-opt-in"
 )
 
 type StatusRep struct {
