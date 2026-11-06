@@ -54,10 +54,12 @@ func (c CommonEventTests) newCooldownClient(t *ldtest.T) (*SDKClient, *SDKEventS
 	events := NewSDKEventSink(t)
 	eventsConfig := baseEventsConfig()
 	eventsConfig.FlushIntervalMS = o.Some(ldtime.UnixMillisecondTime(eventCooldownFlushInterval / time.Millisecond))
+	// WithEventsConfig must precede the event sink: configurers apply in order, and the sink merges
+	// the mock endpoint's base URI into the events config, which WithEventsConfig would overwrite.
 	client := NewSDKClient(t, c.baseSDKConfigurationPlus(
+		WithEventsConfig(eventsConfig),
 		dataSource,
 		events,
-		WithEventsConfig(eventsConfig),
 	)...)
 	c.discardIdentifyEventIfClientSide(t, client, events)
 	return client, events
@@ -132,8 +134,12 @@ func (c CommonEventTests) eventCooldownResumesAfterWindow(t *ldtest.T) {
 	client.FlushEvents(t)
 	events.Endpoint().RequireConnection(t, defaultEventTimeout) // the failing post
 
-	// Record (do not flush) an event during the window. Recording is not gated by cooldown, so it is
-	// buffered and must survive to the probe -- giving the probe something to deliver for every SDK.
+	// Record (do not flush) an event during the window. Recording is not gated by cooldown, so the
+	// machinery keeps running -- but an in-window scheduled flush disposes of whatever it drains
+	// exactly as a sent-and-failed delivery would, so a non-durable SDK legitimately discards this
+	// event before the window ends. It is recorded anyway because it makes the silence check
+	// stronger: a non-conformant SDK that keeps delivering through the window has a non-empty batch
+	// to betray it.
 	c.sendArbitraryEvent(t, client)
 
 	// Real in-window silence: over an interval guaranteed to lie inside the window, no delivery is made.
@@ -144,11 +150,18 @@ func (c CommonEventTests) eventCooldownResumesAfterWindow(t *ldtest.T) {
 
 	// Accept again, then wait past the longest possible window before probing. Clearing now (not at the
 	// probe) keeps a conformant SDK's own window-end probe from hitting the failure and re-cooling.
+	// The 45s margin absorbs scheduling delay on loaded runners: the elapsed time is measured from
+	// RequireConnection rather than from when the SDK processed the failure.
 	events.SetResponseStatus(0)
-	time.Sleep(eventCooldownWindow - inWindowSilenceCheck + 15*time.Second)
+	time.Sleep(eventCooldownWindow - inWindowSilenceCheck + 45*time.Second)
 
-	// The probe is accepted, proving resumption. Contents are not asserted: a durable SDK may also
-	// redeliver the retained failed payload, a non-durable one only the buffered event; both conform.
+	// Record a fresh event now that the window has certainly elapsed, so the probe has something to
+	// deliver for every SDK: a non-durable processor has discarded its in-window batches (parity with
+	// a refusing server), while a durable one may additionally redeliver retained payloads; both
+	// conform. Contents are therefore not asserted.
+	c.sendArbitraryEvent(t, client)
+
+	// The probe is accepted, proving resumption.
 	client.FlushEvents(t)
 	events.ExpectAnalyticsEvents(t, defaultEventTimeout)
 }
