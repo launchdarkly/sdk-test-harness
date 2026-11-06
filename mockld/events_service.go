@@ -28,6 +28,8 @@ type EventsService struct {
 	sdkKind                SDKKind
 	ignoreDuplicatePayload bool
 	hostTimeOverride       time.Time
+	responseStatus         int
+	responseStatusCount    int
 	payloadIDsSeen         map[string]bool
 	handler                http.Handler
 	logger                 framework.Logger
@@ -115,6 +117,33 @@ func (s *EventsService) SetIgnoreDuplicatePayload(ignore bool) {
 	s.lock.Unlock()
 }
 
+// SetResponseStatus makes the events endpoint return the given HTTP status for all subsequent event
+// posts (without recording them) until called again; 0 restores normal 202 behavior. Use it when a
+// failure must persist indefinitely, e.g. for the length of a cooldown window.
+func (s *EventsService) SetResponseStatus(code int) {
+	s.lock.Lock()
+	s.responseStatus = code
+	s.responseStatusCount = -1 // indefinite
+	s.lock.Unlock()
+}
+
+// SetResponseStatusForNextPosts makes the events endpoint return the given HTTP status for the next
+// count event posts (without recording them), then auto-resume normal 202 behavior. Unlike
+// SetResponseStatus it needs no follow-up reset, so acceptance resumes deterministically rather than
+// racing a test-side SetResponseStatus(0). A count <= 0 fails nothing and restores normal behavior, so
+// a degenerate count never becomes an accidental permanent failure.
+func (s *EventsService) SetResponseStatusForNextPosts(code int, count int) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if count <= 0 {
+		s.responseStatus = 0
+		s.responseStatusCount = 0
+		return
+	}
+	s.responseStatus = code
+	s.responseStatusCount = count
+}
+
 func (s *EventsService) postEvents(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -133,10 +162,29 @@ func (s *EventsService) postEvents(w http.ResponseWriter, r *http.Request) {
 	hostTime := s.hostTimeOverride
 	ignoreDuplicatePayload := s.ignoreDuplicatePayload
 	seenPayloadID := s.payloadIDsSeen[payloadID]
-	if payloadID != "" {
+	responseStatus := s.responseStatus
+	if responseStatus != 0 {
+		// A bounded injected failure consumes a post and clears when exhausted; indefinite (-1) is left.
+		if s.responseStatusCount > 0 {
+			s.responseStatusCount--
+			if s.responseStatusCount == 0 {
+				s.responseStatus = 0
+			}
+		}
+	} else if payloadID != "" {
+		// Record the payload ID only for accepted posts, so an injected failure does not poison dedup
+		// for a later retry reusing the same ID.
 		s.payloadIDsSeen[payloadID] = true
 	}
 	s.lock.Unlock()
+
+	// An injected status short-circuits here: return it without recording the payload. The connection
+	// is still registered above, so connection-level assertions still observe the attempt.
+	if responseStatus != 0 {
+		w.WriteHeader(responseStatus)
+		s.logger.Printf("Returning injected HTTP status %d for event post (payload ID %q)", responseStatus, payloadID)
+		return
+	}
 
 	if !hostTime.IsZero() {
 		w.Header().Set("Date", hostTime.UTC().Format(http.TimeFormat))

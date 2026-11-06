@@ -19,12 +19,15 @@ func NewCommonEventTests(t *ldtest.T, testName string, baseSDKConfigurers ...SDK
 	return CommonEventTests{newCommonTestsBase(t, testName, baseSDKConfigurers...)}
 }
 
-//nolint:unused // May not be used now, but could be helpful in new tests.
 func (c CommonEventTests) discardIdentifyEventIfClientSide(t *ldtest.T, client *SDKClient, events *SDKEventSink) {
 	if c.isClientSide {
 		client.FlushEvents(t)
 		payload := events.ExpectAnalyticsEvents(t, time.Second)
 		m.In(t).Assert(payload, m.Items(IsIdentifyEvent()))
+		// Also drain this identify post's connection record: ExpectAnalyticsEvents consumes only the
+		// payload, so leaving the connection would offset every later assertion by one. It is already
+		// enqueued (recorded before the payload), so this returns immediately.
+		events.Endpoint().RequireConnection(t, time.Second)
 	}
 }
 
