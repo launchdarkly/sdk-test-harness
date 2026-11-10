@@ -23,15 +23,17 @@ const (
 // absence of a connection means cooldown rather than a retry that simply has not fired yet.
 const noCooldownRetryTimeout = 3 * time.Second
 
-// Flush interval for the cooldown tests. Must be shorter than eventCooldownWindow: §1.8.2 ties the
-// operating cadence to the flush interval and RETRY §1.4.9 floors the window at that cadence, so a
-// larger interval would stretch the first window past the extended initial delay. Must also exceed the
-// fast tests' RequireNoMoreConnections windows so no periodic auto-flush fires during them.
+// Flush interval for the cooldown tests. Must be shorter than eventCooldownWindow so that scheduled
+// flushes land inside the window, which gives the in-window silence assertion teeth, and so the suite
+// stays valid whether or not an implementation floors its windows at the flush cadence (the shipped
+// implementations use pure ladder windows with no floor). Must also exceed the fast tests'
+// RequireNoMoreConnections windows so no periodic auto-flush fires during them.
 const eventCooldownFlushInterval = 60 * time.Second
 
-// In-window silence asserted by eventCooldownResumesAfterWindow. Jitter only shortens a window, so a
-// window is always at least eventCooldownWindow/2; staying under that keeps a legitimate post-window
-// probe from being mistaken for an in-window violation.
+// In-window silence asserted by eventCooldownResumesAfterWindow. The shipped implementations use
+// deterministic windows of the full nominal length, but the spec permits jitter that shortens a
+// window to as little as half of it; staying under that bound keeps a legitimate post-window probe
+// from being mistaken for an in-window violation either way.
 const inWindowSilenceCheck = eventCooldownWindow/2 - 30*time.Second
 
 // EventDeliveryCooldown verifies the event processor's cooldown after an unexpected delivery failure
