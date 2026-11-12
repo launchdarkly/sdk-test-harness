@@ -338,7 +338,7 @@ func NewSDKDataSystem(
 func NewSDKDataSystemWithoutEndpoints(
 	t *ldtest.T, data mockld.SDKData, options ...SDKDataSystemOption) *SDKDataSystem {
 	data = convertData(t, data)
-	defaults := defaultDataSystemOptions(t, data)
+	defaults := defaultDataSystemOptions(t, data, options)
 	combined := make([]SDKDataSystemOption, 0, len(defaults)+len(options))
 	combined = append(combined, defaults...)
 	combined = append(combined, options...)
@@ -392,9 +392,29 @@ func convertData(t *ldtest.T, data mockld.SDKData) mockld.SDKData {
 // Client-side SDKs get a "streaming" connection mode with a polling initializer and streaming
 // synchronizer. Server-side SDKs get a top-level polling initializer and synchronizer
 // (streaming for most, polling for PHP).
-func defaultDataSystemOptions(t *ldtest.T, data mockld.SDKData) []SDKDataSystemOption {
+//
+// A client-side SDK has its synchronizers only in connection modes, so the top-level polling
+// options of the caller would have no effect. If the caller uses DataSystemOptionPolling and
+// defines no connection modes, a client-side SDK instead gets a "polling" connection mode that has
+// the polling synchronizer, with the caller's DataSystemOptionPollInterval if any, and starts in
+// that mode.
+func defaultDataSystemOptions(
+	t *ldtest.T, data mockld.SDKData, callerOptions []SDKDataSystemOption,
+) []SDKDataSystemOption {
 	sdkKind := requireContext(t).sdkKind
 	if sdkKind.IsClientSide() {
+		var callerConfig sdkDataSystemConfig
+		_ = helpers.ApplyOptions(&callerConfig, callerOptions...)
+		if callerConfig.polling.Value() && len(callerConfig.connectionModes) == 0 {
+			callerPollingOptions := helpers.ConfigOptionFunc[sdkDataSystemConfig](func(c *sdkDataSystemConfig) error {
+				c.pollingSynchronizerOpts = append(c.pollingSynchronizerOpts, callerConfig.pollingSynchronizerOpts...)
+				return nil
+			})
+			return []SDKDataSystemOption{
+				DataSystemOptionConnectionMode("polling", DataSystemOptionPolling(), callerPollingOptions),
+				DataSystemOptionInitialConnectionMode("polling"),
+			}
+		}
 		return []SDKDataSystemOption{
 			DataSystemOptionConnectionMode("streaming",
 				DataSystemOptionPollingInitializer(data),

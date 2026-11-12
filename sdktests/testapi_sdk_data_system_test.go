@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
@@ -122,4 +123,28 @@ func TestClientSideStreamModeSecondaryPollingDataSystemDoesNotCollide(t *testing
 		require.True(t, pollingMode.Synchronizers[0].Polling.IsDefined(),
 			`expected the "polling" mode's synchronizer to be a polling synchronizer`)
 	})
+}
+
+func TestClientSideDataSystemWithTopLevelPollingOptionPolls(t *testing.T) {
+	h := newTestHarnessForDataSystemTest(t)
+
+	results := ldtest.Run(ldtest.TestConfiguration{
+		Context: SDKTestContext{harness: h, sdkKind: mockld.MobileSDK},
+	}, func(scope *ldtest.T) {
+		dataSystem := NewSDKDataSystem(scope, nil, DataSystemOptionPolling(), DataSystemOptionPollInterval(time.Minute))
+
+		var config servicedef.SDKConfigParams
+		require.NoError(t, dataSystem.Configure(&config))
+
+		connMode := config.DataSystem.Value().ConnectionModeConfig.Value()
+		require.Equal(t, "polling", connMode.InitialConnectionMode.Value(), "the SDK must start in the polling mode")
+		pollingMode, ok := connMode.CustomConnectionModes.Value()["polling"]
+		require.True(t, ok, `expected a "polling" connection mode`)
+		require.Len(t, pollingMode.Synchronizers, 1)
+		polling := pollingMode.Synchronizers[0].Polling
+		require.True(t, polling.IsDefined(), "expected a polling synchronizer")
+		require.Equal(t, dataSystem.Synchronizers[0].Endpoint().BaseURL(), polling.Value().BaseURI)
+		require.Equal(t, ldtime.UnixMillisecondTime(60000), polling.Value().PollIntervalMS.Value())
+	})
+	require.True(t, results.OK(), "test scope failed: %+v", results.Failures)
 }
