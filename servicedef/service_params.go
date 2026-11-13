@@ -131,6 +131,13 @@ const (
 	// request that the data system writes their data to a persistent store, which they do not do
 	// by default.
 	CapabilityDataSourcePersistOptIn = "data-source-persist-opt-in"
+
+	// CapabilityExperimentExposureChange means that a client-side SDK notifies its general flag
+	// change listeners when a flag joins an experiment and the value and the variation of the flag
+	// do not change. The update also changes the reason, the versions, and the event tracking fields
+	// of the flag. After the notification, an evaluation of the flag gives a full feature event with
+	// the new reason. The tests for this capability also need CapabilityFlagChangeListeners.
+	CapabilityExperimentExposureChange = "experiment-exposure-change"
 )
 
 type StatusRep struct {
