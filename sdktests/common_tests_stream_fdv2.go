@@ -120,6 +120,7 @@ func (c CommonStreamingTests) FDv2(t *ldtest.T) {
 	t.Run("recoverable fallback with recovery", c.RecoverableFallbackWithRecovery)
 	t.Run("permanent fallback with recovery", c.PermanentFallbackWithRecovery)
 	t.Run("FDv1 fallback directive", c.FDv1FallbackDirective)
+	t.Run("payloads without a selector", c.NoSelector)
 }
 
 func (c CommonStreamingTests) StateTransitions(t *ldtest.T) {

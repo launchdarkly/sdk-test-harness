@@ -132,8 +132,8 @@ func (s *StreamingService) makeXferFull() []eventsource.Event {
 		data: framework.ServerIntent{
 			Payloads: []framework.Payload{
 				{
-					ID:     "payloadID",
-					Target: 1,
+					ID:     fdv2SdkData.payloadID(),
+					Target: fdv2SdkData.payloadVersion(),
 					Code:   fdv2SdkData.intentCode,
 					Reason: fdv2SdkData.intentReason,
 				},
@@ -152,7 +152,7 @@ func (s *StreamingService) makeXferFull() []eventsource.Event {
 		event: "payload-transferred",
 		data: framework.PayloadTransferred{
 			State:   fdv2SdkData.state,
-			Version: 1,
+			Version: fdv2SdkData.payloadVersion(),
 		},
 	})
 
