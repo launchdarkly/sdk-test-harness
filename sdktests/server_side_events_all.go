@@ -24,6 +24,12 @@ func doServerSideEventTests(t *ldtest.T) {
 	t.Run("context properties", doServerSideEventContextTests)
 	t.Run("event capacity", doServerSideEventBufferTests)
 	t.Run("disabling", doServerSideEventDisableTest)
+	t.Run("delivery cooldown", doServerSideEventCooldownTests)
+}
+
+func doServerSideEventCooldownTests(t *ldtest.T) {
+	NewCommonEventTests(t, "doServerSideEventCooldownTests").
+		EventDeliveryCooldown(t)
 }
 
 func doServerSideEventRequestTests(t *ldtest.T) {

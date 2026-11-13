@@ -80,6 +80,14 @@ func (e *SDKEventSink) Endpoint() *harness.MockEndpoint { return e.eventsEndpoin
 // Service returns the underlying mock events service component, for access to special options.
 func (e *SDKEventSink) Service() *mockld.EventsService { return e.eventsService }
 
+// SetResponseStatus delegates to mockld.EventsService.SetResponseStatus.
+func (e *SDKEventSink) SetResponseStatus(code int) { e.eventsService.SetResponseStatus(code) }
+
+// SetResponseStatusForNextPosts delegates to mockld.EventsService.SetResponseStatusForNextPosts.
+func (e *SDKEventSink) SetResponseStatusForNextPosts(code int, count int) {
+	e.eventsService.SetResponseStatusForNextPosts(code, count)
+}
+
 // ExpectAnalyticsEvents waits for event data to be posted to the endpoint, and then calls
 // matchers.ItemsInAnyOrder with the specified eventMatchers, verifying that the payload contains
 // one event matching each of the matchers regardless of ordering.
