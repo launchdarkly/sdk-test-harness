@@ -1,5 +1,5 @@
 ---
-name: rule match (<TYPE_NAME>)
+name: rule match
 
 constants:
   VALUE_OFF: "off"

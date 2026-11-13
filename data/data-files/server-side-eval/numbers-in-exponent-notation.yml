@@ -1,0 +1,98 @@
+---
+name: numbers in exponent notation
+
+# JSON numbers may be written in exponent notation, with or without a decimal point. The harness
+# writes very small and very large non-integer numbers that way (for instance 0.00001 is sent as
+# 1e-05, 0.00000015 as 1.5e-07 and 2.5e21 as 2.5e+21), both in flag data and in evaluation contexts.
+# The SDK must parse them as the numbers they denote, as variation values, as clause values and as
+# context attribute values.
+
+constants:
+  IS_MATCH:
+    value: true
+    variationIndex: 0
+    reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "ruleid" }
+  IS_NOT_MATCH:
+    value: false
+    variationIndex: 1
+    reason: { kind: "FALLTHROUGH" }
+
+parameters:
+  - NAME: small number as context value is less than small clause value
+    OP: lessThan
+    USER_VALUE: 0.000001
+    CLAUSE_VALUE: 0.00001
+    EXPECT: <IS_MATCH>
+
+  - NAME: small number as context value is not less than itself
+    OP: lessThan
+    USER_VALUE: 0.00001
+    CLAUSE_VALUE: 0.00001
+    EXPECT: <IS_NOT_MATCH>
+
+  - NAME: small number as context value equals itself
+    OP: in
+    USER_VALUE: 0.00001
+    CLAUSE_VALUE: 0.00001
+    EXPECT: <IS_MATCH>
+
+  - NAME: small number is less than or equal to itself
+    OP: lessThanOrEqual
+    USER_VALUE: 0.00001
+    CLAUSE_VALUE: 0.00001
+    EXPECT: <IS_MATCH>
+
+  - NAME: small number is greater than smaller number
+    OP: greaterThan
+    USER_VALUE: 0.00002
+    CLAUSE_VALUE: 0.00001
+    EXPECT: <IS_MATCH>
+
+  - NAME: small negative number is less than zero
+    OP: lessThan
+    USER_VALUE: -0.000025
+    CLAUSE_VALUE: 0
+    EXPECT: <IS_MATCH>
+
+  - NAME: large number is greater than smaller large number
+    OP: greaterThan
+    USER_VALUE: 2.5e21
+    CLAUSE_VALUE: 1.5e21
+    EXPECT: <IS_MATCH>
+
+  - NAME: large number equals itself
+    OP: in
+    USER_VALUE: 2.5e21
+    CLAUSE_VALUE: 2.5e21
+    EXPECT: <IS_MATCH>
+
+  - NAME: large number is greater than ordinary number
+    OP: greaterThanOrEqual
+    USER_VALUE: 2.5e21
+    CLAUSE_VALUE: 1000
+    EXPECT: <IS_MATCH>
+
+  - NAME: number with six integer digits and a fraction compares correctly
+    OP: lessThan
+    USER_VALUE: 1234567.25
+    CLAUSE_VALUE: 1234567.5
+    EXPECT: <IS_MATCH>
+
+sdkData:
+  flags:
+    test-flag:
+      on: true
+      fallthrough: { variation: 1 }
+      variations: [ true, false ]
+      rules:
+        - id: ruleid
+          variation: 0
+          clauses:
+            - { attribute: attrname, op: <OP>, values: [ <CLAUSE_VALUE> ] }
+
+evaluations:
+  - name: <NAME>
+    flagKey: test-flag
+    context: { key: "user-key", custom: { attrname: "<USER_VALUE>" } }
+    default: false
+    expect: <EXPECT>

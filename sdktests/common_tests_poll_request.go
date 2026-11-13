@@ -51,7 +51,8 @@ func (c CommonPollingTests) RequestMethodAndHeaders(t *ldtest.T, credential stri
 		c.withHTTPSTransport(t).Run(t, func(t *ldtest.T) {
 			dataSource := NewSDKDataSource(t, nil, DataSourceOptionPolling())
 
-			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource)...)
+			// The SDK should reject the certificate, so the client cannot initialize.
+			_ = NewSDKClient(t, c.baseSDKConfigurationPlus(dataSource, WithWaitToStart(time.Millisecond, true))...)
 
 			_, err := dataSource.Endpoint().AwaitConnection(time.Second)
 			assert.Errorf(t, err, "expected connection error")

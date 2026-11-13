@@ -1,0 +1,76 @@
+---
+name: rollout with a seed and no bucketing value
+
+# When the bucketing attribute is missing, or the context has no context of the rollout's kind, the
+# bucket value is 0, so the first bucket is selected. This holds whether or not the rollout has a
+# seed; a seed only replaces the flag key and salt in the hash input.
+
+constants:
+  IN_FIRST_BUCKET:
+    value: "first bucket"
+    variationIndex: 0
+    reason: { kind: "FALLTHROUGH" }
+  IN_FIRST_BUCKET_NOT_IN_EXPERIMENT:
+    value: "first bucket"
+    variationIndex: 0
+    reason: { kind: "FALLTHROUGH" }
+
+sdkData:
+  flags:
+    seeded-rollout-by-missing-attribute:
+      on: true
+      variations: [ "first bucket", "second bucket" ]
+      offVariation: 0
+      fallthrough:
+        rollout:
+          kind: rollout
+          seed: 61
+          bucketBy: missingAttr
+          variations:
+            - { variation: 0, weight: 1 }
+            - { variation: 1, weight: 99999 }
+
+    seeded-rollout-for-missing-kind:
+      on: true
+      variations: [ "first bucket", "second bucket" ]
+      offVariation: 0
+      fallthrough:
+        rollout:
+          kind: rollout
+          seed: 61
+          contextKind: org
+          variations:
+            - { variation: 0, weight: 1 }
+            - { variation: 1, weight: 99999 }
+
+    seeded-experiment-for-missing-kind:
+      on: true
+      variations: [ "first bucket", "second bucket" ]
+      offVariation: 0
+      fallthrough:
+        rollout:
+          kind: experiment
+          seed: 61
+          contextKind: org
+          variations:
+            - { variation: 0, weight: 1 }
+            - { variation: 1, weight: 99999 }
+
+evaluations:
+  - name: seeded rollout with missing bucketBy attribute
+    flagKey: seeded-rollout-by-missing-attribute
+    context: { kind: "user", key: "user-key" }
+    default: "default"
+    expect: <IN_FIRST_BUCKET>
+
+  - name: seeded rollout for a context kind that is not present
+    flagKey: seeded-rollout-for-missing-kind
+    context: { kind: "user", key: "user-key" }
+    default: "default"
+    expect: <IN_FIRST_BUCKET>
+
+  - name: seeded experiment for a context kind that is not present is not in the experiment
+    flagKey: seeded-experiment-for-missing-kind
+    context: { kind: "user", key: "user-key" }
+    default: "default"
+    expect: <IN_FIRST_BUCKET_NOT_IN_EXPERIMENT>

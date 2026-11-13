@@ -1,0 +1,229 @@
+---
+name: keys are compared as exact strings
+
+# Context keys in individual targets, context targets and segment include/exclude lists, and the
+# keys of flags and segments themselves, are strings that must be compared exactly. A key that
+# looks like a number must not match a different key that denotes the same number ("007" is not
+# "7", "1e1" is not "10"). Loosely-typed list membership checks are easy to get wrong here.
+
+constants:
+  IS_TARGET:
+    value: "target"
+    variationIndex: 2
+    reason: { kind: "TARGET_MATCH" }
+  IS_FALLTHROUGH:
+    value: "fallthrough"
+    variationIndex: 1
+    reason: { kind: "FALLTHROUGH" }
+  IS_RULE_MATCH:
+    value: "rule"
+    variationIndex: 3
+    reason: { kind: "RULE_MATCH", ruleIndex: 0, ruleId: "ruleid" }
+  flag_base: &flag_base
+    on: true
+    variations: [ "off", "fallthrough", "target", "rule" ]
+    offVariation: 0
+    fallthrough: { variation: 1 }
+
+sdkData:
+  flags:
+    flag-with-user-targets:
+      <<: *flag_base
+      targets:
+        - { variation: 2, values: [ "7" ] }
+
+    flag-with-user-targets-referenced-by-context-targets:
+      <<: *flag_base
+      targets:
+        - { variation: 2, values: [ "7" ] }
+      contextTargets:
+        - { contextKind: "user", variation: 2, values: [] }
+
+    flag-with-context-targets:
+      <<: *flag_base
+      contextTargets:
+        - { contextKind: "org", variation: 2, values: [ "10" ] }
+
+    flag-using-including-segment:
+      <<: *flag_base
+      rules:
+        - id: ruleid
+          variation: 3
+          clauses:
+            - { attribute: "", op: "segmentMatch", values: [ "segment-that-includes" ] }
+
+    flag-using-excluding-segment:
+      <<: *flag_base
+      rules:
+        - id: ruleid
+          variation: 3
+          clauses:
+            - { attribute: "", op: "segmentMatch", values: [ "segment-that-excludes" ] }
+
+    flag-with-numeric-looking-prerequisite-keys:
+      <<: *flag_base
+      prerequisites:
+        - { key: "10", variation: 3 }
+      rules:
+        - id: ruleid
+          variation: 3
+          clauses:
+            - { attribute: "key", op: "in", values: [ "" ], negate: true }
+
+    "10":
+      <<: *flag_base
+      prerequisites:
+        - { key: "1e1", variation: 3 }
+      rules:
+        - id: ruleid
+          variation: 3
+          clauses:
+            - { attribute: "key", op: "in", values: [ "" ], negate: true }
+
+    "1e1":
+      <<: *flag_base
+      rules:
+        - id: ruleid
+          variation: 3
+          clauses:
+            - { attribute: "key", op: "in", values: [ "" ], negate: true }
+
+    flag-using-numeric-looking-segment-keys:
+      <<: *flag_base
+      rules:
+        - id: ruleid
+          variation: 3
+          clauses:
+            - { attribute: "", op: "segmentMatch", values: [ "100" ] }
+
+  segments:
+    segment-that-includes:
+      included: [ "10" ]
+      includedContexts:
+        - { contextKind: "org", values: [ "10" ] }
+
+    segment-that-excludes:
+      excluded: [ "7" ]
+      excludedContexts:
+        - { contextKind: "org", values: [ "7" ] }
+      rules:
+        - clauses:
+            - { contextKind: "user", attribute: "key", op: "in", values: [ "" ], negate: true }
+        - clauses:
+            - { contextKind: "org", attribute: "key", op: "in", values: [ "" ], negate: true }
+
+    "100":
+      rules:
+        - clauses:
+            - { op: "segmentMatch", values: [ "1e2" ] }
+
+    "1e2":
+      rules:
+        - clauses:
+            - { attribute: "key", op: "in", values: [ "" ], negate: true }
+
+evaluations:
+  - name: user target matches identical key
+    flagKey: flag-with-user-targets
+    context: { kind: "user", key: "7" }
+    expect: <IS_TARGET>
+
+  - name: user target does not match key with leading zeros
+    flagKey: flag-with-user-targets
+    context: { kind: "user", key: "007" }
+    expect: <IS_FALLTHROUGH>
+
+  - name: user target does not match key with decimal point
+    flagKey: flag-with-user-targets
+    context: { kind: "user", key: "7.0" }
+    expect: <IS_FALLTHROUGH>
+
+  - name: user target does not match key with leading space
+    flagKey: flag-with-user-targets
+    context: { kind: "user", key: " 7" }
+    expect: <IS_FALLTHROUGH>
+
+  - name: user target referenced by context targets matches identical key
+    flagKey: flag-with-user-targets-referenced-by-context-targets
+    context: { kind: "user", key: "7" }
+    expect: <IS_TARGET>
+
+  - name: user target referenced by context targets does not match key with leading zeros
+    flagKey: flag-with-user-targets-referenced-by-context-targets
+    context: { kind: "user", key: "007" }
+    expect: <IS_FALLTHROUGH>
+
+  - name: context target matches identical key
+    flagKey: flag-with-context-targets
+    context: { kind: "org", key: "10" }
+    expect: <IS_TARGET>
+
+  - name: context target does not match key in exponent notation
+    flagKey: flag-with-context-targets
+    context: { kind: "org", key: "1e1" }
+    expect: <IS_FALLTHROUGH>
+
+  - name: context target does not match key with decimal point
+    flagKey: flag-with-context-targets
+    context: { kind: "org", key: "10.0" }
+    expect: <IS_FALLTHROUGH>
+
+  - name: segment included list matches identical key
+    flagKey: flag-using-including-segment
+    context: { kind: "user", key: "10" }
+    expect: <IS_RULE_MATCH>
+
+  - name: segment included list does not match key in exponent notation
+    flagKey: flag-using-including-segment
+    context: { kind: "user", key: "1e1" }
+    expect: <IS_FALLTHROUGH>
+
+  - name: segment included list does not match key with leading zero
+    flagKey: flag-using-including-segment
+    context: { kind: "user", key: "010" }
+    expect: <IS_FALLTHROUGH>
+
+  - name: segment includedContexts matches identical key
+    flagKey: flag-using-including-segment
+    context: { kind: "org", key: "10" }
+    expect: <IS_RULE_MATCH>
+
+  - name: segment includedContexts does not match key with decimal point
+    flagKey: flag-using-including-segment
+    context: { kind: "org", key: "10.0" }
+    expect: <IS_FALLTHROUGH>
+
+  - name: segment excluded list excludes identical key
+    flagKey: flag-using-excluding-segment
+    context: { kind: "user", key: "7" }
+    expect: <IS_FALLTHROUGH>
+
+  - name: segment excluded list does not exclude key with leading zeros
+    flagKey: flag-using-excluding-segment
+    context: { kind: "user", key: "007" }
+    expect: <IS_RULE_MATCH>
+
+  - name: segment excludedContexts excludes identical key
+    flagKey: flag-using-excluding-segment
+    context: { kind: "org", key: "7" }
+    expect: <IS_FALLTHROUGH>
+
+  - name: segment excludedContexts does not exclude key with decimal point
+    flagKey: flag-using-excluding-segment
+    context: { kind: "org", key: "7.0" }
+    expect: <IS_RULE_MATCH>
+
+  - name: prerequisite keys that denote the same number are distinct flags
+    flagKey: flag-with-numeric-looking-prerequisite-keys
+    context: { kind: "user", key: "user-key" }
+    expect: <IS_RULE_MATCH>
+
+  - name: flag with numeric key can be evaluated directly
+    flagKey: "10"
+    context: { kind: "user", key: "user-key" }
+    expect: <IS_RULE_MATCH>
+
+  - name: segment keys that denote the same number are distinct segments
+    flagKey: flag-using-numeric-looking-segment-keys
+    context: { kind: "user", key: "user-key" }
+    expect: <IS_RULE_MATCH>

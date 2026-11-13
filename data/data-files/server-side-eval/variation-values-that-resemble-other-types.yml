@@ -1,0 +1,42 @@
+---
+name: variation values that resemble other types
+
+# A string variation value is a string even when its text looks like a date-time, a number, a
+# boolean, null or JSON. It must be returned unchanged, and a string evaluation must not report a
+# type error. Some JSON libraries convert such strings (for instance, date-time-like strings to
+# date objects) unless told not to.
+
+parameters:
+  - { NAME: date-time, VALUE: "1970-01-01T00:00:01.001Z" }
+  - { NAME: date-time with offset, VALUE: "2017-12-06T00:00:00.000-07:00" }
+  - { NAME: date, VALUE: "2017-12-06" }
+  - { NAME: integer, VALUE: "123" }
+  - { NAME: decimal, VALUE: "1.50" }
+  - { NAME: exponent, VALUE: "1e3" }
+  - { NAME: boolean, VALUE: "true" }
+  - { NAME: null, VALUE: "null" }
+  - { NAME: JSON object, VALUE: "{\"a\":1}" }
+  - { NAME: GUID, VALUE: "0f8fad5b-d9cb-469f-a165-70867728950e" }
+
+sdkData:
+  flags:
+    test-flag:
+      on: true
+      variations: [ "other", "<VALUE>" ]
+      offVariation: 0
+      fallthrough: { variation: 1 }
+
+evaluations:
+  - name: string that looks like a <NAME> as string
+    flagKey: test-flag
+    context: { key: "user-key" }
+    valueType: string
+    default: "default"
+    expect: { value: "<VALUE>", variationIndex: 1, reason: { kind: "FALLTHROUGH" } }
+
+  - name: string that looks like a <NAME> as any
+    flagKey: test-flag
+    context: { key: "user-key" }
+    valueType: any
+    default: "default"
+    expect: { value: "<VALUE>", variationIndex: 1, reason: { kind: "FALLTHROUGH" } }

@@ -56,6 +56,12 @@ func doClientSideStreamRetryTests(t *ldtest.T) {
 		handler http.Handler,
 		initialData mockld.SDKData,
 	) (*harness.MockEndpoint, []SDKConfigurer) {
+		// The Roku SDK sends a handshake before each stream request. A sequential handler would
+		// give the handshake and the stream request to different handlers, so answer the
+		// handshake here and send only the stream requests to the handler.
+		if c.sdkKind == mockld.RokuSDK {
+			handler = mockld.NewRokuStreamHandler(handler)
+		}
 		streamEndpoint := requireContext(t).harness.NewMockEndpoint(handler, t.DebugLogger(),
 			harness.MockEndpointDescription("streaming service"))
 		t.Defer(streamEndpoint.Close)
@@ -84,13 +90,13 @@ func doClientSideStreamRetryTests(t *ldtest.T) {
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get the request info for the first request
-		request1 := streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
+		request1 := requireStreamConnection(t, streamEndpoint, incomingConnectionTimeout)
 
 		// Now cause the stream to close; this should trigger a reconnect
 		request1.Cancel()
 
 		// Expect the second request; it succeeds and gets the second stream data
-		_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
+		_ = requireStreamConnection(t, streamEndpoint, incomingConnectionTimeout)
 
 		// Check that the client got the new data from the second stream
 		pollUntilFlagValueUpdated(t, client, flagKey, context, expectedValueV1, expectedValueV2, ldvalue.Null())
@@ -119,7 +125,7 @@ func doClientSideStreamRetryTests(t *ldtest.T) {
 			c.baseSDKConfigurationPlus(configurers...)...)...)
 
 		for i := 0; i < 3; i++ { // expect three requests
-			_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
+			_ = requireStreamConnection(t, streamEndpoint, incomingConnectionTimeout)
 		}
 
 		streamEndpoint.RequireNoMoreConnections(t, noMoreConnectionsTimeout)
@@ -158,19 +164,19 @@ func doClientSideStreamRetryTests(t *ldtest.T) {
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 		// Get the request info for the first request
-		request1 := streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
+		request1 := requireStreamConnection(t, streamEndpoint, incomingConnectionTimeout)
 
 		// Now cause the stream to close; this should trigger a reconnect
 		request1.Cancel()
 
 		// Expect the second request; it will receive an error, causing another attempt
-		_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
+		_ = requireStreamConnection(t, streamEndpoint, incomingConnectionTimeout)
 
 		// Expect the third request; it will also receive an error, causing another attempt
-		_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
+		_ = requireStreamConnection(t, streamEndpoint, incomingConnectionTimeout)
 
 		// Expect the fourth request; this one succeeds and gets the second stream data
-		_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
+		_ = requireStreamConnection(t, streamEndpoint, incomingConnectionTimeout)
 
 		// Check that the client got the new data from the second stream
 		pollUntilFlagValueUpdated(t, client, flagKey, context, expectedValueV1, expectedValueV2, ldvalue.Null())
@@ -214,7 +220,7 @@ func doClientSideStreamRetryTests(t *ldtest.T) {
 					[]SDKConfigurer{WithConfig(servicedef.SDKConfigParams{InitCanFail: true})},
 					c.baseSDKConfigurationPlus(configurers...)...)...)
 
-				_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
+				_ = requireStreamConnection(t, streamEndpoint, incomingConnectionTimeout)
 
 				streamEndpoint.RequireNoMoreConnections(t, noMoreConnectionsTimeout)
 			})
@@ -246,13 +252,13 @@ func doClientSideStreamRetryTests(t *ldtest.T) {
 				m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 
 				// Get the request info for the first request
-				request1 := streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
+				request1 := requireStreamConnection(t, streamEndpoint, incomingConnectionTimeout)
 
 				// Now cause the stream to close; this should trigger a reconnect
 				request1.Cancel()
 
 				// Expect the second request; it will receive an error
-				_ = streamEndpoint.RequireConnection(t, incomingConnectionTimeout)
+				_ = requireStreamConnection(t, streamEndpoint, incomingConnectionTimeout)
 
 				streamEndpoint.RequireNoMoreConnections(t, noMoreConnectionsTimeout)
 			})
