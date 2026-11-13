@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.44.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.43.0...v2.44.0) (2026-11-13)
+
+
+### Features
+
+* **events:** add event-delivery cooldown contract tests ([#526](https://github.com/launchdarkly/sdk-test-harness/issues/526)) ([75717ab](https://github.com/launchdarkly/sdk-test-harness/commit/75717ab1a5571d96c6f6699b23323ba57dc75150))
+
 ## [2.43.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.42.0...v2.43.0) (2026-11-06)
 
 
