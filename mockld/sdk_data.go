@@ -51,6 +51,20 @@ type FDv2SDKData struct {
 	events []framework.BaseObject
 }
 
+func (d FDv2SDKData) payloadID() string {
+	if d.state == "" {
+		return ""
+	}
+	return "payloadID"
+}
+
+func (d FDv2SDKData) payloadVersion() int {
+	if d.state == "" {
+		return 0
+	}
+	return 1
+}
+
 func NewFDv2SDKData(intentCode, intentReason, state string, events []framework.BaseObject) FDv2SDKData {
 	return FDv2SDKData{
 		intentCode:   intentCode,
