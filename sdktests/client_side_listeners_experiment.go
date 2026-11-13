@@ -6,7 +6,6 @@ import (
 
 	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
-	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/launchdarkly/sdk-test-harness/v3/data"
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
@@ -165,27 +164,8 @@ func experimentExposureJoinsExperiment(t *ldtest.T, path experimentExposurePath)
 
 	// Before the update, the flag does not track events. Thus the only feature event comes from
 	// this evaluation, and it must have the reason and the flag version of the update.
-	value := basicEvaluateFlag(t, f.client, experimentExposureFlagKey, f.context, defaultValue)
-	m.In(t).Assert(value, m.JSONEqual(updated.Value))
-
-	f.client.FlushEvents(t)
-	payload := f.eventSink.ExpectAnalyticsEvents(t, time.Second)
-
-	matchFeatureEvent := IsValidFeatureEventWithConditions(
-		t, false, f.context,
-		m.JSONProperty("key").Should(m.Equal(experimentExposureFlagKey)),
-		m.JSONProperty("version").Should(m.Equal(updated.FlagVersion.Value())),
-		m.JSONProperty("value").Should(m.JSONEqual(updated.Value)),
-		m.JSONProperty("variation").Should(m.Equal(updated.Variation.Value())),
-		m.JSONProperty("reason").Should(m.JSONEqual(updated.Reason.Value())),
-		m.JSONProperty("default").Should(m.JSONEqual(defaultValue)),
-		JSONPropertyNullOrAbsent("prereqOf"),
-	)
-	m.In(t).Assert(payload, m.ItemsInAnyOrder(
-		IsIdentifyEvent(),
-		matchFeatureEvent,
-		IsSummaryEvent(),
-	))
+	expectClientSideExperimentFeatureEvent(t, f.client, f.eventSink, f.context,
+		experimentExposureFlagKey, updated, defaultValue)
 }
 
 // experimentExposureIdenticalUpdate is the control test. The update keeps the versions of the

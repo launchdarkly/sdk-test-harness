@@ -36,17 +36,16 @@ func doClientSideExperimentationEventTests(t *ldtest.T) {
 	} {
 		t.Run(string(expectedReason.GetKind()), func(t *ldtest.T) {
 			flagKey := "flag-key"
-			data := mockld.NewClientSDKDataBuilder().
-				Flag(flagKey, mockld.ClientSDKFlag{
-					FlagVersion: o.Some(flagVersion),
-					Version:     flagVersion + 20,
-					Value:       expectedValue,
-					Variation:   o.Some(expectedVariation),
-					Reason:      o.Some(expectedReason),
-					TrackEvents: true,
-					TrackReason: true,
-				}).
-				Build()
+			flag := mockld.ClientSDKFlag{
+				FlagVersion: o.Some(flagVersion),
+				Version:     flagVersion + 20,
+				Value:       expectedValue,
+				Variation:   o.Some(expectedVariation),
+				Reason:      o.Some(expectedReason),
+				TrackEvents: true,
+				TrackReason: true,
+			}
+			data := mockld.NewClientSDKDataBuilder().Flag(flagKey, flag).Build()
 
 			dataSystem := NewSDKDataSystem(t, data)
 			eventSink := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
@@ -56,28 +55,43 @@ func doClientSideExperimentationEventTests(t *ldtest.T) {
 				eventSink,
 			)
 
-			result := basicEvaluateFlag(t, client, flagKey, context, defaultValue)
-			m.In(t).Assert(result, m.JSONEqual(expectedValue))
-
-			client.FlushEvents(t)
-			payload := eventSink.ExpectAnalyticsEvents(t, time.Second)
-
-			matchFeatureEvent := IsValidFeatureEventWithConditions(
-				t, false, context,
-				m.JSONProperty("key").Should(m.Equal(flagKey)),
-				m.JSONProperty("version").Should(m.Equal(flagVersion)),
-				m.JSONProperty("value").Should(m.JSONEqual(expectedValue)),
-				m.JSONProperty("variation").Should(m.Equal(expectedVariation)),
-				m.JSONProperty("reason").Should(m.JSONEqual(expectedReason)),
-				m.JSONProperty("default").Should(m.JSONEqual(defaultValue)),
-				JSONPropertyNullOrAbsent("prereqOf"),
-			)
-
-			m.In(t).Assert(payload, m.ItemsInAnyOrder(
-				IsIdentifyEvent(),
-				matchFeatureEvent,
-				IsSummaryEvent(),
-			))
+			expectClientSideExperimentFeatureEvent(t, client, eventSink, context, flagKey, flag, defaultValue)
 		})
 	}
+}
+
+// expectClientSideExperimentFeatureEvent evaluates the flag and checks the flushed events. The
+// payload must have one full feature event with the value, the variation, the reason, and the
+// flag version of the given flag. The flag must be the only flag that the test evaluates.
+func expectClientSideExperimentFeatureEvent(
+	t *ldtest.T,
+	client *SDKClient,
+	eventSink *SDKEventSink,
+	context ldcontext.Context,
+	flagKey string,
+	flag mockld.ClientSDKFlag,
+	defaultValue ldvalue.Value,
+) {
+	result := basicEvaluateFlag(t, client, flagKey, context, defaultValue)
+	m.In(t).Assert(result, m.JSONEqual(flag.Value))
+
+	client.FlushEvents(t)
+	payload := eventSink.ExpectAnalyticsEvents(t, time.Second)
+
+	matchFeatureEvent := IsValidFeatureEventWithConditions(
+		t, false, context,
+		m.JSONProperty("key").Should(m.Equal(flagKey)),
+		m.JSONProperty("version").Should(m.Equal(flag.FlagVersion.Value())),
+		m.JSONProperty("value").Should(m.JSONEqual(flag.Value)),
+		m.JSONProperty("variation").Should(m.Equal(flag.Variation.Value())),
+		m.JSONProperty("reason").Should(m.JSONEqual(flag.Reason.Value())),
+		m.JSONProperty("default").Should(m.JSONEqual(defaultValue)),
+		JSONPropertyNullOrAbsent("prereqOf"),
+	)
+
+	m.In(t).Assert(payload, m.ItemsInAnyOrder(
+		IsIdentifyEvent(),
+		matchFeatureEvent,
+		IsSummaryEvent(),
+	))
 }
