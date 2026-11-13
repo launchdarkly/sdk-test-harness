@@ -98,6 +98,10 @@ When this capability is set a subset of tests will set the "enableGzip" of the e
 
 This means that the SDK supports event sampling; the SDK can limit the number of certain events based on payloads received from upstream services.
 
+#### Capability `"event-delivery-cooldown"`
+
+This means that on an unexpected event-delivery failure the SDK enters a cooldown window rather than permanently disabling event delivery, and resumes delivery once the window elapses. When this capability is set the harness runs the `events/delivery cooldown` tests.
+
 #### Capability `"inline-context"`
 
 v4 of the event schema originally required a `contextKeys` property on all feature events. This event format was later broadened to accept either `contextKeys` or `contexts`. It is preferred that SDKs send over the `contexts` value. Opting into this capability will ensure the appropriate property is set.
