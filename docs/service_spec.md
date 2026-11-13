@@ -259,6 +259,8 @@ evaluation rather than during initialization cannot know it before the evaluatio
 
 This means that the SDK has support for general flag change listeners, listeners that are notified when any flag's configuration changes. When a flag changes, the SDK test service should POST notification data to the callback URI provided during listener registration.
 
+This capability applies to server-side and client-side SDKs.
+
 For details on the commands and callback payloads, see the `registerFlagChangeListener` and `unregisterListener` commands.
 
 #### Capability `"flag-value-change-listeners"`
@@ -266,6 +268,14 @@ For details on the commands and callback payloads, see the `registerFlagChangeLi
 This means that the SDK has a native API for flag *value* change listeners, listeners that are notified when a specific flag's evaluated value changes for a given context. Not all SDKs provide this API; for example, the Node.js server SDK only supports general flag change listeners.
 
 For details on the commands and callback payloads, see the `registerFlagValueChangeListener` and `unregisterListener` commands.
+
+#### Capability `"experiment-exposure-change"`
+
+This means that a client-side SDK notifies its general flag change listeners when a flag joins an experiment and the flag's `value` and `variation` do not change. The update also changes the `reason`, `trackEvents`, `trackReason`, `version`, and `flagVersion` properties of the flag. After the notification, an evaluation of the flag must produce a full feature event with the new `reason` and the new flag version.
+
+The tests deliver the change through an FDv2 stream partial payload, an FDv2 stream full payload, the FDv2 polling synchronizer, and the FDv1 fallback synchronizer. For each path, a second test sends an identical update and checks that the listener gets no notification. The polling tests run only with `-enable-long-running-tests`, and the FDv1 fallback tests also need the `"fdv1-fallback"` capability.
+
+The tests also need the `"flag-change-listeners"` capability. They do not apply to server-side SDKs.
 
 #### Capability `"flag-overrides"`
 
