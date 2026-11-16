@@ -45,4 +45,5 @@ func doServerSidePollPayloadTests(t *ldtest.T) {
 		}))
 
 	pollTests.LargePayloads(t)
+	pollTests.NonASCIIValues(t)
 }
