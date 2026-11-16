@@ -145,7 +145,8 @@ func inferDefaultFromFlag(sdkData mockld.SDKData, flagKey string) ldvalue.Value 
 			flagValue = flagData.Value
 		}
 	case mockld.ServerSDKData:
-		if flagData, ok := data["flags"][flagKey]; ok {
+		// ServerSDKData built from a data file or a builder keys its flags by the FDv2 kind name.
+		if flagData, ok := data["flag"][flagKey]; ok {
 			var flag ldmodel.FeatureFlag
 			if err := json.Unmarshal(flagData, &flag); err == nil {
 				if len(flag.Variations) != 0 {
