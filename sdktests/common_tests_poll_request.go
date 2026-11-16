@@ -61,7 +61,7 @@ func (c CommonPollingTests) RequestMethodAndHeaders(t *ldtest.T, credential stri
 }
 
 func (c CommonPollingTests) LargePayloads(t *ldtest.T) {
-	flags := make([]ldmodel.FeatureFlag, 1000)
+	flags := make([]ldmodel.FeatureFlag, 0, 1000)
 	for i := 0; i < 1000; i++ {
 		flag := ldmodel.FeatureFlag{
 			Key:          fmt.Sprintf("flag-key-%d", i),
