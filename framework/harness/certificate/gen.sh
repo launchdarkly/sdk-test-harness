@@ -6,7 +6,9 @@ set -e
 # If tests start failing because this expires, congratulations!
 #
 # The chain consists of a self-signed CA, followed by a CA-signed leaf certificate.
-# The CA cert is generated with extra config found in ca.conf.
+# The CA cert is generated with extra config found in ca.conf; the leaf cert gets the
+# extensions in leaf.conf. The leaf names the host in subjectAltName (DNS:localhost and
+# IP:127.0.0.1) because TLS stacks that follow RFC 9525 no longer match on the CN.
 #
 # The concatenation of the leaf + CA is loaded into the test harness's
 # http server via http.ListenAndServeTLS, along with the leaf private key.
@@ -33,7 +35,7 @@ openssl req -new -newkey rsa:4096 -nodes -keyout "${leaf_private_key}" -out csr.
 
 # Sign Cert
 openssl x509 -req -in csr.pem -CA "${ca_cert}" -CAkey "${ca_private_key}" -CAcreateserial -out "${leaf_cert}" \
-       -days "${certValidityDays}"
+       -days "${certValidityDays}" -sha256 -extfile leaf.conf -extensions v3_leaf
 
 rm ca_public.srl
 rm csr.pem
