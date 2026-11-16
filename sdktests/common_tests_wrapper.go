@@ -35,7 +35,7 @@ func (c CommonWrapperTests) Run(t *ldtest.T) {
 		}
 
 		if expectedHeaderValue == "" {
-			assert.NotContains(t, request.Headers, "x-launchdarkly-wrapper")
+			assert.Empty(t, request.Headers.Values("X-LaunchDarkly-Wrapper"), "wrapper header should be absent")
 		} else {
 			assert.Equal(t, expectedHeaderValue, request.Headers.Get("x-launchdarkly-wrapper"))
 		}
