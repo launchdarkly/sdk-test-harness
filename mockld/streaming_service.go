@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"sync/atomic"
 
 	"github.com/launchdarkly/sdk-test-harness/v3/framework"
 
@@ -49,11 +50,16 @@ type StreamingService struct {
 	handler      http.Handler
 	debugLogger  framework.Logger
 	lock         sync.RWMutex
+	// compact tells if the last stream request asked for compact payloads.
+	compact *atomic.Bool
 }
 
 type eventImpl struct {
 	event string
 	data  interface{}
+	// compact, if it is not nil, tells if the event sends a put-object in the compact encoding.
+	// The event reads it when it sends its data, after the stream request is known.
+	compact *atomic.Bool
 }
 
 const (
@@ -74,9 +80,14 @@ func NewStreamingService(
 		initialData: initialData,
 		streams:     streams,
 		debugLogger: debugLogger,
+		compact:     &atomic.Bool{},
 	}
 
-	streamHandler := streams.Handler(allDataChannel)
+	eventSourceHandler := streams.Handler(allDataChannel)
+	streamHandler := func(w http.ResponseWriter, r *http.Request) {
+		s.compact.Store(asksForCompactPayloads(r))
+		eventSourceHandler(w, r)
+	}
 	router := mux.NewRouter()
 	switch sdkKind {
 	case ServerSideSDK:
@@ -128,7 +139,8 @@ func (s *StreamingService) makeXferFull() []eventsource.Event {
 
 	events := make([]eventsource.Event, 0, len(fdv2SdkData.events)+2)
 	events = append(events, eventImpl{
-		event: "server-intent",
+		compact: s.compact,
+		event:   "server-intent",
 		data: framework.ServerIntent{
 			Payloads: []framework.Payload{
 				{
@@ -143,13 +155,15 @@ func (s *StreamingService) makeXferFull() []eventsource.Event {
 
 	for _, obj := range fdv2SdkData.events {
 		events = append(events, eventImpl{
-			event: "put-object",
-			data:  obj,
+			compact: s.compact,
+			event:   "put-object",
+			data:    obj,
 		})
 	}
 
 	events = append(events, eventImpl{
-		event: "payload-transferred",
+		compact: s.compact,
+		event:   "payload-transferred",
 		data: framework.PayloadTransferred{
 			State:   fdv2SdkData.state,
 			Version: 1,
@@ -161,7 +175,8 @@ func (s *StreamingService) makeXferFull() []eventsource.Event {
 
 func (s *StreamingService) PushServerIntent(intentCode, intentReason string) {
 	event := eventImpl{
-		event: "server-intent",
+		compact: s.compact,
+		event:   "server-intent",
 		data: framework.ServerIntent{
 			Payloads: []framework.Payload{
 				{
@@ -197,8 +212,9 @@ func (s *StreamingService) PushServerIntent(intentCode, intentReason string) {
 // the eventsource Publish method before a subscription existed, the event would be lost.)
 func (s *StreamingService) PushEvent(eventName string, eventData interface{}) {
 	event := eventImpl{
-		event: eventName,
-		data:  eventData,
+		compact: s.compact,
+		event:   eventName,
+		data:    eventData,
 	}
 
 	s.lock.Lock()
@@ -331,6 +347,10 @@ func (e eventImpl) Data() string {
 	if raw, ok := e.data.(json.RawMessage); ok {
 		return string(raw) // this allows us to pass malformed data that json.Marshal wouldn't allow
 	}
-	bytes, _ := json.Marshal(e.data)
+	data := e.data
+	if obj, ok := data.(framework.BaseObject); ok && e.event == "put-object" && e.compact != nil && e.compact.Load() {
+		data = compactPutObject(obj)
+	}
+	bytes, _ := json.Marshal(data)
 	return string(bytes)
 }

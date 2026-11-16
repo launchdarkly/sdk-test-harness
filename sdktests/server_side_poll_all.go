@@ -29,6 +29,7 @@ func doServerSidePollRequestTests(t *ldtest.T) {
 
 	pollTests.RequestMethodAndHeaders(t, sdkKey)
 	pollTests.RequestUserAgent(t)
+	pollTests.RequestsCompactPayloads(t)
 
 	if t.Capabilities().Has(servicedef.CapabilityHTTPProxy) {
 		pollTests.RequestViaHTTPProxy(t)

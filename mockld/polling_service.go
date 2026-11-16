@@ -170,7 +170,7 @@ func (p *PollingService) standardPollingHandler() http.Handler {
 		for _, obj := range fdv2SdkData.events {
 			events = append(events, framework.PayloadEvent{
 				Event:     "put-object",
-				EventData: obj,
+				EventData: compactPutObjectIf(asksForCompactPayloads(r), obj),
 			})
 		}
 

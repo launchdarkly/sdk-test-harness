@@ -36,6 +36,7 @@ func doServerSideStreamRequestTests(t *ldtest.T) {
 
 	streamTests.RequestMethodAndHeaders(t, sdkKey)
 	streamTests.RequestUserAgent(t)
+	streamTests.RequestsCompactPayloads(t)
 
 	streamTests.RequestURLPath(t, func(flagRequestMethod) m.Matcher {
 		return m.Equal(mockld.StreamingPathServerSide)

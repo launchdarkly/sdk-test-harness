@@ -18,6 +18,7 @@ type commandParams struct {
 	debugAll               bool
 	enablePersistenceTests bool
 	enableLongRunningTests bool
+	compactPayloads        bool
 	jUnitFile              string
 	recordFailures         string
 	skipFile               string
@@ -39,6 +40,9 @@ func (c *commandParams) Read(args []string) bool {
 		"enable tests that require external persistence support")
 	fs.BoolVar(&c.enableLongRunningTests, "enable-long-running-tests", false,
 		"enable tests that take a long time to run (10+ seconds)")
+	fs.BoolVar(&c.compactPayloads, "compact-payloads", true,
+		"if the test service has the compact-payloads capability, configure the SDK to ask for "+
+			"compact FDv2 payloads; set false to test the SDK with compact payloads turned off")
 	fs.StringVar(&c.jUnitFile, "junit", "", "write JUnit XML output to the specified path")
 	fs.StringVar(&c.recordFailures, "record-failures", "", "record failed test IDs to the given file.\n"+
 		"recorded tests can be skipped by the next run of the harness via -skip-from")
