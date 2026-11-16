@@ -84,31 +84,29 @@ func doServerSidePollRetryTests(t *ldtest.T) {
 		}
 	})
 
-	t.Run("returns to normal-regime cadence after two consecutive successful polls", func(t *ldtest.T) {
-		// Verify RETRY §1.8.1: after the extended regime engages, two consecutive successful polls
-		// return the SDK to normal-regime cadence.
+	t.Run("resets retry state after two consecutive successful polls", func(t *ldtest.T) {
+		// After the extended regime engages, two consecutive successful polls reset the retry
+		// state. After any successful poll the SDK polls at its interval, so the cadence alone
+		// does not show a reset. We prove the reset with a second 401 after the two successes.
 		//
-		// We prove the reset by observing a post-reset poll arriving at normal PollInterval
-		// cadence (~30 s) rather than extended-regime cadence (~5 min). We deliberately do NOT
-		// inject another 401 after the reset: a 401 would immediately re-enter the extended
-		// regime under RETRY, so the following poll would arrive ~5 min later — that would be
-		// spec-conformant behavior, not a bug.
+		// An SDK that reset its state waits the first extended-regime wait (2.5 to 5 minutes)
+		// after the second 401. An SDK that did not reset waits the second extended-regime wait
+		// (5 to 10 minutes). So a conformant SDK always passes, and an SDK that did not reset
+		// fails unless its jitter is close to the maximum.
 		//
 		// Flow:
 		//   1. SDK polls, gets 401 -> extended regime.
-		//   2. Poll 2 succeeds; arrives at extended-regime cadence (~2.5-5 min).
-		//   3. Poll 3 succeeds; timing is interpretation-dependent, so we allow up to the
-		//      extended window. The two consecutive successes complete §1.8.1's reset.
-		//   4. Poll 4 succeeds; MUST arrive at normal PollInterval cadence (~30 s). If the
-		//      regime hadn't reset, this poll would take ~5 min and the assertion fails.
-		pollSource1 := NewSDKDataSourceWithoutEndpoint(t, dataV1, DataSourceOptionPolling())
-		pollSource2 := NewSDKDataSourceWithoutEndpoint(t, dataV1, DataSourceOptionPolling())
-		pollSource3 := NewSDKDataSourceWithoutEndpoint(t, dataV1, DataSourceOptionPolling())
+		//   2. Poll 2 succeeds after the extended-regime wait.
+		//   3. Poll 3 succeeds. The two consecutive successes reset the retry state.
+		//   4. Poll 4 gets 401 -> extended regime again.
+		//   5. Poll 5 must come within the first extended-regime wait.
+		pollSource := NewSDKDataSourceWithoutEndpoint(t, dataV1, DataSourceOptionPolling())
 		handler := httphelpers.SequentialHandler(
 			httphelpers.HandlerWithStatus(401), // 1st: unexpected error -> extended regime
-			pollSource1.PollingService(),       // 2nd: success 1 (extended-regime cadence)
-			pollSource2.PollingService(),       // 3rd: success 2 -> §1.8.1 reset
-			pollSource3.PollingService(),       // 4th: success at normal-regime cadence (proof)
+			pollSource.PollingService(),        // 2nd: success 1 (extended-regime wait)
+			pollSource.PollingService(),        // 3rd: success 2 -> reset
+			httphelpers.HandlerWithStatus(401), // 4th: unexpected error -> extended regime again
+			pollSource.PollingService(),        // 5th: success (first extended-regime wait)
 		)
 		pollEndpoint := makePollEndpoint(t, handler)
 		t.Defer(pollEndpoint.Close)
@@ -119,18 +117,18 @@ func doServerSidePollRetryTests(t *ldtest.T) {
 		// 1st poll: 401 -> extended regime
 		_ = pollEndpoint.RequireConnection(t, initialPollTimeout)
 
-		// 2nd poll: first success, arrives at extended-regime cadence
+		// 2nd poll: first success, after the extended-regime wait
 		_ = pollEndpoint.RequireConnection(t, extendedRegimePollTimeout)
 
-		// 3rd poll: second success. Whether this arrives at extended or normal cadence
-		// depends on when the SDK internally applies the reset (after 1st or 2nd success),
-		// so we allow up to the extended window either way. The reset is complete by the
-		// end of this poll per §1.8.1.
-		_ = pollEndpoint.RequireConnection(t, extendedRegimePollTimeout)
-
-		// 4th poll: MUST be at normal PollInterval cadence. This is the reset proof: if the
-		// regime hadn't reset, this poll would take ~5 min instead of ~30 s.
+		// 3rd poll: second success. After a successful poll the SDK polls at its interval.
 		normalRegimePollTimeout := 60 * time.Second
 		_ = pollEndpoint.RequireConnection(t, normalRegimePollTimeout)
+
+		// 4th poll: 401 at the poll interval
+		_ = pollEndpoint.RequireConnection(t, normalRegimePollTimeout)
+
+		// 5th poll: this is the reset proof. It must come within the first extended-regime
+		// wait, not the second extended-regime wait of an SDK that did not reset.
+		_ = pollEndpoint.RequireConnection(t, extendedRegimePollTimeout)
 	})
 }

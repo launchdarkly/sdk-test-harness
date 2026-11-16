@@ -13,6 +13,7 @@ import (
 
 func doClientSidePollTests(t *ldtest.T) {
 	t.Run("requests", doClientSidePollRequestTest)
+	t.Run("retry behavior", doClientSidePollRetryTests)
 }
 
 func doClientSidePollRequestTest(t *ldtest.T) {
