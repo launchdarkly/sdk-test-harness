@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/launchdarkly/sdk-test-harness/v3/data"
+	h "github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
 	o "github.com/launchdarkly/sdk-test-harness/v3/framework/opt"
 	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
@@ -51,6 +52,56 @@ func doServerSideIndexEventTests(t *ldtest.T) {
 			matchIndexEvent(context),
 			IsSummaryEvent(),
 		))
+	})
+
+	t.Run("anonymous contexts", func(t *ldtest.T) {
+		// An index event has only the standard properties for anonymous contexts too, and the
+		// context is not redacted: anonymous redaction applies to feature events.
+		dataSystem := NewSDKDataSystem(t, mockld.EmptyServerSDKData())
+		anonymousUser := ldcontext.NewBuilder("anonymous-user-key").Anonymous(true).Name("a-name").
+			SetString("attr1", "value1").Build()
+		org := ldcontext.NewBuilder("org-key").Kind("org").SetString("attr2", "value2").Build()
+
+		for _, context := range []ldcontext.Context{
+			anonymousUser,
+			ldcontext.NewMulti(anonymousUser, org),
+		} {
+			t.Run(h.IfElse(context.Multiple(), "multi-kind with an anonymous context", "single-kind"),
+				func(t *ldtest.T) {
+					events := NewSDKEventSink(t)
+					client := NewSDKClient(t, dataSystem, events)
+
+					basicEvaluateFlag(t, client, "arbitrary-flag-key", context, ldvalue.Null())
+
+					client.FlushEvents(t)
+					payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+					m.In(t).Assert(payload, m.ItemsInAnyOrder(
+						m.AllOf(
+							matchIndexEvent(context),
+							m.JSONProperty("context").Should(JSONMatchesEventContext(context, nil)),
+						),
+						IsSummaryEvent(),
+					))
+				})
+		}
+	})
+
+	t.Run("no index event for a context already seen in an earlier payload", func(t *ldtest.T) {
+		dataSystem := NewSDKDataSystem(t, mockld.EmptyServerSDKData())
+		events := NewSDKEventSink(t)
+		client := NewSDKClient(t, dataSystem, events)
+		context := contexts.NextUniqueContext()
+
+		basicEvaluateFlag(t, client, "arbitrary-flag-key", context, ldvalue.Null())
+		client.FlushEvents(t)
+		payload1 := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+		m.In(t).Assert(payload1, m.ItemsInAnyOrder(matchIndexEvent(context), IsSummaryEvent()))
+
+		basicEvaluateFlag(t, client, "arbitrary-flag-key", context, ldvalue.Null())
+		client.SendCustomEvent(t, servicedef.CustomEventParams{EventKey: "event1", Context: o.Some(context)})
+		client.FlushEvents(t)
+		payload2 := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+		m.In(t).Assert(payload2, m.ItemsInAnyOrder(IsCustomEventForEventKey("event1"), IsSummaryEvent()))
 	})
 
 	t.Run("only one index event per evaluation context", func(t *ldtest.T) {
