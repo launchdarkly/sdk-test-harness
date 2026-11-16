@@ -2,6 +2,31 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.2.0-alpha.18](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.17...v3.2.0-alpha.18) (2026-11-16)
+
+
+### Features
+
+* Add evaluation tests that send flag JSON exactly as written ([#642](https://github.com/launchdarkly/sdk-test-harness/issues/642)) ([02262ea](https://github.com/launchdarkly/sdk-test-harness/commit/02262eac8474a3728a8e957bf07631b0a0fea8ec))
+* Add server-side event tests for tracking rules, experiments and index events ([#643](https://github.com/launchdarkly/sdk-test-harness/issues/643)) ([8270594](https://github.com/launchdarkly/sdk-test-harness/commit/82705949383cb0d8b5c113ae048676169d7554fd))
+* Add tests that a listener is not notified after it is unregistered ([#641](https://github.com/launchdarkly/sdk-test-harness/issues/641)) ([552d6f1](https://github.com/launchdarkly/sdk-test-harness/commit/552d6f111a843b2e28ba3d2f1ae70d3464f7d616))
+* Test that an override file with a deleted entry fails the reload ([#599](https://github.com/launchdarkly/sdk-test-harness/issues/599)) ([d3c185a](https://github.com/launchdarkly/sdk-test-harness/commit/d3c185a2b54c8cfff1e49d5184c330af6cfccef0))
+
+
+### Bug Fixes
+
+* Check the order of client-side prerequisite feature events ([#634](https://github.com/launchdarkly/sdk-test-harness/issues/634)) ([9676858](https://github.com/launchdarkly/sdk-test-harness/commit/9676858464f8e3ba1c218ec7c846e4ba0870017b))
+* Decode characters outside the Basic Multilingual Plane in test service responses ([#631](https://github.com/launchdarkly/sdk-test-harness/issues/631)) ([960fb18](https://github.com/launchdarkly/sdk-test-harness/commit/960fb18a1fae54614f79786ed28f394304f316a9))
+* Give the events-disabled tests an events URI so that they detect sent events ([#639](https://github.com/launchdarkly/sdk-test-harness/issues/639)) ([af47688](https://github.com/launchdarkly/sdk-test-harness/commit/af47688568085d2259655c1171452d0dd1d857da))
+* Infer typed defaults from v3 server-side flag data ([#640](https://github.com/launchdarkly/sdk-test-harness/issues/640)) ([fbe1fdd](https://github.com/launchdarkly/sdk-test-harness/commit/fbe1fdde611f8dd160025597526e1b71c3452cc4))
+* Make the sampling, identify and PHP header event tests check what they are named for ([#633](https://github.com/launchdarkly/sdk-test-harness/issues/633)) ([a6bc5c1](https://github.com/launchdarkly/sdk-test-harness/commit/a6bc5c17d8436bc5f0dd1b8d2bfbd414d8af9fa7))
+* Make the wrapper and tags header-absence checks detect a sent header ([#632](https://github.com/launchdarkly/sdk-test-harness/issues/632)) ([61d1024](https://github.com/launchdarkly/sdk-test-harness/commit/61d102434132496af1cb12c52e3981a8070a2b1c))
+* Name localhost in the subjectAltName of the harness TLS certificate ([#630](https://github.com/launchdarkly/sdk-test-harness/issues/630)) ([b0c3778](https://github.com/launchdarkly/sdk-test-harness/commit/b0c377837e8ac53bc42afcdb593fc82324155c6b))
+* Request the detail in the beforeEvaluation hook tests with detail ([#635](https://github.com/launchdarkly/sdk-test-harness/issues/635)) ([c551622](https://github.com/launchdarkly/sdk-test-harness/commit/c5516220634abf109f380df9d38cbcd4b8ff368d))
+* Run the all-flags error reason test only on SDKs that support reasons ([#636](https://github.com/launchdarkly/sdk-test-harness/issues/636)) ([7ed439e](https://github.com/launchdarkly/sdk-test-harness/commit/7ed439e183b7d8c952879077815aae5c47a46d32))
+* Send only the intended flags in the large payload polling test ([#637](https://github.com/launchdarkly/sdk-test-harness/issues/637)) ([0102985](https://github.com/launchdarkly/sdk-test-harness/commit/0102985a752af62aa33c6b52ccc14c37d84a5df1))
+* Send the initial retry delay with the default streaming synchronizer ([#638](https://github.com/launchdarkly/sdk-test-harness/issues/638)) ([afd82c3](https://github.com/launchdarkly/sdk-test-harness/commit/afd82c32b57b62846c24bcc2aa916a773843e898))
+
 ## [3.2.0-alpha.17](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.16...v3.2.0-alpha.17) (2026-11-06)
 
 
