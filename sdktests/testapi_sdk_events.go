@@ -88,6 +88,11 @@ func (e *SDKEventSink) SetResponseStatusForNextPosts(code int, count int) {
 	e.eventsService.SetResponseStatusForNextPosts(code, count)
 }
 
+// SetConnectionClosedForNextPosts delegates to mockld.EventsService.SetConnectionClosedForNextPosts.
+func (e *SDKEventSink) SetConnectionClosedForNextPosts(count int) {
+	e.eventsService.SetConnectionClosedForNextPosts(count)
+}
+
 // ExpectAnalyticsEvents waits for event data to be posted to the endpoint, and then calls
 // matchers.ItemsInAnyOrder with the specified eventMatchers, verifying that the payload contains
 // one event matching each of the matchers regardless of ordering.
