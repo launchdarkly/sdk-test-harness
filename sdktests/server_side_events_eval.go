@@ -412,6 +412,50 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 
 	doDebugEventTestCases(t, doDebugTest)
 
+	t.Run("tracked flag with debugging enabled produces both feature and debug events", func(t *ldtest.T) {
+		flag := ldbuilders.NewFlagBuilder("tracked-debugged-flag").Version(1).
+			On(true).FallthroughVariation(0).Variations(ldvalue.String("value"), ldvalue.String("other")).
+			TrackEvents(true).
+			DebugEventsUntilDate(ldtime.UnixMillisFromTime(time.Now().Add(time.Hour))).
+			Build()
+		dataSystem := NewSDKDataSystem(t, mockld.NewServerSDKDataBuilder().Flag(flag).Build())
+		events := NewSDKEventSink(t)
+		client := NewSDKClient(t, dataSystem, events)
+
+		context := contexts.NextUniqueContext()
+		defaultValue := ldvalue.String("default")
+		result := basicEvaluateFlag(t, client, flag.Key, context, defaultValue)
+		m.In(t).Assert(result, m.JSONEqual(ldvalue.String("value")))
+
+		client.FlushEvents(t)
+		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+		m.In(t).Assert(payload, m.ItemsInAnyOrder(
+			IsIndexEventForContext(context),
+			IsValidFeatureEventWithConditions(
+				t, false, context,
+				m.JSONProperty("key").Should(m.Equal(flag.Key)),
+				m.JSONProperty("version").Should(m.Equal(flag.Version)),
+				m.JSONProperty("value").Should(m.Equal("value")),
+				m.JSONProperty("variation").Should(m.Equal(0)),
+				JSONPropertyNullOrAbsent("reason"),
+				m.JSONProperty("default").Should(m.JSONEqual(defaultValue)),
+			),
+			m.AllOf(
+				JSONPropertyKeysCanOnlyBe("kind", "creationDate", "key", "context",
+					"version", "value", "variation", "reason", "default"),
+				IsDebugEvent(),
+				HasAnyCreationDate(),
+				m.JSONProperty("key").Should(m.Equal(flag.Key)),
+				HasContextObjectWithMatchingKeys(context),
+				m.JSONProperty("version").Should(m.Equal(flag.Version)),
+				m.JSONProperty("value").Should(m.Equal("value")),
+				m.JSONProperty("variation").Should(m.Equal(0)),
+				m.JSONProperty("default").Should(m.JSONEqual(defaultValue)),
+			),
+			IsSummaryEvent(),
+		))
+	})
+
 	t.Run("sampling ratio can disable debug event", func(t *ldtest.T) {
 		t.RequireCapability(servicedef.CapabilityEventSampling)
 
