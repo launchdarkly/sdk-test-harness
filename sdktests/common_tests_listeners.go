@@ -24,6 +24,7 @@ func doFlagChangeListenerTests(t *ldtest.T) {
 	t.Run("receives notification when flag changes", flagChangeListenerReceivesNotification)
 	t.Run("fires on config change even when value unchanged", flagChangeListenerFiresOnConfigChange)
 	t.Run("receives notifications for different flags", flagChangeListenerReceivesDifferentFlags)
+	t.Run("is not notified after it is unregistered", flagChangeListenerNotNotifiedAfterUnregister)
 	t.Run("dependent flags", doFlagChangeListenerDependencyTests)
 }
 
@@ -34,6 +35,7 @@ func doFlagValueChangeListenerTests(t *ldtest.T) {
 	t.Run("multiple listeners both receive notification", flagValueChangeListenerMultipleBothNotified)
 	t.Run("is context specific", flagValueChangeListenerIsContextSpecific)
 	t.Run("reports correct old and new JSON values", flagValueChangeListenerJSONValues)
+	t.Run("is not notified after it is unregistered", flagValueChangeListenerNotNotifiedAfterUnregister)
 	t.Run("dependent flags", doFlagValueChangeListenerDependencyTests)
 }
 
@@ -124,6 +126,35 @@ func flagChangeListenerReceivesDifferentFlags(t *ldtest.T) {
 	// Update flag2 — listener should fire again for the different flag.
 	pushFlagUpdateForFlagChangeListenerTests(dataSystem, "flag2", 3, ldvalue.String("new-value"))
 	callback.ExpectFlagChangeNotification(t, "flag2")
+}
+
+func flagChangeListenerNotNotifiedAfterUnregister(t *ldtest.T) {
+	client, dataSystem := createClientForFlagChangeListenerTests(t)
+
+	// listener-2 stays registered throughout; its notification for the second update shows that
+	// the SDK has processed that update, so listener-1's silence is not just a slow SDK.
+	callback1 := NewListenerCallback(requireContext(t).harness, t.DebugLogger())
+	defer callback1.Close()
+	callback2 := NewListenerCallback(requireContext(t).harness, t.DebugLogger())
+	defer callback2.Close()
+	client.RegisterFlagChangeListener(t, servicedef.RegisterFlagChangeListenerParams{
+		ListenerID:  "listener-1",
+		CallbackURI: callback1.GetURL(),
+	})
+	client.RegisterFlagChangeListener(t, servicedef.RegisterFlagChangeListenerParams{
+		ListenerID:  "listener-2",
+		CallbackURI: callback2.GetURL(),
+	})
+
+	pushFlagUpdateForFlagChangeListenerTests(dataSystem, "flag1", 2, ldvalue.String("new-value"))
+	callback1.ExpectFlagChangeNotification(t, "flag1")
+	callback2.ExpectFlagChangeNotification(t, "flag1")
+
+	client.UnregisterListener(t, servicedef.UnregisterListenerParams{ListenerID: "listener-1"})
+
+	pushFlagUpdateForFlagChangeListenerTests(dataSystem, "flag1", 3, ldvalue.String("newer-value"))
+	callback2.ExpectFlagChangeNotification(t, "flag1")
+	callback1.ExpectNoNotification(t, "flag1")
 }
 
 // --- Flag value change listener tests ---
@@ -286,4 +317,38 @@ func flagValueChangeListenerJSONValues(t *ldtest.T) {
 	pushFlagUpdateForFlagChangeListenerTests(dataSystem, "flag1", 2, newValue)
 
 	callback.ExpectValueChangeNotification(t, "flag1", oldValue, newValue)
+}
+
+func flagValueChangeListenerNotNotifiedAfterUnregister(t *ldtest.T) {
+	client, dataSystem := createClientForFlagChangeListenerTests(t)
+
+	context := ldcontext.New("user-key")
+	defaultValue := ldvalue.String("default")
+	value1, value2, value3 := ldvalue.String("value1"), ldvalue.String("new-value"), ldvalue.String("newer-value")
+
+	// listener-2 stays registered throughout; its notification for the second change shows that
+	// the SDK has processed that change, so listener-1's silence is not just a slow SDK.
+	callback1 := NewListenerCallback(requireContext(t).harness, t.DebugLogger())
+	defer callback1.Close()
+	callback2 := NewListenerCallback(requireContext(t).harness, t.DebugLogger())
+	defer callback2.Close()
+	for id, callback := range map[string]*ListenerCallback{"listener-1": callback1, "listener-2": callback2} {
+		client.RegisterFlagValueChangeListener(t, servicedef.RegisterFlagValueChangeListenerParams{
+			ListenerID:   id,
+			FlagKey:      "flag1",
+			Context:      context,
+			DefaultValue: defaultValue,
+			CallbackURI:  callback.GetURL(),
+		})
+	}
+
+	pushFlagUpdateForFlagChangeListenerTests(dataSystem, "flag1", 2, value2)
+	callback1.ExpectValueChangeNotification(t, "flag1", value1, value2)
+	callback2.ExpectValueChangeNotification(t, "flag1", value1, value2)
+
+	client.UnregisterListener(t, servicedef.UnregisterListenerParams{ListenerID: "listener-1"})
+
+	pushFlagUpdateForFlagChangeListenerTests(dataSystem, "flag1", 3, value3)
+	callback2.ExpectValueChangeNotification(t, "flag1", value2, value3)
+	callback1.ExpectNoNotification(t, "flag1")
 }
