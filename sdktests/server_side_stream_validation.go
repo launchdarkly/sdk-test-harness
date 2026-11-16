@@ -123,5 +123,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 		t.Run("patch event with unrecognized path kind", func(t *ldtest.T) {
 			shouldIgnoreEvent(t, "patch", []byte(`{"path": "/cats/Jack", "data": {}}`))
 		})
+
+		NewCommonStreamingTests(t, "doServerSideStreamValidationTests").IgnoresComments(t)
 	})
 }
