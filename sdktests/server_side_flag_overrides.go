@@ -479,8 +479,57 @@ func doServerSideFlagOverridesHotReloadTests(t *ldtest.T) {
 				overrideFile.Replace(t, docWith(overrideValueC))
 				awaitValue(t, client, overrideValueB, overrideValueC)
 			})
+
+			// An entry marked as deleted fails the whole reload, as a malformed file does. Each of
+			// these files also changes the override of flagKey, so an SDK that dropped only the
+			// deleted entry, instead of discarding the reload, would serve the changed value.
+			for _, deleted := range []struct {
+				name     string
+				contents string
+			}{
+				{"flag", docWithDeletedEntry(flagKey, overrideValueC, "flags", "deleted-flag")},
+				{"segment", docWithDeletedEntry(flagKey, overrideValueC, "segments", "deleted-segment")},
+			} {
+				t.Run("file with a deleted "+deleted.name+" retains last good overrides", func(t *ldtest.T) {
+					overrideFile, client := setup(t, docWith(overrideValueB))
+					requireValue(t, client, overrideValueB)
+					overrideFile.Replace(t, deleted.contents)
+					h.RequireNever(t,
+						func() bool {
+							return !basicEvaluateFlag(t, client, flagKey, context, defaultValue).Equal(overrideValueB)
+						},
+						mode.noticeWithin, reloadPollInterval,
+						"SDK applied a file that contains a "+deleted.name+" marked as deleted")
+					overrideFile.Replace(t, docWith(overrideValueC))
+					awaitValue(t, client, overrideValueB, overrideValueC)
+				})
+
+				startupName := "file with a deleted " + deleted.name + " at startup supplies no overrides until it is corrected"
+				t.Run(startupName, func(t *ldtest.T) {
+					overrideFile, client := setup(t, deleted.contents)
+					requireValue(t, client, ldValue)
+					overrideFile.Replace(t, docWith(overrideValueC))
+					awaitValue(t, client, ldValue, overrideValueC)
+				})
+			}
 		})
 	}
+}
+
+// docWithDeletedEntry returns an override document that overrides flagKey with value, and also
+// holds an entry under section ("flags" or "segments") that is marked as deleted.
+func docWithDeletedEntry(flagKey string, value ldvalue.Value, section, deletedKey string) string {
+	doc := ldvalue.ObjectBuild().
+		Set("flagValues", ldvalue.ObjectBuild().Set(flagKey, value).Build()).
+		Set(section, ldvalue.ObjectBuild().
+			Set(deletedKey, ldvalue.ObjectBuild().
+				Set("key", ldvalue.String(deletedKey)).
+				Set("version", ldvalue.Int(2)).
+				Set("deleted", ldvalue.Bool(true)).
+				Build()).
+			Build()).
+		Build()
+	return doc.JSONString()
 }
 
 func doServerSideFlagOverridesTransitiveMarkingTests(t *ldtest.T) {
