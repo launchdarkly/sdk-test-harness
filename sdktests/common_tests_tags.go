@@ -126,7 +126,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 				}
 
 				if p.unexpectedHeaderValue != "" {
-					assert.NotContains(t, p.unexpectedHeaderValue, headerTags, "for input tags: %s", jsonhelpers.ToJSONString(tags))
+					assert.NotContains(t, headerTags, p.unexpectedHeaderValue, "for input tags: %s", jsonhelpers.ToJSONString(tags))
 				}
 			} else {
 				assert.Fail(t, "timed out waiting for request", "for input tags: %s", jsonhelpers.ToJSONString(tags))
@@ -197,13 +197,26 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 				},
 				expectedHeaderValue: tagNameAppID + "/" + goodString,
 			},
-			{
+		}
+		if t.Capabilities().Has(servicedef.CapabilityAutoEnvAttributes) {
+			// With automatic environment attributes, an invalid application ID makes the SDK fall back
+			// to the automatic values for both the ID and the version.
+			params = append(params, tagsTestParams{
 				tags: servicedef.SDKConfigTagsParams{
 					ApplicationID:      o.Some(badString),
 					ApplicationVersion: o.Some("iShouldntBeSeenBecauseInvalidIDTriggersFallback"),
 				},
 				unexpectedHeaderValue: "iShouldntBeSeenBecauseInvalidIDTriggersFallback",
-			},
+			})
+		} else {
+			// Otherwise each tag is validated on its own, so only the invalid ID is dropped.
+			params = append(params, tagsTestParams{
+				tags: servicedef.SDKConfigTagsParams{
+					ApplicationID:      o.Some(badString),
+					ApplicationVersion: o.Some("ok"),
+				},
+				expectedHeaderValue: tagNameAppVersion + "/ok",
+			})
 		}
 		runPermutations(t, params)
 	})
