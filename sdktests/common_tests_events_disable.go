@@ -32,7 +32,9 @@ func (c CommonEventTests) DisablingEvents(t *ldtest.T) {
 			actionThatCausesEvent(t, client)
 			client.FlushEvents(t)
 
-			events.ExpectNoAnalyticsEvents(t, time.Millisecond*100)
+			// Fail on any request to the events endpoint. The events service does not record a payload
+			// that it cannot decode, so a check of recorded payloads can miss events that the SDK sent.
+			events.Endpoint().RequireNoMoreConnections(t, time.Millisecond*100)
 		})
 	}
 
