@@ -541,7 +541,7 @@ The response should be an empty 2xx response.
 
 #### Flush events
 
-If `command` is `"flush"`, the test service should tell the SDK to initiate an event flush.
+If `command` is `"flushEvents"`, the test service should tell the SDK to initiate an event flush.
 
 The request body, if any, is irrelevant.
 
