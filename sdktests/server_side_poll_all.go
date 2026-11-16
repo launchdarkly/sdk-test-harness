@@ -14,6 +14,7 @@ func doServerSidePollTests(t *ldtest.T) {
 	t.Run("requests", doServerSidePollRequestTests)
 	t.Run("payload", doServerSidePollPayloadTests)
 	t.Run("retry behavior", doServerSidePollRetryTests)
+	t.Run("repeated polls", doServerSideRepeatedPollTests)
 }
 
 func doServerSidePollRequestTests(t *ldtest.T) {

@@ -171,6 +171,15 @@ func (s *StreamingService) PushEvent(eventName string, eventData interface{}) {
 	}
 }
 
+// PushComment sends an SSE comment line (a colon followed by the text) to all clients that are
+// connected to the stream. LaunchDarkly sends comments as keep-alive heartbeats, and SDKs must ignore
+// them. Unlike PushEvent, a comment is not queued if no client has connected yet, so test logic should
+// only call this after the SDK has received its initial data.
+func (s *StreamingService) PushComment(text string) {
+	s.debugLogger.Printf("Sending SSE comment: %q", text)
+	s.streams.PublishComment([]string{allDataChannel}, text)
+}
+
 func (s *StreamingService) PushUpdate(namespace, key string, data json.RawMessage) {
 	var eventData interface{}
 	if s.sdkKind.IsServerSide() {

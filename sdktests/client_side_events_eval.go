@@ -262,7 +262,7 @@ func doClientSideInOrderPrereqEventTests(t *ldtest.T) {
 			Value:         ldvalue.String("value1"),
 			Variation:     o.Some(0),
 			TrackEvents:   true,
-			Prerequisites: []string{"prereq1", "preqreq2"},
+			Prerequisites: []string{"prereq1", "prereq3"},
 		}).
 		Flag("prereq1", mockld.ClientSDKFlag{
 			Value:         ldvalue.String("value2"),
@@ -272,6 +272,11 @@ func doClientSideInOrderPrereqEventTests(t *ldtest.T) {
 		}).
 		Flag("prereq2", mockld.ClientSDKFlag{
 			Value:       ldvalue.String("value3"),
+			TrackEvents: true,
+			Variation:   o.Some(0),
+		}).
+		Flag("prereq3", mockld.ClientSDKFlag{
+			Value:       ldvalue.String("value4"),
 			TrackEvents: true,
 			Variation:   o.Some(0),
 		})
@@ -310,6 +315,15 @@ func doClientSideInOrderPrereqEventTests(t *ldtest.T) {
 		JSONPropertyNullOrAbsent("prereqOf"),
 	)
 
+	prereq3FeatureEvent := IsValidFeatureEventWithConditions(
+		t, false, context,
+		m.JSONProperty("key").Should(m.Equal("prereq3")),
+		m.JSONProperty("version").Should(m.Equal(0)),
+		m.JSONProperty("value").Should(m.JSONEqual(ldvalue.String("value4"))),
+		m.JSONOptProperty("variation").Should(m.JSONEqual(0)),
+		JSONPropertyNullOrAbsent("prereqOf"),
+	)
+
 	topLevelFeatureEvent := IsValidFeatureEventWithConditions(
 		t, false, context,
 		m.JSONProperty("key").Should(m.Equal("topLevel")),
@@ -323,9 +337,30 @@ func doClientSideInOrderPrereqEventTests(t *ldtest.T) {
 		IsIdentifyEventForContext(context),
 		prereq2FeatureEvent,
 		prereq1FeatureEvent,
+		prereq3FeatureEvent,
 		topLevelFeatureEvent,
 		IsSummaryEvent(),
 	))
+
+	// Each prerequisite is processed, depth first and in list order, before the flag that
+	// depends on it, so the feature events appear in exactly this order.
+	m.In(t).For("feature events in payload order").Assert(featureEventsOf(payload), m.Items(
+		prereq2FeatureEvent,
+		prereq1FeatureEvent,
+		prereq3FeatureEvent,
+		topLevelFeatureEvent,
+	))
+}
+
+// featureEventsOf returns the feature events of a payload, in payload order.
+func featureEventsOf(payload mockld.Events) mockld.Events {
+	ret := mockld.Events{}
+	for _, e := range payload {
+		if e.Kind() == "feature" {
+			ret = append(ret, e)
+		}
+	}
+	return ret
 }
 
 func doClientSideDebugEventTests(t *ldtest.T) {

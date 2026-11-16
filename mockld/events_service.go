@@ -12,6 +12,8 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v2/framework"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
 
+	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
+
 	"github.com/gorilla/mux"
 )
 
@@ -19,6 +21,9 @@ import (
 // don't want the HTTP handler to block if the test logic doesn't happen to be consuming events
 // immediately.
 const eventsChannelBufferSize = 100
+
+// An injected response status that closes the connection without sending a response.
+const connectionClosedStatus = -1
 
 // EventsService is a simulation of the LaunchDarkly event-recorder service, allowing tests to
 // receive event data from an SDK. This is a low-level component that tests normally don't need
@@ -144,6 +149,13 @@ func (s *EventsService) SetResponseStatusForNextPosts(code int, count int) {
 	s.responseStatusCount = count
 }
 
+// SetConnectionClosedForNextPosts makes the events endpoint close the connection without sending a
+// response for the next count event posts, then resume normal 202 behavior. It works like
+// SetResponseStatusForNextPosts: the posts are not recorded, and a count <= 0 restores normal behavior.
+func (s *EventsService) SetConnectionClosedForNextPosts(count int) {
+	s.SetResponseStatusForNextPosts(connectionClosedStatus, count)
+}
+
 func (s *EventsService) postEvents(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -180,6 +192,11 @@ func (s *EventsService) postEvents(w http.ResponseWriter, r *http.Request) {
 
 	// An injected status short-circuits here: return it without recording the payload. The connection
 	// is still registered above, so connection-level assertions still observe the attempt.
+	if responseStatus == connectionClosedStatus {
+		s.logger.Printf("Closing the connection without a response for event post (payload ID %q)", payloadID)
+		httphelpers.BrokenConnectionHandler().ServeHTTP(w, r)
+		return
+	}
 	if responseStatus != 0 {
 		w.WriteHeader(responseStatus)
 		s.logger.Printf("Returning injected HTTP status %d for event post (payload ID %q)", responseStatus, payloadID)

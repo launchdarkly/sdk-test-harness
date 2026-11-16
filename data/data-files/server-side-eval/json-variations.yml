@@ -8,6 +8,7 @@ parameters:
 - TYPE_NAME: any
   TYPE_VALUE_1: ["a", true, null, 3.14, {str: "str", double: 0.5, 'null': null}]
   TYPE_VALUE_2: {str: "str", double: 0.5, 'null': null, arr: ["a", true, null, 3.14, {str: "str", double: 0.5, 'null': null}]}
+  TYPE_DEFAULT: false
 
 sdkData:
   flags:

@@ -1,6 +1,7 @@
 package mockld
 
 import (
+	"bufio"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -99,6 +100,45 @@ func doStreamingServiceTests(
 		assert.Equal(t, "put", newPutEvent.Event())
 		m.In(t).Assert(newPutEvent.Data(), m.JSONStrEqual(makeExpectedPutData(newData)))
 	})
+}
+
+func TestStreamingServicePushComment(t *testing.T) {
+	testLog := ldlogtest.NewMockLog()
+	defer testLog.DumpIfTestFailed(t)
+	service := NewStreamingService(EmptyServerSDKData(), ServerSideSDK, testLog.Loggers.ForLevel(ldlog.Debug))
+
+	httphelpers.WithServer(service, func(server *httptest.Server) {
+		resp, err := http.Get(server.URL + StreamingPathServerSide)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		lines := make(chan string, 100)
+		go func() {
+			scanner := bufio.NewScanner(resp.Body)
+			for scanner.Scan() {
+				lines <- scanner.Text()
+			}
+		}()
+
+		// The initial put event shows that the stream is subscribed.
+		requireStreamLine(t, lines, "event: put")
+		service.PushComment("heartbeat")
+		// The comment arrives as a line that starts with a colon.
+		requireStreamLine(t, lines, ":heartbeat")
+	})
+}
+
+func requireStreamLine(t *testing.T, lines <-chan string, expected string) {
+	deadline := time.After(time.Second * 5)
+	for {
+		select {
+		case line := <-lines:
+			if line == expected {
+				return
+			}
+		case <-deadline:
+			require.Fail(t, "timed out waiting for stream line", "expected %q", expected)
+		}
+	}
 }
 
 func requireEvent(t *testing.T, stream *eventsource.Stream) eventsource.Event {

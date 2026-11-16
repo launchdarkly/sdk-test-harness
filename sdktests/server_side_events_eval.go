@@ -13,6 +13,7 @@ import (
 	"github.com/launchdarkly/go-sdk-common/v3/ldattr"
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
 	"github.com/launchdarkly/go-sdk-common/v3/ldreason"
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldbuilders"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldmodel"
@@ -39,8 +40,11 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 	)
 	malformedFlag := ldbuilders.NewFlagBuilder("bad-flag").Version(1).
 		On(false).OffVariation(-1).TrackEvents(true).Build()
+	// The zero-sampling-ratio flag has full event tracking enabled, so that the only reason for it
+	// not to produce a feature event is the sampling ratio.
 	zeroSamplingRatioFlag := ldbuilders.NewFlagBuilder("zero-sampling-ratio").Version(1).
-		On(true).Variations(ldvalue.Bool(true), ldvalue.Bool(false)).SamplingRatio(0).Build()
+		On(true).Variations(ldvalue.Bool(true), ldvalue.Bool(false)).FallthroughVariation(0).
+		TrackEvents(true).SamplingRatio(0).Build()
 
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	for _, valueType := range getValueTypesToTest(t) {
@@ -398,12 +402,59 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 
 	doDebugEventTestCases(t, doDebugTest)
 
+	t.Run("tracked flag with debugging enabled produces both feature and debug events", func(t *ldtest.T) {
+		flag := ldbuilders.NewFlagBuilder("tracked-debugged-flag").Version(1).
+			On(true).FallthroughVariation(0).Variations(ldvalue.String("value"), ldvalue.String("other")).
+			TrackEvents(true).
+			DebugEventsUntilDate(ldtime.UnixMillisFromTime(time.Now().Add(time.Hour))).
+			Build()
+		dataSource := NewSDKDataSource(t, mockld.NewServerSDKDataBuilder().Flag(flag).Build())
+		events := NewSDKEventSink(t)
+		client := NewSDKClient(t, dataSource, events)
+
+		context := contexts.NextUniqueContext()
+		defaultValue := ldvalue.String("default")
+		result := basicEvaluateFlag(t, client, flag.Key, context, defaultValue)
+		m.In(t).Assert(result, m.JSONEqual(ldvalue.String("value")))
+
+		client.FlushEvents(t)
+		payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+		m.In(t).Assert(payload, m.ItemsInAnyOrder(
+			IsIndexEventForContext(context),
+			IsValidFeatureEventWithConditions(
+				t, false, context,
+				m.JSONProperty("key").Should(m.Equal(flag.Key)),
+				m.JSONProperty("version").Should(m.Equal(flag.Version)),
+				m.JSONProperty("value").Should(m.Equal("value")),
+				m.JSONProperty("variation").Should(m.Equal(0)),
+				JSONPropertyNullOrAbsent("reason"),
+				m.JSONProperty("default").Should(m.JSONEqual(defaultValue)),
+			),
+			m.AllOf(
+				JSONPropertyKeysCanOnlyBe("kind", "creationDate", "key", "context",
+					"version", "value", "variation", "reason", "default"),
+				IsDebugEvent(),
+				HasAnyCreationDate(),
+				m.JSONProperty("key").Should(m.Equal(flag.Key)),
+				HasContextObjectWithMatchingKeys(context),
+				m.JSONProperty("version").Should(m.Equal(flag.Version)),
+				m.JSONProperty("value").Should(m.Equal("value")),
+				m.JSONProperty("variation").Should(m.Equal(0)),
+				m.JSONProperty("default").Should(m.JSONEqual(defaultValue)),
+			),
+			IsSummaryEvent(),
+		))
+	})
+
 	t.Run("sampling ratio can disable debug event", func(t *ldtest.T) {
 		t.RequireCapability(servicedef.CapabilityEventSampling)
 
+		// Debugging is enabled for the flag, so that the only reason for it not to produce a debug
+		// event is the sampling ratio.
 		zeroSamplingRatioFlag := ldbuilders.NewFlagBuilder("zero-sampling-ratio").Version(1).
 			On(true).Variations(ldvalue.Bool(true), ldvalue.Bool(false)).
 			FallthroughVariation(0).
+			DebugEventsUntilDate(ldtime.UnixMillisFromTime(time.Now().Add(time.Hour))).
 			SamplingRatio(0).Build()
 
 		dataBuilder := mockld.NewServerSDKDataBuilder()
