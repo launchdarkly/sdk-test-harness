@@ -185,7 +185,7 @@ func (e *TestServiceEntity) SendCommandWithParams(
 			return errors.New("expected a response body but got none")
 		}
 		logger.Printf("Response: %s", string(body))
-		if err = json.Unmarshal(body, responseOut); err != nil {
+		if err = json.Unmarshal(normalizeSurrogateEscapes(body), responseOut); err != nil {
 			return err
 		}
 	}
