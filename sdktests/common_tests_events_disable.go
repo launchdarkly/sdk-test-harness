@@ -23,7 +23,13 @@ func (c CommonEventTests) DisablingEvents(t *ldtest.T) {
 		t.Run(name, func(t *ldtest.T) {
 			dataSystem := NewSDKDataSystem(t, nil)
 			events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
-			client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem)...)
+			// The events base URI is set through serviceEndpoints, without an events configuration, so
+			// the SDK knows where events would go but has event sending disabled.
+			client := NewSDKClient(t, c.baseSDKConfigurationPlus(
+				WithServiceEndpoints(servicedef.SDKConfigServiceEndpointsParams{
+					Events: events.Endpoint().BaseURL(),
+				}),
+				dataSystem)...)
 
 			actionThatCausesEvent(t, client)
 			client.FlushEvents(t)
