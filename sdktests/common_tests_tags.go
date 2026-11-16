@@ -40,7 +40,7 @@ func (c CommonTagsTests) Run(t *ldtest.T) {
 		request := endpoint.RequireConnection(t, time.Second)
 
 		if p.expectedHeaderValue == "" {
-			assert.NotContains(t, request.Headers, "X-LaunchDarkly-Tags")
+			assert.Empty(t, request.Headers.Values("X-LaunchDarkly-Tags"), "tags header should be absent")
 		} else {
 			assert.Equal(t, p.expectedHeaderValue, request.Headers.Get("X-LaunchDarkly-Tags"))
 		}
