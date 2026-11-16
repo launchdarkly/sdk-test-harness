@@ -182,6 +182,7 @@ func executesBeforeEvaluationStageDetail(t *ldtest.T, detail bool) {
 				Context:      flagContext,
 				ValueType:    testParam.valueType,
 				DefaultValue: testParam.defaultValue,
+				Detail:       testParam.detail,
 			})
 
 			hooks.ExpectCall(t, hookName, func(payload servicedef.HookExecutionPayload) bool {
