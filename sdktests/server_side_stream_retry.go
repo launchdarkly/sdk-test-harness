@@ -90,13 +90,9 @@ func doServerSideStreamRetryTests(t *ldtest.T) {
 		// the initial delay to a very large value, we should not see a reconnection attempt within a
 		// short time.
 
-		dataSystem := NewSDKDataSystem(t, dataV1)
-		client := NewSDKClient(t,
-			WithStreamingSynchronizer(servicedef.SDKConfigStreamingParams{
-				InitialRetryDelayMS: o.Some(ldtime.UnixMillisecondTime(10000)),
-			}),
-			dataSystem,
-		)
+		dataSystem := NewSDKDataSystem(t, dataV1,
+			DataSystemOptionStreamingInitialRetryDelay(ldtime.UnixMillisecondTime(10000)))
+		client := NewSDKClient(t, dataSystem)
 		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{Context: o.Some(context)})
 		m.In(t).Assert(result, EvalAllFlagsValueForKeyShouldEqual(flagKey, expectedValueV1))
 

@@ -19,12 +19,13 @@ type connectionModeEntry struct {
 }
 
 type sdkDataSystemConfig struct {
-	polling                 o.Maybe[bool]
-	pollingInitializers     []mockld.SDKData
-	pollingSynchronizerOpts []DataSynchronizerOption
-	connectionModes         []connectionModeEntry
-	initialConnectionMode   string
-	environmentID           o.Maybe[string]
+	polling                   o.Maybe[bool]
+	pollingInitializers       []mockld.SDKData
+	pollingSynchronizerOpts   []DataSynchronizerOption
+	streamingSynchronizerOpts []DataSynchronizerOption
+	connectionModes           []connectionModeEntry
+	initialConnectionMode     string
+	environmentID             o.Maybe[string]
 }
 
 // SDKDataSystemOption is the interface for options to NewSDKDataSystem.
@@ -61,6 +62,17 @@ func DataSystemOptionStreaming() SDKDataSystemOption {
 func DataSystemOptionPollInterval(interval time.Duration) SDKDataSystemOption {
 	return helpers.ConfigOptionFunc[sdkDataSystemConfig](func(c *sdkDataSystemConfig) error {
 		c.pollingSynchronizerOpts = append(c.pollingSynchronizerOpts, SynchronizerOptionPollInterval(interval))
+		return nil
+	})
+}
+
+// DataSystemOptionStreamingInitialRetryDelay sets the initial reconnect delay (initialRetryDelayMs)
+// for the default streaming synchronizer. Only applies when the data system is in streaming mode.
+// The delay must be set this way rather than with a separate WithStreamingSynchronizer configurer,
+// because the data system replaces the synchronizer list when it configures the SDK.
+func DataSystemOptionStreamingInitialRetryDelay(delay ldtime.UnixMillisecondTime) SDKDataSystemOption {
+	return helpers.ConfigOptionFunc[sdkDataSystemConfig](func(c *sdkDataSystemConfig) error {
+		c.streamingSynchronizerOpts = append(c.streamingSynchronizerOpts, SynchronizerOptionInitialRetryDelay(delay))
 		return nil
 	})
 }
@@ -179,7 +191,8 @@ func (s *SDKDataSystem) buildServiceDefComponents(
 					s.t.Defer(sync.endpoint.Close)
 				}
 				sdSynchronizers[i].Streaming = o.Some(servicedef.SDKConfigStreamingParams{
-					BaseURI: sync.endpoint.BaseURL(),
+					BaseURI:             sync.endpoint.BaseURL(),
+					InitialRetryDelayMS: sync.initialRetryDelayMS,
 				})
 			} else if sync.polling != nil {
 				if sync.endpoint == nil {
@@ -290,10 +303,11 @@ type DataInitializer struct {
 func (d *DataInitializer) Endpoint() *harness.MockEndpoint { return d.endpoint }
 
 type DataSynchronizer struct {
-	streaming      *mockld.StreamingService
-	polling        *mockld.PollingService
-	endpoint       *harness.MockEndpoint
-	pollIntervalMS o.Maybe[time.Duration] // if set, sent to SDK as pollIntervalMs for this sync
+	streaming           *mockld.StreamingService
+	polling             *mockld.PollingService
+	endpoint            *harness.MockEndpoint
+	pollIntervalMS      o.Maybe[time.Duration]              // if set, sent to SDK as pollIntervalMs for this sync
+	initialRetryDelayMS o.Maybe[ldtime.UnixMillisecondTime] // if set, sent to SDK as initialRetryDelayMs
 }
 
 func (d *DataSynchronizer) Endpoint() *harness.MockEndpoint { return d.endpoint }
@@ -306,6 +320,14 @@ type DataSynchronizerOption func(*DataSynchronizer)
 func SynchronizerOptionPollInterval(interval time.Duration) DataSynchronizerOption {
 	return func(d *DataSynchronizer) {
 		d.pollIntervalMS = o.Some(interval)
+	}
+}
+
+// SynchronizerOptionInitialRetryDelay sets initialRetryDelayMs for this synchronizer. Only meaningful
+// for streaming syncs.
+func SynchronizerOptionInitialRetryDelay(delay ldtime.UnixMillisecondTime) DataSynchronizerOption {
+	return func(d *DataSynchronizer) {
+		d.initialRetryDelayMS = o.Some(delay)
 	}
 }
 
@@ -454,9 +476,13 @@ func buildDataSystem(t *ldtest.T, data mockld.SDKData, options []SDKDataSystemOp
 				}
 				d.AddDataSynchronizer(sync)
 			} else {
-				d.AddDataSynchronizer(DataSynchronizer{
+				sync := DataSynchronizer{
 					streaming: mockld.NewStreamingService(data, sdkKind, t.DebugLogger()),
-				})
+				}
+				for _, opt := range config.streamingSynchronizerOpts {
+					opt(&sync)
+				}
+				d.AddDataSynchronizer(sync)
 			}
 		}
 	}
@@ -547,9 +573,13 @@ func buildMode(
 		}
 		mode.synchronizers = append(mode.synchronizers, sync)
 	} else {
-		mode.synchronizers = append(mode.synchronizers, DataSynchronizer{
+		sync := DataSynchronizer{
 			streaming: mockld.NewStreamingService(data, sdkKind, t.DebugLogger()),
-		})
+		}
+		for _, opt := range modeConfig.streamingSynchronizerOpts {
+			opt(&sync)
+		}
+		mode.synchronizers = append(mode.synchronizers, sync)
 	}
 
 	return mode
