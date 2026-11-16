@@ -102,7 +102,7 @@ func (c CommonEventTests) IdentifyEvents(t *ldtest.T) {
 					events := NewSDKEventSink(t)
 					client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem, events)...)
 
-					context := c.contextFactory.NextUniqueContext()
+					context := contexts.NextUniqueContext()
 					client.SendIdentifyEvent(t, context)
 					client.SendCustomEvent(t, servicedef.CustomEventParams{
 						EventKey: "event-key",
