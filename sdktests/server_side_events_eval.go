@@ -40,8 +40,11 @@ func doServerSideFeatureEventTests(t *ldtest.T) {
 	)
 	malformedFlag := ldbuilders.NewFlagBuilder("bad-flag").Version(1).
 		On(false).OffVariation(-1).TrackEvents(true).Build()
+	// The zero-sampling-ratio flag has full event tracking enabled, so that the only reason for it
+	// not to produce a feature event is the sampling ratio.
 	zeroSamplingRatioFlag := ldbuilders.NewFlagBuilder("zero-sampling-ratio").Version(1).
-		On(true).Variations(ldvalue.Bool(true), ldvalue.Bool(false)).SamplingRatio(0).Build()
+		On(true).Variations(ldvalue.Bool(true), ldvalue.Bool(false)).FallthroughVariation(0).
+		TrackEvents(true).SamplingRatio(0).Build()
 
 	dataBuilder := mockld.NewServerSDKDataBuilder()
 	for _, valueType := range getValueTypesToTest(t) {
@@ -456,9 +459,12 @@ func doServerSideDebugEventTests(t *ldtest.T) {
 	t.Run("sampling ratio can disable debug event", func(t *ldtest.T) {
 		t.RequireCapability(servicedef.CapabilityEventSampling)
 
+		// Debugging is enabled for the flag, so that the only reason for it not to produce a debug
+		// event is the sampling ratio.
 		zeroSamplingRatioFlag := ldbuilders.NewFlagBuilder("zero-sampling-ratio").Version(1).
 			On(true).Variations(ldvalue.Bool(true), ldvalue.Bool(false)).
 			FallthroughVariation(0).
+			DebugEventsUntilDate(ldtime.UnixMillisFromTime(time.Now().Add(time.Hour))).
 			SamplingRatio(0).Build()
 
 		dataBuilder := mockld.NewServerSDKDataBuilder()
