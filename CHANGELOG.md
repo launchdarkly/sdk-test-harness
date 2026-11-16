@@ -2,6 +2,13 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.45.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.45.0...v2.45.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* Check forbidden tag values against the tags header ([#648](https://github.com/launchdarkly/sdk-test-harness/issues/648)) ([6152e84](https://github.com/launchdarkly/sdk-test-harness/commit/6152e843bee821333a93f180a22156f918b896cb))
+
 ## [2.45.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.44.0...v2.45.0) (2026-11-16)
 
 
