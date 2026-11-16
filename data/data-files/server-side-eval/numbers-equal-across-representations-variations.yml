@@ -1,0 +1,92 @@
+---
+name: numbers are equal across JSON representations - variation values
+
+# Variation values written as 1.0, 1E3, 1e+2 or 3.0e2 are integers in JSON terms, so an integer
+# evaluation returns them as integers rather than failing with a type error; 2.50, 1e-5 and -0 are
+# returned as the numbers they denote. The flag JSON is sent to the SDK exactly as written here;
+# apart from the numbers, it has every property that the harness normally sends.
+
+sdkData:
+  rawFlags:
+    flag-with-number-variations: |
+      {
+        "key": "flag-with-number-variations",
+        "salt": "salt",
+        "version": 1,
+        "on": true,
+        "variations": [1.0, 1E3, 1e+2, 3.0e2, 2.50, 1e-5, -0],
+        "fallthrough": {"variation": 0},
+        "offVariation": 0,
+        "targets": [{"variation": 1, "values": ["key1"]}, {"variation": 2, "values": ["key2"]}, {"variation": 3, "values": ["key3"]}, {"variation": 4, "values": ["key4"]}, {"variation": 5, "values": ["key5"]}, {"variation": 6, "values": ["key6"]}],
+        "prerequisites": [],
+        "contextTargets": [],
+        "rules": [],
+        "trackEvents": false,
+        "trackEventsFallthrough": false,
+        "clientSide": false,
+        "deleted": false
+      }
+
+evaluations:
+  - name: variation 1.0 as int
+    flagKey: flag-with-number-variations
+    context: { key: "key0" }
+    valueType: int
+    default: 99
+    expect: { value: 1, variationIndex: 0, reason: { kind: "FALLTHROUGH" } }
+
+  - name: variation 1E3 as int
+    flagKey: flag-with-number-variations
+    context: { key: "key1" }
+    valueType: int
+    default: 99
+    expect: { value: 1000, variationIndex: 1, reason: { kind: "TARGET_MATCH" } }
+
+  - name: variation 1e+2 as int
+    flagKey: flag-with-number-variations
+    context: { key: "key2" }
+    valueType: int
+    default: 99
+    expect: { value: 100, variationIndex: 2, reason: { kind: "TARGET_MATCH" } }
+
+  - name: variation 3.0e2 as int
+    flagKey: flag-with-number-variations
+    context: { key: "key3" }
+    valueType: int
+    default: 99
+    expect: { value: 300, variationIndex: 3, reason: { kind: "TARGET_MATCH" } }
+
+  - name: variation 1E3 as double
+    flagKey: flag-with-number-variations
+    context: { key: "key1" }
+    valueType: double
+    default: 0.5
+    expect: { value: 1000, variationIndex: 1, reason: { kind: "TARGET_MATCH" } }
+
+  - name: variation 2.50 as double
+    flagKey: flag-with-number-variations
+    context: { key: "key4" }
+    valueType: double
+    default: 0.5
+    expect: { value: 2.5, variationIndex: 4, reason: { kind: "TARGET_MATCH" } }
+
+  - name: variation 1e-5 as double
+    flagKey: flag-with-number-variations
+    context: { key: "key5" }
+    valueType: double
+    default: 0.5
+    expect: { value: 0.00001, variationIndex: 5, reason: { kind: "TARGET_MATCH" } }
+
+  - name: variation -0 as double
+    flagKey: flag-with-number-variations
+    context: { key: "key6" }
+    valueType: double
+    default: 0.5
+    expect: { value: 0, variationIndex: 6, reason: { kind: "TARGET_MATCH" } }
+
+  - name: variation 1E3 as any
+    flagKey: flag-with-number-variations
+    context: { key: "key1" }
+    valueType: any
+    default: "default"
+    expect: { value: 1000, variationIndex: 1, reason: { kind: "TARGET_MATCH" } }
