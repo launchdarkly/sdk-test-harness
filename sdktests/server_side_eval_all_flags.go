@@ -238,6 +238,8 @@ func doServerSideAllFlagsErrorInFlagTest(t *ldtest.T) {
 	})
 
 	t.Run("with reasons", func(t *ldtest.T) {
+		t.RequireCapability(servicedef.CapabilityAllFlagsWithReasons)
+
 		result := client.EvaluateAllFlags(t, servicedef.EvaluateAllFlagsParams{
 			Context:     o.Some(context),
 			WithReasons: true,
