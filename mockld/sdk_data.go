@@ -191,6 +191,17 @@ func (d ServerSDKData) JSONString() string {
 	return string(s)
 }
 
+// UnmarshalJSON parses server-side SDK data as it appears in a test data file.
+//
+// The "flags" and "segments" properties are maps of keys to flag or segment objects. Each object is
+// parsed with the ldmodel package and re-serialized, so the SDK always receives the canonical JSON
+// form: every array property is present even if empty, and numbers are written in Go's format.
+//
+// The optional "rawFlags" and "rawSegments" properties are maps of keys to strings that contain the
+// JSON for a flag or segment. That JSON is sent to the SDK exactly as written, so a test can use
+// representations that the canonical form never produces: omitted optional properties, explicit
+// nulls, or numbers such as 1.0, 1E3 and -0. The JSON must be an object whose "key" property
+// equals its map key; it is not otherwise validated.
 func (d *ServerSDKData) UnmarshalJSON(data []byte) error {
 	var originalMap map[DataItemKind]map[string]json.RawMessage
 	if err := json.Unmarshal(data, &originalMap); err != nil {
@@ -216,8 +227,60 @@ func (d *ServerSDKData) UnmarshalJSON(data []byte) error {
 		}
 		builder.RawSegment(key, newData)
 	}
+	for key, data := range originalMap["rawFlags"] {
+		if _, exists := builder.flags[key]; exists {
+			return fmt.Errorf("flag %q is defined in both flags and rawFlags", key)
+		}
+		rawData, err := validateRawItem("flag", key, data)
+		if err != nil {
+			return err
+		}
+		builder.RawFlag(key, rawData)
+	}
+	for key, data := range originalMap["rawSegments"] {
+		if _, exists := builder.segments[key]; exists {
+			return fmt.Errorf("segment %q is defined in both segments and rawSegments", key)
+		}
+		rawData, err := validateRawItem("segment", key, data)
+		if err != nil {
+			return err
+		}
+		builder.RawSegment(key, rawData)
+	}
 	*d = builder.Build()
 	return nil
+}
+
+func rawItemJSON(kind, key string, data json.RawMessage) (json.RawMessage, error) {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return nil, fmt.Errorf("raw %s %q must be a string containing JSON: %w", kind, key, err)
+	}
+	if !json.Valid([]byte(s)) {
+		return nil, fmt.Errorf("raw %s %q is not valid JSON: %s", kind, key, s)
+	}
+	return json.RawMessage(s), nil
+}
+
+// validateRawItem checks only that raw flag or segment JSON is a valid JSON object whose "key"
+// property matches its map key. It deliberately does not parse the JSON with ldmodel, because raw
+// data exists to send the SDK representations that the canonical form never produces, and some of
+// those (such as explicit nulls for optional properties) are not accepted by every parser.
+func validateRawItem(kind, key string, data json.RawMessage) (json.RawMessage, error) {
+	rawData, err := rawItemJSON(kind, key, data)
+	if err != nil {
+		return nil, err
+	}
+	var props struct {
+		Key *string `json:"key"`
+	}
+	if err := json.Unmarshal(rawData, &props); err != nil {
+		return nil, fmt.Errorf("raw %s %q is not a JSON object: %w", kind, key, err)
+	}
+	if props.Key == nil || *props.Key != key {
+		return nil, fmt.Errorf("raw %s %q must have a \"key\" property equal to %q", kind, key, key)
+	}
+	return rawData, nil
 }
 
 func normalizeFlag(key string, data json.RawMessage) (json.RawMessage, error) {
