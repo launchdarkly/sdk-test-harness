@@ -78,7 +78,7 @@ func doServerSideStreamValidationTests(t *ldtest.T) {
 		})
 
 		t.Run("delete event", func(t *ldtest.T) {
-			shouldDropAndReconnectAfterEvent(t, "delete", []byte(`{"path":"/flags/x","version":"no"`))
+			shouldDropAndReconnectAfterEvent(t, "delete", []byte(`{"path":"/flags/x","version":"no"}`))
 		})
 	})
 
