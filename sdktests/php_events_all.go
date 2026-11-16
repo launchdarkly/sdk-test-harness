@@ -39,7 +39,7 @@ func doPHPEventRequestTests(t *ldtest.T) {
 			Header("X-LaunchDarkly-Event-Schema").Should(m.Equal(phpLegacyEventSchema)),
 			m.AllOf(
 				Header("X-LaunchDarkly-Event-Schema").Should(m.Equal(currentEventSchema)),
-				Header("X-LaunchDarkly-Unsummarized").Should(m.Not(m.BeNil())),
+				Header("X-LaunchDarkly-Unsummarized").Should(m.Not(m.Equal(""))),
 			),
 		),
 	)
