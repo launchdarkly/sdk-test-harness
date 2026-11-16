@@ -1,0 +1,148 @@
+---
+name: evaluation failures for a missing or unusable variation or rollout
+
+# A fallthrough or rule that has neither a variation nor a rollout, or a rollout that has no
+# buckets, cannot select a variation: when it is reached, the result is the default value with a
+# MALFORMED_FLAG error, not variation 0 or a null value. The same applies to a rollout bucket that
+# refers to a variation index that does not exist. These flags are sent exactly as written
+# (rawFlags), because the harness's own serialization drops an empty rollout; apart from the
+# variation or rollout, they have every property that the harness normally sends.
+
+constants:
+  MALFORMED_FLAG_RESULT:
+    value: "default"
+    reason: { kind: "ERROR", errorKind: "MALFORMED_FLAG" }
+
+sdkData:
+  rawFlags:
+    fallthrough-without-variation-or-rollout: |
+      {
+        "key": "fallthrough-without-variation-or-rollout",
+        "salt": "salt",
+        "version": 1,
+        "on": true,
+        "variations": ["a", "b"],
+        "offVariation": 0,
+        "fallthrough": {},
+        "prerequisites": [],
+        "targets": [],
+        "contextTargets": [],
+        "rules": [],
+        "trackEvents": false,
+        "trackEventsFallthrough": false,
+        "clientSide": false,
+        "deleted": false
+      }
+
+    fallthrough-with-empty-rollout: |
+      {
+        "key": "fallthrough-with-empty-rollout",
+        "salt": "salt",
+        "version": 1,
+        "on": true,
+        "variations": ["a", "b"],
+        "offVariation": 0,
+        "fallthrough": {"rollout": {"variations": []}},
+        "prerequisites": [],
+        "targets": [],
+        "contextTargets": [],
+        "rules": [],
+        "trackEvents": false,
+        "trackEventsFallthrough": false,
+        "clientSide": false,
+        "deleted": false
+      }
+
+    rule-without-variation-or-rollout: |
+      {
+        "key": "rule-without-variation-or-rollout",
+        "salt": "salt",
+        "version": 1,
+        "on": true,
+        "variations": ["a", "b"],
+        "offVariation": 0,
+        "fallthrough": {"variation": 1},
+        "rules": [{"id": "ruleid", "clauses": [{"attribute": "key", "op": "in", "values": ["rule-key"], "negate": false}], "trackEvents": false}],
+        "prerequisites": [],
+        "targets": [],
+        "contextTargets": [],
+        "trackEvents": false,
+        "trackEventsFallthrough": false,
+        "clientSide": false,
+        "deleted": false
+      }
+
+    rule-with-empty-rollout: |
+      {
+        "key": "rule-with-empty-rollout",
+        "salt": "salt",
+        "version": 1,
+        "on": true,
+        "variations": ["a", "b"],
+        "offVariation": 0,
+        "fallthrough": {"variation": 1},
+        "rules": [{"id": "ruleid", "rollout": {"variations": []}, "clauses": [{"attribute": "key", "op": "in", "values": ["rule-key"], "negate": false}], "trackEvents": false}],
+        "prerequisites": [],
+        "targets": [],
+        "contextTargets": [],
+        "trackEvents": false,
+        "trackEventsFallthrough": false,
+        "clientSide": false,
+        "deleted": false
+      }
+
+    rollout-bucket-with-nonexistent-variation: |
+      {
+        "key": "rollout-bucket-with-nonexistent-variation",
+        "salt": "salt",
+        "version": 1,
+        "on": true,
+        "variations": ["a", "b"],
+        "offVariation": 0,
+        "fallthrough": {"rollout": {"variations": [{"variation": 5, "weight": 100000}]}},
+        "prerequisites": [],
+        "targets": [],
+        "contextTargets": [],
+        "rules": [],
+        "trackEvents": false,
+        "trackEventsFallthrough": false,
+        "clientSide": false,
+        "deleted": false
+      }
+
+evaluations:
+  - name: fallthrough without variation or rollout
+    flagKey: fallthrough-without-variation-or-rollout
+    context: { key: "user-key" }
+    default: "default"
+    expect: <MALFORMED_FLAG_RESULT>
+
+  - name: fallthrough with empty rollout
+    flagKey: fallthrough-with-empty-rollout
+    context: { key: "user-key" }
+    default: "default"
+    expect: <MALFORMED_FLAG_RESULT>
+
+  - name: matched rule without variation or rollout
+    flagKey: rule-without-variation-or-rollout
+    context: { key: "rule-key" }
+    default: "default"
+    expect: <MALFORMED_FLAG_RESULT>
+
+  - name: rule without variation or rollout is harmless when it does not match
+    flagKey: rule-without-variation-or-rollout
+    context: { key: "user-key" }
+    default: "default"
+    expect: { value: "b", variationIndex: 1, reason: { kind: "FALLTHROUGH" } }
+
+  - name: matched rule with empty rollout
+    flagKey: rule-with-empty-rollout
+    context: { key: "rule-key" }
+    default: "default"
+    expect: <MALFORMED_FLAG_RESULT>
+
+  - name: rollout bucket with nonexistent variation
+    flagKey: rollout-bucket-with-nonexistent-variation
+    context: { key: "user-key" }
+    default: "default"
+    expect: <MALFORMED_FLAG_RESULT>
