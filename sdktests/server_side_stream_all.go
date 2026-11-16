@@ -41,7 +41,9 @@ func doServerSideStreamRequestTests(t *ldtest.T) {
 }
 
 func doServerSideStreamUpdateTests(t *ldtest.T) {
-	NewCommonStreamingTests(t, "doServerSideStreamUpdateTests").Updates(t)
+	c := NewCommonStreamingTests(t, "doServerSideStreamUpdateTests")
+	c.Updates(t)
+	c.NonASCIIValues(t)
 }
 
 func doServerSideStreamConnectionLifecycleTests(t *ldtest.T) {
