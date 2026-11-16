@@ -44,6 +44,7 @@ func doServerSideStreamUpdateTests(t *ldtest.T) {
 	c := NewCommonStreamingTests(t, "doServerSideStreamUpdateTests")
 	c.Updates(t)
 	c.PutReplacesAllData(t)
+	c.NonASCIIValues(t)
 }
 
 func doServerSideStreamConnectionLifecycleTests(t *ldtest.T) {
