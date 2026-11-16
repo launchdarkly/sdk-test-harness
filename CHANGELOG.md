@@ -2,6 +2,32 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.45.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.44.0...v2.45.0) (2026-11-16)
+
+
+### Features
+
+* Add evaluation tests that send flag JSON exactly as written ([#628](https://github.com/launchdarkly/sdk-test-harness/issues/628)) ([a4fa927](https://github.com/launchdarkly/sdk-test-harness/commit/a4fa9273eed510a8ff709d67f3c1dd40ea626884))
+* Add polling tests for bad PHP poll responses and polls after close ([#626](https://github.com/launchdarkly/sdk-test-harness/issues/626)) ([b0b2599](https://github.com/launchdarkly/sdk-test-harness/commit/b0b259965928ab7604571206499bbe2715210bf0))
+* Add server-side event tests for tracking rules, experiments and index events ([#629](https://github.com/launchdarkly/sdk-test-harness/issues/629)) ([d331e62](https://github.com/launchdarkly/sdk-test-harness/commit/d331e62b569155c2dbf76f23a0b4e0196dfd0221))
+* Add server-side streaming tests for put replacement, comments and close ([#625](https://github.com/launchdarkly/sdk-test-harness/issues/625)) ([708c97c](https://github.com/launchdarkly/sdk-test-harness/commit/708c97c77fa65c06d8e6fc2a2156342e504c40fc))
+* Add server-side tests that a failed event post is retried once ([#624](https://github.com/launchdarkly/sdk-test-harness/issues/624)) ([362190b](https://github.com/launchdarkly/sdk-test-harness/commit/362190bb850916d352e1890f67db563fdd59f78b))
+* Add server-side tests that non-ASCII flag values survive streaming and polling ([#627](https://github.com/launchdarkly/sdk-test-harness/issues/627)) ([0b5d7a2](https://github.com/launchdarkly/sdk-test-harness/commit/0b5d7a24d0c0a4f107a0aedd5cf9cdc5b9b0f003))
+
+
+### Bug Fixes
+
+* Check the order of client-side prerequisite feature events ([#619](https://github.com/launchdarkly/sdk-test-harness/issues/619)) ([13cc5cd](https://github.com/launchdarkly/sdk-test-harness/commit/13cc5cd3481c2b192ef04b46c2f5f3508c651770))
+* Decode characters outside the Basic Multilingual Plane in test service responses ([#616](https://github.com/launchdarkly/sdk-test-harness/issues/616)) ([61f3fb1](https://github.com/launchdarkly/sdk-test-harness/commit/61f3fb10e291b75948f303fe79292654899b391b))
+* Fail the events-disabled tests on any request to the events endpoint ([#645](https://github.com/launchdarkly/sdk-test-harness/issues/645)) ([a1ae8c5](https://github.com/launchdarkly/sdk-test-harness/commit/a1ae8c5238ff1bb5a673fa008e702020696961fa))
+* Make the sampling, identify and PHP header event tests check what they are named for ([#618](https://github.com/launchdarkly/sdk-test-harness/issues/618)) ([12d6066](https://github.com/launchdarkly/sdk-test-harness/commit/12d60660fd3dc5af34382bf0494d001fdd48e271))
+* Make the wrapper and tags header-absence checks detect a sent header ([#617](https://github.com/launchdarkly/sdk-test-harness/issues/617)) ([6e16abc](https://github.com/launchdarkly/sdk-test-harness/commit/6e16abc652c4f8197ca43c9f64f27c3e96ff1f72))
+* Name localhost in the subjectAltName of the harness TLS certificate ([#615](https://github.com/launchdarkly/sdk-test-harness/issues/615)) ([c56c87d](https://github.com/launchdarkly/sdk-test-harness/commit/c56c87def386615e247d9dbd41b827b24499b873))
+* Request the detail in the beforeEvaluation hook tests with detail ([#620](https://github.com/launchdarkly/sdk-test-harness/issues/620)) ([bd2e479](https://github.com/launchdarkly/sdk-test-harness/commit/bd2e4791c6aaa6af9ed98864b775438e5614bc0c))
+* Run the all-flags error reason test only on SDKs that support reasons ([#621](https://github.com/launchdarkly/sdk-test-harness/issues/621)) ([559916b](https://github.com/launchdarkly/sdk-test-harness/commit/559916b6b65439b26e78949ac9b5d936d47709ab))
+* Send only the intended flags in the large payload polling test ([#622](https://github.com/launchdarkly/sdk-test-harness/issues/622)) ([79d04af](https://github.com/launchdarkly/sdk-test-harness/commit/79d04af266ab66b31ce73be8dd12bfd14579d189))
+* Stop the mock polling service from hanging after it reports unavailable data ([#623](https://github.com/launchdarkly/sdk-test-harness/issues/623)) ([74e892c](https://github.com/launchdarkly/sdk-test-harness/commit/74e892c21688bf70053fda85cd396272a7f50921))
+
 ## [2.44.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.43.0...v2.44.0) (2026-11-13)
 
 
