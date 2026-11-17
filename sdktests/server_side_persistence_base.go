@@ -424,6 +424,8 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 
 	t.Run("tombstones", s.doTombstoneTests)
 
+	t.Run("client-side availability", s.doClientSideAvailabilityTests)
+
 	t.Run("flag overrides", s.doFlagOverridesTests)
 
 	t.Run("read-write", func(t *ldtest.T) {
