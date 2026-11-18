@@ -41,6 +41,8 @@ func doServerSideEventRequestTests(t *ldtest.T) {
 		Header("Content-Type").Should(m.StringContains("application/json")),
 	))
 
+	eventTests.RequestUserAgent(t)
+
 	eventTests.RequestURLPath(t, m.Equal("/bulk"))
 
 	eventTests.UniquePayloadIDs(t)
