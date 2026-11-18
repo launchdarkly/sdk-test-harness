@@ -1,6 +1,7 @@
 package sdktests
 
 import (
+	"fmt"
 	"time"
 
 	h "github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
@@ -11,11 +12,14 @@ import (
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldattr"
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldbuilders"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldmodel"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
+
+	"github.com/stretchr/testify/require"
 )
 
 func doServerSideSummaryEventTests(t *ldtest.T) {
@@ -24,6 +28,7 @@ func doServerSideSummaryEventTests(t *ldtest.T) {
 	t.Run("contextKinds", doServerSideSummaryEventContextKindsTest)
 	t.Run("unknown flag", doServerSideSummaryEventUnknownFlagTest)
 	t.Run("reset after each flush", doServerSideSummaryEventResetTest)
+	t.Run("start and end dates", doSummaryEventDatesTest)
 	t.Run("prerequisites", doServerSideSummaryEventPrerequisitesTest)
 	t.Run("flag versions", doServerSideSummaryEventVersionTest)
 }
@@ -540,4 +545,70 @@ func contextKindsList(kinds ...ldcontext.Kind) m.Matcher {
 		matchers = append(matchers, m.Equal(string(kind)))
 	}
 	return m.ItemsInAnyOrder(matchers...)
+}
+
+// doSummaryEventDatesTest verifies the summary event's time range: startDate and endDate are the
+// times of the earliest and latest evaluations since the last flush. The SDK and the test harness
+// run on the same host, so their clocks agree.
+func doSummaryEventDatesTest(t *ldtest.T) {
+	c := NewCommonEventTests(t, "doSummaryEventDatesTest")
+	dataSystem := NewSDKDataSystem(t, nil)
+	events := NewSDKEventSink(t)
+	client := NewSDKClient(t, c.baseSDKConfigurationPlus(dataSystem, events)...)
+
+	context := ldcontext.New("user-key")
+	evaluate := func() {
+		params := servicedef.EvaluateFlagParams{
+			FlagKey:      "arbitrary-flag-key",
+			ValueType:    servicedef.ValueTypeBool,
+			DefaultValue: ldvalue.Bool(false),
+		}
+		if !c.isClientSide {
+			params.Context = o.Some(context)
+		}
+		_ = client.EvaluateFlag(t, params)
+	}
+	// Allows for rounding to milliseconds.
+	const slack = 5
+	checkSummaryDates := func(desc string, payload mockld.Events, earliest, latest ldtime.UnixMillisecondTime) {
+		for _, e := range payload {
+			if e.Kind() != "summary" {
+				continue
+			}
+			startDate := e.AsValue().GetByKey("startDate")
+			endDate := e.AsValue().GetByKey("endDate")
+			m.In(t).For(desc+" startDate").Require(startDate.IsNumber(), m.Equal(true))
+			m.In(t).For(desc+" endDate").Require(endDate.IsNumber(), m.Equal(true))
+			start, end := ldtime.UnixMillisecondTime(startDate.Float64Value()),
+				ldtime.UnixMillisecondTime(endDate.Float64Value())
+			t.Debug("%s: startDate %d, endDate %d, evaluations between %d and %d", desc, start, end, earliest, latest)
+			m.In(t).For(desc+": startDate <= endDate").Assert(start <= end, m.Equal(true))
+			m.In(t).For(fmt.Sprintf("%s: startDate (%d) >= time of the first evaluation since the last flush (%d)",
+				desc, start, earliest)).Assert(start+slack >= earliest, m.Equal(true))
+			m.In(t).For(fmt.Sprintf("%s: endDate (%d) <= time of the last evaluation (%d)", desc, end, latest)).
+				Assert(end <= latest+slack, m.Equal(true))
+			return
+		}
+		require.Fail(t, "no summary event in payload", "payload: %s", payload.JSONString())
+	}
+
+	if c.isClientSide {
+		client.FlushEvents(t)
+		_ = events.ExpectAnalyticsEvents(t, defaultEventTimeout) // discard initial identify event
+	}
+
+	before := ldtime.UnixMillisNow()
+	evaluate()
+	time.Sleep(time.Millisecond * 20)
+	evaluate()
+	after := ldtime.UnixMillisNow()
+	client.FlushEvents(t)
+	checkSummaryDates("first summary", events.ExpectAnalyticsEvents(t, defaultEventTimeout), before, after)
+
+	time.Sleep(time.Millisecond * 20)
+	before = ldtime.UnixMillisNow()
+	evaluate()
+	after = ldtime.UnixMillisNow()
+	client.FlushEvents(t)
+	checkSummaryDates("second summary", events.ExpectAnalyticsEvents(t, defaultEventTimeout), before, after)
 }
