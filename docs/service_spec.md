@@ -275,7 +275,11 @@ This means that a client-side SDK notifies its general flag change listeners whe
 
 The tests deliver the change through an FDv2 stream partial payload, an FDv2 stream full payload, the FDv2 polling synchronizer, and the FDv1 fallback synchronizer. For each path, a second test sends an identical update and checks that the listener gets no notification. The polling tests run only with `-enable-long-running-tests`, and the FDv1 fallback tests also need the `"fdv1-fallback"` capability.
 
+The tests also identify a new context. The data for the new context has the same `version` and `flagVersion` as the stored data, but the new context is in the experiment. The SDK must notify the listener even though the versions are the same. A second test identifies a new context with identical data and checks that the listener gets no notification.
+
 The tests also need the `"flag-change-listeners"` capability. They do not apply to server-side SDKs.
+
+This capability is temporary. The draft flag change listeners spec makes this behavior part of the general flag change listener contract. When that spec is accepted, the tests will require only `"flag-change-listeners"`, and this capability will be removed.
 
 #### Capability `"flag-overrides"`
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/launchdarkly/go-test-helpers/v2/httphelpers"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
+	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/launchdarkly/sdk-test-harness/v3/data"
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
@@ -45,6 +46,17 @@ func experimentExposureFlagAfter() mockld.ClientSDKFlag {
 	flag.Reason = o.Some(ldreason.NewEvalReasonFallthroughExperiment(true))
 	flag.Version = 11
 	flag.FlagVersion = o.Some(2)
+	flag.TrackEvents = true
+	flag.TrackReason = true
+	return flag
+}
+
+// experimentExposureFlagForNewContext is the flag for a second context that is in the
+// experiment. The flag configuration does not change, so the versions are the same as for the
+// first context. The reason and the event tracking fields are different.
+func experimentExposureFlagForNewContext() mockld.ClientSDKFlag {
+	flag := experimentExposureFlagBefore()
+	flag.Reason = o.Some(ldreason.NewEvalReasonFallthroughExperiment(true))
 	flag.TrackEvents = true
 	flag.TrackReason = true
 	return flag
@@ -114,6 +126,11 @@ func doClientSideExperimentExposureTests(t *ldtest.T) {
 			})
 		})
 	}
+
+	t.Run("identify with new context", func(t *ldtest.T) {
+		t.Run("notifies when new context is in experiment", experimentExposureIdentifyJoinsExperiment)
+		t.Run("does not notify for identical data", experimentExposureIdentifyIdenticalData)
+	})
 }
 
 // experimentExposureFixture is an SDK client that has the flag before it joins the experiment,
@@ -131,18 +148,26 @@ func newExperimentExposureFixture(
 	path experimentExposurePath,
 	updated mockld.ClientSDKFlag,
 ) *experimentExposureFixture {
-	context := data.NewContextFactory("experiment-exposure").NextUniqueContext()
 	source := path.newSource(t, updated)
+	f := newExperimentExposureClient(t, source.configurers...)
+	f.source = source
+	return f
+}
+
+// newExperimentExposureClient creates the SDK client with an event sink and a general flag
+// change listener. The source configurers point the client to the mock data services.
+func newExperimentExposureClient(t *ldtest.T, sourceConfigurers ...SDKConfigurer) *experimentExposureFixture {
+	context := data.NewContextFactory("experiment-exposure").NextUniqueContext()
 	eventSink := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 
 	// The long flush interval keeps all events in one payload until the test flushes them.
-	configurers := make([]SDKConfigurer, 0, 3+len(source.configurers))
+	configurers := make([]SDKConfigurer, 0, 3+len(sourceConfigurers))
 	configurers = append(configurers,
 		WithClientSideInitialContext(context),
 		WithEventsConfig(baseEventsConfig()),
 		eventSink,
 	)
-	configurers = append(configurers, source.configurers...)
+	configurers = append(configurers, sourceConfigurers...)
 	client := NewSDKClient(t, configurers...)
 
 	return &experimentExposureFixture{
@@ -150,7 +175,6 @@ func newExperimentExposureFixture(
 		context:   context,
 		eventSink: eventSink,
 		callback:  registerFlagChangeListener(t, client),
-		source:    source,
 	}
 }
 
@@ -169,12 +193,56 @@ func experimentExposureJoinsExperiment(t *ldtest.T, path experimentExposurePath)
 }
 
 // experimentExposureIdenticalUpdate is the control test. The update keeps the versions of the
-// flag on purpose, because a new version is a real change that the general listener can report.
+// flag on purpose, because a new version is a real change that the general listener must report.
 // Thus the test checks that the SDK does not notify for data that it already has.
 func experimentExposureIdenticalUpdate(t *ldtest.T, path experimentExposurePath) {
 	f := newExperimentExposureFixture(t, path, experimentExposureFlagBefore())
 
 	f.source.deliver(t)
+	f.callback.ExpectNoNotification(t, experimentExposureFlagKey)
+}
+
+// experimentExposureIdentify starts a client for one context, then identifies a second context.
+// The data for the second context contains the given flag. It returns the fixture and the second
+// context.
+func experimentExposureIdentify(
+	t *ldtest.T,
+	flagForNewContext mockld.ClientSDKFlag,
+) (*experimentExposureFixture, ldcontext.Context) {
+	dataSystem := NewSDKDataSystem(t, experimentExposureData(experimentExposureFlagBefore()))
+	f := newExperimentExposureClient(t, dataSystem)
+
+	// The test flushes the identify event of the first context now. Thus the payload after the
+	// second identify has only the events of the second context.
+	f.client.FlushEvents(t)
+	payload := f.eventSink.ExpectAnalyticsEvents(t, time.Second)
+	m.In(t).Assert(payload, m.ItemsInAnyOrder(IsIdentifyEventForContext(f.context)))
+
+	newContext := data.NewContextFactory("experiment-exposure-new").NextUniqueContext()
+	dataSystem.SetData(experimentExposureData(flagForNewContext))
+	f.client.SendIdentifyEvent(t, newContext)
+	return f, newContext
+}
+
+// experimentExposureIdentifyJoinsExperiment checks the data set for a new context. The flag has
+// the same versions, value, and variation as for the first context, but the new context is in
+// the experiment. The SDK cannot find this change from the versions alone.
+func experimentExposureIdentifyJoinsExperiment(t *ldtest.T) {
+	forNewContext := experimentExposureFlagForNewContext()
+	defaultValue := ldvalue.String("default")
+	f, newContext := experimentExposureIdentify(t, forNewContext)
+
+	f.callback.ExpectFlagChangeNotification(t, experimentExposureFlagKey)
+
+	expectClientSideExperimentFeatureEvent(t, f.client, f.eventSink, newContext,
+		experimentExposureFlagKey, forNewContext, defaultValue)
+}
+
+// experimentExposureIdentifyIdenticalData is the control test for an identify. The data for
+// the new context is identical to the stored data.
+func experimentExposureIdentifyIdenticalData(t *ldtest.T) {
+	f, _ := experimentExposureIdentify(t, experimentExposureFlagBefore())
+
 	f.callback.ExpectNoNotification(t, experimentExposureFlagKey)
 }
 

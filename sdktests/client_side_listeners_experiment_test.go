@@ -31,6 +31,20 @@ func TestExperimentExposureFlagAfterChangesExperimentFields(t *testing.T) {
 	assert.Greater(t, after.FlagVersion.Value(), before.FlagVersion.Value())
 }
 
+func TestExperimentExposureFlagForNewContextKeepsVersions(t *testing.T) {
+	before := experimentExposureFlagBefore()
+	forNewContext := experimentExposureFlagForNewContext()
+
+	assert.Equal(t, before.Value, forNewContext.Value)
+	assert.Equal(t, before.Variation, forNewContext.Variation)
+	assert.Equal(t, before.Version, forNewContext.Version)
+	assert.Equal(t, before.FlagVersion, forNewContext.FlagVersion)
+
+	assert.True(t, forNewContext.TrackEvents)
+	assert.True(t, forNewContext.TrackReason)
+	assert.True(t, forNewContext.Reason.Value().IsInExperiment())
+}
+
 func TestExperimentExposureDataHasOnlyTheFlag(t *testing.T) {
 	flag := experimentExposureFlagAfter()
 
