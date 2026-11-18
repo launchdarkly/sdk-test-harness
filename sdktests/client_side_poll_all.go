@@ -26,6 +26,7 @@ func doClientSidePollRequestTest(t *ldtest.T) {
 		WithCredential(envIDOrMobileKey))
 
 	pollTests.RequestMethodAndHeaders(t, envIDOrMobileKey)
+	pollTests.RequestUserAgent(t)
 	if t.Capabilities().Has(servicedef.CapabilityETagCaching) {
 		pollTests.InitialRequestIncludesCorrectEtag(t)
 	}

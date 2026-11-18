@@ -44,5 +44,7 @@ func doPHPEventRequestTests(t *ldtest.T) {
 		),
 	)
 
+	eventTests.RequestUserAgent(t)
+
 	eventTests.RequestURLPath(t, m.Equal("/bulk"))
 }
