@@ -34,6 +34,7 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 	}
 
 	streamTests.RequestMethodAndHeaders(t, envIDOrMobileKey)
+	streamTests.RequestUserAgent(t)
 
 	requestPathMatcher := func(method flagRequestMethod) m.Matcher {
 		switch sdkKind {

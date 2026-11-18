@@ -129,6 +129,7 @@ func doAllPHPTests(t *ldtest.T) {
 	})
 	t.Run("hooks", doCommonHooksTests)
 	t.Run("polling", func(t *ldtest.T) {
+		t.Run("requests", doPHPPollRequestTests)
 		t.Run("response handling", doPHPPollResponseHandlingTests)
 	})
 }

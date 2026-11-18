@@ -62,6 +62,8 @@ func doClientSideEventRequestTests(t *ldtest.T) {
 			m.Equal("/mobile/events/bulk"),
 		),
 	)
+	eventTests.RequestUserAgent(t)
+
 	eventTests.RequestURLPath(t, requestPathMatcher)
 
 	eventTests.UniquePayloadIDs(t)
