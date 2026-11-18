@@ -14,6 +14,7 @@ func doClientSideEventTests(t *ldtest.T) {
 	t.Run("gzip", doClientSideGzipEventRequestTests)
 	t.Run("summary events", doClientSideSummaryEventTests)
 	t.Run("feature events", doClientSideFeatureEventTests)
+	t.Run("wrong type evaluation events", doClientSideWrongTypeEventTests)
 	t.Run("debug events", doClientSideDebugEventTests)
 	t.Run("experimentation", doClientSideExperimentationEventTests)
 	t.Run("identify events", doClientSideIdentifyEventTests)
