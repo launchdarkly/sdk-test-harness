@@ -26,6 +26,7 @@ func doClientSideSummaryEventTests(t *ldtest.T) {
 	}
 	t.Run("unknown flag", doClientSideSummaryEventUnknownFlagTest)
 	t.Run("reset after each flush", doClientSideSummaryEventResetTest)
+	t.Run("start and end dates", doSummaryEventDatesTest)
 
 	t.Run("prerequisites", func(t *ldtest.T) {
 		t.RequireCapability(servicedef.CapabilityClientPrereqEvents)
