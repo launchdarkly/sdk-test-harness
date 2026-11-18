@@ -255,10 +255,9 @@ func newExperimentExposureStreamSource(
 	return func(t *ldtest.T, updated mockld.ClientSDKFlag) experimentExposureSource {
 		dataSystem := NewSDKDataSystem(t, experimentExposureData(experimentExposureFlagBefore()))
 		synchronizer := dataSystem.Synchronizers[0]
-		flagJSON := jsonhelpers.ToJSON(mockld.ClientSDKFlagWithKey{
-			ClientSDKFlag: updated,
-			Key:           experimentExposureFlagKey,
-		})
+		// The put-object event has the key, so the object has the same fields as in the
+		// initial payload. An extra field makes an identical update look like a change.
+		flagJSON := jsonhelpers.ToJSON(updated)
 
 		return experimentExposureSource{
 			configurers: []SDKConfigurer{dataSystem},
