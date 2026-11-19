@@ -19,7 +19,6 @@ func NewCommonEventTests(t *ldtest.T, testName string, baseSDKConfigurers ...SDK
 	return CommonEventTests{newCommonTestsBase(t, testName, baseSDKConfigurers...)}
 }
 
-//nolint:unused // May not be used now, but could be helpful in new tests.
 func (c CommonEventTests) discardIdentifyEventIfClientSide(t *ldtest.T, client *SDKClient, events *SDKEventSink) {
 	if c.isClientSide {
 		client.FlushEvents(t)
