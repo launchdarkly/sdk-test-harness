@@ -112,9 +112,9 @@ func (e *SDKEventSink) ExpectDiagnosticEvent(t require.TestingT, timeout time.Du
 	deadline := time.NewTimer(timeout)
 	defer deadline.Stop()
 	select {
-	case event := <-e.eventsService.DiagnosticEventPayloads:
+	case event := <-e.eventsService.Diagnostics.Payloads:
 		return event
-	case misrouted := <-e.eventsService.MisroutedDiagnosticPayloads:
+	case misrouted := <-e.eventsService.Diagnostics.Misrouted:
 		require.Fail(t, "received a diagnostic event on the analytics events route",
 			"event: %s", misrouted.JSONString())
 	case <-deadline.C:
@@ -127,7 +127,7 @@ func (e *SDKEventSink) ExpectDiagnosticEvent(t require.TestingT, timeout time.Du
 // diagnostic event to the analytics events route. Events that the SDK posted before the call also
 // cause a failure.
 func (e *SDKEventSink) ExpectNoMisroutedDiagnosticEvents(t require.TestingT, timeout time.Duration) {
-	misrouted, ok := e.eventsService.AwaitMisroutedDiagnosticPayload(timeout)
+	misrouted, ok := e.eventsService.Diagnostics.AwaitMisrouted(timeout)
 	if ok {
 		require.Fail(t, "received a diagnostic event on the analytics events route",
 			"event: %s", misrouted.JSONString())

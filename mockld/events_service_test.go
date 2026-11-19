@@ -44,7 +44,7 @@ func TestEventsServiceRecordsDiagnosticEventForEachSDKKind(t *testing.T) {
 				status := postToEventsService(t, server, p.path, `{"kind":"diagnostic-init","creationDate":1}`)
 				assert.Equal(t, http.StatusAccepted, status)
 
-				event, received := service.AwaitDiagnosticEventPayload(time.Second)
+				event, received := service.Diagnostics.AwaitPayload(time.Second)
 				require.True(t, received, "diagnostic event from the diagnostic route")
 				assert.Equal(t, "diagnostic-init", event.Kind())
 				assert.JSONEq(t, `{"kind":"diagnostic-init","creationDate":1}`, event.JSONString())
@@ -67,7 +67,7 @@ func TestEventsServiceDoesNotRecordDiagnosticPostThatIsNotAnObject(t *testing.T)
 				status := postToEventsService(t, server, "/diagnostic", body)
 				assert.Equal(t, http.StatusAccepted, status)
 
-				_, received := service.AwaitDiagnosticEventPayload(time.Millisecond * 50)
+				_, received := service.Diagnostics.AwaitPayload(time.Millisecond * 50)
 				assert.False(t, received, "diagnostic event from a body that is not a JSON object")
 			})
 		})
@@ -85,7 +85,7 @@ func TestEventsServiceDoesNotBlockWhenDiagnosticChannelIsFull(t *testing.T) {
 			assert.Equal(t, http.StatusAccepted,
 				postToEventsService(t, server, "/diagnostic", `{"kind":"diagnostic"}`))
 		}
-		assert.Len(t, service.DiagnosticEventPayloads, eventsChannelBufferSize)
+		assert.Len(t, service.Diagnostics.Payloads, eventsChannelBufferSize)
 	})
 }
 
@@ -111,11 +111,11 @@ func TestEventsServiceRecordsDiagnosticObjectPostedToAnalyticsRoute(t *testing.T
 				status := postToEventsService(t, server, p.path, `{"kind":"diagnostic-init","creationDate":1}`)
 				assert.Equal(t, http.StatusBadRequest, status)
 
-				event, misrouted := service.AwaitMisroutedDiagnosticPayload(time.Second)
+				event, misrouted := service.Diagnostics.AwaitMisrouted(time.Second)
 				require.True(t, misrouted, "misrouted event from a diagnostic object on the analytics route")
 				assert.Equal(t, "diagnostic-init", event.Kind())
 
-				_, received := service.AwaitDiagnosticEventPayload(time.Millisecond * 50)
+				_, received := service.Diagnostics.AwaitPayload(time.Millisecond * 50)
 				assert.False(t, received, "diagnostic event from a post to the analytics route")
 				_, analytics := service.AwaitAnalyticsEventPayload(time.Millisecond * 50)
 				assert.False(t, analytics, "analytics payload from a body that is not an array")
@@ -140,13 +140,13 @@ func TestEventsServiceRecordsDiagnosticEventInsideAnalyticsPayload(t *testing.T)
 
 		// The misrouted event is available as soon as the payload is available.
 		select {
-		case event := <-service.MisroutedDiagnosticPayloads:
+		case event := <-service.Diagnostics.Misrouted:
 			assert.Equal(t, "diagnostic", event.Kind())
 		default:
 			assert.Fail(t, "misrouted event was not recorded before the analytics payload was delivered")
 		}
 
-		_, extra := service.AwaitMisroutedDiagnosticPayload(time.Millisecond * 50)
+		_, extra := service.Diagnostics.AwaitMisrouted(time.Millisecond * 50)
 		assert.False(t, extra, "misrouted event from an analytics event")
 	})
 }
@@ -173,7 +173,7 @@ func TestEventsServiceDoesNotRecordMisroutedEventForCorrectPosts(t *testing.T) {
 				status := postToEventsService(t, server, p.path, p.body)
 				assert.Equal(t, p.expectedStatus, status)
 
-				_, misrouted := service.AwaitMisroutedDiagnosticPayload(time.Millisecond * 50)
+				_, misrouted := service.Diagnostics.AwaitMisrouted(time.Millisecond * 50)
 				assert.False(t, misrouted, "misrouted event")
 			})
 		})
@@ -191,6 +191,6 @@ func TestEventsServiceDoesNotBlockWhenMisroutedDiagnosticChannelIsFull(t *testin
 			assert.Equal(t, http.StatusBadRequest,
 				postToEventsService(t, server, "/bulk", `{"kind":"diagnostic"}`))
 		}
-		assert.Len(t, service.MisroutedDiagnosticPayloads, eventsChannelBufferSize)
+		assert.Len(t, service.Diagnostics.Misrouted, eventsChannelBufferSize)
 	})
 }

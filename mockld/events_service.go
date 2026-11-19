@@ -12,8 +12,6 @@ import (
 	"github.com/launchdarkly/sdk-test-harness/v3/framework"
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
 
-	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
-
 	"github.com/gorilla/mux"
 )
 
@@ -27,29 +25,25 @@ const eventsChannelBufferSize = 100
 // to interact with directly; most tests use the sdktests.SDKEventSink facade.
 type EventsService struct {
 	AnalyticsEventPayloads chan Events
-	// DiagnosticEventPayloads receives the JSON object from each post to the diagnostic events route.
-	DiagnosticEventPayloads chan Event
-	// MisroutedDiagnosticPayloads receives each diagnostic event from a post to the analytics events
-	// route. A correct SDK sends diagnostic events only to the diagnostic events route.
-	MisroutedDiagnosticPayloads chan Event
-	sdkKind                     SDKKind
-	ignoreDuplicatePayload      bool
-	hostTimeOverride            time.Time
-	payloadIDsSeen              map[string]bool
-	handler                     http.Handler
-	logger                      framework.Logger
-	lock                        sync.Mutex
+	// Diagnostics records the diagnostic events that the SDK sends to this service.
+	Diagnostics            *DiagnosticEvents
+	sdkKind                SDKKind
+	ignoreDuplicatePayload bool
+	hostTimeOverride       time.Time
+	payloadIDsSeen         map[string]bool
+	handler                http.Handler
+	logger                 framework.Logger
+	lock                   sync.Mutex
 }
 
 func NewEventsService(sdkKind SDKKind, logger framework.Logger, requireGzip bool) *EventsService {
 	s := &EventsService{
-		AnalyticsEventPayloads:      make(chan Events, eventsChannelBufferSize),
-		DiagnosticEventPayloads:     make(chan Event, eventsChannelBufferSize),
-		MisroutedDiagnosticPayloads: make(chan Event, eventsChannelBufferSize),
-		sdkKind:                     sdkKind,
-		ignoreDuplicatePayload:      true,
-		payloadIDsSeen:              make(map[string]bool),
-		logger:                      logger,
+		AnalyticsEventPayloads: make(chan Events, eventsChannelBufferSize),
+		Diagnostics:            newDiagnosticEvents(logger),
+		sdkKind:                sdkKind,
+		ignoreDuplicatePayload: true,
+		payloadIDsSeen:         make(map[string]bool),
+		logger:                 logger,
 	}
 
 	router := mux.NewRouter()
@@ -60,17 +54,17 @@ func NewEventsService(sdkKind SDKKind, logger framework.Logger, requireGzip bool
 	switch sdkKind {
 	case ServerSideSDK, PHPSDK:
 		router.HandleFunc("/bulk", s.postEvents).Methods("POST")
-		router.HandleFunc("/diagnostic", s.postDiagnosticEvent).Methods("POST")
+		router.HandleFunc("/diagnostic", s.Diagnostics.postDiagnosticEvent).Methods("POST")
 	case RokuSDK:
 		fallthrough
 	case MobileSDK:
 		router.HandleFunc("/mobile", s.postEvents).Methods("POST")
 		router.HandleFunc("/mobile/events", s.postEvents).Methods("POST")
 		router.HandleFunc("/mobile/events/bulk", s.postEvents).Methods("POST")
-		router.HandleFunc("/mobile/events/diagnostic", s.postDiagnosticEvent).Methods("POST")
+		router.HandleFunc("/mobile/events/diagnostic", s.Diagnostics.postDiagnosticEvent).Methods("POST")
 	case JSClientSDK:
 		router.HandleFunc("/events/bulk/{env}", s.postEvents).Methods("POST")
-		router.HandleFunc("/events/diagnostic/{env}", s.postDiagnosticEvent).Methods("POST")
+		router.HandleFunc("/events/diagnostic/{env}", s.Diagnostics.postDiagnosticEvent).Methods("POST")
 	}
 	s.handler = router
 
@@ -101,20 +95,6 @@ func (s *EventsService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *EventsService) AwaitAnalyticsEventPayload(timeout time.Duration) (Events, bool) {
 	ep := helpers.TryReceive(s.AnalyticsEventPayloads, timeout)
 	return ep.Value(), ep.IsDefined()
-}
-
-// AwaitDiagnosticEventPayload waits for a diagnostic event that the SDK posted to the diagnostic
-// events route. It returns false if no such event arrives before the timeout.
-func (s *EventsService) AwaitDiagnosticEventPayload(timeout time.Duration) (Event, bool) {
-	e := helpers.TryReceive(s.DiagnosticEventPayloads, timeout)
-	return e.Value(), e.IsDefined()
-}
-
-// AwaitMisroutedDiagnosticPayload waits for a diagnostic event that the SDK posted to the analytics
-// events route. It returns false if no such event arrives before the timeout.
-func (s *EventsService) AwaitMisroutedDiagnosticPayload(timeout time.Duration) (Event, bool) {
-	e := helpers.TryReceive(s.MisroutedDiagnosticPayloads, timeout)
-	return e.Value(), e.IsDefined()
 }
 
 func (s *EventsService) SetHostTimeOverride(t time.Time) {
@@ -177,7 +157,7 @@ func (s *EventsService) postEvents(w http.ResponseWriter, r *http.Request) {
 		// events. Decode the body as one event to find a diagnostic event on this route.
 		var single Event
 		if json.Unmarshal(data, &single) == nil {
-			s.recordMisroutedDiagnostics(single)
+			s.Diagnostics.recordMisrouted(single)
 		}
 		w.WriteHeader(http.StatusBadRequest)
 		s.logger.Printf("Received bad event data (%s): %s", err, string(data))
@@ -185,49 +165,11 @@ func (s *EventsService) postEvents(w http.ResponseWriter, r *http.Request) {
 	}
 	// Record the misrouted events before the delivery of the payload. A test that has the payload
 	// can then find all the misrouted events of the same post without a wait.
-	s.recordMisroutedDiagnostics(events...)
+	s.Diagnostics.recordMisrouted(events...)
 	w.WriteHeader(http.StatusAccepted)
 	s.logger.Printf("Received %d events", len(events))
 	for _, e := range events {
 		s.logger.Printf("    %s", e.JSONString())
 	}
 	s.AnalyticsEventPayloads <- events
-}
-
-// recordMisroutedDiagnostics puts each diagnostic event from the given events into
-// MisroutedDiagnosticPayloads. It ignores analytics events. It does not block the HTTP handler: if
-// the channel is full, it discards the event.
-func (s *EventsService) recordMisroutedDiagnostics(events ...Event) {
-	for _, e := range events {
-		if !e.IsDiagnostic() {
-			continue
-		}
-		s.logger.Printf("Received a diagnostic event on the analytics events route: %s", e.JSONString())
-		if !helpers.NonBlockingSend(s.MisroutedDiagnosticPayloads, e) {
-			s.logger.Printf("Discarded a misrouted diagnostic event because the channel was full")
-		}
-	}
-}
-
-// postDiagnosticEvent always returns 202. It records the body in DiagnosticEventPayloads only if the
-// body is a JSON object. It does not block the HTTP handler: if the channel is full, it discards the
-// event.
-func (s *EventsService) postDiagnosticEvent(w http.ResponseWriter, r *http.Request) {
-	defer func() { _ = r.Body.Close() }()
-	w.WriteHeader(http.StatusAccepted)
-
-	data, err := io.ReadAll(r.Body)
-	if err != nil {
-		s.logger.Printf("Unable to read diagnostic request body")
-		return
-	}
-	var event Event
-	if err := json.Unmarshal(data, &event); err != nil || event.AsValue().Type() != ldvalue.ObjectType {
-		s.logger.Printf("Received bad diagnostic event data: %s", string(data))
-		return
-	}
-	s.logger.Printf("Received diagnostic event: %s", event.JSONString())
-	if !helpers.NonBlockingSend(s.DiagnosticEventPayloads, event) {
-		s.logger.Printf("Discarded a diagnostic event because the channel was full")
-	}
 }
