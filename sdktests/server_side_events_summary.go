@@ -29,6 +29,7 @@ func doServerSideSummaryEventTests(t *ldtest.T) {
 	t.Run("unknown flag", doServerSideSummaryEventUnknownFlagTest)
 	t.Run("reset after each flush", doServerSideSummaryEventResetTest)
 	t.Run("start and end dates", doSummaryEventDatesTest)
+	t.Run("flag value and default value are counted separately", doServerSideSummaryEventValueAndDefaultTest)
 	t.Run("prerequisites", doServerSideSummaryEventPrerequisitesTest)
 	t.Run("flag versions", doServerSideSummaryEventVersionTest)
 }
@@ -611,4 +612,48 @@ func doSummaryEventDatesTest(t *ldtest.T) {
 	after = ldtime.UnixMillisNow()
 	client.FlushEvents(t)
 	checkSummaryDates("second summary", events.ExpectAnalyticsEvents(t, defaultEventTimeout), before, after)
+}
+
+func doServerSideSummaryEventValueAndDefaultTest(t *ldtest.T) {
+	// One evaluation returns the first variation of the flag. Another evaluation returns the default
+	// value because of a wrong-type error. The summary must count the two results separately.
+	t.RequireCapability(servicedef.CapabilityStronglyTyped)
+
+	flag := ldbuilders.NewFlagBuilder("flag").Version(1).
+		On(true).FallthroughVariation(0).Variations(ldvalue.Bool(true), ldvalue.Bool(false)).Build()
+	dataSystem := NewSDKDataSystem(t, mockld.NewServerSDKDataBuilder().Flag(flag).Build())
+	events := NewSDKEventSink(t)
+	client := NewSDKClient(t, dataSystem, events)
+	context := ldcontext.New("user-key")
+
+	boolResult := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+		FlagKey: flag.Key, Context: o.Some(context), ValueType: servicedef.ValueTypeBool, DefaultValue: ldvalue.Bool(false)})
+	m.In(t).Assert(boolResult.Value, m.JSONEqual(true))
+	stringDefault := ldvalue.String("default")
+	stringResult := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+		FlagKey: flag.Key, Context: o.Some(context), ValueType: servicedef.ValueTypeString, DefaultValue: stringDefault})
+	m.In(t).Assert(stringResult.Value, m.JSONEqual(stringDefault))
+
+	client.FlushEvents(t)
+	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+	m.In(t).Assert(payload, m.ItemsInAnyOrder(
+		IsIndexEvent(),
+		IsValidSummaryEventWithFlags(
+			false,
+			m.KV(flag.Key, m.MapIncluding(
+				m.KV("counters", m.ItemsInAnyOrder(
+					flagCounter(true, 0, flag.Version, 1),
+					m.AllOf(
+						m.MapIncluding(
+							m.KV("value", m.JSONEqual(stringDefault)),
+							m.KV("version", m.Equal(flag.Version)),
+							m.KV("count", m.Equal(1)),
+						),
+						JSONPropertyNullOrAbsent("variation"),
+						JSONPropertyNullOrAbsentOrEqualTo("unknown", false),
+					),
+				)),
+			)),
+		),
+	))
 }
