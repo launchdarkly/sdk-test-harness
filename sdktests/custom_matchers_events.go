@@ -69,6 +69,8 @@ func IsCustomEvent() m.Matcher      { return EventHasKind("custom") }
 func IsSummaryEvent() m.Matcher     { return EventHasKind("summary") }
 func IsMigrationOpEvent() m.Matcher { return EventHasKind("migration_op") }
 
+func IsDiagnosticInitEvent() m.Matcher { return EventHasKind("diagnostic-init") }
+
 func IsIndexEventForContext(context ldcontext.Context) m.Matcher {
 	return m.AllOf(IsIndexEvent(), HasContextObjectWithMatchingKeys(context))
 }

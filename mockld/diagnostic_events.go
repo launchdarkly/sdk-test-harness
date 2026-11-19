@@ -31,13 +31,6 @@ func newDiagnosticEvents(logger framework.Logger) *DiagnosticEvents {
 	}
 }
 
-// AwaitPayload waits for a diagnostic event that the SDK posted to the diagnostic events route. It
-// returns false if no such event arrives before the timeout.
-func (d *DiagnosticEvents) AwaitPayload(timeout time.Duration) (Event, bool) {
-	e := helpers.TryReceive(d.Payloads, timeout)
-	return e.Value(), e.IsDefined()
-}
-
 // AwaitMisrouted waits for a diagnostic event that the SDK posted to the analytics events route. It
 // returns false if no such event arrives before the timeout.
 func (d *DiagnosticEvents) AwaitMisrouted(timeout time.Duration) (Event, bool) {
@@ -45,28 +38,33 @@ func (d *DiagnosticEvents) AwaitMisrouted(timeout time.Duration) (Event, bool) {
 	return e.Value(), e.IsDefined()
 }
 
+// record puts the event into the channel. If the channel is full, it discards the event, so that the
+// HTTP handler does not block. Most tests never read the diagnostic channels.
+func (d *DiagnosticEvents) record(ch chan Event, e Event, description string) {
+	d.logger.Printf("Received %s: %s", description, e.JSONString())
+	if !helpers.NonBlockingSend(ch, e) {
+		d.logger.Printf("Discarded %s because the channel was full", description)
+	}
+}
+
 // recordMisrouted puts each diagnostic event from the given events into Misrouted. It ignores
-// analytics events. It does not block the HTTP handler: if the channel is full, it discards the
-// event.
+// analytics events.
 func (d *DiagnosticEvents) recordMisrouted(events ...Event) {
 	for _, e := range events {
-		if !e.IsDiagnostic() {
-			continue
-		}
-		d.logger.Printf("Received a diagnostic event on the analytics events route: %s", e.JSONString())
-		if !helpers.NonBlockingSend(d.Misrouted, e) {
-			d.logger.Printf("Discarded a misrouted diagnostic event because the channel was full")
+		if e.IsDiagnostic() {
+			d.record(d.Misrouted, e, "a diagnostic event on the analytics events route")
 		}
 	}
 }
 
 // postDiagnosticEvent always returns 202. It records the body in Payloads only if the body is a JSON
-// object. It does not block the HTTP handler: if the channel is full, it discards the event.
+// object.
 func (d *DiagnosticEvents) postDiagnosticEvent(w http.ResponseWriter, r *http.Request) {
-	defer func() { _ = r.Body.Close() }()
-	w.WriteHeader(http.StatusAccepted)
-
+	// Read the body before the response status. After a final status, net/http does not send
+	// "100 Continue", and a client that sent "Expect: 100-continue" waits for its own timeout.
 	data, err := io.ReadAll(r.Body)
+	_ = r.Body.Close()
+	w.WriteHeader(http.StatusAccepted)
 	if err != nil {
 		d.logger.Printf("Unable to read diagnostic request body")
 		return
@@ -76,8 +74,5 @@ func (d *DiagnosticEvents) postDiagnosticEvent(w http.ResponseWriter, r *http.Re
 		d.logger.Printf("Received bad diagnostic event data: %s", string(data))
 		return
 	}
-	d.logger.Printf("Received diagnostic event: %s", event.JSONString())
-	if !helpers.NonBlockingSend(d.Payloads, event) {
-		d.logger.Printf("Discarded a diagnostic event because the channel was full")
-	}
+	d.record(d.Payloads, event, "diagnostic event")
 }

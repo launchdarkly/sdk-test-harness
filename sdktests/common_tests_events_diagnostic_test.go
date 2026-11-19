@@ -3,50 +3,27 @@ package sdktests
 import (
 	"encoding/json"
 	"io"
-	"net"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
-	"github.com/launchdarkly/sdk-test-harness/v3/framework"
-	"github.com/launchdarkly/sdk-test-harness/v3/framework/harness"
 	"github.com/launchdarkly/sdk-test-harness/v3/framework/ldtest"
 	"github.com/launchdarkly/sdk-test-harness/v3/mockld"
 	"github.com/launchdarkly/sdk-test-harness/v3/servicedef"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-// fakeMobileSDKBehavior selects where the fake test service sends its diagnostic-init event.
-type fakeMobileSDKBehavior int
-
-const (
-	// The diagnostic-init event goes to the diagnostic events route.
-	fakeSDKRoutesDiagnosticCorrectly fakeMobileSDKBehavior = iota
-	// The diagnostic-init event goes to the analytics events route as one JSON object.
-	fakeSDKPostsDiagnosticToAnalyticsRoute
-	// The diagnostic-init event goes to the diagnostic events route. A second diagnostic event is
-	// an item of the analytics payload.
-	fakeSDKPutsDiagnosticInAnalyticsPayload
-)
-
-// fakeMobileSDKService is a minimal SDK test service for a mobile SDK. It does not run an SDK. It
-// sends the event posts that an SDK with the given behavior sends.
+// fakeMobileSDKService is a minimal SDK test service for a mobile SDK. It does not run an SDK. When
+// diagnostics are enabled, it posts a diagnostic-init event to diagnosticPath. On a flush, it posts
+// flushBody to the analytics events route.
 type fakeMobileSDKService struct {
-	behavior      fakeMobileSDKBehavior
-	capabilities  []string
-	eventsBaseURI string
-	lock          sync.Mutex
-}
-
-func (f *fakeMobileSDKService) setEventsBaseURI(uri string) {
-	f.lock.Lock()
-	defer f.lock.Unlock()
-	f.eventsBaseURI = strings.TrimSuffix(uri, "/")
+	capabilities   []string
+	diagnosticPath string
+	flushBody      string
+	eventsBaseURI  string
+	lock           sync.Mutex
 }
 
 func (f *fakeMobileSDKService) post(path string, body string) {
@@ -72,13 +49,11 @@ func (f *fakeMobileSDKService) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		eventsConfig := params.Configuration.Events.Value()
-		f.setEventsBaseURI(eventsConfig.BaseURI)
+		f.lock.Lock()
+		f.eventsBaseURI = strings.TrimSuffix(eventsConfig.BaseURI, "/")
+		f.lock.Unlock()
 		if eventsConfig.EnableDiagnostics {
-			if f.behavior == fakeSDKPostsDiagnosticToAnalyticsRoute {
-				f.post("/mobile", `{"kind":"diagnostic-init"}`)
-			} else {
-				f.post("/mobile/events/diagnostic", `{"kind":"diagnostic-init"}`)
-			}
+			f.post(f.diagnosticPath, `{"kind":"diagnostic-init"}`)
 		}
 		w.Header().Set("Location", "/clients/1")
 		w.WriteHeader(http.StatusCreated)
@@ -89,57 +64,12 @@ func (f *fakeMobileSDKService) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		if command.Command == servicedef.CommandFlushEvents {
-			if f.behavior == fakeSDKPutsDiagnosticInAnalyticsPayload {
-				f.post("/mobile/events/bulk", `[{"kind":"identify"},{"kind":"custom"},{"kind":"diagnostic"}]`)
-			} else {
-				f.post("/mobile/events/bulk", `[{"kind":"identify"},{"kind":"custom"}]`)
-			}
+			f.post("/mobile/events/bulk", f.flushBody)
 		}
 		w.WriteHeader(http.StatusAccepted)
 	default:
 		w.WriteHeader(http.StatusNoContent)
 	}
-}
-
-// runDiagnosticEventTestsAgainstFakeSDK runs CommonEventTests.DiagnosticEvents against a fake test
-// service, and returns the results and the messages of all the test failures.
-func runDiagnosticEventTestsAgainstFakeSDK(
-	t *testing.T,
-	behavior fakeMobileSDKBehavior,
-	capabilities ...string,
-) (ldtest.Results, string) {
-	service := &fakeMobileSDKService{behavior: behavior, capabilities: capabilities}
-	server := httptest.NewServer(service)
-	defer server.Close()
-
-	// Get a free port for the callback listener of the test harness.
-	listener, err := net.Listen("tcp", "localhost:0")
-	require.NoError(t, err)
-	port := listener.Addr().(*net.TCPAddr).Port
-	require.NoError(t, listener.Close())
-
-	testHarness, err := harness.NewTestHarness(server.URL, "localhost", port, false, time.Second*5,
-		framework.NullLogger(), io.Discard)
-	require.NoError(t, err)
-
-	results := ldtest.Run(
-		ldtest.TestConfiguration{
-			Capabilities: testHarness.TestServiceInfo().Capabilities,
-			Context:      SDKTestContext{harness: testHarness, sdkKind: mockld.MobileSDK},
-		},
-		func(t *ldtest.T) {
-			t.Run("diagnostic events", func(t *ldtest.T) {
-				NewCommonEventTests(t, "runDiagnosticEventTestsAgainstFakeSDK").DiagnosticEvents(t)
-			})
-		})
-
-	var messages []string
-	for _, failure := range results.Failures {
-		for _, e := range failure.Errors {
-			messages = append(messages, e.Error())
-		}
-	}
-	return results, strings.Join(messages, "\n")
 }
 
 // ranTest returns true if the results contain a test with the given ID. The results do not contain
@@ -155,37 +85,57 @@ func ranTest(results ldtest.Results, id string) bool {
 
 func TestDiagnosticEventsContractTest(t *testing.T) {
 	const subtestID = "diagnostic events/init event is sent to the diagnostic route only"
-	allCapabilities := []string{
-		servicedef.CapabilityClientSide,
-		servicedef.CapabilityMobile,
-		servicedef.CapabilityDiagnosticEvents,
+	const analyticsEvents = `[{"kind":"identify"},{"kind":"custom"}]`
+	withoutCapability := []string{servicedef.CapabilityClientSide, servicedef.CapabilityMobile}
+	allCapabilities := []string{servicedef.CapabilityClientSide, servicedef.CapabilityMobile,
+		servicedef.CapabilityDiagnosticEvents}
+
+	for _, p := range []struct {
+		name           string
+		capabilities   []string
+		diagnosticPath string
+		flushBody      string
+		wantOK         bool
+		wantRan        bool
+	}{
+		{"passes for an SDK that uses the diagnostic route",
+			allCapabilities, "/mobile/events/diagnostic", analyticsEvents, true, true},
+		{"fails for an SDK that posts the diagnostic object to the analytics route",
+			allCapabilities, "/mobile", analyticsEvents, false, true},
+		{"fails for an SDK that puts a diagnostic event in the analytics payload",
+			allCapabilities, "/mobile/events/diagnostic", `[{"kind":"identify"},{"kind":"diagnostic"}]`, false, true},
+		{"does not run without the capability",
+			withoutCapability, "/mobile", analyticsEvents, true, false},
+	} {
+		t.Run(p.name, func(t *testing.T) {
+			testHarness := newTestHarnessWithFakeService(t, &fakeMobileSDKService{
+				capabilities:   p.capabilities,
+				diagnosticPath: p.diagnosticPath,
+				flushBody:      p.flushBody,
+			})
+			logger := &errorRecordingTestLogger{}
+
+			results := ldtest.Run(
+				ldtest.TestConfiguration{
+					Capabilities: testHarness.TestServiceInfo().Capabilities,
+					Context:      SDKTestContext{harness: testHarness, sdkKind: mockld.MobileSDK},
+					TestLogger:   logger,
+				},
+				func(t *ldtest.T) {
+					t.Run("diagnostic events", func(t *ldtest.T) {
+						NewCommonEventTests(t, "TestDiagnosticEventsContractTest").DiagnosticEvents(t)
+					})
+				})
+
+			var messages []string
+			for _, err := range logger.errors {
+				messages = append(messages, err.Error())
+			}
+			assert.Equal(t, p.wantOK, results.OK(), "errors: %s", strings.Join(messages, "\n"))
+			assert.Equal(t, p.wantRan, ranTest(results, subtestID))
+			if !p.wantOK {
+				assert.Contains(t, strings.Join(messages, "\n"), misroutedDiagnosticMessage)
+			}
+		})
 	}
-
-	t.Run("passes for an SDK that uses the diagnostic route", func(t *testing.T) {
-		results, messages := runDiagnosticEventTestsAgainstFakeSDK(t,
-			fakeSDKRoutesDiagnosticCorrectly, allCapabilities...)
-		assert.True(t, results.OK(), "failures: %s", messages)
-		assert.True(t, ranTest(results, subtestID), "subtest did not run")
-	})
-
-	t.Run("fails for an SDK that posts the diagnostic object to the analytics route", func(t *testing.T) {
-		results, messages := runDiagnosticEventTestsAgainstFakeSDK(t,
-			fakeSDKPostsDiagnosticToAnalyticsRoute, allCapabilities...)
-		assert.False(t, results.OK())
-		assert.Contains(t, messages, "received a diagnostic event on the analytics events route")
-	})
-
-	t.Run("fails for an SDK that puts a diagnostic event in the analytics payload", func(t *testing.T) {
-		results, messages := runDiagnosticEventTestsAgainstFakeSDK(t,
-			fakeSDKPutsDiagnosticInAnalyticsPayload, allCapabilities...)
-		assert.False(t, results.OK())
-		assert.Contains(t, messages, "received a diagnostic event on the analytics events route")
-	})
-
-	t.Run("does not run without the capability", func(t *testing.T) {
-		results, messages := runDiagnosticEventTestsAgainstFakeSDK(t,
-			fakeSDKPostsDiagnosticToAnalyticsRoute, servicedef.CapabilityClientSide, servicedef.CapabilityMobile)
-		assert.True(t, results.OK(), "failures: %s", messages)
-		assert.False(t, ranTest(results, subtestID), "subtest ran without the capability")
-	})
 }

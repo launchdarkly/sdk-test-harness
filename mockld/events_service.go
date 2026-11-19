@@ -145,27 +145,33 @@ func (s *EventsService) postEvents(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Date", hostTime.UTC().Format(http.TimeFormat))
 	}
 
+	// Look for misrouted diagnostic events before the duplicate check, because a post with a
+	// payload ID that was already seen can also hold a diagnostic event. A diagnostic event is one
+	// JSON object, not an array, so a body that does not decode as a list is decoded as one event.
+	var events []Event
+	decodeErr := json.Unmarshal(data, &events)
+	if decodeErr == nil {
+		// This is before the delivery of the payload. A test that has the payload can then find all
+		// the misrouted events of the same post without a wait.
+		s.Diagnostics.recordMisrouted(events...)
+	} else {
+		var single Event
+		if json.Unmarshal(data, &single) == nil {
+			s.Diagnostics.recordMisrouted(single)
+		}
+	}
+
 	if ignoreDuplicatePayload && payloadID != "" && seenPayloadID {
 		w.WriteHeader(http.StatusAccepted)
 		s.logger.Printf("Received & discarded duplicate payload ID %q: %s", payloadID, string(data))
 		return
 	}
 
-	var events []Event
-	if err := json.Unmarshal(data, &events); err != nil {
-		// A diagnostic event is one JSON object, not an array, so it does not decode as a list of
-		// events. Decode the body as one event to find a diagnostic event on this route.
-		var single Event
-		if json.Unmarshal(data, &single) == nil {
-			s.Diagnostics.recordMisrouted(single)
-		}
+	if decodeErr != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		s.logger.Printf("Received bad event data (%s): %s", err, string(data))
+		s.logger.Printf("Received bad event data (%s): %s", decodeErr, string(data))
 		return
 	}
-	// Record the misrouted events before the delivery of the payload. A test that has the payload
-	// can then find all the misrouted events of the same post without a wait.
-	s.Diagnostics.recordMisrouted(events...)
 	w.WriteHeader(http.StatusAccepted)
 	s.logger.Printf("Received %d events", len(events))
 	for _, e := range events {

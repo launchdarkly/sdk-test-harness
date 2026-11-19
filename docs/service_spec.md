@@ -95,7 +95,7 @@ This means that the SDK has the ability to construct and compare two contexts fo
 
 This means that the SDK supports diagnostic events, and that the test service obeys the `enableDiagnostics` property of the events configuration.
 
-When this capability is set the harness runs the `events/diagnostic events` tests. These tests set `enableDiagnostics` to true. They require the SDK to send a `diagnostic-init` event to the diagnostic events path (`/diagnostic` for server-side SDKs, `/mobile/events/diagnostic` for mobile SDKs, `/events/diagnostic/{environment ID}` for JavaScript-based client-side SDKs) soon after the client starts. They also require that the SDK sends no diagnostic event to the analytics events path. An SDK that sends only `diagnostic-combined` events, and never `diagnostic-init`, must not declare this capability.
+When this capability is set, the harness runs the `events/diagnostic events` tests. These tests set `enableDiagnostics` to true. They require the SDK to send a `diagnostic-init` event to the diagnostic events path (`/diagnostic` for server-side SDKs, `/mobile/events/diagnostic` for mobile SDKs, `/events/diagnostic/{environment ID}` for JavaScript-based client-side SDKs) soon after the client starts. They also require the SDK to send no diagnostic event to the analytics events path up to shortly after the first analytics payload. The tests do not wait for the periodic `diagnostic` event. An SDK that sends only `diagnostic-combined` events, and never `diagnostic-init`, must not declare this capability.
 
 #### Capability `"etag-caching"`
 

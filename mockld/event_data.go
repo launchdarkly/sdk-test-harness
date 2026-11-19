@@ -11,7 +11,7 @@ import (
 // Event is a JSON representation of an event. For convenience, this is stored as ldvalue.Value.
 type Event ldvalue.Value
 
-// The "kind" property of each diagnostic event starts with this prefix.
+// diagnosticEventKindPrefix is the prefix of the "kind" property of every diagnostic event.
 const diagnosticEventKindPrefix = "diagnostic"
 
 // Events is an array of events. This specialized type provides helper methods.
@@ -21,8 +21,8 @@ func (e Event) Kind() string {
 	return ldvalue.Value(e).GetByKey("kind").StringValue()
 }
 
-// IsDiagnostic returns true if the event is a diagnostic event. The "kind" property of a diagnostic
-// event starts with "diagnostic". The "kind" property of an analytics event does not.
+// IsDiagnostic returns true if the event is a diagnostic event. No analytics event kind starts with
+// the diagnostic prefix.
 func (e Event) IsDiagnostic() bool {
 	return strings.HasPrefix(e.Kind(), diagnosticEventKindPrefix)
 }

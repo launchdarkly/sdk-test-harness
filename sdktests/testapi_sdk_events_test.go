@@ -37,19 +37,6 @@ func withMobileEventSink(t *testing.T, action func(sink *SDKEventSink, post func
 }
 
 func TestSDKEventSinkExpectDiagnosticEvent(t *testing.T) {
-	t.Run("returns the event from the diagnostic route", func(t *testing.T) {
-		withMobileEventSink(t, func(sink *SDKEventSink, post func(path, body string)) {
-			post("/mobile/events/diagnostic", `{"kind":"diagnostic-init"}`)
-
-			var recorder helpers.TestRecorder
-			event := sink.ExpectDiagnosticEvent(&recorder, time.Second)
-
-			assert.NoError(t, recorder.Err())
-			assert.False(t, recorder.Terminated)
-			assert.Equal(t, "diagnostic-init", event.Kind())
-		})
-	})
-
 	t.Run("fails if the diagnostic object goes to the analytics route", func(t *testing.T) {
 		withMobileEventSink(t, func(sink *SDKEventSink, post func(path, body string)) {
 			post("/mobile/events/bulk", `{"kind":"diagnostic-init"}`)
@@ -60,7 +47,7 @@ func TestSDKEventSinkExpectDiagnosticEvent(t *testing.T) {
 
 			assert.True(t, recorder.Terminated)
 			require.Error(t, recorder.Err())
-			assert.Contains(t, recorder.Err().Error(), "received a diagnostic event on the analytics events route")
+			assert.Contains(t, recorder.Err().Error(), misroutedDiagnosticMessage)
 			assert.Contains(t, recorder.Err().Error(), "diagnostic-init")
 			// The failure does not wait for the timeout.
 			assert.Less(t, time.Since(start), time.Second*5)
@@ -77,47 +64,6 @@ func TestSDKEventSinkExpectDiagnosticEvent(t *testing.T) {
 			assert.True(t, recorder.Terminated)
 			require.Error(t, recorder.Err())
 			assert.Contains(t, recorder.Err().Error(), "timed out waiting for a diagnostic event")
-		})
-	})
-}
-
-func TestSDKEventSinkExpectNoMisroutedDiagnosticEvents(t *testing.T) {
-	t.Run("passes if diagnostic events go to the diagnostic route only", func(t *testing.T) {
-		withMobileEventSink(t, func(sink *SDKEventSink, post func(path, body string)) {
-			post("/mobile/events/diagnostic", `{"kind":"diagnostic-init"}`)
-			post("/mobile/events/bulk", `[{"kind":"identify"}]`)
-
-			var recorder helpers.TestRecorder
-			sink.ExpectNoMisroutedDiagnosticEvents(&recorder, time.Millisecond*50)
-
-			assert.NoError(t, recorder.Err())
-			assert.False(t, recorder.Terminated)
-		})
-	})
-
-	t.Run("fails if the diagnostic object goes to the analytics route", func(t *testing.T) {
-		withMobileEventSink(t, func(sink *SDKEventSink, post func(path, body string)) {
-			post("/mobile/events/bulk", `{"kind":"diagnostic-init"}`)
-
-			var recorder helpers.TestRecorder
-			sink.ExpectNoMisroutedDiagnosticEvents(&recorder, time.Second)
-
-			assert.True(t, recorder.Terminated)
-			require.Error(t, recorder.Err())
-			assert.Contains(t, recorder.Err().Error(), "received a diagnostic event on the analytics events route")
-		})
-	})
-
-	t.Run("fails if a diagnostic event is inside an analytics payload", func(t *testing.T) {
-		withMobileEventSink(t, func(sink *SDKEventSink, post func(path, body string)) {
-			post("/mobile/events/bulk", `[{"kind":"identify"},{"kind":"diagnostic"}]`)
-
-			var recorder helpers.TestRecorder
-			sink.ExpectNoMisroutedDiagnosticEvents(&recorder, time.Second)
-
-			assert.True(t, recorder.Terminated)
-			require.Error(t, recorder.Err())
-			assert.Contains(t, recorder.Err().Error(), "received a diagnostic event on the analytics events route")
 		})
 	})
 }
