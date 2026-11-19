@@ -22,6 +22,7 @@ func doClientSideEventTests(t *ldtest.T) {
 	t.Run("context properties", doClientSideEventContextTests)
 	t.Run("event capacity", doClientSideEventBufferTests)
 	t.Run("disabling", doClientSideEventDisableTests)
+	t.Run("delivery retry", doClientSideEventRetryTests)
 	t.Run("delivery cooldown", doClientSideEventCooldownTests)
 
 	t.Run("prerequisite events emit in order", func(t *ldtest.T) {
@@ -132,4 +133,9 @@ func doClientSideGzipEventRequestTests(t *ldtest.T) {
 			))
 		})
 	}
+}
+
+func doClientSideEventRetryTests(t *ldtest.T) {
+	NewCommonEventTests(t, "doClientSideEventRetryTests").
+		EventRetry(t)
 }
