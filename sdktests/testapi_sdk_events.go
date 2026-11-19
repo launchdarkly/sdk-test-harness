@@ -102,3 +102,36 @@ func (e *SDKEventSink) ExpectNoAnalyticsEvents(t require.TestingT, timeout time.
 		require.Fail(t, "received events when none were expected", "events: %s", events.JSONString())
 	}
 }
+
+// misroutedDiagnosticMessage is the failure message for a diagnostic event on the analytics events
+// route.
+const misroutedDiagnosticMessage = "received a diagnostic event on the analytics events route"
+
+// ExpectDiagnosticEvent waits for the SDK to post a diagnostic event to the diagnostic events route,
+// and returns that event.
+//
+// The test immediately fails and terminates if no diagnostic event arrives before the timeout. It
+// also fails if the SDK posts a diagnostic event to the analytics events route before one arrives
+// on the diagnostic events route.
+func (e *SDKEventSink) ExpectDiagnosticEvent(t require.TestingT, timeout time.Duration) mockld.Event {
+	deadline := time.NewTimer(timeout)
+	defer deadline.Stop()
+	select {
+	case event := <-e.eventsService.Diagnostics.Payloads:
+		return event
+	case misrouted := <-e.eventsService.Diagnostics.Misrouted:
+		require.Fail(t, misroutedDiagnosticMessage, "event: %s", misrouted.JSONString())
+	case <-deadline.C:
+		require.Fail(t, "timed out waiting for a diagnostic event on the diagnostic events route")
+	}
+	return mockld.Event{}
+}
+
+// ExpectNoMisroutedDiagnosticEvents waits for the specified timeout and fails if the SDK posted a
+// diagnostic event to the analytics events route. Events that the SDK posted before the call also
+// cause a failure.
+func (e *SDKEventSink) ExpectNoMisroutedDiagnosticEvents(t require.TestingT, timeout time.Duration) {
+	if misrouted, ok := e.eventsService.Diagnostics.AwaitMisrouted(timeout); ok {
+		require.Fail(t, misroutedDiagnosticMessage, "event: %s", misrouted.JSONString())
+	}
+}

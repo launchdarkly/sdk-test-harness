@@ -25,6 +25,8 @@ const eventsChannelBufferSize = 100
 // to interact with directly; most tests use the sdktests.SDKEventSink facade.
 type EventsService struct {
 	AnalyticsEventPayloads chan Events
+	// Diagnostics records the diagnostic events that the SDK sends to this service.
+	Diagnostics            *DiagnosticEvents
 	sdkKind                SDKKind
 	ignoreDuplicatePayload bool
 	hostTimeOverride       time.Time
@@ -37,6 +39,7 @@ type EventsService struct {
 func NewEventsService(sdkKind SDKKind, logger framework.Logger, requireGzip bool) *EventsService {
 	s := &EventsService{
 		AnalyticsEventPayloads: make(chan Events, eventsChannelBufferSize),
+		Diagnostics:            newDiagnosticEvents(logger),
 		sdkKind:                sdkKind,
 		ignoreDuplicatePayload: true,
 		payloadIDsSeen:         make(map[string]bool),
@@ -51,17 +54,17 @@ func NewEventsService(sdkKind SDKKind, logger framework.Logger, requireGzip bool
 	switch sdkKind {
 	case ServerSideSDK, PHPSDK:
 		router.HandleFunc("/bulk", s.postEvents).Methods("POST")
-		router.HandleFunc("/diagnostic", s.postDiagnosticEvent).Methods("POST")
+		router.HandleFunc("/diagnostic", s.Diagnostics.postDiagnosticEvent).Methods("POST")
 	case RokuSDK:
 		fallthrough
 	case MobileSDK:
 		router.HandleFunc("/mobile", s.postEvents).Methods("POST")
 		router.HandleFunc("/mobile/events", s.postEvents).Methods("POST")
 		router.HandleFunc("/mobile/events/bulk", s.postEvents).Methods("POST")
-		router.HandleFunc("/mobile/events/diagnostic", s.postDiagnosticEvent).Methods("POST")
+		router.HandleFunc("/mobile/events/diagnostic", s.Diagnostics.postDiagnosticEvent).Methods("POST")
 	case JSClientSDK:
 		router.HandleFunc("/events/bulk/{env}", s.postEvents).Methods("POST")
-		router.HandleFunc("/events/diagnostic/{env}", s.postDiagnosticEvent).Methods("POST")
+		router.HandleFunc("/events/diagnostic/{env}", s.Diagnostics.postDiagnosticEvent).Methods("POST")
 	}
 	s.handler = router
 
@@ -142,16 +145,31 @@ func (s *EventsService) postEvents(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Date", hostTime.UTC().Format(http.TimeFormat))
 	}
 
+	// Look for misrouted diagnostic events before the duplicate check, because a post with a
+	// payload ID that was already seen can also hold a diagnostic event. A diagnostic event is one
+	// JSON object, not an array, so a body that does not decode as a list is decoded as one event.
+	var events []Event
+	decodeErr := json.Unmarshal(data, &events)
+	if decodeErr == nil {
+		// This is before the delivery of the payload. A test that has the payload can then find all
+		// the misrouted events of the same post without a wait.
+		s.Diagnostics.recordMisrouted(events...)
+	} else {
+		var single Event
+		if json.Unmarshal(data, &single) == nil {
+			s.Diagnostics.recordMisrouted(single)
+		}
+	}
+
 	if ignoreDuplicatePayload && payloadID != "" && seenPayloadID {
 		w.WriteHeader(http.StatusAccepted)
 		s.logger.Printf("Received & discarded duplicate payload ID %q: %s", payloadID, string(data))
 		return
 	}
 
-	var events []Event
-	if err := json.Unmarshal(data, &events); err != nil {
+	if decodeErr != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		s.logger.Printf("Received bad event data (%s): %s", err, string(data))
+		s.logger.Printf("Received bad event data (%s): %s", decodeErr, string(data))
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
@@ -160,9 +178,4 @@ func (s *EventsService) postEvents(w http.ResponseWriter, r *http.Request) {
 		s.logger.Printf("    %s", e.JSONString())
 	}
 	s.AnalyticsEventPayloads <- events
-}
-
-func (s *EventsService) postDiagnosticEvent(w http.ResponseWriter, r *http.Request) {
-	defer func() { _ = r.Body.Close() }()
-	w.WriteHeader(http.StatusAccepted)
 }

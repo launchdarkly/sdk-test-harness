@@ -16,12 +16,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// newFakeTestServiceForDataSystemTest starts an httptest server that satisfies the minimal
+// fakeTestServiceForDataSystemTest returns a handler that satisfies the minimal
 // contract queryTestServiceInfo (framework/harness/test_service.go) requires of a real SDK
 // test service: a GET to the root URL must return a 2xx status with a JSON body containing
 // at least "name" and "capabilities". No capabilities are needed here, since
 // SDKTestContext.sdkKind is set directly rather than derived from them.
-func newFakeTestServiceForDataSystemTest(t *testing.T) *httptest.Server {
+func fakeTestServiceForDataSystemTest() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -35,9 +35,7 @@ func newFakeTestServiceForDataSystemTest(t *testing.T) *httptest.Server {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	})
-	server := httptest.NewServer(mux)
-	t.Cleanup(server.Close)
-	return server
+	return mux
 }
 
 // freeTCPPortForDataSystemTest returns a currently-unused TCP port on localhost.
@@ -56,12 +54,19 @@ func freeTCPPortForDataSystemTest(t *testing.T) int {
 // newTestHarnessForDataSystemTest builds a real *harness.TestHarness backed by a fake
 // httptest test-service, so SDKDataSystem.Configure() can be exercised end-to-end
 // (including real harness.MockEndpoint creation) without a live SDK test-service process.
+func newTestHarnessForDataSystemTest(t *testing.T) *harness.TestHarness {
+	return newTestHarnessWithFakeService(t, fakeTestServiceForDataSystemTest())
+}
+
+// newTestHarnessWithFakeService builds a real *harness.TestHarness whose test service is the
+// given handler on an httptest server.
 //
 // harness.NewTestHarness's constructor eagerly queries the test service and binds a real
 // TCP listener (unlike harness.MockEndpoint.BaseURL(), which is pure string construction
 // from host/port/id), so a real, working *harness.TestHarness must exist up front.
-func newTestHarnessForDataSystemTest(t *testing.T) *harness.TestHarness {
-	fakeService := newFakeTestServiceForDataSystemTest(t)
+func newTestHarnessWithFakeService(t *testing.T, service http.Handler) *harness.TestHarness {
+	fakeService := httptest.NewServer(service)
+	t.Cleanup(fakeService.Close)
 	port := freeTCPPortForDataSystemTest(t)
 	h, err := harness.NewTestHarness(
 		fakeService.URL,

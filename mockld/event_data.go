@@ -2,6 +2,7 @@ package mockld
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/go-test-helpers/v2/jsonhelpers"
@@ -10,11 +11,20 @@ import (
 // Event is a JSON representation of an event. For convenience, this is stored as ldvalue.Value.
 type Event ldvalue.Value
 
+// diagnosticEventKindPrefix is the prefix of the "kind" property of every diagnostic event.
+const diagnosticEventKindPrefix = "diagnostic"
+
 // Events is an array of events. This specialized type provides helper methods.
 type Events []Event
 
 func (e Event) Kind() string {
 	return ldvalue.Value(e).GetByKey("kind").StringValue()
+}
+
+// IsDiagnostic returns true if the event is a diagnostic event. No analytics event kind starts with
+// the diagnostic prefix.
+func (e Event) IsDiagnostic() bool {
+	return strings.HasPrefix(e.Kind(), diagnosticEventKindPrefix)
 }
 
 func (e Event) AsValue() ldvalue.Value { return ldvalue.Value(e) }
