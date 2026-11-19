@@ -91,6 +91,12 @@ This means that the SDK has its own type for evaluation contexts (as opposed to 
 
 This means that the SDK has the ability to construct and compare two contexts for equality.
 
+#### Capability `"diagnostic-events"`
+
+This means that the SDK supports diagnostic events, and that the test service obeys the `enableDiagnostics` property of the events configuration.
+
+When this capability is set the harness runs the `events/diagnostic events` tests. These tests set `enableDiagnostics` to true. They require the SDK to send a `diagnostic-init` event to the diagnostic events path (`/diagnostic` for server-side SDKs, `/mobile/events/diagnostic` for mobile SDKs, `/events/diagnostic/{environment ID}` for JavaScript-based client-side SDKs) soon after the client starts. They also require that the SDK sends no diagnostic event to the analytics events path. An SDK that sends only `diagnostic-combined` events, and never `diagnostic-init`, must not declare this capability.
+
 #### Capability `"etag-caching"`
 
 This means that the SDK supports caching of the e-tag header between client restarts. Typical SDKs track the polling e-tag header and send it between subsequent requests. SDKs supporting this capability are able to persist that e-tag header for use even between complete client restarts.
@@ -384,7 +390,7 @@ A `POST` request indicates that the test harness wants to start an instance of t
   * `events` (object, optional): Enables events and provides events configuration, or disables events if it is omitted or null. Properties are:
     * `baseUri` (string, optional): The base URI for the events service. For contract testing, this will be the URI of a simulated event-recorder endpoint that the test harness provides.  If it is null or an empty string, the SDK should default to the value from `serviceEndpoints.events` if any, or if that is not set either, connect to the real LaunchDarkly events service.
     * `capacity` (number, optional): If specified and greater than zero, the event buffer capacity should be set to this value.
-    * `enableDiagnostics` (boolean, optional): If true, diagnostic events should be enabled. Otherwise they should be disabled.
+    * `enableDiagnostics` (boolean, optional): If true, diagnostic events should be enabled. Otherwise they should be disabled. The test harness will only set this to true if the test service has the capability `"diagnostic-events"`.
     * `allAttributesPrivate` (boolean, optional): Corresponds to the SDK configuration property of the same name.
     * `globalPrivateAttributes` (array, optional): Corresponds to the `privateAttributes` property in the SDK configuration (rather than in an individual context).
     * `flushIntervalMs` (number, optional): The event flush interval in milliseconds. If omitted or zero, use the SDK's default value.

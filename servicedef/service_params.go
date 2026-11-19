@@ -37,6 +37,7 @@ const (
 	CapabilityEventSampling               = "event-sampling"
 	CapabilityEventGzip                   = "event-gzip"
 	CapabilityOptionalEventGzip           = "optional-event-gzip"
+	CapabilityDiagnosticEvents            = "diagnostic-events"
 	CapabilityETagCaching                 = "etag-caching"
 	CapabilityInlineContext               = "inline-context"
 	CapabilityInlineContextAll            = "inline-context-all"
