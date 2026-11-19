@@ -12,7 +12,6 @@ import (
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldattr"
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
-	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldbuilders"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldmodel"
@@ -531,8 +530,12 @@ func contextKindsList(kinds ...ldcontext.Kind) m.Matcher {
 }
 
 // doSummaryEventDatesTest verifies the summary event's time range: startDate and endDate are the
-// times of the earliest and latest evaluations since the last flush. The SDK and the test harness
-// run on the same host, so their clocks agree.
+// times of the earliest and latest evaluations since the last flush.
+//
+// The test service can run on a different device, such as an emulator, so the clock of the SDK can
+// be different from the clock of the test harness. Thus the test compares the length of the time
+// range with the time that the evaluations take. It compares the dates with the clock of the test
+// harness only approximately.
 func doSummaryEventDatesTest(t *ldtest.T) {
 	c := NewCommonEventTests(t, "doSummaryEventDatesTest")
 	dataSource := NewSDKDataSource(t, nil)
@@ -553,7 +556,9 @@ func doSummaryEventDatesTest(t *ldtest.T) {
 	}
 	// Allows for rounding to milliseconds.
 	const slack = 5
-	checkSummaryDates := func(desc string, payload mockld.Events, earliest, latest ldtime.UnixMillisecondTime) {
+	// The maximum difference between the clock of the SDK and the clock of the test harness.
+	const clockDifferenceLimit = int64(time.Minute / time.Millisecond)
+	checkSummaryDates := func(desc string, payload mockld.Events, earliest, latest int64) {
 		for _, e := range payload {
 			if e.Kind() != "summary" {
 				continue
@@ -562,14 +567,14 @@ func doSummaryEventDatesTest(t *ldtest.T) {
 			endDate := e.AsValue().GetByKey("endDate")
 			m.In(t).For(desc+" startDate").Require(startDate.IsNumber(), m.Equal(true))
 			m.In(t).For(desc+" endDate").Require(endDate.IsNumber(), m.Equal(true))
-			start, end := ldtime.UnixMillisecondTime(startDate.Float64Value()),
-				ldtime.UnixMillisecondTime(endDate.Float64Value())
+			start, end := int64(startDate.Float64Value()), int64(endDate.Float64Value())
 			t.Debug("%s: startDate %d, endDate %d, evaluations between %d and %d", desc, start, end, earliest, latest)
 			m.In(t).For(desc+": startDate <= endDate").Assert(start <= end, m.Equal(true))
-			m.In(t).For(fmt.Sprintf("%s: startDate (%d) >= time of the first evaluation since the last flush (%d)",
-				desc, start, earliest)).Assert(start+slack >= earliest, m.Equal(true))
-			m.In(t).For(fmt.Sprintf("%s: endDate (%d) <= time of the last evaluation (%d)", desc, end, latest)).
-				Assert(end <= latest+slack, m.Equal(true))
+			m.In(t).For(fmt.Sprintf("%s: time range (%d ms) <= time of the evaluations (%d ms)",
+				desc, end-start, latest-earliest)).Assert(end-start <= latest-earliest+slack, m.Equal(true))
+			m.In(t).For(fmt.Sprintf("%s: startDate (%d) and endDate (%d) are near the time of the evaluations (%d to %d)",
+				desc, start, end, earliest, latest)).
+				Assert(start >= earliest-clockDifferenceLimit && end <= latest+clockDifferenceLimit, m.Equal(true))
 			return
 		}
 		require.Fail(t, "no summary event in payload", "payload: %s", payload.JSONString())
@@ -580,18 +585,18 @@ func doSummaryEventDatesTest(t *ldtest.T) {
 		_ = events.ExpectAnalyticsEvents(t, defaultEventTimeout) // discard initial identify event
 	}
 
-	before := ldtime.UnixMillisNow()
+	before := time.Now().UnixMilli()
 	evaluate()
 	time.Sleep(time.Millisecond * 20)
 	evaluate()
-	after := ldtime.UnixMillisNow()
+	after := time.Now().UnixMilli()
 	client.FlushEvents(t)
 	checkSummaryDates("first summary", events.ExpectAnalyticsEvents(t, defaultEventTimeout), before, after)
 
 	time.Sleep(time.Millisecond * 20)
-	before = ldtime.UnixMillisNow()
+	before = time.Now().UnixMilli()
 	evaluate()
-	after = ldtime.UnixMillisNow()
+	after = time.Now().UnixMilli()
 	client.FlushEvents(t)
 	checkSummaryDates("second summary", events.ExpectAnalyticsEvents(t, defaultEventTimeout), before, after)
 }
