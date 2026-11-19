@@ -114,6 +114,13 @@ const (
 	// capability from all SDK test services once it is ubiquitous.
 	CapabilityFDv1Fallback = "fdv1-fallback"
 
+	// CapabilityCompactPayloads means the SDK can read compact FDv2 payloads, and asks for them on its
+	// FDv2 requests when its compact payloads option is on. In compact payloads, flags, segments, and
+	// flag evaluations omit each property that has its default value. The mock streaming and polling
+	// services send compact payloads only for requests that ask for them. If the test service has
+	// this capability, the harness sets the option from its -compact-payloads flag.
+	CapabilityCompactPayloads = "compact-payloads"
+
 	// CapabilityFlagOverrides means the SDK supports reading flag and segment overrides from local
 	// JSON/YAML files that are overlaid on LaunchDarkly data per-key at evaluation time.
 	CapabilityFlagOverrides = "flag-overrides"

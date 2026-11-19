@@ -17,6 +17,7 @@ func RunSDKTestSuite(
 	filter ldtest.Filter,
 	testLogger ldtest.TestLogger,
 	enableLongRunningTests bool,
+	compactPayloads bool,
 ) ldtest.Results {
 	capabilities := harness.TestServiceInfo().Capabilities
 	var importantCapabilities framework.Capabilities
@@ -48,6 +49,11 @@ func RunSDKTestSuite(
 		return ldtest.Results{
 			Failures: []ldtest.TestResult{{Errors: []error{err}}},
 		}
+	}
+
+	if capabilities.Has(servicedef.CapabilityCompactPayloads) {
+		setCompactPayloadsMode(compactPayloads)
+		fmt.Printf("Compact payloads: %t\n", compactPayloads)
 	}
 
 	fmt.Println()

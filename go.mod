@@ -13,7 +13,7 @@ require (
 	github.com/launchdarkly/eventsource v1.14.2
 	github.com/launchdarkly/go-jsonstream/v3 v3.1.3
 	github.com/launchdarkly/go-sdk-common/v3 v3.6.0
-	github.com/launchdarkly/go-server-sdk-evaluation/v3 v3.2.0
+	github.com/launchdarkly/go-server-sdk-evaluation/v3 v3.2.1-0.20261116152341-2d5d258c1011
 	github.com/launchdarkly/go-test-helpers/v2 v2.3.2
 	github.com/redis/go-redis/v9 v9.23.0
 	github.com/stretchr/testify v1.12.1

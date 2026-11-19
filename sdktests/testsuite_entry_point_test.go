@@ -31,7 +31,7 @@ func TestTestSuiteReportsWhyItCannotRun(t *testing.T) {
 	h := newTestHarnessForDataSystemTest(t)
 	logger := &errorRecordingTestLogger{}
 
-	results := RunSDKTestSuite(h, nil, logger, false)
+	results := RunSDKTestSuite(h, nil, logger, false, true)
 
 	require.Len(t, results.Failures, 1)
 	require.Len(t, logger.errors, 1, "the test logger must receive the reason that the suite cannot run")

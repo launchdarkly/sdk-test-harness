@@ -189,6 +189,7 @@ func TryNewSDKClient(t *ldtest.T, configurers ...SDKConfigurer) (*SDKClient, err
 	if config.Credential == "" {
 		config.Credential = defaultSDKKey
 	}
+	setCompactPayloadsOption(t, &config)
 	if t.Capabilities().Has(servicedef.CapabilityClientSide) {
 		// Ensure that we always provide an initial context for every client-side SDK test, if the test logic
 		// didn't explicitly set one. It's preferable for this to have a unique key, so that if the SDK has any

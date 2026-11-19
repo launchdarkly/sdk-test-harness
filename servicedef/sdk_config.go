@@ -68,6 +68,9 @@ type DataSystem struct {
 	Synchronizers        []DataSynchronizer              `json:"synchronizers"`
 	FDv1Fallback         o.Maybe[SDKConfigPollingParams] `json:"fdv1Fallback,omitempty"`
 	ConnectionModeConfig o.Maybe[ConnectionModeConfig]   `json:"connectionModeConfig,omitempty"`
+	// CompactPayloads sets the SDK's compact payloads option, if the SDK has the compact-payloads
+	// capability. If it is not set, the SDK uses its default.
+	CompactPayloads o.Maybe[bool] `json:"compactPayloads,omitempty"`
 }
 
 type ConnectionModeConfig struct {

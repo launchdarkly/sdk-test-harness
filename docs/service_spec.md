@@ -366,6 +366,19 @@ This means the SDK supports the server-directed FDv1 fallback behavior.
 
 This capability gates the FDv1 fallback subtests. SDKs that have not yet implemented this behavior omit the capability to skip those tests.
 
+### Capability `"compact-payloads"`
+
+This means the SDK can read compact FDv2 payloads, and asks for them by adding the query parameter `enc=compact` to each FDv2 streaming and polling request. The SDK has an option that turns compact payloads on or off, and the test service sets it from `dataSystem.compactPayloads`. With the option off, the SDK does not add the query parameter. FDv1 requests, including the FDv1 fallback synchronizer, never have the query parameter.
+
+In a compact payload, the object in each `put-object` event omits the properties whose absence the SDK must read as the same value:
+
+* In a flag or a segment, every property that has its default value: a false boolean, a zero number (including a variation index or a rollout weight of 0), an empty string, an empty array, or a null value. These properties are written even if they have a default value, because their absence has a different meaning: an `offVariation`, a rule or fallthrough `variation`, a rollout `seed`, or a segment rule `weight` that has a value (including 0), `clientSideAvailability` if the flag has it, `migration` if the flag has it, and `clientSide` if it is true.
+* In a client-side flag evaluation (`flag-eval`), every null value, every false boolean, and an empty `prerequisites` array. A `value` of `false` and a `variation` of `0` are not omitted.
+
+The mock streaming and polling services act as LaunchDarkly does: they send compact payloads only in response to a request with `enc=compact`.
+
+If the test service has this capability, the test harness sets `dataSystem.compactPayloads` in each SDK configuration to the value of its `-compact-payloads` command-line flag (default `true`), except in tests that set it themselves. Run the test suite once with each value to test both modes. The test harness checks that the SDK adds the query parameter only when the option is on. In the persistent data store tests, it checks that the SDK writes the compact encoding to the store when the option is on, and the full encoding when the option is off. The test harness does not change data that is deliberately malformed, so the malformed data tests send that data as written.
+
 ### Stop test service: `DELETE /`
 
 The test harness sends this request at the end of a test run if you have specified `--stop-service-at-end` on the [command line](./running.md). The test service should simply quit. This is a convenience so CI scripts can simply start the test service in the background and assume it will be stopped for them.
@@ -440,6 +453,7 @@ A `POST` request indicates that the test harness wants to start an instance of t
     * `useDefaultDataSystem` (boolean, optional): When `true`, signals that the SDK should use the FDv2 data system with its default connection mode.
     * `store` (object, optional): Persistent data store configuration.
       * `persistentDataStore` (object, optional): See the `persistentDataStore` property definition elsewhere in this spec.
+    * `compactPayloads` (boolean, optional): Turns the SDK's compact payloads option on or off. If it is not set, the SDK uses its default. The test harness will only set this if the test service has the capability `"compact-payloads"`.
     * `storeMode` (number, optional): `0` for read-only, `1` for read-write. Controls whether data from initializers/synchronizers is written to the store. In read-write mode, only the data of a source that requests persistence is written.
     * `initializers` (array, optional): A list of data initializers, in the order the SDK should try them. Each initializer has:
       * `polling` (object, optional): Polling configuration for the initializer. See [Polling configuration object](#polling-configuration-object).
