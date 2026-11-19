@@ -12,7 +12,6 @@ import (
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldattr"
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
-	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldbuilders"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldmodel"
@@ -549,8 +548,12 @@ func contextKindsList(kinds ...ldcontext.Kind) m.Matcher {
 }
 
 // doSummaryEventDatesTest verifies the summary event's time range: startDate and endDate are the
-// times of the earliest and latest evaluations since the last flush. The SDK and the test harness
-// run on the same host, so their clocks agree.
+// times of the earliest and latest evaluations since the last flush.
+//
+// The test service can run on a different device, such as an emulator, so the clock of the SDK can
+// be different from the clock of the test harness. Thus the test compares the dates with the clock of
+// the test harness only approximately. It compares the dates with each other, and it compares the
+// length of the time range with the time that the evaluations take.
 func doSummaryEventDatesTest(t *ldtest.T) {
 	c := NewCommonEventTests(t, "doSummaryEventDatesTest")
 	dataSystem := NewSDKDataSystem(t, nil)
@@ -571,7 +574,18 @@ func doSummaryEventDatesTest(t *ldtest.T) {
 	}
 	// Allows for rounding to milliseconds.
 	const slack = 5
-	checkSummaryDates := func(desc string, payload mockld.Events, earliest, latest ldtime.UnixMillisecondTime) {
+	// The maximum difference between the clock of the SDK and the clock of the test harness.
+	const clockDifferenceLimit = int64(time.Minute / time.Millisecond)
+	// The test pauses before and after each group of evaluations. If the SDK takes a date from the
+	// start of the client or from a flush, the time range is then longer than the evaluations.
+	const pause = 100 * time.Millisecond
+	// The time between the two evaluations of the first summary.
+	const evaluationInterval = 20 * time.Millisecond
+
+	type summaryDates struct {
+		start, end int64
+	}
+	getSummaryDates := func(desc string, payload mockld.Events) summaryDates {
 		for _, e := range payload {
 			if e.Kind() != "summary" {
 				continue
@@ -580,17 +594,27 @@ func doSummaryEventDatesTest(t *ldtest.T) {
 			endDate := e.AsValue().GetByKey("endDate")
 			m.In(t).For(desc+" startDate").Require(startDate.IsNumber(), m.Equal(true))
 			m.In(t).For(desc+" endDate").Require(endDate.IsNumber(), m.Equal(true))
-			start, end := ldtime.UnixMillisecondTime(startDate.Float64Value()),
-				ldtime.UnixMillisecondTime(endDate.Float64Value())
-			t.Debug("%s: startDate %d, endDate %d, evaluations between %d and %d", desc, start, end, earliest, latest)
-			m.In(t).For(desc+": startDate <= endDate").Assert(start <= end, m.Equal(true))
-			m.In(t).For(fmt.Sprintf("%s: startDate (%d) >= time of the first evaluation since the last flush (%d)",
-				desc, start, earliest)).Assert(start+slack >= earliest, m.Equal(true))
-			m.In(t).For(fmt.Sprintf("%s: endDate (%d) <= time of the last evaluation (%d)", desc, end, latest)).
-				Assert(end <= latest+slack, m.Equal(true))
-			return
+			return summaryDates{start: int64(startDate.Float64Value()), end: int64(endDate.Float64Value())}
 		}
 		require.Fail(t, "no summary event in payload", "payload: %s", payload.JSONString())
+		return summaryDates{}
+	}
+	checkSummaryDates := func(desc string, dates summaryDates, earliest, latest int64) {
+		t.Debug("%s: startDate %d, endDate %d, evaluations between %d and %d",
+			desc, dates.start, dates.end, earliest, latest)
+		m.In(t).For(desc+": startDate <= endDate").Assert(dates.start <= dates.end, m.Equal(true))
+		m.In(t).For(fmt.Sprintf("%s: time range (%d ms) <= time of the evaluations (%d ms)",
+			desc, dates.end-dates.start, latest-earliest)).
+			Assert(dates.end-dates.start <= latest-earliest+slack, m.Equal(true))
+		for _, date := range []struct {
+			name  string
+			value int64
+		}{{"startDate", dates.start}, {"endDate", dates.end}} {
+			m.In(t).For(fmt.Sprintf("%s: %s (%d) is near the time of the evaluations (%d to %d)",
+				desc, date.name, date.value, earliest, latest)).
+				Assert(date.value >= earliest-clockDifferenceLimit && date.value <= latest+clockDifferenceLimit,
+					m.Equal(true))
+		}
 	}
 
 	if c.isClientSide {
@@ -598,20 +622,29 @@ func doSummaryEventDatesTest(t *ldtest.T) {
 		_ = events.ExpectAnalyticsEvents(t, defaultEventTimeout) // discard initial identify event
 	}
 
-	before := ldtime.UnixMillisNow()
+	time.Sleep(pause)
+	before := time.Now().UnixMilli()
 	evaluate()
-	time.Sleep(time.Millisecond * 20)
+	time.Sleep(evaluationInterval)
 	evaluate()
-	after := ldtime.UnixMillisNow()
+	after := time.Now().UnixMilli()
+	time.Sleep(pause)
 	client.FlushEvents(t)
-	checkSummaryDates("first summary", events.ExpectAnalyticsEvents(t, defaultEventTimeout), before, after)
+	first := getSummaryDates("first summary", events.ExpectAnalyticsEvents(t, defaultEventTimeout))
+	checkSummaryDates("first summary", first, before, after)
+	interval := int64(evaluationInterval / time.Millisecond)
+	m.In(t).For(fmt.Sprintf("first summary: time range (%d ms) >= time between the evaluations (%d ms)",
+		first.end-first.start, interval)).
+		Assert(first.end-first.start >= interval-slack, m.Equal(true))
 
-	time.Sleep(time.Millisecond * 20)
-	before = ldtime.UnixMillisNow()
+	time.Sleep(pause)
+	before = time.Now().UnixMilli()
 	evaluate()
-	after = ldtime.UnixMillisNow()
+	after = time.Now().UnixMilli()
+	time.Sleep(pause)
 	client.FlushEvents(t)
-	checkSummaryDates("second summary", events.ExpectAnalyticsEvents(t, defaultEventTimeout), before, after)
+	second := getSummaryDates("second summary", events.ExpectAnalyticsEvents(t, defaultEventTimeout))
+	checkSummaryDates("second summary", second, before, after)
 }
 
 func doServerSideSummaryEventValueAndDefaultTest(t *ldtest.T) {
