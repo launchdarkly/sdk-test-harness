@@ -159,8 +159,8 @@ func (p *PollingService) standardPollingHandler() http.Handler {
 			EventData: framework.ServerIntent{
 				Payloads: []framework.Payload{
 					{
-						ID:     "payloadID",
-						Target: 1,
+						ID:     fdv2SdkData.payloadID(),
+						Target: fdv2SdkData.payloadVersion(),
 						Code:   fdv2SdkData.intentCode,
 						Reason: fdv2SdkData.intentReason,
 					},
@@ -178,7 +178,7 @@ func (p *PollingService) standardPollingHandler() http.Handler {
 			Event: "payload-transferred",
 			EventData: framework.PayloadTransferred{
 				State:   fdv2SdkData.state,
-				Version: 1,
+				Version: fdv2SdkData.payloadVersion(),
 			},
 		})
 
