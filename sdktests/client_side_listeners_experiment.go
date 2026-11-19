@@ -84,13 +84,16 @@ type experimentExposurePath struct {
 	capability string
 	// longRunning is true if the path must wait for a second poll request.
 	longRunning bool
+	// partial is true if the path delivers the update in an FDv2 partial payload. The SDK can
+	// notify for an object in a partial payload without a comparison to the stored data.
+	partial bool
 	// newSource creates the mock services. The services deliver the updated flag as the update.
 	newSource func(t *ldtest.T, updated mockld.ClientSDKFlag) experimentExposureSource
 }
 
 func experimentExposurePaths() []experimentExposurePath {
 	return []experimentExposurePath{
-		{name: "FDv2 stream partial payload", newSource: newExperimentExposureStreamSource(false)},
+		{name: "FDv2 stream partial payload", partial: true, newSource: newExperimentExposureStreamSource(false)},
 		{name: "FDv2 stream full payload", newSource: newExperimentExposureStreamSource(true)},
 		{name: "FDv2 polling synchronizer", longRunning: true, newSource: newExperimentExposureFDv2PollSource},
 		{
@@ -121,9 +124,13 @@ func doClientSideExperimentExposureTests(t *ldtest.T) {
 			t.Run("notifies when flag joins experiment", func(t *ldtest.T) {
 				experimentExposureJoinsExperiment(t, path)
 			})
-			t.Run("does not notify for identical update", func(t *ldtest.T) {
-				experimentExposureIdenticalUpdate(t, path)
-			})
+			// An identical update in a partial payload can notify or not notify. Both results are
+			// correct, so the test runs only for the other paths.
+			if !path.partial {
+				t.Run("does not notify for identical update", func(t *ldtest.T) {
+					experimentExposureIdenticalUpdate(t, path)
+				})
+			}
 		})
 	}
 
