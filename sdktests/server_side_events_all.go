@@ -27,6 +27,7 @@ func doServerSideEventTests(t *ldtest.T) {
 	t.Run("disabling", doServerSideEventDisableTest)
 	t.Run("delivery retry", doServerSideEventRetryTests)
 	t.Run("delivery cooldown", doServerSideEventCooldownTests)
+	t.Run("automatic flushing", doServerSideEventAutomaticFlushTests)
 }
 
 func doServerSideEventRetryTests(t *ldtest.T) {
@@ -120,4 +121,9 @@ func doServerSideEventBufferTests(t *ldtest.T) {
 func doServerSideEventDisableTest(t *ldtest.T) {
 	NewCommonEventTests(t, "doServerSideEventDisableTest").
 		DisablingEvents(t)
+}
+
+func doServerSideEventAutomaticFlushTests(t *ldtest.T) {
+	NewCommonEventTests(t, "doServerSideEventAutomaticFlushTests").
+		AutomaticFlush(t)
 }
