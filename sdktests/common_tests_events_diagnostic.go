@@ -23,7 +23,8 @@ func (c CommonEventTests) DiagnosticEvents(t *ldtest.T) {
 
 	t.Run("init event is sent to the diagnostic route only", func(t *ldtest.T) {
 		dataSystem := NewSDKDataSystem(t, nil)
-		events := NewSDKEventSink(t)
+		// An SDK with the event-gzip capability compresses its diagnostic posts too.
+		events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
 		eventsConfig := baseEventsConfig()
 		eventsConfig.EnableDiagnostics = true
 		// Configurers apply in order. WithEventsConfig replaces the events config, and the sink
