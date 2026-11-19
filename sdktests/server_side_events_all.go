@@ -25,6 +25,7 @@ func doServerSideEventTests(t *ldtest.T) {
 	t.Run("context properties", doServerSideEventContextTests)
 	t.Run("event capacity", doServerSideEventBufferTests)
 	t.Run("disabling", doServerSideEventDisableTest)
+	t.Run("automatic flushing", doServerSideEventAutomaticFlushTests)
 }
 
 func doServerSideEventRequestTests(t *ldtest.T) {
@@ -108,4 +109,9 @@ func doServerSideEventBufferTests(t *ldtest.T) {
 func doServerSideEventDisableTest(t *ldtest.T) {
 	NewCommonEventTests(t, "doServerSideEventDisableTest").
 		DisablingEvents(t)
+}
+
+func doServerSideEventAutomaticFlushTests(t *ldtest.T) {
+	NewCommonEventTests(t, "doServerSideEventAutomaticFlushTests").
+		AutomaticFlush(t)
 }

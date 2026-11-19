@@ -22,6 +22,7 @@ func doClientSideEventTests(t *ldtest.T) {
 	t.Run("context properties", doClientSideEventContextTests)
 	t.Run("event capacity", doClientSideEventBufferTests)
 	t.Run("disabling", doClientSideEventDisableTests)
+	t.Run("automatic flushing", doClientSideEventAutomaticFlushTests)
 
 	t.Run("prerequisite events emit in order", func(t *ldtest.T) {
 		t.RequireCapability(servicedef.CapabilityClientPrereqEvents)
@@ -126,4 +127,9 @@ func doClientSideGzipEventRequestTests(t *ldtest.T) {
 			))
 		})
 	}
+}
+
+func doClientSideEventAutomaticFlushTests(t *ldtest.T) {
+	NewCommonEventTests(t, "doClientSideEventAutomaticFlushTests").
+		AutomaticFlush(t)
 }
