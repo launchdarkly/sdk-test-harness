@@ -2,6 +2,27 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.2.0-alpha.20](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.19...v3.2.0-alpha.20) (2026-11-20)
+
+
+### Features
+
+* Add contract tests for FDv2 payloads without a selector ([#600](https://github.com/launchdarkly/sdk-test-harness/issues/600)) ([b2b8614](https://github.com/launchdarkly/sdk-test-harness/commit/b2b861468825f2d2799dbf0da54a30b3ec39312a))
+* Add event tests for typed evaluations that get the wrong type ([#652](https://github.com/launchdarkly/sdk-test-harness/issues/652)) ([2ec8960](https://github.com/launchdarkly/sdk-test-harness/commit/2ec8960c510c1ef7c3ab8c596333a8f2b3b9fff0))
+* Add tests that stored flags keep their client-side availability ([#657](https://github.com/launchdarkly/sdk-test-harness/issues/657)) ([fda67a3](https://github.com/launchdarkly/sdk-test-harness/commit/fda67a3443cf3e61bc9dc5d6471981ff0f2b39ab))
+* Check that a segment tombstone in a persistent store is not read as a live segment ([#675](https://github.com/launchdarkly/sdk-test-harness/issues/675)) ([d68175d](https://github.com/launchdarkly/sdk-test-harness/commit/d68175ddc59b0cca7e3e96111615163a610756b9))
+* Check that SDK requests identify the SDK in a user agent header ([#662](https://github.com/launchdarkly/sdk-test-harness/issues/662)) ([211ae23](https://github.com/launchdarkly/sdk-test-harness/commit/211ae23918e23c480ba5b0c503b9c7794a121fd4))
+* Check that SDKs flush events automatically at the flush interval ([#670](https://github.com/launchdarkly/sdk-test-harness/issues/670)) ([0424cab](https://github.com/launchdarkly/sdk-test-harness/commit/0424cabef964c039333cb988284ed90f617b6f55))
+* Check that SDKs send diagnostic events to the diagnostic endpoint ([#671](https://github.com/launchdarkly/sdk-test-harness/issues/671)) ([bf93799](https://github.com/launchdarkly/sdk-test-harness/commit/bf93799df059d1a289f3ce4839696028d040d9ff))
+* Check that summary events count a wrong-type default separately from the flag value ([#666](https://github.com/launchdarkly/sdk-test-harness/issues/666)) ([bef706b](https://github.com/launchdarkly/sdk-test-harness/commit/bef706be5b708c319ac622866fa72aaf59c6c87b))
+* Check the events for a prerequisite that is off ([#665](https://github.com/launchdarkly/sdk-test-harness/issues/665)) ([f1db1c9](https://github.com/launchdarkly/sdk-test-harness/commit/f1db1c9b0333d3bbfeac794bdb7ecbefda84303e))
+* Check the start and end dates of summary events ([#660](https://github.com/launchdarkly/sdk-test-harness/issues/660)) ([29397b8](https://github.com/launchdarkly/sdk-test-harness/commit/29397b8e9cc34cd6fbc51e9eb672cef26d5efb88))
+
+
+### Bug Fixes
+
+* Allow for a different SDK clock in the summary start and end dates test ([#673](https://github.com/launchdarkly/sdk-test-harness/issues/673)) ([cbcc0da](https://github.com/launchdarkly/sdk-test-harness/commit/cbcc0da4dbc2ce15b54f9e5b2308a4017c164d61))
+
 ## [3.2.0-alpha.19](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.18...v3.2.0-alpha.19) (2026-11-16)
 
 
