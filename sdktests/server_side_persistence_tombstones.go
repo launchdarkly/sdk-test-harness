@@ -6,12 +6,13 @@ package sdktests
 //
 // The store already addresses the record by key - the Redis hash field, the
 // Consul key, or the DynamoDB sort key - so the key inside the JSON body is
-// redundant. Our SDKs write three different shapes anyway, and any SDK can be
+// redundant. Our SDKs write four different shapes anyway, and any SDK can be
 // pointed at a store that a different SDK wrote. These tests prove that a
-// reader accepts all three shapes, does not depend on the inner key, and does
+// reader accepts all four shapes, does not depend on the inner key, and does
 // not bring a deleted item back to life.
 
 import (
+	"encoding/json"
 	"fmt"
 	"maps"
 
@@ -30,7 +31,7 @@ import (
 
 const (
 	// tombstonePlaceholderKey is what Go v5+, the Relay Proxy, and Rust put in
-	// the body of a full-object tombstone in place of the real key.
+	// the body of a tombstone in place of the real key.
 	tombstonePlaceholderKey = "$deleted"
 
 	tombstonedFlagKey    = "tombstoned-flag-key"
@@ -57,9 +58,15 @@ func keyedTombstone(key string, version int) string {
 	return fmt.Sprintf(`{"key":%q,"version":%d,"deleted":true}`, key, version)
 }
 
+// shortPlaceholderTombstone is written by Rust. It has the placeholder key and
+// no flag or segment properties.
+func shortPlaceholderTombstone(version int) string {
+	return fmt.Sprintf(`{"version":%d,"key":%q,"deleted":true}`, version, tombstonePlaceholderKey)
+}
+
 func flagTombstoneShapes(t *ldtest.T, key string) []tombstoneShape {
-	// A full flag object keyed "$deleted" is written by Go v5+, the Relay Proxy,
-	// and Rust. The real key survives only as the store's own address for the
+	// A full flag object keyed "$deleted" is written by Go v5+ and the Relay
+	// Proxy. The real key survives only as the store's own address for the
 	// record.
 	placeholderFlag, err := ldbuilders.NewFlagBuilder(tombstonePlaceholderKey).
 		Version(tombstoneVersion).Deleted(true).Build().MarshalJSON()
@@ -68,13 +75,20 @@ func flagTombstoneShapes(t *ldtest.T, key string) []tombstoneShape {
 	return []tombstoneShape{
 		{name: "body has no key", body: keylessTombstone(tombstoneVersion)},
 		{name: "body repeats the item key", body: keyedTombstone(key, tombstoneVersion)},
+		{
+			name: "body is a short object keyed " + tombstonePlaceholderKey,
+			body: shortPlaceholderTombstone(tombstoneVersion),
+		},
 		{name: "body is a full object keyed " + tombstonePlaceholderKey, body: string(placeholderFlag)},
 	}
 }
 
-// segmentTombstoneShapes builds the same three shapes for a deleted segment.
-// The full-object shape includes includedKey so that a reader which treats the
-// tombstone as a live segment produces a segment match we can observe.
+// segmentTombstoneShapes builds the same four shapes for a deleted segment.
+// Every body also includes includedKey, which the SDKs that write these shapes
+// leave out. A reader that treats a tombstone with no segment properties as a
+// live segment gets an empty segment. An empty segment matches nothing, the same
+// as a deleted segment, so the test cannot observe the error. With includedKey,
+// that reader produces a segment match that the test can observe.
 func segmentTombstoneShapes(t *ldtest.T, key string, includedKey string) []tombstoneShape {
 	placeholder := ldbuilders.NewSegmentBuilder(tombstonePlaceholderKey).
 		Version(tombstoneVersion).Included(includedKey).Build()
@@ -82,9 +96,22 @@ func segmentTombstoneShapes(t *ldtest.T, key string, includedKey string) []tombs
 	placeholderSegment, err := placeholder.MarshalJSON()
 	require.NoError(t, err)
 
+	withIncludedKey := func(body string) string {
+		var properties map[string]any
+		require.NoError(t, json.Unmarshal([]byte(body), &properties))
+		properties["included"] = []string{includedKey}
+		data, err := json.Marshal(properties)
+		require.NoError(t, err)
+		return string(data)
+	}
+
 	return []tombstoneShape{
-		{name: "body has no key", body: keylessTombstone(tombstoneVersion)},
-		{name: "body repeats the item key", body: keyedTombstone(key, tombstoneVersion)},
+		{name: "body has no key", body: withIncludedKey(keylessTombstone(tombstoneVersion))},
+		{name: "body repeats the item key", body: withIncludedKey(keyedTombstone(key, tombstoneVersion))},
+		{
+			name: "body is a short object keyed " + tombstonePlaceholderKey,
+			body: withIncludedKey(shortPlaceholderTombstone(tombstoneVersion)),
+		},
 		{name: "body is a full object keyed " + tombstonePlaceholderKey, body: string(placeholderSegment)},
 	}
 }
@@ -152,8 +179,8 @@ func (s *ServerSidePersistentTests) doSegmentTombstoneTests(t *ldtest.T) {
 
 	// This flag matches the deleted segment. A deleted segment matches nothing,
 	// so the flag must serve "not-matched". If the SDK reads the tombstone as a
-	// live segment instead, the full-object shape includes this context and the
-	// flag serves "matched".
+	// live segment instead, every shape includes this context and the flag serves
+	// "matched".
 	segmentMatchFlag, err := makeFlagToCheckSegmentMatch(segmentMatchFlagKey, tombstonedSegmentKey,
 		ldvalue.String("not-matched"), ldvalue.String("matched")).MarshalJSON()
 	require.NoError(t, err)
