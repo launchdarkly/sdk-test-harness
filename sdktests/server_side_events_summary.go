@@ -12,7 +12,6 @@ import (
 
 	"github.com/launchdarkly/go-sdk-common/v3/ldattr"
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
-	"github.com/launchdarkly/go-sdk-common/v3/ldtime"
 	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldbuilders"
 	"github.com/launchdarkly/go-server-sdk-evaluation/v3/ldmodel"
@@ -29,6 +28,7 @@ func doServerSideSummaryEventTests(t *ldtest.T) {
 	t.Run("unknown flag", doServerSideSummaryEventUnknownFlagTest)
 	t.Run("reset after each flush", doServerSideSummaryEventResetTest)
 	t.Run("start and end dates", doSummaryEventDatesTest)
+	t.Run("flag value and default value are counted separately", doServerSideSummaryEventValueAndDefaultTest)
 	t.Run("prerequisites", doServerSideSummaryEventPrerequisitesTest)
 	t.Run("flag versions", doServerSideSummaryEventVersionTest)
 }
@@ -530,8 +530,12 @@ func contextKindsList(kinds ...ldcontext.Kind) m.Matcher {
 }
 
 // doSummaryEventDatesTest verifies the summary event's time range: startDate and endDate are the
-// times of the earliest and latest evaluations since the last flush. The SDK and the test harness
-// run on the same host, so their clocks agree.
+// times of the earliest and latest evaluations since the last flush.
+//
+// The test service can run on a different device, such as an emulator, so the clock of the SDK can
+// be different from the clock of the test harness. Thus the test compares the length of the time
+// range with the time that the evaluations take. It compares the dates with the clock of the test
+// harness only approximately.
 func doSummaryEventDatesTest(t *ldtest.T) {
 	c := NewCommonEventTests(t, "doSummaryEventDatesTest")
 	dataSource := NewSDKDataSource(t, nil)
@@ -552,7 +556,9 @@ func doSummaryEventDatesTest(t *ldtest.T) {
 	}
 	// Allows for rounding to milliseconds.
 	const slack = 5
-	checkSummaryDates := func(desc string, payload mockld.Events, earliest, latest ldtime.UnixMillisecondTime) {
+	// The maximum difference between the clock of the SDK and the clock of the test harness.
+	const clockDifferenceLimit = int64(time.Minute / time.Millisecond)
+	checkSummaryDates := func(desc string, payload mockld.Events, earliest, latest int64) {
 		for _, e := range payload {
 			if e.Kind() != "summary" {
 				continue
@@ -561,14 +567,14 @@ func doSummaryEventDatesTest(t *ldtest.T) {
 			endDate := e.AsValue().GetByKey("endDate")
 			m.In(t).For(desc+" startDate").Require(startDate.IsNumber(), m.Equal(true))
 			m.In(t).For(desc+" endDate").Require(endDate.IsNumber(), m.Equal(true))
-			start, end := ldtime.UnixMillisecondTime(startDate.Float64Value()),
-				ldtime.UnixMillisecondTime(endDate.Float64Value())
+			start, end := int64(startDate.Float64Value()), int64(endDate.Float64Value())
 			t.Debug("%s: startDate %d, endDate %d, evaluations between %d and %d", desc, start, end, earliest, latest)
 			m.In(t).For(desc+": startDate <= endDate").Assert(start <= end, m.Equal(true))
-			m.In(t).For(fmt.Sprintf("%s: startDate (%d) >= time of the first evaluation since the last flush (%d)",
-				desc, start, earliest)).Assert(start+slack >= earliest, m.Equal(true))
-			m.In(t).For(fmt.Sprintf("%s: endDate (%d) <= time of the last evaluation (%d)", desc, end, latest)).
-				Assert(end <= latest+slack, m.Equal(true))
+			m.In(t).For(fmt.Sprintf("%s: time range (%d ms) <= time of the evaluations (%d ms)",
+				desc, end-start, latest-earliest)).Assert(end-start <= latest-earliest+slack, m.Equal(true))
+			m.In(t).For(fmt.Sprintf("%s: startDate (%d) and endDate (%d) are near the time of the evaluations (%d to %d)",
+				desc, start, end, earliest, latest)).
+				Assert(start >= earliest-clockDifferenceLimit && end <= latest+clockDifferenceLimit, m.Equal(true))
 			return
 		}
 		require.Fail(t, "no summary event in payload", "payload: %s", payload.JSONString())
@@ -579,18 +585,62 @@ func doSummaryEventDatesTest(t *ldtest.T) {
 		_ = events.ExpectAnalyticsEvents(t, defaultEventTimeout) // discard initial identify event
 	}
 
-	before := ldtime.UnixMillisNow()
+	before := time.Now().UnixMilli()
 	evaluate()
 	time.Sleep(time.Millisecond * 20)
 	evaluate()
-	after := ldtime.UnixMillisNow()
+	after := time.Now().UnixMilli()
 	client.FlushEvents(t)
 	checkSummaryDates("first summary", events.ExpectAnalyticsEvents(t, defaultEventTimeout), before, after)
 
 	time.Sleep(time.Millisecond * 20)
-	before = ldtime.UnixMillisNow()
+	before = time.Now().UnixMilli()
 	evaluate()
-	after = ldtime.UnixMillisNow()
+	after = time.Now().UnixMilli()
 	client.FlushEvents(t)
 	checkSummaryDates("second summary", events.ExpectAnalyticsEvents(t, defaultEventTimeout), before, after)
+}
+
+func doServerSideSummaryEventValueAndDefaultTest(t *ldtest.T) {
+	// One evaluation returns the first variation of the flag. Another evaluation returns the default
+	// value because of a wrong-type error. The summary must count the two results separately.
+	t.RequireCapability(servicedef.CapabilityStronglyTyped)
+
+	flag := ldbuilders.NewFlagBuilder("flag").Version(1).
+		On(true).FallthroughVariation(0).Variations(ldvalue.Bool(true), ldvalue.Bool(false)).Build()
+	dataSource := NewSDKDataSource(t, mockld.NewServerSDKDataBuilder().Flag(flag).Build())
+	events := NewSDKEventSink(t)
+	client := NewSDKClient(t, dataSource, events)
+	context := ldcontext.New("user-key")
+
+	boolResult := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+		FlagKey: flag.Key, Context: o.Some(context), ValueType: servicedef.ValueTypeBool, DefaultValue: ldvalue.Bool(false)})
+	m.In(t).Assert(boolResult.Value, m.JSONEqual(true))
+	stringDefault := ldvalue.String("default")
+	stringResult := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+		FlagKey: flag.Key, Context: o.Some(context), ValueType: servicedef.ValueTypeString, DefaultValue: stringDefault})
+	m.In(t).Assert(stringResult.Value, m.JSONEqual(stringDefault))
+
+	client.FlushEvents(t)
+	payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+	m.In(t).Assert(payload, m.ItemsInAnyOrder(
+		IsIndexEvent(),
+		IsValidSummaryEventWithFlags(
+			false,
+			m.KV(flag.Key, m.MapIncluding(
+				m.KV("counters", m.ItemsInAnyOrder(
+					flagCounter(true, 0, flag.Version, 1),
+					m.AllOf(
+						m.MapIncluding(
+							m.KV("value", m.JSONEqual(stringDefault)),
+							m.KV("version", m.Equal(flag.Version)),
+							m.KV("count", m.Equal(1)),
+						),
+						JSONPropertyNullOrAbsent("variation"),
+						JSONPropertyNullOrAbsentOrEqualTo("unknown", false),
+					),
+				)),
+			)),
+		),
+	))
 }

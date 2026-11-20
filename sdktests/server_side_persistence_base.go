@@ -635,6 +635,8 @@ func (s *ServerSidePersistentTests) Run(t *ldtest.T) {
 			})
 		}
 	})
+
+	t.Run("client-side availability", s.doClientSideAvailabilityTests)
 }
 
 func (s *ServerSidePersistentTests) runWithEmptyStore(t *ldtest.T, testName string, action func(*ldtest.T)) {

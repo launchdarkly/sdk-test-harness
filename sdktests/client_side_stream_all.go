@@ -71,7 +71,11 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 }
 
 func doClientSideStreamUpdateTests(t *ldtest.T) {
-	NewCommonStreamingTests(t, "doClientSideStreamUpdateTests").Updates(t)
+	c := NewCommonStreamingTests(t, "doClientSideStreamUpdateTests")
+	c.Updates(t)
+	c.PutReplacesAllData(t)
+	c.NonASCIIValues(t)
+	c.IgnoresComments(t)
 }
 
 func doClientSideStreamConnectionLifecycleTests(t *ldtest.T) {
@@ -112,4 +116,5 @@ func doClientSideStreamConnectionLifecycleTests(t *ldtest.T) {
 			"SDK did not close the streaming connection after the client was closed",
 		)
 	})
+	NewCommonStreamingTests(t, "doClientSideStreamConnectionLifecycleTests").NoReconnectAfterClose(t)
 }

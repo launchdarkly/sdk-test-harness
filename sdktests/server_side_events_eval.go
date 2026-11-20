@@ -626,6 +626,82 @@ func doServerSideFeaturePrerequisiteEventTests(t *ldtest.T) {
 		})
 	}
 
+	t.Run("prerequisite that is off", func(t *ldtest.T) {
+		// The SDK evaluates a prerequisite that is off. The prerequisite gets its off variation, and the
+		// SDK records a feature event for it. The top-level flag fails its prerequisite check.
+		topValueOff, topValueOn := ldvalue.String("top-off"), ldvalue.String("top-on")
+		prereqValueOff, prereqValueOn := ldvalue.String("prereq-off"), ldvalue.String("prereq-on")
+		topFlag := ldbuilders.NewFlagBuilder("top-flag").Version(100).
+			On(true).OffVariation(0).FallthroughVariation(1).
+			AddPrerequisite("prereq-flag", 1).
+			Variations(topValueOff, topValueOn).
+			TrackEvents(true).
+			Build()
+		prereqFlag := ldbuilders.NewFlagBuilder("prereq-flag").Version(200).
+			On(false).OffVariation(0).FallthroughVariation(1).
+			Variations(prereqValueOff, prereqValueOn).
+			TrackEvents(true).
+			Build()
+		defaultValue := ldvalue.String("default")
+
+		for _, withReason := range []bool{false, true} {
+			t.Run(h.IfElse(withReason, "with reasons", "without reasons"), func(t *ldtest.T) {
+				dataSource := NewSDKDataSource(t, mockld.NewServerSDKDataBuilder().Flag(topFlag, prereqFlag).Build())
+				events := NewSDKEventSink(t)
+				client := NewSDKClient(t, dataSource, events)
+
+				result := client.EvaluateFlag(t, servicedef.EvaluateFlagParams{
+					FlagKey:      topFlag.Key,
+					Context:      o.Some(context),
+					ValueType:    servicedef.ValueTypeString,
+					DefaultValue: defaultValue,
+					Detail:       withReason,
+				})
+				m.In(t).Assert(result.Value, m.JSONEqual(topValueOff))
+
+				client.FlushEvents(t)
+				payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+
+				eventMatchers := []m.Matcher{
+					IsValidFeatureEventWithConditions(
+						t, isPHP, context,
+						m.JSONProperty("key").Should(m.Equal(topFlag.Key)),
+						m.JSONProperty("version").Should(m.Equal(topFlag.Version)),
+						m.JSONProperty("value").Should(m.JSONEqual(topValueOff)),
+						m.JSONProperty("variation").Should(m.Equal(0)),
+						maybeReason(withReason, ldreason.NewEvalReasonPrerequisiteFailed(prereqFlag.Key)),
+						m.JSONProperty("default").Should(m.JSONEqual(defaultValue)),
+						JSONPropertyNullOrAbsent("prereqOf"),
+					),
+					IsValidFeatureEventWithConditions(
+						t, isPHP, context,
+						m.JSONProperty("key").Should(m.Equal(prereqFlag.Key)),
+						m.JSONProperty("version").Should(m.Equal(prereqFlag.Version)),
+						m.JSONProperty("value").Should(m.JSONEqual(prereqValueOff)),
+						m.JSONProperty("variation").Should(m.Equal(0)),
+						maybeReason(withReason, ldreason.NewEvalReasonOff()),
+						JSONPropertyNullOrAbsent("default"),
+						m.JSONOptProperty("prereqOf").Should(m.Equal(topFlag.Key)),
+					),
+				}
+				if !isPHP {
+					eventMatchers = append(eventMatchers,
+						IsIndexEventForContext(context),
+						IsValidSummaryEventWithFlags(
+							false,
+							m.KV(topFlag.Key, m.MapIncluding(
+								m.KV("counters", m.Items(flagCounter(topValueOff, 0, topFlag.Version, 1))),
+							)),
+							m.KV(prereqFlag.Key, m.MapIncluding(
+								m.KV("counters", m.Items(flagCounter(prereqValueOff, 0, prereqFlag.Version, 1))),
+							)),
+						))
+				}
+				m.In(t).Assert(payload, m.ItemsInAnyOrder(eventMatchers...))
+			})
+		}
+	})
+
 	t.Run("evaluating all flags generates no events", func(t *ldtest.T) {
 		dataBuilder := mockld.NewServerSDKDataBuilder()
 		dataBuilder.Flag(flag1, flag2, flag3)

@@ -13,6 +13,7 @@ import (
 
 func doClientSidePollTests(t *ldtest.T) {
 	t.Run("requests", doClientSidePollRequestTest)
+	t.Run("payload", doClientSidePollPayloadTests)
 }
 
 func doClientSidePollRequestTest(t *ldtest.T) {
@@ -63,4 +64,8 @@ func doClientSidePollRequestTest(t *ldtest.T) {
 		mockld.PollingPathMobileGet,
 		strings.ReplaceAll(mockld.PollingPathJSClientGet, mockld.PollingPathEnvIDParam, envIDOrMobileKey))
 	pollTests.RequestContextProperties(t, getPath)
+}
+
+func doClientSidePollPayloadTests(t *ldtest.T) {
+	NewCommonPollingTests(t, "doClientSidePollPayloadTests").NonASCIIValues(t)
 }
