@@ -2,6 +2,28 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.46.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.45.1...v2.46.0) (2026-11-20)
+
+
+### Features
+
+* Add event tests for typed evaluations that get the wrong type ([#653](https://github.com/launchdarkly/sdk-test-harness/issues/653)) ([b890c65](https://github.com/launchdarkly/sdk-test-harness/commit/b890c650077cb116f062e1588e82a5b4295ace8c))
+* Add tests that stored flags keep their client-side availability ([#658](https://github.com/launchdarkly/sdk-test-harness/issues/658)) ([1f0fa53](https://github.com/launchdarkly/sdk-test-harness/commit/1f0fa5395c31997d6e5af8a8da8dd259488263f5))
+* Check that a segment tombstone in a persistent store is not read as a live segment ([#674](https://github.com/launchdarkly/sdk-test-harness/issues/674)) ([5332994](https://github.com/launchdarkly/sdk-test-harness/commit/5332994beb17873bebcc0132f6e686392827c406))
+* Check that SDK requests identify the SDK in a user agent header ([#661](https://github.com/launchdarkly/sdk-test-harness/issues/661)) ([98008b7](https://github.com/launchdarkly/sdk-test-harness/commit/98008b7c8205d1c1432243f7335b91293c4ed1c2))
+* Check that SDKs flush events automatically at the flush interval ([#669](https://github.com/launchdarkly/sdk-test-harness/issues/669)) ([59e03fb](https://github.com/launchdarkly/sdk-test-harness/commit/59e03fb91722e971e28916d165c714ad3039cb09))
+* Check that summary events count a wrong-type default separately from the flag value ([#664](https://github.com/launchdarkly/sdk-test-harness/issues/664)) ([27447ff](https://github.com/launchdarkly/sdk-test-harness/commit/27447ff20d0667f81390ca353b6195062a1e9033))
+* Check the events for a prerequisite that is off ([#663](https://github.com/launchdarkly/sdk-test-harness/issues/663)) ([c6064e7](https://github.com/launchdarkly/sdk-test-harness/commit/c6064e732bc8849d481c04c49d5d4e9bfbd1790f))
+* Check the start and end dates of summary events ([#659](https://github.com/launchdarkly/sdk-test-harness/issues/659)) ([8286e99](https://github.com/launchdarkly/sdk-test-harness/commit/8286e999f599681f9e0a8d28262addad9fdd3a2d))
+* Run the event retry tests on client-side SDKs ([#668](https://github.com/launchdarkly/sdk-test-harness/issues/668)) ([e5809fd](https://github.com/launchdarkly/sdk-test-harness/commit/e5809fde08c475438240bec2f62ffb61997aceae))
+* Run the stream and poll payload tests on client-side SDKs ([#667](https://github.com/launchdarkly/sdk-test-harness/issues/667)) ([83004d6](https://github.com/launchdarkly/sdk-test-harness/commit/83004d6da91603aee14ac0745ce75bb458d2a3ee))
+
+
+### Bug Fixes
+
+* Allow for a different SDK clock in the summary start and end dates test ([#672](https://github.com/launchdarkly/sdk-test-harness/issues/672)) ([9798f62](https://github.com/launchdarkly/sdk-test-harness/commit/9798f62ed9c99f32986febee29e248d8232181a1))
+* Send well-formed JSON in the schema-mismatch stream delete test ([#647](https://github.com/launchdarkly/sdk-test-harness/issues/647)) ([55d4115](https://github.com/launchdarkly/sdk-test-harness/commit/55d4115f48187ca0639fe39de891092c443d7e54))
+
 ## [2.45.1](https://github.com/launchdarkly/sdk-test-harness/compare/v2.45.0...v2.45.1) (2026-11-16)
 
 
