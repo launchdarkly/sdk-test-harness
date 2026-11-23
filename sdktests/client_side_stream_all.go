@@ -39,7 +39,8 @@ func doClientSideStreamRequestTest(t *ldtest.T) {
 	requestPathMatcher := func(method flagRequestMethod) m.Matcher {
 		switch sdkKind {
 		case mockld.RokuSDK:
-			panic("invalid SDK kind")
+			// The first Roku request is the handshake, which goes to the same path for every method.
+			return m.Equal(mockld.StreamingPathRokuHandshake)
 		case mockld.MobileSDK:
 			mobileGetPathPrefix := strings.TrimSuffix(mockld.StreamingPathMobileGet, mockld.StreamingPathContextBase64Param)
 			return h.IfElse(method == flagRequestREPORT,
