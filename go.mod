@@ -4,7 +4,7 @@ go 1.26.9
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.48.0
-	github.com/aws/aws-sdk-go-v2/config v1.33.16
+	github.com/aws/aws-sdk-go-v2/config v1.33.18
 	github.com/aws/aws-sdk-go-v2/credentials v1.21.0
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.73.2
 	github.com/fatih/color v1.19.0
