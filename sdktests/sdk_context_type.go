@@ -257,8 +257,12 @@ func doSDKContextConvertTests(t *ldtest.T) {
 			`{"kind": "org", "name": 3}`,
 			`{"kind": "org", "anonymous": null}`,
 			`{"kind": "org", "anonymous": "yes"}`,
-			`{"kind": "org", "_meta": {"privateAttributes": 3}}`,
-			`{"kind": "org", "_meta": {"privateAttributes": {}}}`,
+			`{"kind": "org", "key": "x", "_meta": {"privateAttributes": 3}}`,
+			`{"kind": "org", "key": "x", "_meta": {"privateAttributes": {}}}`,
+			`{"kind": "org", "key": "x", "_meta": {"privateAttributes": [3]}}`,
+			`{"kind": "org", "key": "x", "_meta": {"privateAttributes": ["a", true]}}`,
+			`{"kind": "org", "key": "x", "_meta": {"privateAttributes": [{}]}}`,
+			`{"kind": "multi", "org": {"key": "x", "_meta": {"privateAttributes": [3]}}}`,
 
 			`{"kind": "kind", "key": "x"}`, // kind cannot be "kind"
 			`{"kind": "multi"}`,            // multi-kind with no kinds
@@ -306,7 +310,10 @@ func doSDKContextConvertTests(t *ldtest.T) {
 			`{"key": true}`,
 			`{"key": "a", "custom": 3}`,
 			`{"key": "a", "anonymous": 3}`,
-			`{"key": "a", "privateAttributeNames": 3"}`,
+			`{"key": "a", "privateAttributeNames": 3}`,
+			`{"key": "a", "privateAttributeNames": [3]}`,
+			`{"key": "a", "privateAttributeNames": ["b", true]}`,
+			`{"key": "a", "privateAttributeNames": [{}]}`,
 		)
 		for _, stringAttrName := range []string{"name", "firstName", "lastName", "email", "country", "avatar", "ip"} {
 			inputs = append(inputs, fmt.Sprintf(`{"key": "a", "%s": 3}`, stringAttrName))
