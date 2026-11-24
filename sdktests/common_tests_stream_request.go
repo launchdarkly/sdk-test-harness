@@ -170,13 +170,15 @@ func (c CommonStreamingTests) requestContextProperties(
 					)...)...)
 
 				if afterIdentify {
-					// Skip the request for the initial context.
-					_ = dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
+					// Skip the requests for the initial context. For Roku, these are the handshake and
+					// the stream request.
+					_ = requireStreamConnection(t, dataSystem.Synchronizers[0].Endpoint(), time.Second)
 
 					context = contexts.NextUniqueContext()
 					client.SendIdentifyEvent(t, context)
 				}
 
+				// For Roku, this is the handshake request.
 				request := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
 				contextJSONMatcher := JSONMatchesContext(context)
 
