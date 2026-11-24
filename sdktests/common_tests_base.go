@@ -251,3 +251,34 @@ func (c commonTestsBase) withHTTPProxy(url string) SDKConfigurer {
 		return nil
 	})
 }
+
+// privateAttributeEventConfig is an events configuration that marks attributes private.
+type privateAttributeEventConfig struct {
+	name        string
+	configurers func(t *ldtest.T) []SDKConfigurer
+}
+
+// privateAttributeEventConfigs returns events configurations that mark context attributes private.
+// Private attribute settings apply only to analytics events. Tests use these configurations to
+// verify that the SDK does not redact the context that it sends for flag evaluation. Each
+// configuration also sends events to a mock event sink, so the SDK does not send events elsewhere.
+func privateAttributeEventConfigs() []privateAttributeEventConfig {
+	withEvents := func(config servicedef.SDKConfigEventParams) func(t *ldtest.T) []SDKConfigurer {
+		return func(t *ldtest.T) []SDKConfigurer {
+			// The event sink keeps the private attribute settings and adds its base URI.
+			return []SDKConfigurer{WithEventsConfig(config), NewSDKEventSink(t)}
+		}
+	}
+	return []privateAttributeEventConfig{
+		{
+			name:        "allAttributesPrivate",
+			configurers: withEvents(servicedef.SDKConfigEventParams{AllAttributesPrivate: true}),
+		},
+		{
+			name: "globalPrivateAttributes",
+			configurers: withEvents(servicedef.SDKConfigEventParams{
+				GlobalPrivateAttributes: []string{"name", "d", "/i/j"},
+			}),
+		},
+	}
+}

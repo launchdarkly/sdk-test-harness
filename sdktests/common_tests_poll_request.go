@@ -190,37 +190,62 @@ func (c CommonPollingTests) RequestContextProperties(t *ldtest.T, getPath string
 
 	t.Run("context properties", func(t *ldtest.T) {
 		for _, contexts := range data.NewContextFactoriesForExercisingAllAttributes(c.contextFactory.Prefix()) {
-			t.Run(contexts.Description(), func(t *ldtest.T) {
-				for _, method := range c.availableFlagRequestMethods(t) {
-					t.Run(string(method), func(t *ldtest.T) {
-						dataSystem := NewSDKDataSystem(t, nil, c.pollingDataSystemOptions()...)
+			c.requestContextProperties(t, contexts.Description(), contexts, getPath, nil)
 
-						context := contexts.NextUniqueContext()
-						contextJSONMatcher := JSONMatchesContext(context)
+			// Each name starts with the name of the test without private attributes. A suppression
+			// matches each part of a test ID as an unanchored pattern. Thus, a suppression for that
+			// test also applies to these tests.
+			for _, p := range privateAttributeEventConfigs() {
+				c.requestContextProperties(t, contexts.Description()+", "+p.name, contexts, getPath, p.configurers)
+			}
+		}
+	})
+}
 
-						_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
-							WithClientSideInitialContext(context),
-							c.withFlagRequestMethod(method),
-							dataSystem,
-						)...)
+// requestContextProperties verifies that the SDK sends the full context to the polling service.
+// extraConfigurers adds SDK configuration for each client, and can be nil.
+func (c CommonPollingTests) requestContextProperties(
+	t *ldtest.T,
+	name string,
+	contexts *data.ContextFactory,
+	getPath string,
+	extraConfigurers func(t *ldtest.T) []SDKConfigurer,
+) {
+	t.Run(name, func(t *ldtest.T) {
+		for _, method := range c.availableFlagRequestMethods(t) {
+			t.Run(string(method), func(t *ldtest.T) {
+				dataSystem := NewSDKDataSystem(t, nil, c.pollingDataSystemOptions()...)
 
-						request := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
+				var configurers []SDKConfigurer
+				if extraConfigurers != nil {
+					configurers = extraConfigurers(t)
+				}
 
-						if method.sendsContextInBody() {
-							m.In(t).For("request body").Assert(request.Body, m.AllOf(
-								m.Not(m.BeNil()),
-								contextJSONMatcher))
-						} else {
-							m.In(t).For("request body").Assert(request.Body, m.Length().Should(m.Equal(0)))
+				context := contexts.NextUniqueContext()
+				contextJSONMatcher := JSONMatchesContext(context)
 
-							getPathPrefix := strings.TrimSuffix(getPath, mockld.StreamingPathContextBase64Param)
-							m.In(t).For("request path").Require(request.URL.Path, m.StringHasPrefix(getPathPrefix))
-							contextData := strings.TrimPrefix(request.URL.Path, getPathPrefix)
+				_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
+					append(configurers,
+						WithClientSideInitialContext(context),
+						c.withFlagRequestMethod(method),
+						dataSystem,
+					)...)...)
 
-							m.In(t).For("context data in URL").Assert(contextData,
-								Base64DecodedData().Should(contextJSONMatcher))
-						}
-					})
+				request := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
+
+				if method.sendsContextInBody() {
+					m.In(t).For("request body").Assert(request.Body, m.AllOf(
+						m.Not(m.BeNil()),
+						contextJSONMatcher))
+				} else {
+					m.In(t).For("request body").Assert(request.Body, m.Length().Should(m.Equal(0)))
+
+					getPathPrefix := strings.TrimSuffix(getPath, mockld.StreamingPathContextBase64Param)
+					m.In(t).For("request path").Require(request.URL.Path, m.StringHasPrefix(getPathPrefix))
+					contextData := strings.TrimPrefix(request.URL.Path, getPathPrefix)
+
+					m.In(t).For("context data in URL").Assert(contextData,
+						Base64DecodedData().Should(contextJSONMatcher))
 				}
 			})
 		}
