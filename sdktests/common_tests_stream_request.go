@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/launchdarkly/sdk-test-harness/v3/data"
 	h "github.com/launchdarkly/sdk-test-harness/v3/framework/helpers"
@@ -124,28 +125,38 @@ func (c CommonStreamingTests) RequestContextProperties(t *ldtest.T, getPath stri
 
 	t.Run("context properties", func(t *ldtest.T) {
 		for _, contexts := range data.NewContextFactoriesForExercisingAllAttributes(c.contextFactory.Prefix()) {
-			c.requestContextProperties(t, contexts.Description(), contexts, getPath, nil)
+			c.requestContextProperties(t, contexts.Description(), contexts, getPath, nil, false)
 
 			// Each name starts with the name of the test without private attributes. A suppression
 			// matches each part of a test ID as an unanchored pattern. Thus, a suppression for that
 			// test also applies to these tests.
 			for _, p := range privateAttributeEventConfigs() {
-				c.requestContextProperties(t, contexts.Description()+", "+p.name, contexts, getPath, p.configurers)
+				c.requestContextProperties(t, contexts.Description()+", "+p.name, contexts, getPath, p.configurers, false)
 			}
 		}
+
+		// An old-style user's privateAttributeNames are literal attribute names, so the SDK must send
+		// them in attribute reference syntax.
+		c.requestContextProperties(t, "old user with private attribute names that look like references",
+			data.NewContextFactory(c.contextFactory.Prefix(), setReferenceLikePrivateAttrs), getPath, nil, true)
 	})
 }
 
 // requestContextProperties verifies that the SDK sends the full context to the streaming service.
-// extraConfigurers adds SDK configuration for each client, and can be nil.
+// extraConfigurers adds SDK configuration for each client, and can be nil. If asOldUser is true, the
+// SDK gets the context as an old-style user.
 func (c CommonStreamingTests) requestContextProperties(
 	t *ldtest.T,
 	name string,
 	contexts *data.ContextFactory,
 	getPath string,
 	extraConfigurers func(t *ldtest.T) []SDKConfigurer,
+	asOldUser bool,
 ) {
 	t.Run(name, func(t *ldtest.T) {
+		if asOldUser {
+			t.RequireCapability(servicedef.CapabilityUserType)
+		}
 		for _, method := range c.availableFlagRequestMethods(t) {
 			t.Run(string(method), func(t *ldtest.T) {
 				dataSystem, configurers := c.setupDataSystems(t, nil)
@@ -155,10 +166,16 @@ func (c CommonStreamingTests) requestContextProperties(
 
 				context := contexts.NextUniqueContext()
 				contextJSONMatcher := JSONMatchesContext(context)
+				initialContext := WithClientSideInitialContext(context)
+				if asOldUser {
+					user := representContextAsOldUser(t, context)
+					require.NotNil(t, user)
+					initialContext = WithClientSideInitialUser(user)
+				}
 
 				_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
 					append(configurers,
-						WithClientSideInitialContext(context),
+						initialContext,
 						c.withFlagRequestMethod(method),
 					)...)...)
 
