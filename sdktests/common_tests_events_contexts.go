@@ -96,6 +96,22 @@ func makeEventContextTestParams() []eventContextTestParams {
 			redactedShouldBe: redactedAttrsByKind{"user": {"name", "b"}},
 		},
 		{
+			name: "single-kind, private attribute names that look like references",
+			// a literal private attribute name redacts the whole attribute of that name; the "with old
+			// user" variants send these names in privateAttributeNames, which are always literal
+			contextFactory: func(prefix string) *data.ContextFactory {
+				return data.NewContextFactory(prefix, setReferenceLikePrivateAttrs)
+			},
+			outputContext: func(c ldcontext.Context) ldcontext.Context {
+				b := ldcontext.NewBuilderFromContext(c)
+				for _, name := range referenceLikeAttrNames {
+					b.SetValue(name, ldvalue.Null())
+				}
+				return b.Build()
+			},
+			redactedShouldBe: redactedAttrsByKind{"user": referenceLikeAttrRefs},
+		},
+		{
 			name: "single-kind, private attribute nested property",
 			// redacting just part of an object value
 			eventsConfig: servicedef.SDKConfigEventParams{
