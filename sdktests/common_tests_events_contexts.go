@@ -380,6 +380,7 @@ func (c CommonEventTests) EventContexts(t *ldtest.T) {
 	}
 
 	c.eventContextPrivateAttributeScoping(t, dataSource)
+	c.eventContextOldUserCustomBuiltIns(t, dataSource)
 }
 
 // eventContextPrivateAttributeScoping verifies that private attributes declared by a context in
@@ -497,6 +498,64 @@ func (c CommonEventTests) eventContextPrivateAttributeScoping(t *ldtest.T, dataS
 
 			client.SendIdentifyEvent(t, multiContext)
 			expectIdentifyEvent(t, client, events, multiContext, expectedContext, redactedShouldBe)
+		})
+	}
+}
+
+// eventContextOldUserCustomBuiltIns verifies that the "custom" object of an old-style user cannot
+// supply the context's key or kind. The key comes only from the user's top-level "key" property, and
+// the kind is always "user", so custom attributes named "key" or "kind" must not appear in the event
+// context as attributes, and must not be listed in _meta.redactedAttributes when attributes are
+// redacted.
+func (c CommonEventTests) eventContextOldUserCustomBuiltIns(t *ldtest.T, dataSource SDKConfigurer) {
+	if !t.Capabilities().Has(servicedef.CapabilityUserType) {
+		return
+	}
+
+	for _, allPrivate := range []bool{false, true} {
+		allPrivate := allPrivate
+		name := "old user custom attributes cannot override key or kind"
+		if allPrivate {
+			name += ", allAttributesPrivate"
+		}
+
+		t.Run(name, func(t *ldtest.T) {
+			eventsConfig := servicedef.SDKConfigEventParams{AllAttributesPrivate: allPrivate}
+			contexts := data.NewContextFactory(fmt.Sprintf("EventContextOldUserCustomBuiltIns-%t", allPrivate))
+
+			events := NewSDKEventSinkWithGzip(t, t.Capabilities().Has(servicedef.CapabilityEventGzip))
+			client := NewSDKClient(t, c.baseSDKConfigurationPlus(
+				WithClientSideInitialContext(contexts.NextUniqueContext()),
+				WithEventsConfig(eventsConfig),
+				dataSource,
+				events)...)
+			if c.isClientSide {
+				// Consume the identify event that a client-side SDK sends for its initial context
+				client.FlushEvents(t)
+				_ = events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+			}
+
+			key := contexts.NextUniqueContext().Key()
+			user := []byte(fmt.Sprintf(
+				`{"key": %q, "custom": {"key": "custom-key", "kind": "org", "b": "c"}}`, key))
+
+			context := ldcontext.NewBuilder(key).SetString("b", "c").Build()
+			expectedContext := context
+			var redactedShouldBe redactedAttrsByKind
+			if allPrivate {
+				expectedContext = ldcontext.New(key)
+				redactedShouldBe = redactedAttrsByKind{"user": {"b"}}
+			}
+
+			client.SendIdentifyEventWithOldUser(t, user)
+			client.FlushEvents(t)
+			payload := events.ExpectAnalyticsEvents(t, defaultEventTimeout)
+			m.In(t).Assert(payload, m.Items(
+				m.AllOf(
+					IsIdentifyEventForContext(context),
+					m.JSONProperty("context").Should(JSONMatchesEventContext(expectedContext, redactedShouldBe)),
+				),
+			))
 		})
 	}
 }

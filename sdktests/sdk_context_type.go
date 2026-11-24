@@ -207,6 +207,9 @@ func doSDKContextConvertTests(t *ldtest.T) {
 			contextConversionParams{`{"key": "a", "custom": {"b": 1, "c": null}}`, `{"kind": "user", "key": "a", "b": 1}`},
 			contextConversionParams{`{"key": "a", "custom": {}}`, `{"kind": "user", "key": "a"}`},
 			contextConversionParams{`{"key": "a", "custom": null}`, `{"kind": "user", "key": "a"}`},
+			// custom attributes cannot override the built-in key or kind
+			contextConversionParams{`{"key": "a", "custom": {"key": "b", "c": 1}}`, `{"kind": "user", "key": "a", "c": 1}`},
+			contextConversionParams{`{"key": "a", "custom": {"kind": "org", "c": 1}}`, `{"kind": "user", "key": "a", "c": 1}`},
 			contextConversionParams{`{"key": "a", "anonymous": true}`, `{"kind": "user", "key": "a", "anonymous": true}`},
 			contextConversionParams{`{"key": "a", "anonymous": false}`, `{"kind": "user", "key": "a"}`},
 			contextConversionParams{`{"key": "a", "anonymous": null}`, `{"kind": "user", "key": "a"}`},
