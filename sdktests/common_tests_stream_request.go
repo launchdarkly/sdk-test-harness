@@ -122,27 +122,35 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 func (c CommonStreamingTests) RequestContextProperties(t *ldtest.T, getPath string) {
 	t.RequireCapability(servicedef.CapabilityClientSide) // server-side SDKs do not send user properties in stream requests
 
-	t.Run("context properties", func(t *ldtest.T) {
-		for _, contexts := range data.NewContextFactoriesForExercisingAllAttributes(c.contextFactory.Prefix()) {
-			c.requestContextProperties(t, contexts.Description(), contexts, getPath, nil)
+	// The tests after identify have a name that starts with the name of the tests for the initial
+	// context. A suppression matches each part of a test ID as an unanchored pattern, so a
+	// suppression of the initial context tests also applies to the tests after identify.
+	for _, afterIdentify := range []bool{false, true} {
+		t.Run(h.IfElse(afterIdentify, "context properties after identify", "context properties"), func(t *ldtest.T) {
+			for _, contexts := range data.NewContextFactoriesForExercisingAllAttributes(c.contextFactory.Prefix()) {
+				c.requestContextProperties(t, contexts.Description(), contexts, getPath, afterIdentify, nil)
 
-			// Each name starts with the name of the test without private attributes. A suppression
-			// matches each part of a test ID as an unanchored pattern. Thus, a suppression for that
-			// test also applies to these tests.
-			for _, p := range privateAttributeEventConfigs() {
-				c.requestContextProperties(t, contexts.Description()+", "+p.name, contexts, getPath, p.configurers)
+				// Each name starts with the name of the test without private attributes, so a
+				// suppression for that test also applies to these tests.
+				for _, p := range privateAttributeEventConfigs() {
+					c.requestContextProperties(t, contexts.Description()+", "+p.name, contexts, getPath,
+						afterIdentify, p.configurers)
+				}
 			}
-		}
-	})
+		})
+	}
 }
 
 // requestContextProperties verifies that the SDK sends the full context to the streaming service.
-// extraConfigurers adds SDK configuration for each client, and can be nil.
+// If afterIdentify is true, it verifies the request that the SDK makes after identify switches to a
+// new context, instead of the request for the initial context. extraConfigurers adds SDK
+// configuration for each client, and can be nil.
 func (c CommonStreamingTests) requestContextProperties(
 	t *ldtest.T,
 	name string,
 	contexts *data.ContextFactory,
 	getPath string,
+	afterIdentify bool,
 	extraConfigurers func(t *ldtest.T) []SDKConfigurer,
 ) {
 	t.Run(name, func(t *ldtest.T) {
@@ -154,15 +162,23 @@ func (c CommonStreamingTests) requestContextProperties(
 				}
 
 				context := contexts.NextUniqueContext()
-				contextJSONMatcher := JSONMatchesContext(context)
 
-				_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
+				client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 					append(configurers,
 						WithClientSideInitialContext(context),
 						c.withFlagRequestMethod(method),
 					)...)...)
 
+				if afterIdentify {
+					// Skip the request for the initial context.
+					_ = dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
+
+					context = contexts.NextUniqueContext()
+					client.SendIdentifyEvent(t, context)
+				}
+
 				request := dataSystem.Synchronizers[0].Endpoint().RequireConnection(t, time.Second)
+				contextJSONMatcher := JSONMatchesContext(context)
 
 				if method.sendsContextInBody() {
 					m.In(t).For("request body").Assert(request.Body, m.AllOf(
