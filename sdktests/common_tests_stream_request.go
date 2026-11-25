@@ -151,33 +151,43 @@ func (c CommonStreamingTests) RequestURLPath(t *ldtest.T, pathMatcher func(flagR
 func (c CommonStreamingTests) RequestContextProperties(t *ldtest.T, getPath string) {
 	t.RequireCapability(servicedef.CapabilityClientSide) // server-side SDKs do not send user properties in stream requests
 
-	t.Run("context properties", func(t *ldtest.T) {
-		for _, contexts := range data.NewContextFactoriesForExercisingAllAttributes(c.contextFactory.Prefix()) {
-			c.requestContextProperties(t, contexts.Description(), contexts, getPath, nil, false)
+	// The tests after identify have a name that starts with the name of the tests for the initial
+	// context. A suppression matches each part of a test ID as an unanchored pattern, so a
+	// suppression of the initial context tests also applies to the tests after identify.
+	for _, afterIdentify := range []bool{false, true} {
+		t.Run(h.IfElse(afterIdentify, "context properties after identify", "context properties"), func(t *ldtest.T) {
+			for _, contexts := range data.NewContextFactoriesForExercisingAllAttributes(c.contextFactory.Prefix()) {
+				c.requestContextProperties(t, contexts.Description(), contexts, getPath, afterIdentify, nil, false)
 
-			// Each name starts with the name of the test without private attributes. A suppression
-			// matches each part of a test ID as an unanchored pattern. Thus, a suppression for that
-			// test also applies to these tests.
-			for _, p := range privateAttributeEventConfigs() {
-				c.requestContextProperties(t, contexts.Description()+", "+p.name, contexts, getPath, p.configurers, false)
+				// Each name starts with the name of the test without private attributes, so a
+				// suppression for that test also applies to these tests.
+				for _, p := range privateAttributeEventConfigs() {
+					c.requestContextProperties(t, contexts.Description()+", "+p.name, contexts, getPath,
+						afterIdentify, p.configurers, false)
+				}
 			}
-		}
 
-		// An old-style user's privateAttributeNames are literal attribute names, so the SDK must send
-		// them in attribute reference syntax.
-		c.requestContextProperties(t, "old user with private attribute names that look like references",
-			data.NewContextFactory(c.contextFactory.Prefix(), setReferenceLikePrivateAttrs), getPath, nil, true)
-	})
+			// An old-style user's privateAttributeNames are literal attribute names, so the SDK must
+			// send them in attribute reference syntax.
+			if !afterIdentify {
+				c.requestContextProperties(t, "old user with private attribute names that look like references",
+					data.NewContextFactory(c.contextFactory.Prefix(), setReferenceLikePrivateAttrs), getPath, false, nil, true)
+			}
+		})
+	}
 }
 
 // requestContextProperties verifies that the SDK sends the full context to the streaming service.
-// extraConfigurers adds SDK configuration for each client, and can be nil. If asOldUser is true, the
-// SDK gets the context as an old-style user.
+// If afterIdentify is true, it verifies the request that the SDK makes after identify switches to a
+// new context, instead of the request for the initial context. extraConfigurers adds SDK
+// configuration for each client, and can be nil. If asOldUser is true, the SDK gets the initial
+// context as an old-style user.
 func (c CommonStreamingTests) requestContextProperties(
 	t *ldtest.T,
 	name string,
 	contexts *data.ContextFactory,
 	getPath string,
+	afterIdentify bool,
 	extraConfigurers func(t *ldtest.T) []SDKConfigurer,
 	asOldUser bool,
 ) {
@@ -193,7 +203,6 @@ func (c CommonStreamingTests) requestContextProperties(
 				}
 
 				context := contexts.NextUniqueContext()
-				contextJSONMatcher := JSONMatchesContext(context)
 				initialContext := WithClientSideInitialContext(context)
 				if asOldUser {
 					user := representContextAsOldUser(t, context)
@@ -201,13 +210,24 @@ func (c CommonStreamingTests) requestContextProperties(
 					initialContext = WithClientSideInitialUser(user)
 				}
 
-				_ = NewSDKClient(t, c.baseSDKConfigurationPlus(
+				client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 					append(configurers,
 						initialContext,
 						c.withFlagRequestMethod(method),
 					)...)...)
 
+				if afterIdentify {
+					// Skip the requests for the initial context. For Roku, these are the handshake and
+					// the stream request.
+					_ = requireStreamConnection(t, dataSource.Endpoint(), time.Second)
+
+					context = contexts.NextUniqueContext()
+					client.SendIdentifyEvent(t, context)
+				}
+
+				// For Roku, this is the handshake request.
 				request := dataSource.Endpoint().RequireConnection(t, time.Second)
+				contextJSONMatcher := JSONMatchesContext(context)
 
 				// The Roku SDK sends the context in the body of its handshake POST.
 				if method == flagRequestREPORT || c.sdkKind == mockld.RokuSDK {
