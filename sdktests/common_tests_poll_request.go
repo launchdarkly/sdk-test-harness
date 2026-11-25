@@ -194,14 +194,21 @@ func (c CommonPollingTests) RequestContextProperties(t *ldtest.T, getPath string
 	for _, afterIdentify := range []bool{false, true} {
 		t.Run(h.IfElse(afterIdentify, "context properties after identify", "context properties"), func(t *ldtest.T) {
 			for _, contexts := range data.NewContextFactoriesForExercisingAllAttributes(c.contextFactory.Prefix()) {
-				c.requestContextProperties(t, contexts.Description(), contexts, getPath, afterIdentify, nil)
+				c.requestContextProperties(t, contexts.Description(), contexts, getPath, afterIdentify, nil, false)
 
 				// Each name starts with the name of the test without private attributes, so a
 				// suppression for that test also applies to these tests.
 				for _, p := range privateAttributeEventConfigs() {
 					c.requestContextProperties(t, contexts.Description()+", "+p.name, contexts, getPath,
-						afterIdentify, p.configurers)
+						afterIdentify, p.configurers, false)
 				}
+			}
+
+			// An old-style user's privateAttributeNames are literal attribute names, so the SDK must
+			// send them in attribute reference syntax.
+			if !afterIdentify {
+				c.requestContextProperties(t, "old user with private attribute names that look like references",
+					data.NewContextFactory(c.contextFactory.Prefix(), setReferenceLikePrivateAttrs), getPath, false, nil, true)
 			}
 		})
 	}
@@ -210,7 +217,8 @@ func (c CommonPollingTests) RequestContextProperties(t *ldtest.T, getPath string
 // requestContextProperties verifies that the SDK sends the full context to the polling service.
 // If afterIdentify is true, it verifies the request that the SDK makes after identify switches to a
 // new context, instead of the request for the initial context. extraConfigurers adds SDK
-// configuration for each client, and can be nil.
+// configuration for each client, and can be nil. If asOldUser is true, the SDK gets the initial
+// context as an old-style user.
 func (c CommonPollingTests) requestContextProperties(
 	t *ldtest.T,
 	name string,
@@ -218,8 +226,12 @@ func (c CommonPollingTests) requestContextProperties(
 	getPath string,
 	afterIdentify bool,
 	extraConfigurers func(t *ldtest.T) []SDKConfigurer,
+	asOldUser bool,
 ) {
 	t.Run(name, func(t *ldtest.T) {
+		if asOldUser {
+			t.RequireCapability(servicedef.CapabilityUserType)
+		}
 		for _, method := range c.availableFlagRequestMethods(t) {
 			t.Run(string(method), func(t *ldtest.T) {
 				dataSystem := NewSDKDataSystem(t, nil, c.pollingDataSystemOptions()...)
@@ -230,10 +242,16 @@ func (c CommonPollingTests) requestContextProperties(
 				}
 
 				context := contexts.NextUniqueContext()
+				initialContext := WithClientSideInitialContext(context)
+				if asOldUser {
+					user := representContextAsOldUser(t, context)
+					require.NotNil(t, user)
+					initialContext = WithClientSideInitialUser(user)
+				}
 
 				client := NewSDKClient(t, c.baseSDKConfigurationPlus(
 					append(configurers,
-						WithClientSideInitialContext(context),
+						initialContext,
 						c.withFlagRequestMethod(method),
 						dataSystem,
 					)...)...)

@@ -58,6 +58,18 @@ func WithClientSideConfig(clientSideConfig servicedef.SDKConfigClientSideParams)
 	})
 }
 
+// WithClientSideInitialUser is used with StartSDKClient to set an old-style initial user for a client-side SDK.
+// It replaces any initial context, since a test service prefers the initial context when both are set.
+func WithClientSideInitialUser(user json.RawMessage) SDKConfigurer {
+	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
+		cs := configOut.ClientSide.Value()
+		cs.InitialContext = o.None[ldcontext.Context]()
+		cs.InitialUser = user
+		configOut.ClientSide = o.Some(cs)
+		return nil
+	})
+}
+
 // WithClientSideInitialContext is used with StartSDKClient to set the initial context for a client-side SDK.
 func WithClientSideInitialContext(context ldcontext.Context) SDKConfigurer {
 	return helpers.ConfigOptionFunc[servicedef.SDKConfigParams](func(configOut *servicedef.SDKConfigParams) error {
