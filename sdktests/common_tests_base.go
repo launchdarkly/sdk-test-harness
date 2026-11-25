@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/launchdarkly/go-sdk-common/v3/ldattr"
 	"github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+	"github.com/launchdarkly/go-sdk-common/v3/ldvalue"
 	m "github.com/launchdarkly/go-test-helpers/v2/matchers"
 	"github.com/launchdarkly/sdk-test-harness/v2/data"
 	"github.com/launchdarkly/sdk-test-harness/v2/framework/helpers"
@@ -273,5 +275,23 @@ func privateAttributeEventConfigs() []privateAttributeEventConfig {
 				GlobalPrivateAttributes: []string{"name", "d", "/i/j"},
 			}),
 		},
+	}
+}
+
+// referenceLikeAttrNames are literal attribute names that mean something else when parsed as attribute
+// references: "/a" would name attribute "a", "/b/c" would name property "c" of attribute "b", and "/~x"
+// is not a valid reference. An old-style user's privateAttributeNames are always literal names.
+var referenceLikeAttrNames = []string{"/a", "/b/c", "/~x"} //nolint:gochecknoglobals
+
+// referenceLikeAttrRefs are referenceLikeAttrNames in attribute reference syntax.
+var referenceLikeAttrRefs = []string{"/~1a", "/~1b~1c", "/~1~0x"} //nolint:gochecknoglobals
+
+// setReferenceLikePrivateAttrs adds each of referenceLikeAttrNames as a private attribute, plus an
+// attribute "b" whose property "c" must not be redacted.
+func setReferenceLikePrivateAttrs(b *ldcontext.Builder) {
+	b.SetValue("b", ldvalue.Parse([]byte(`{"c": "public"}`)))
+	for _, name := range referenceLikeAttrNames {
+		b.SetString(name, "private")
+		b.PrivateRef(ldattr.NewLiteralRef(name))
 	}
 }
