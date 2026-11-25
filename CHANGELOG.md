@@ -2,6 +2,17 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [3.2.0-alpha.21](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.20...v3.2.0-alpha.21) (2026-11-25)
+
+
+### Features
+
+* Add client-side experiment exposure change listener tests ([#602](https://github.com/launchdarkly/sdk-test-harness/issues/602)) ([934db6f](https://github.com/launchdarkly/sdk-test-harness/commit/934db6fc965dddbd83855351dd13faa0db5cbcbb))
+* Add context conversion tests for non-string private attribute entries ([#698](https://github.com/launchdarkly/sdk-test-harness/issues/698)) ([17eb5af](https://github.com/launchdarkly/sdk-test-harness/commit/17eb5af286ba16c7c182b5adcd3c11245707f358))
+* Test that old-style user privateAttributeNames are literal attribute names ([#702](https://github.com/launchdarkly/sdk-test-harness/issues/702)) ([e5a06b3](https://github.com/launchdarkly/sdk-test-harness/commit/e5a06b33729082c0578336e9195f4783e552d6a5))
+* Verify client-side SDKs send the full context in flag requests after identify ([#696](https://github.com/launchdarkly/sdk-test-harness/issues/696)) ([97227c9](https://github.com/launchdarkly/sdk-test-harness/commit/97227c963fc0c9cce21d2a1c628a98e246212def))
+* Verify client-side SDKs send unredacted contexts for flag requests ([c92b6b9](https://github.com/launchdarkly/sdk-test-harness/commit/c92b6b91cc42d94948e89c0d7d4a012387e6652a))
+
 ## [3.2.0-alpha.20](https://github.com/launchdarkly/sdk-test-harness/compare/v3.2.0-alpha.19...v3.2.0-alpha.20) (2026-11-20)
 
 
