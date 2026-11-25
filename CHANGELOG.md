@@ -2,6 +2,16 @@
 
 All notable changes to the project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org).
 
+## [2.47.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.46.0...v2.47.0) (2026-11-25)
+
+
+### Features
+
+* Add context conversion tests for non-string private attribute entries ([#697](https://github.com/launchdarkly/sdk-test-harness/issues/697)) ([7501731](https://github.com/launchdarkly/sdk-test-harness/commit/7501731be155a6cdf244521fbbd3461b95050b06))
+* Test that old-style user privateAttributeNames are literal attribute names ([#701](https://github.com/launchdarkly/sdk-test-harness/issues/701)) ([f2b993a](https://github.com/launchdarkly/sdk-test-harness/commit/f2b993a84b061938efdaaba27644bbfa763bea25))
+* Verify client-side SDKs send the full context in flag requests after identify ([#695](https://github.com/launchdarkly/sdk-test-harness/issues/695)) ([3bc6297](https://github.com/launchdarkly/sdk-test-harness/commit/3bc6297978ee514f89b40414ac39ea89186ded72))
+* Verify client-side SDKs send unredacted contexts for flag requests ([d33aade](https://github.com/launchdarkly/sdk-test-harness/commit/d33aade5751cb44595fcfe8e0b353be253e88f5b))
+
 ## [2.46.0](https://github.com/launchdarkly/sdk-test-harness/compare/v2.45.1...v2.46.0) (2026-11-20)
 
 
